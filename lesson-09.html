@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 2.1. Tool use / function calling: як LLM діє у світі; структурований вивід</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 2.1 · Модуль 2</div>
+<h1>Tool use / function calling: як LLM діє у світі; структурований вивід</h1>
+<p class="lead">Модель нічого не виконує сама: вона повертає запит на виклик функції з аргументами за JSON-схемою, а виконує його ваш код або сервер Anthropic. Розбираємо протокол tool_use → tool_result на справжніх прогонах, керування викликами і чотири рівні гарантій структурованого виводу аж до валідації Pydantic.</p>
+<div class="hero-meta"><span class="chip">Від моделі до агента</span><span class="chip t">≈ 55 хв</span><span class="chip a">14 карток</span><span class="chip g">перевірено 14.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Якщо ви пишете регулярний вираз, щоб витягти з виводу моделі рішення, це рішення мало бути викликом інструмента.</p><cite>Документація Claude API, «How tool use works» · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#contract"><b>01</b>Контракт</a><a href="#where"><b>02</b>Хто виконує</a><a href="#control"><b>03</b>Керування викликами</a><a href="#demo"><b>04</b>Справжній прогін</a><a href="#design"><b>05</b>Опис інструмента</a><a href="#structured"><b>06</b>Структурований вивід</a><a href="#cli"><b>07</b>Схема з командного рядка</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>описати протокол tool use до рівня полів: <code>tools</code> → <code>tool_use</code> → <code>tool_result</code> з <code>is_error</code>, і правила, порушення яких дає 400;</li>
+    <li>розрізняти client tools, Anthropic-schema tools і server tools, обробляти <code>pause_turn</code> і змішані ходи;</li>
+    <li>керувати викликами через <code>tool_choice</code> і паралельні виклики, рахувати накладні токени інструментів;</li>
+    <li>писати опис інструмента так, щоб модель обирала його і передавала правильні аргументи;</li>
+    <li>обирати рівень гарантій структурованого виводу: промпт, інструмент, <code>strict: true</code>, <code>output_config.format</code>, <code>claude -p --json-schema</code>, і валідувати результат Pydantic.</li>
+  </ul>
+</div>
+
+<section class="sec" id="contract">
+<div class="sec-h"><span class="num">01</span><h2>Контракт<span class="sub">Модель просить, ваш код виконує</span></h2></div>
+<p>Модель не виконує нічого: «викликати функцію» для неї означає згенерувати назву інструмента й аргументи в JSON. Виконує (або відмовляє) ваш код, результат повертається в розмову, і модель продовжує. Read, Grep і Bash у Claude Code — такі самі інструменти: harness оголошує їх моделі й виконує кожен виклик.</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Інструмент потрібен</th><th>Інструмент зайвий</th></tr></thead>
+<tbody>
+<tr><td>Дія з побічним ефектом: записати файл, надіслати лист, змінити запис</td><td>Відповідь є в навчанні моделі: переклад, підсумок, загальні знання</td></tr>
+<tr><td>Свіжі чи приватні дані: БД, ціни, вміст репозиторію</td><td>Разове питання без побічних ефектів</td></tr>
+<tr><td>Вихід гарантованої форми, який парсить код</td><td>Зайвий round trip довший за саму роботу</td></tr>
+</tbody></table></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 540" role="img" aria-label="Послідовність tool use: запит з інструментами, відповідь tool_use, виконання у вашому коді, tool_result, продовження; server tools виконуються на сервері">
+  <defs>
+    <marker id="l9a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="l9t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar t"/></marker>
+    <marker id="l9d" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="124" height="40" rx="9" class="bx t"/>
+  <text x="70" y="33" text-anchor="middle" class="tx b">Ваш код</text>
+  <rect x="228" y="8" width="124" height="40" rx="9" class="bx a"/>
+  <text x="290" y="33" text-anchor="middle" class="tx b">Claude API</text>
+  <path d="M70 48 V 178 M70 244 V 530" class="ln d"/>
+  <path d="M290 48 V 384 M290 468 V 530" class="ln d"/>
+  <text x="180" y="74" text-anchor="middle" class="tx">① tools + messages</text>
+  <path d="M74 84 H 284" class="ln a" marker-end="url(#l9a)"/>
+  <text x="180" y="101" text-anchor="middle" class="tx s">назва, опис, input_schema — у кожному запиті</text>
+  <text x="180" y="132" text-anchor="middle" class="tx">② stop_reason: tool_use</text>
+  <path d="M286 142 H 76" class="ln t" marker-end="url(#l9t)"/>
+  <text x="180" y="159" text-anchor="middle" class="tx s">блоки tool_use {id, name, input}</text>
+  <rect x="8" y="178" width="204" height="66" rx="10" class="bx t"/>
+  <text x="110" y="199" text-anchor="middle" class="tx b">③ виконує ваш код</text>
+  <text x="110" y="217" text-anchor="middle" class="tx s">перевірити input і дозволи,</text>
+  <text x="110" y="233" text-anchor="middle" class="tx s">виконати, обрізати вивід</text>
+  <text x="180" y="276" text-anchor="middle" class="tx">④ assistant як є + tool_result</text>
+  <path d="M74 286 H 284" class="ln a" marker-end="url(#l9a)"/>
+  <text x="180" y="303" text-anchor="middle" class="tx s">tool_use_id, content, is_error</text>
+  <text x="180" y="334" text-anchor="middle" class="tx">⑤ ще tool_use → крок ③</text>
+  <path d="M286 344 H 76" class="ln t" marker-end="url(#l9t)"/>
+  <text x="180" y="361" text-anchor="middle" class="tx s">або end_turn: фінальна відповідь</text>
+  <path d="M70 350 C 26 330, 26 276, 40 250" class="ln d" marker-end="url(#l9d)"/>
+  <rect x="136" y="384" width="216" height="84" rx="10" class="bx m"/>
+  <text x="244" y="405" text-anchor="middle" class="tx b">server tools</text>
+  <text x="244" y="423" text-anchor="middle" class="tx s">web_search, code_execution…</text>
+  <text x="244" y="439" text-anchor="middle" class="tx s">цикл на сервері Anthropic:</text>
+  <text x="244" y="455" text-anchor="middle" class="tx s">виклик і результат разом</text>
+  <text x="166" y="492" text-anchor="middle" class="tx">⑥ готова відповідь</text>
+  <path d="M286 502 H 76" class="ln t" marker-end="url(#l9t)"/>
+  <text x="180" y="522" text-anchor="middle" class="tx s">або pause_turn: надіслати її назад як є</text>
+</svg>
+<figcaption>Клієнтський інструмент коштує щонайменше один зайвий round trip: модель просить (②), ви виконуєте (③) і повертаєте результат (④). Серверний інструмент виконується всередині одного запиту, і ваш код читає вже готовий результат.</figcaption>
+</figure>
+<p>Так виглядає один повний оберт на рівні HTTP:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>POST /v1/messages · три кроки</span></div>
+<pre><span class="d">// ① запит</span>
+{ "model": "claude-opus-5-5", "max_tokens": 1024,
+  "tools": [{
+    "name": "get_weather",
+    "description": "Get the current weather in a given location",
+    "input_schema": { "type": "object",
+      "properties": {
+        "location": { "type": "string", "description": "The city and state, e.g. San Francisco, CA" },
+        "unit": { "type": "string", "enum": ["celsius", "fahrenheit"] } },
+      "required": ["location"] } }],
+  "messages": [{ "role": "user", "content": "What's the weather like in San Francisco?" }] }
+
+<span class="d">// ② відповідь</span>
+{ "stop_reason": <span class="y">"tool_use"</span>, "role": "assistant",
+  "content": [
+    { "type": "text", "text": "I'll check the current weather in San Francisco for you." },
+    { "type": <span class="y">"tool_use"</span>, "id": "toolu_01A09q90qw90lq917835lq9",
+      "name": "get_weather", "input": { "location": "San Francisco, CA", "unit": "celsius" } } ] }
+
+<span class="d">// ④ наступний запит: історія + результат</span>
+"messages": [ …user…, …assistant з ② без змін…,
+  { "role": "user", "content": [
+    { "type": <span class="ok">"tool_result"</span>, "tool_use_id": "toolu_01A09q90qw90lq917835lq9",
+      "content": "15 degrees" } ] } ]</pre>
+<div class="cap">з документації Claude API (Define tools, Handle tool calls) · скорочено · не запускалась у цьому уроці (немає API-ключа)</div></div>
+<p>Правила, порушення яких API не прощає:</p>
+<ul>
+<li><b>Кожен <code>tool_use</code> отримує свій <code>tool_result</code></b> з тим самим <code>tool_use_id</code>, і результати йдуть <b>одразу</b> наступним user-повідомленням. Інакше 400: <code>tool_use ids were found without tool_result blocks immediately after</code>.</li>
+<li><b>Спершу всі <code>tool_result</code>, текст лише після них.</b> Текст перед результатами — теж 400.</li>
+<li><b>Відповідь assistant повертається без змін</b>, з усіма блоками. <code>content</code> результату — рядок або блоки <code>text</code>, <code>image</code>, <code>document</code>, <code>search_result</code>.</li>
+<li><code>is_error: true</code> — виклик не вдався: модель спробує інакше або пояснить користувачеві; пропущений параметр вона виправляє 2–3 рази, перш ніж здатися.</li>
+<li><code>name</code> відповідає <code>^[a-zA-Z0-9_-]{1,128}$</code>, а <code>input_schema</code> — це JSON Schema.</li>
+</ul>
+<div class="note warn"><span class="lbl">Пастка безпеки</span>
+<p>У <code>tool_result</code> часто потрапляє чужий текст: вебсторінка, лист, файл користувача. Документація радить тримати його саме там, а не в <code>system</code> чи звичайному user-тексті, і вважати недовіреним: це канал непрямої prompt injection (урок 3.4).</p>
+</div>
+</section>
+
+<section class="sec" id="where">
+<div class="sec-h"><span class="num">02</span><h2>Хто виконує<span class="sub">Client, Anthropic-schema і server tools</span></h2></div>
+<p>Головна вісь — <b>де виконується код</b>: від неї залежить, що робить ваша програма.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип</th><th>Приклади</th><th>Хто виконує</th><th>Що робить ваш код</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип">User-defined (client)</td><td data-th="Приклади">ваші <code>search_lectures</code>, <code>check_quote</code></td><td data-th="Хто виконує">ваш код</td><td data-th="Що робить ваш код">пише схему, виконує, повертає <code>tool_result</code></td></tr>
+<tr><td data-th="Тип">Anthropic-schema (client)</td><td data-th="Приклади"><code>bash_20250124</code>, <code>text_editor_20250728</code>, <code>memory_20250818</code>, <code>computer_toolset_20260801</code>, <code>browser_toolset_20260801</code></td><td data-th="Хто виконує">ваш код</td><td data-th="Що робить ваш код">те саме, але схему не пишете: модель тренували на цих сигнатурах, тож викликає їх надійніше за саморобний аналог</td></tr>
+<tr><td data-th="Тип">Server</td><td data-th="Приклади"><code>web_search</code>, <code>web_fetch</code>, <code>code_execution</code>, <code>tool_search</code>, advisor, MCP connector</td><td data-th="Хто виконує">Anthropic</td><td data-th="Що робить ваш код">вмикає інструмент і читає результат; <code>tool_result</code> не формує</td></tr>
+</tbody></table></div>
+<p>Серверний виклик приходить блоком <code>server_tool_use</code> (id на <code>srvtoolu_</code>), а результат, наприклад <code>web_search_tool_result</code>, лежить одразу за ним у тій самій відповіді: модель шукає, читає і шукає знову всередині одного HTTP-запиту.</p>
+<ul>
+<li><b><code>pause_turn</code></b>: серверний цикл має ліміт, типово <b>10 ітерацій</b> на запит. Якщо модель його досягла, відповідь приходить зі <code>stop_reason: "pause_turn"</code>, а останній <code>server_tool_use</code> може ще не мати результату. Надішліть її назад <b>як є</b> і з тим самим <code>tools</code> (інакше помилка валідації); обмежте кількість продовжень.</li>
+<li><b>Змішаний хід</b>: якщо модель в одній групі паралельних викликів звернулася і до серверного, і до вашого інструмента, відповідь приходить зі <code>stop_reason: "tool_use"</code>, а <code>server_tool_use</code> ще без результату. У відповідь шлють <b>лише</b> <code>tool_result</code>, без тексту, і сервер виконає відкладений виклик на початку наступного запиту.</li>
+<li><b>Гроші</b>: серверні інструменти мають власну тарифікацію поверх токенів. Web search коштує <b>$10 за 1 000 пошуків</b>, а знайдене рахується як вхідні токени і в наступних ходах. Web fetch окремо не тарифікується. Code execution безкоштовний у парі з <code>web_search_20260209</code> чи <code>web_fetch_20260209</code>, інакше — 1 550 безкоштовних годин на місяць, далі $0,05 за годину контейнера.</li>
+</ul>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Server tool знімає з вас цикл, але й контроль: виклик не пройде через ваші дозволи, логування чи кеш. Якщо дію треба аудитувати або обмежувати своїми правилами (доступ до БД, гроші, PII), робіть її client tool.</p>
+</div>
+</section>
+
+<section class="sec" id="control">
+<div class="sec-h"><span class="num">03</span><h2>Керування викликами<span class="sub">tool_choice, паралельність, ціна в токенах</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th><code>tool_choice</code></th><th>Поведінка</th><th>Коли</th></tr></thead>
+<tbody>
+<tr><td data-th="tool_choice"><code>{"type": "auto"}</code></td><td data-th="Поведінка">модель сама вирішує, кликати чи відповідати текстом; типове значення, коли є <code>tools</code></td><td data-th="Коли">майже завжди</td></tr>
+<tr><td data-th="tool_choice"><code>{"type": "any"}</code></td><td data-th="Поведінка">мусить викликати хоча б один інструмент</td><td data-th="Коли">агентний крок, де текстова відповідь — помилка</td></tr>
+<tr><td data-th="tool_choice"><code>{"type": "tool", "name": "…"}</code></td><td data-th="Поведінка">мусить викликати саме цей</td><td data-th="Коли">класичний прийом «інструмент як формат виводу»</td></tr>
+<tr><td data-th="tool_choice"><code>{"type": "none"}</code></td><td data-th="Поведінка">інструменти заборонені; типове значення без <code>tools</code></td><td data-th="Коли">підсумковий хід без дій</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Перевірено · 14.10.2026</span>
+<p><b>Claude Opus 5.5, Sonnet 5.5, Fable 5.1 і Mythos 5.1 не підтримують примусовий виклик</b>: <code>any</code> і <code>tool</code> дають 400 <code>tool_choice: type "tool" and "any" are not supported for this model.</code>, навіть на <code>count_tokens</code>. Заміна — <code>auto</code> з явною інструкцією в промпті плюс <code>strict: true</code> для валідних аргументів, а якщо виклик існував лише заради JSON, то structured outputs. <code>auto</code> виклику не гарантує, тому перевіряйте, що він відбувся. На моделях, де примус є, він має ще дві ціни: API «підставляє» початок відповіді, тож тексту перед <code>tool_use</code> не буде, і <b>пропускається thinking</b>. З ручним extended thinking (<code>type: "enabled"</code>) <code>any</code> і <code>tool</code> не працюють узагалі.</p>
+</div>
+<p>Зміна <code>tool_choice</code> між запитами інвалідує кеш блоків <code>messages</code>; <code>tools</code> і <code>system</code> лишаються в кеші (урок 1.5).</p>
+<h3>Паралельні виклики</h3>
+<p>Моделі Claude 4 і новіші типово можуть повернути кілька блоків <code>tool_use</code> в одній відповіді. Порядок виконання обираєте ви: незалежні читання — конкурентно (<code>asyncio.gather</code>), записи зі спільним станом — послідовно, до першої помилки. Обов'язково:</p>
+<ol class="steps">
+<li><b>Усі <code>tool_result</code> — в одному user-повідомленні.</b> Окремі повідомлення API прийме, але модель «вчиться» з історії не паралелити.</li>
+<li><b>Невиконаний виклик теж отримує результат</b>: <code>is_error: true</code> і причину, наприклад <code>"Not executed: the preceding write_file call failed."</code>.</li>
+<li><b>Залежні виклики не мають іти пачкою.</b> Якщо згрупувала — поверніть помилку невиконаного, вона повторить. Профілактика в системному промпті: «Only batch tool calls that are independent of each other.»</li>
+</ol>
+<p>Вимкнути паралельність можна прапорцем <code>disable_parallel_tool_use: true</code> усередині <code>tool_choice</code>, а не на верхньому рівні запиту. З <code>auto</code> він означає «щонайбільше один виклик».</p>
+<h3>Скільки коштує оголосити інструмент</h3>
+<p>Три шари токенів: схеми в <code>tools</code>, блоки <code>tool_use</code>/<code>tool_result</code> в історії і службовий системний промпт, який API додає, щойно є хоч один інструмент.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar"><span class="k">службовий промпт · Opus 5.5 / Sonnet 5.5 / Haiku 5.5</span><span class="tr"><i style="--v:2%"></i><b style="--v:2%">286</b></span></div>
+  <div class="bar"><span class="k">службовий промпт · Opus 4.7</span><span class="tr"><i style="--v:4.5%"></i><b style="--v:4.5%">675</b></span></div>
+  <div class="bar t"><span class="k">bash tool (моделі 4.7+)</span><span class="tr"><i style="--v:2.2%"></i><b style="--v:2.2%">+325</b></span></div>
+  <div class="bar m"><span class="k">computer_toolset_20260801</span><span class="tr"><i style="--v:30%"></i><b style="--v:30%">≈4 500</b></span></div>
+  <div class="bar m"><span class="k">browser_toolset_20260801</span><span class="tr"><i style="--v:44%"></i><b style="--v:44%">≈6 600</b></span></div>
+  <div class="bar p"><span class="k">схеми вбудованих інструментів Claude Code (вимір уроку 1.3)</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">≈15 000</b></span></div>
+</div>
+<figcaption>Вхідні токени, які додає оголошення інструментів у кожному запиті, ще до першого виклику. Службовий промпт з <code>tool_choice</code> <code>any</code>/<code>tool</code> більший: 406 на Haiku 5.5 і Opus 5, 804 на Opus 4.7. Джерело — сторінка Pricing, крім останнього рядка.</figcaption>
+</figure>
+<p><b>Кожен інструмент оплачується в кожному запиті</b>, навіть якщо його не кличуть: десять зайвих схем по 200 токенів в агента на 50 кроків — 100 тис. вхідних токенів на задачу. Prompt caching знімає більшість цієї ціни, лише поки набір інструментів не змінюється. Для великих бібліотек є <code>tool_search</code> і <code>defer_loading</code>: модель бачить схему, лише коли інструмент знайдено.</p>
+</section>
+
+<section class="sec" id="demo">
+<div class="sec-h"><span class="num">04</span><h2>Справжній прогін<span class="sub">tool_use і tool_result у потоці Claude Code</span></h2></div>
+<p>Дві лекції в папці і питання з пасткою: третьої лекції, про яку питаємо, немає. Інструменти обмежено читанням.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">ls lectures/</span>
+01-transformer.md  02-rag.md
+<span class="ps">$ </span><span class="c">claude -p "У якій лекції з папки lectures/ пояснено, чому attention дорожчає на довгих текстах? Процитуй речення дослівно і вкажи файл. Ще прочитай lectures/03-agents.md і скажи, про що вона. Відповідай коротко українською." --model haiku --tools "Read,Grep,Glob" --allowedTools "Read" "Grep" "Glob" --strict-mcp-config --no-session-persistence --output-format stream-json --verbose &gt; run.jsonl</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.299 · claude-haiku-5-5 · 14.10.2026</div></div>
+<p>Блоки з потоку, згруповані за відповідями моделі. Claude Code пише кожен блок окремою подією, а належність до однієї відповіді видно зі спільного <code>message.id</code>:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run.jsonl — блоки tool_use / tool_result</span></div>
+<pre><span class="d">── відповідь 1 · msg_…ptFoV · два tool_use в одній відповіді</span>
+<span class="y">● tool_use Grep</span>  {"pattern":"attention","path":"lectures","-i":true,"output_mode":"content","-n":true}
+<span class="y">● tool_use Read</span>  {"file_path":"<span class="er">/work-s1-scratchpad-l09-lectern</span>/lectures/03-agents.md"}
+<span class="d">  ⎿ tool_result</span>  lectures/01-transformer.md:4:Механізм self-attention порівнює кожен токен з кожним, тому обчислення ростуть квадратично…
+<span class="d">  ⎿ tool_result</span> <span class="er">is_error: true</span>  File does not exist. Note: your current working directory is /work/s1/scratchpad/l09/lectern…
+<span class="d">── відповідь 2 · msg_…UyZh · thinking + текст + два tool_use</span>
+<span class="c">  «Файл 03-agents.md не знайшовся за попереднім шляхом, тому повторю читання з правильним шляхом.»</span>
+<span class="y">● tool_use Read</span>  {"file_path":"/work/s1/scratchpad/l09/lectern/lectures/03-agents.md"}
+<span class="d">  ⎿ tool_result</span> <span class="er">is_error: true</span>  File does not exist. …
+<span class="y">● tool_use Read</span>  {"file_path":"/work/s1/scratchpad/l09/lectern/lectures/01-transformer.md"}
+<span class="d">  ⎿ tool_result</span>  1	# Лекція 1. Transformer …
+<span class="d">── відповідь 3 · msg_…GHRX</span>
+<span class="y">● tool_use Glob</span>  {"pattern":"<span>*</span>*/*agent*"}    <span class="d">⎿ No files found</span>
+<span class="y">● tool_use Glob</span>  {"pattern":"lectures/*"}     <span class="d">⎿ lectures/01-transformer.md  lectures/02-rag.md</span>
+<span class="d">── відповідь 4 · end_turn</span>
+<span class="c">Лекція про attention це lectures/01-transformer.md. Дослівне речення:
+«Через це подвоєння контексту приблизно вчетверо збільшує обсяг роботи attention.»
+Файлу lectures/03-agents.md немає. У папці є лише 01-transformer.md і 02-rag.md…</span>
+
+<span class="d">result · num_turns 7 · 8,5 с · $0,0020 · is_error false</span></pre>
+<div class="cap">реальний вивід · 14.10.2026 · абсолютні шляхи замінено на /work/s1/…, обрізано довгі результати; сирий потік — у console/tools-run.jsonl</div></div>
+<ol class="steps">
+<li><b>Паралельність без підказки.</b> Grep і Read незалежні, тож модель повернула їх однією відповіддю, а harness виконав обидва.</li>
+<li><b>Вигаданий аргумент.</b> Перший шлях модель склеїла сама: замінила частину слешів дефісами (виділено червоним). JSON Schema тут не допомогла б, бо тип правильний, рядок, а неправильне значення. Ловить це лише код, який виконує виклик.</li>
+<li><b>Інструктивна помилка.</b> <code>is_error: true</code> разом з підказкою про робочу папку виправив шлях з першої спроби. Друга помилка вже справжня — файлу немає, — і модель перевірила це через Glob, а не вигадала вміст лекції.</li>
+<li><b>Ціна.</b> Чотири відповіді моделі, сім ходів у звіті Claude Code, $0,002. Кожен зайвий виклик — це ще один повний запит з усією історією.</li>
+</ol>
+<div class="note tip"><span class="lbl">Що забрати в свій код</span>
+<p>Повідомлення про помилку інструмента — це промпт. «File does not exist» з робочою папкою дає моделі все потрібне для виправлення. Голе «failed» змушує її вгадувати і витрачати ходи.</p>
+</div>
+</section>
+
+<section class="sec" id="design">
+<div class="sec-h"><span class="num">05</span><h2>Опис інструмента<span class="sub">Головний важіль якості виклику</span></h2></div>
+<blockquote class="q-src">
+<p>Давайте надзвичайно детальні описи. Це <b>найважливіший фактор</b> продуктивності інструментів. […] Пишіть щонайменше 3–4 речення на опис інструмента, більше, якщо він складний.</p>
+<p class="orig">“Provide extremely detailed descriptions. This is by far the most important factor in tool performance. … Aim for at least 3–4 sentences for each tool description, more if the tool is complex.”</p>
+<cite>Документація Claude API, «Define tools», перевірено 14.10.2026</cite>
+</blockquote>
+<p>Модель бачить лише назву, опис і схему. Опис відповідає на чотири питання: що робить інструмент, коли його кликати і коли ні, що означає кожен параметр, чого він <b>не</b> повертає.</p>
+<div class="cols">
+<div class="cmp bad"><h4>слабкий</h4>
+<pre class="code" data-lang="json">{ <span class="s">"name"</span>: <span class="s">"search"</span>,
+  <span class="s">"description"</span>: <span class="s">"Search lectures."</span>,
+  <span class="s">"input_schema"</span>: { <span class="s">"type"</span>: <span class="s">"object"</span>,
+    <span class="s">"properties"</span>: {
+      <span class="s">"q"</span>: { <span class="s">"type"</span>: <span class="s">"string"</span> } },
+    <span class="s">"required"</span>: [<span class="s">"q"</span>] } }</pre>
+<ul><li>«search» конфліктує з будь-яким іншим пошуком;</li><li><code>q</code> — фраза чи ключові слова?</li><li>невідомо, що повернеться і скільки.</li></ul></div>
+<div class="cmp good"><h4>робочий</h4>
+<pre class="code" data-lang="python">{<span class="s">"name"</span>: <span class="s">"lectern_search_lectures"</span>,
+ <span class="s">"description"</span>: (
+   <span class="s">"Шукає фрагменти в лекціях поточного "</span>
+   <span class="s">"курсу за змістом. Кличи, коли потрібна "</span>
+   <span class="s">"цитата чи факт з матеріалів; не кличи "</span>
+   <span class="s">"для загальних знань. Повертає до "</span>
+   <span class="s">"max_results фрагментів: lecture_id, "</span>
+   <span class="s">"номер абзацу, текст ≤ 600 символів."</span>),
+ <span class="s">"input_schema"</span>: {<span class="s">"type"</span>: <span class="s">"object"</span>,
+   <span class="s">"properties"</span>: {
+     <span class="s">"query"</span>: {<span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"description"</span>:
+       <span class="s">"Питання природною мовою"</span>},
+     <span class="s">"lecture_id"</span>: {<span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"description"</span>:
+       <span class="s">"Лише одна лекція, формат L-0000"</span>},
+     <span class="s">"max_results"</span>: {<span class="s">"type"</span>: <span class="s">"integer"</span>,
+       <span class="s">"description"</span>: <span class="s">"1–10, типово 5"</span>}},
+   <span class="s">"required"</span>: [<span class="s">"query"</span>]}}</pre>
+<ul><li>префікс-простір імен <code>lectern_</code>;</li><li>коли кликати і коли ні;</li><li>формат і межі результату.</li></ul></div>
+</div>
+<p>Решта правил — зі статті Anthropic «Writing effective tools for agents — with agents» (11.09.2025) і сторінки Define tools:</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Правило</th><th>Механізм</th></tr></thead>
+<tbody>
+<tr><td>Менше, але змістовніших інструментів</td><td>«Більше інструментів не завжди дає кращий результат». Замість <code>create_pr</code>, <code>review_pr</code>, <code>merge_pr</code> — один інструмент з параметром <code>action</code>: менше плутанини при виборі.</td></tr>
+<tr><td>Простори імен</td><td><code>github_list_prs</code>, <code>slack_send_message</code>: вибір однозначний, коли бібліотека росте, і tool search знаходить точніше.</td></tr>
+<tr><td>Однозначні параметри</td><td><code>user_id</code> замість <code>user</code>; формат у описі (<code>L-0000</code>, ISO-дата).</td></tr>
+<tr><td>Відповідь лише з корисним</td><td>Семантичні id (slug, назва) замість внутрішніх UUID; параметр <code>response_format</code> з <code>concise</code>/<code>detailed</code>. У статті стисла відповідь займає 72 токени проти 206 у детальної, тобто близько третини.</td></tr>
+<tr><td>Ощадливість токенами</td><td>Пагінація, діапазони, фільтри, обрізання з підказкою, як звузити запит. Claude Code типово обмежує вивід MCP-інструмента 25 000 токенами (<code>MAX_MCP_OUTPUT_TOKENS</code>) і попереджає вже на 10 000.</td></tr>
+<tr><td>Помилки як інструкції</td><td>«Rate limit exceeded. Retry after 60 seconds.» замість «failed»: що сталося і що робити далі.</td></tr>
+<tr><td><code>input_examples</code> для складних схем</td><td>Масив прикладів аргументів у визначенні інструмента. Кожен приклад має проходити <code>input_schema</code>, інакше 400. Для server tools поле не підтримується.</td></tr>
+<tr><td>Пояснення, а не міркування</td><td>Параметр на кшталт «опиши крок за кроком, чому ти це викликаєш» може спричинити відмову <code>reasoning_extraction</code>. Просіть коротке пояснення або доказ.</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Виміряно Anthropic</span>
+<p>У статті про інструменти Anthropic пише, що Claude Sonnet 3.5 вийшов на рекорд SWE-bench Verified після точних правок в описах інструментів. Модель і задачі ті самі, змінився лише текст, який модель читає про свої інструменти.</p>
+</div>
+</section>
+
+<section class="sec" id="structured">
+<div class="sec-h"><span class="num">06</span><h2>Структурований вивід<span class="sub">Чотири рівні гарантій</span></h2></div>
+<p>Lectern зберігає питання квізу в БД, тож відповідь розбирає код. Між «попросити JSON» і «отримати JSON за схемою» — чотири рівні гарантій:</p>
+<div class="levels">
+  <div class="lvl"><span class="no">1</span><div><b>Інструкція в промпті</b><span class="m">«Відповідай лише JSON такого вигляду». Гарантій немає: можливі пояснення навколо, markdown-обгортка, пропущене поле. Старий прийом «префіл <code>{</code>» мертвий: моделі Claude 4.6 і новіші на префіл останнього assistant-повідомлення відповідають 400.</span></div></div>
+  <div class="lvl"><span class="no">2</span><div><b>JSON mode</b><span class="m">Так його називають в інших API: синтаксично валідний JSON без гарантії схеми. OpenAI формулює прямо: «обидва гарантують валідний JSON, але лише Structured Outputs гарантують відповідність схемі». Окремого JSON mode у Claude API немає.</span></div></div>
+  <div class="lvl"><span class="no">3</span><div><b>Інструмент як формат + <code>strict: true</code></b><span class="m">Схема вашого «запису» — це <code>input_schema</code>, а результат приходить в <code>tool_use.input</code>. Без <code>strict</code> схема лише підказка, тож можливі <code>"2"</code> замість <code>2</code> або пропущене поле. Зі <code>strict: true</code> sampling обмежено граматикою схеми.</span></div></div>
+  <div class="lvl"><span class="no">4</span><div><b>JSON outputs: <code>output_config.format</code></b><span class="m"><code>{"type": "json_schema", "schema": {…}}</code>. Відповідь моделі — валідний за схемою JSON у текстовому блоці. Python SDK: <code>client.messages.parse()</code> з Pydantic-моделлю повертає <code>parsed_output</code>. GA; старий параметр <code>output_format</code> застарів і без beta-заголовка дає 400.</span></div></div>
+</div>
+<p>Рівні 3 і 4 Anthropic об'єднує під назвою <b>structured outputs</b> і реалізує однаково — <b>constrained decoding</b>. Схему компілюють у граматику, і на кожному кроці модель може обрати лише токен, який її не порушує. Звідси обмеження, яких немає в «справжній» JSON Schema:</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Що</th><th>Деталі на 14.10.2026</th></tr></thead>
+<tbody>
+<tr><td>Підтримується</td><td>усі базові типи, <code>enum</code>, <code>const</code>, <code>anyOf</code>/<code>allOf</code>, внутрішні <code>$ref</code>, прості <code>pattern</code>, формати <code>date</code>, <code>email</code>, <code>uuid</code> тощо; <code>additionalProperties: false</code> обов'язковий для кожного об'єкта</td></tr>
+<tr><td>Не підтримується → 400</td><td>рекурсивні схеми, <code>minimum</code>/<code>maximum</code>, <code>minLength</code>/<code>maxLength</code>, <code>minItems</code> понад 1, зовнішні <code>$ref</code>. SDK-хелпери прибирають ці обмеження зі схеми, дописують їх в опис поля і перевіряють відповідь у вашому коді</td></tr>
+<tr><td>Ліміти запиту</td><td>до 20 strict-інструментів, 24 необов'язкових параметри і 16 параметрів з union-типами сумарно на всі схеми; таймаут компіляції 180 с</td></tr>
+<tr><td>Затримка</td><td>перший запит з новою схемою чекає компіляції; граматика кешується на 24 години від останнього використання. Зміна лише <code>name</code> чи <code>description</code> кеш не скидає</td></tr>
+<tr><td>Порядок полів</td><td>спершу обов'язкові, потім необов'язкові, кожна група в порядку схеми</td></tr>
+<tr><td>Може не збігтися зі схемою</td><td><code>stop_reason: "refusal"</code> (HTTP 200, токени оплачено), <code>"max_tokens"</code> (обрізаний JSON). Регістр значень <code>enum</code> теж не гарантовано: замість <code>"apply"</code> може прийти <code>"Apply"</code></td></tr>
+<tr><td>Несумісно</td><td>з citations (400) і префілом</td></tr>
+</tbody></table></div>
+<p>Граматика діє лише на прямий вивід: thinking лишається вільним.</p>
+<div class="key"><h4>Коли схема сильніша за промпт</h4>
+<p>Вмикайте structured outputs, коли вихід розбирає код, коли викликів тисячі і кожен збій означає повторний запит, і коли поля — це типи й переліки. Промпту досить, коли результат читає людина або форма гнучка. <b>Валідуйте в коді в будь-якому разі.</b> Граматика гарантує форму, але не зміст: що варіантів рівно 4, що <code>correct_index</code> вказує на правильний, що цитата дослівна. Перші два правила схема API навіть не може виразити, бо <code>minItems</code> понад 1 не підтримується.</p>
+</div>
+</section>
+
+<section class="sec" id="cli">
+<div class="sec-h"><span class="num">07</span><h2>Схема з командного рядка<span class="sub">claude -p --json-schema, Codex, Cursor</span></h2></div>
+<p>В уроці 1.2 ми вже діставали цитату через <code>--json-schema</code>. Тепер подивимося, як цей прапорець працює всередині. Візьмемо те саме питання про attention, але цього разу інструменти ввімкнено, а відповідь має відповідати схемі:</p>
+<div class="tabs">
+<input type="radio" name="cli-t" id="cli-t1" checked><input type="radio" name="cli-t" id="cli-t2"><input type="radio" name="cli-t" id="cli-t3">
+<div class="tab-l"><label for="cli-t1">Claude Code</label><label for="cli-t2">Codex CLI</label><label for="cli-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">SCHEMA='{"type":"object","additionalProperties":false,"required":["file","quote"],"properties":{"file":{"type":"string"},"quote":{"type":"string"}}}'</span>
+<span class="ps">$ </span><span class="c">claude -p "У якій лекції з lectures/ пояснено, чому attention дорожчає на довгих текстах? Дай файл і дослівну цитату." --model haiku --tools "Read,Grep,Glob" --allowedTools "Read" "Grep" "Glob" --json-schema "$SCHEMA" --output-format stream-json --verbose &gt; schema-run.jsonl</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.299 · 14.10.2026</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>schema-run.jsonl — ключові події</span></div>
+<pre><span class="d">system/init · tools: ["Glob", "Grep", "Read", </span><span class="y">"StructuredOutput"</span><span class="d">]</span>
+<span class="y">● tool_use Grep</span>  {"pattern":"(?i)attention","path":"…/lectures","output_mode":"files_with_matches"}
+<span class="y">● tool_use Glob</span>  {"pattern":"<span>*</span>*/*","path":"…/lectures"}
+<span class="y">● tool_use Grep</span>  {"pattern":"(?i)(квадрат|quadratic|O\\(n|довг|long|дорож|cost|…)","path":"…/01-transformer.md",…}
+<span class="y">● tool_use StructuredOutput</span>  {"file":"lectures/01-transformer.md","quote":"Механізм self-attention порівнює кожен токен з кожним, тому обчислення ростуть квадратично з довжиною тексту."}
+<span class="d">  ⎿ tool_result</span>  Structured output provided successfully
+<span class="d">result · success · num_turns 5 · $0,0025 · .structured_output = { file, quote }</span></pre>
+<div class="cap">реальний вивід · 14.10.2026 · шляхи скорочено; system/init наведено лише для списку інструментів, у console/schema-run.jsonl його немає</div></div>
+<p>Структурований вивід у Claude Code — це <b>ще один інструмент</b>. Harness додає до набору <code>StructuredOutput</code> з вашою схемою, модель кличе його останнім, а значення потрапляє в поле <code>structured_output</code> фінального JSON. За документацією Agent SDK, відповідь перевіряється за JSON Schema draft-07, і при невідповідності модель отримує повторний запит. Якщо спроби вичерпано, результат має subtype <code>error_max_structured_output_retries</code>. Невалідна схема зупиняє запуск з <code>Error: --json-schema is not a valid JSON Schema</code>. Ключове слово <code>format</code> (<code>"email"</code>) приймається, але не перевіряється.</p>
+</div>
+<div class="tab-p">
+<p>У Codex схему передають файлом через <code>--output-schema</code> у <code>codex exec</code>. Фінальна відповідь агента має відповідати схемі, а <code>-o</code> зберігає її у файл і водночас друкує в stdout:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec "Extract project metadata" --output-schema ./schema.json -o ./project-metadata.json</span></pre>
+<div class="cap">команда з офіційної документації Codex (non-interactive mode) · не запускалась у цьому уроці</div></div>
+<p>Приклад схеми в документації має <code>required</code> і <code>additionalProperties: false</code>. Події виконання дає <code>--json</code> (JSON Lines), так само як <code>stream-json</code> у Claude Code.</p>
+</div>
+<div class="tab-p">
+<p>У Cursor CLI прапорця для схеми немає: у довіднику параметрів на 14.10.2026 є лише <code>--output-format text | json | stream-json</code>. Режим <code>json</code> повертає текст відповіді в полі <code>result</code>, тож схему треба просити в промпті, а потім парсити і валідувати самому, наприклад Pydantic (наступний розділ):</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">agent -p --output-format json "Return only JSON: {\"file\": string, \"quote\": string} …" | jq -r '.result'</span></pre>
+<div class="cap">команда складена за офіційною документацією Cursor CLI (parameters, output format) · не запускалась у цьому уроці</div></div>
+<p>Це рівень 1 з чотирьох: гарантій форми немає.</p>
+</div>
+</div>
+<h3>Коли схема перемагає промпт</h3>
+<p>Обмеження в схемі — це не порада, і модель під нього підлаштується, навіть якщо промпт каже інше. Перевірка: у промпті просимо «ціле речення», а в схемі ставимо <code>"quote": {"type": "string", "maxLength": 60}</code>.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>schema-maxlength.jsonl — StructuredOutput</span></div>
+<pre><span class="y">● tool_use StructuredOutput</span>  {"file":"lectures/01-transformer.md","quote":"<span class="er">Механізм self-attention порівнює кожен токен з кожним,</span>"}
+<span class="d">  ⎿ tool_result</span>  Structured output provided successfully
+<span class="d">result · success · 54 символи замість 109 у реченні</span></pre>
+<div class="cap">реальний вивід · claude-haiku-5-5 · 14.10.2026 · повна команда — у console/commands.txt</div></div>
+<p>Модель обрізала речення на півслові, щоб влізти в схему. Перевірка «цитата є в тексті» тут проходить, бо обрізок — теж підрядок лекції, але сенсу в ньому вже немає. Висновок для Lectern: <b>не кладіть у схему обмеження, які суперечать задачі</b>. Довжину, кількість і дослівність перевіряйте кодом після генерації. Звичайне structured outputs в API відкинуло б <code>maxLength</code> з 400, а валідатор Claude Code його застосовує.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: check_quote і схема питання квізу</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 2.1: інструмент і контракт виводу</div><div class="pb">
+<p>У модулі 2 Lectern стає агентом, і йому потрібні дві речі: <b>інструмент</b>, через який модель перевіряє цитату в першоджерелі, і <b>контракт виводу</b>, за яким питання квізу потрапляє в БД.</p>
+<p><b>1. Інструмент <code>check_quote</code>.</b> Перевірку виконує наш код, бо «чи є цитата в тексті» модель не може надійно сказати сама (урок 1.4):</p>
+<pre class="code" data-lang="json">{
+  <span class="s">"name"</span>: <span class="s">"check_quote"</span>,
+  <span class="s">"description"</span>: <span class="s">"Перевіряє, чи цитата є в тексті лекції дослівно (з точністю до символу). Викликай перед тим, як покласти цитату у відповідь. Повертає OK або помилку з поясненням."</span>,
+  <span class="s">"strict"</span>: <span class="k">true</span>,
+  <span class="s">"input_schema"</span>: {
+    <span class="s">"type"</span>: <span class="s">"object"</span>,
+    <span class="s">"additionalProperties"</span>: <span class="k">false</span>,
+    <span class="s">"required"</span>: [<span class="s">"lecture_id"</span>, <span class="s">"quote"</span>],
+    <span class="s">"properties"</span>: {
+      <span class="s">"lecture_id"</span>: { <span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"description"</span>: <span class="s">"Ідентифікатор лекції, формат L-0000"</span> },
+      <span class="s">"quote"</span>: { <span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"description"</span>: <span class="s">"Цитата, яку треба знайти в лекції дослівно"</span> }
+    }
+  }
+}</pre>
+<p><b>2. Контракт питання.</b> Схема описує форму, а описи полів — те, що граматика виразити не може. Поле <code>skill</code> — це <code>enum</code>, бо за ним Lectern балансуватиме квіз:</p>
+<pre class="code" data-lang="json">{ <span class="s">"type"</span>: <span class="s">"object"</span>, <span class="s">"additionalProperties"</span>: <span class="k">false</span>,
+  <span class="s">"required"</span>: [<span class="s">"question"</span>, <span class="s">"options"</span>, <span class="s">"correct_index"</span>, <span class="s">"explanation"</span>, <span class="s">"source_quote"</span>, <span class="s">"skill"</span>],
+  <span class="s">"properties"</span>: {
+    <span class="s">"question"</span>:      { <span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"description"</span>: <span class="s">"Питання на застосування, не на згадування факту"</span> },
+    <span class="s">"options"</span>:       { <span class="s">"type"</span>: <span class="s">"array"</span>, <span class="s">"items"</span>: { <span class="s">"type"</span>: <span class="s">"string"</span> }, <span class="s">"description"</span>: <span class="s">"Рівно 4 варіанти"</span> },
+    <span class="s">"correct_index"</span>: { <span class="s">"type"</span>: <span class="s">"integer"</span>, <span class="s">"description"</span>: <span class="s">"Індекс правильного варіанта, 0–3"</span> },
+    <span class="s">"explanation"</span>:   { <span class="s">"type"</span>: <span class="s">"string"</span> },
+    <span class="s">"source_quote"</span>:  { <span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"description"</span>: <span class="s">"Дослівне речення з лекції"</span> },
+    <span class="s">"skill"</span>:         { <span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"enum"</span>: [<span class="s">"remember"</span>, <span class="s">"understand"</span>, <span class="s">"apply"</span>, <span class="s">"analyze"</span>] } } }</pre>
+<p><b>3. Справжній запуск</b> на уривку лекції про індекси в БД (<code>L-0005.txt</code>, п'ять речень):</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Склади одне питання квізу за лекцією нижче. Питання має перевіряти застосування, а не пам'ять. Відповідай українською.
+
+$(cat L-0005.txt)" --model haiku --tools "" --json-schema "$(cat quiz.schema.json)" --output-format json | jq '.structured_output'</span>
+{
+  "question": "Таблиця orders має складений індекс на (customer_id, created_at). Який із запитів найефективніше використає цей індекс?",
+  "options": [
+    "SELECT * FROM orders WHERE created_at &gt;= '2026-01-01';",
+    "SELECT * FROM orders WHERE customer_id = 42 AND created_at &gt;= '2026-01-01';",
+    "SELECT * FROM orders WHERE created_at = '2026-05-01' AND status = 'paid';",
+    "SELECT * FROM orders WHERE status = 'paid';"
+  ],
+  "correct_index": <span class="y">1</span>,
+  "explanation": "Індекс (customer_id, created_at) впорядкований спочатку за customer_id, … Запит лише з умовою на created_at (другу колонку) змусив би переглядати майже весь індекс.",
+  "source_quote": "Складений індекс на (a, b) найефективніший для запитів з умовою на першу колонку a; запит лише з умовою на b змушує переглядати майже весь індекс.",
+  "skill": <span class="ok">"apply"</span>
+}</pre>
+<div class="cap">реальний вивід · claude-haiku-5-5 · 14.10.2026 · 5,1 с, $0,0019 · пояснення скорочено; прапорці --strict-mcp-config --no-session-persistence опущено</div></div>
+<p><b>4. Валідація.</b> Pydantic-модель перевіряє те, чого не бачить граматика. Щоб показати, що вона ловить, ми навмисно зіпсували дві копії справжньої відповіді:</p>
+<pre class="code" data-lang="python"><span class="k">class</span> QuizItem(BaseModel):
+    model_config = ConfigDict(extra=<span class="s">"forbid"</span>, strict=<span class="k">True</span>)   <span class="cm"># "3" не стане 3</span>
+    question: str = Field(min_length=<span class="n">15</span>)
+    options: list[str] = Field(min_length=<span class="n">4</span>, max_length=<span class="n">4</span>)
+    correct_index: int = Field(ge=<span class="n">0</span>, le=<span class="n">3</span>)
+    explanation: str
+    source_quote: str
+    skill: Literal[<span class="s">"remember"</span>, <span class="s">"understand"</span>, <span class="s">"apply"</span>, <span class="s">"analyze"</span>]
+
+    @model_validator(mode=<span class="s">"after"</span>)
+    <span class="k">def</span> business_rules(self):
+        <span class="k">if</span> len({o.strip().lower() <span class="k">for</span> o <span class="k">in</span> self.options}) != <span class="n">4</span>:
+            <span class="k">raise</span> ValueError(<span class="s">"варіанти повторюються"</span>)
+        <span class="k">if</span> self.source_quote <span class="k">not in</span> LECTURE:
+            <span class="k">raise</span> ValueError(<span class="s">"source_quote немає в тексті лекції дослівно"</span>)
+        <span class="k">return</span> self</pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python validate.py quiz-run.json broken-types.json broken-quote.json</span>
+quiz-run.json: <span class="ok">OK</span>
+broken-types.json: <span class="er">помилок — 3</span>
+  - options · List should have at least 4 items after validation, not 3
+  - correct_index · Input should be a valid integer
+  - skill · Input should be 'remember', 'understand', 'apply' or 'analyze'
+broken-quote.json: <span class="er">помилок — 1</span>
+  - (item) · Value error, source_quote немає в тексті лекції дослівно</pre>
+<div class="cap">реальний вивід · Python 3.12.11, pydantic 2.14.1 · 14.10.2026 · broken-*.json — навмисно зіпсовані копії: 3 варіанти, "3" рядком, "Apply"; перефразована цитата</div></div>
+<ul>
+<li><b><code>strict=True</code></b>: у типовому lax-режимі Pydantic мовчки перетворив <code>"3"</code> на <code>3</code> — на тому самому файлі помилок було 2, а не 3.</li>
+<li><b><code>"Apply"</code></b> — задокументований ризик регістру в <code>enum</code>: нормалізуйте регістр до валідації або повторіть запит.</li>
+<li><b><code>model_validator(mode="after")</code></b> працює, лише коли всі поля валідні, тож помилки йдуть двома колами: спершу форма, потім зміст.</li>
+</ul>
+<p><b>5. Той самий <code>check_quote</code> як справжній client tool.</b> Через Claude Agent SDK (API SDK — урок 2.5) функцію зареєстровано як інструмент у процесі нашої програми. Модель викликає її, Python виконує, результат повертається моделі:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python agent_check_quote.py</span>
+<span class="y">● tool_use</span>     mcp__lectern__check_quote {"lecture_id": "L-0005", "quote": "Складений індекс на (a, b) найефективніший для запитів з умовою на першу колонку a; …"}
+<span class="d">  tool_result</span>  is_error=False [{"type": "text", "text": "OK: цитата знайдена"}]
+<span class="y">● tool_use</span>     StructuredOutput {"question": "Таблиця orders має складений індекс на (customer_id, created_at). …", "correct_index": 1, …, "skill": "apply"}
+<span class="d">  tool_result</span>  is_error=False "Structured output provided successfully"
+result success turns 3 cost 0.00125</pre>
+<div class="cap">реальний вивід · claude-agent-sdk 0.2.167 · claude-haiku-5-5 · 14.10.2026 · довгі аргументи скорочено; код — console/agent_check_quote.py</div></div>
+<p>Префікс <code>mcp__lectern__</code> — бо SDK передає функцію через вбудований MCP-сервер. Неіснуюча лекція чи недослівна цитата повертаються з <code>is_error: True</code> і поясненням, що робити далі.</p>
+<p><b>Ваш крок:</b> додайте в репозиторій Lectern <code>lectern/schemas.py</code> з <code>QuizItem</code> і <code>lectern/tools.py</code> з <code>check_quote</code>. Перевірку посильте так, щоб обрізок на кшталт «…з кожним,» не проходив: цитата має бути цілим реченням лекції. Прогоніть генерацію на одній своїй лекції, зіпсуйте результат трьома способами і запишіть у <code>docs/decisions.md</code>, яка перевірка зловила кожну помилку.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → виправлення</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Виправлення</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Аргумент правильного типу, але вигаданий: шлях, id, назва лекції</td><td data-th="Причина">Схема перевіряє форму, а не існування значення (наш склеєний шлях)</td><td data-th="Виправлення"><code>enum</code>, коли значень мало; перевірка в обробнику; <code>is_error</code> зі списком допустимих значень</td></tr>
+<tr><td data-th="Симптом"><code>"2"</code> замість <code>2</code>, пропущене обов'язкове поле</td><td data-th="Причина">Без <code>strict</code> схема — лише підказка</td><td data-th="Виправлення"><code>strict: true</code> + <code>additionalProperties: false</code>; Pydantic <code>strict=True</code> на своєму боці</td></tr>
+<tr><td data-th="Симптом">Контекст розпухає після кількох викликів</td><td data-th="Причина">Інструмент повертає все: цілий файл, тисячі рядків логу</td><td data-th="Виправлення">Пагінація, фільтри, <code>max_results</code>, <code>concise</code>-формат; обрізання з підказкою, як звузити (урок 1.3)</td></tr>
+<tr><td data-th="Симптом">400 <code>tool_use ids were found without tool_result blocks…</code></td><td data-th="Причина">Виклик, що впав, викинули з історії, або текст стоїть перед результатами</td><td data-th="Виправлення">Рівно один <code>tool_result</code> на кожен id, з <code>is_error: true</code> для невдалих і невиконаних</td></tr>
+<tr><td data-th="Симптом">Модель перестала паралелити виклики</td><td data-th="Причина">Кожен результат повертався окремим user-повідомленням</td><td data-th="Виправлення">Усі результати однієї відповіді — в одному повідомленні</td></tr>
+<tr><td data-th="Симптом">Обирає не той інструмент</td><td data-th="Причина">Два інструменти з описами, що перекриваються: <code>search</code> і <code>find_lectures</code></td><td data-th="Виправлення">Злити в один з параметром; простори імен; у описі — коли <b>не</b> кликати</td></tr>
+<tr><td data-th="Симптом">Модель 2–3 рази повторює той самий невдалий виклик</td><td data-th="Причина">Помилка без змісту: <code>"failed"</code></td><td data-th="Виправлення">Що сталося і що робити: «Немає лекції L-0009. Доступні: L-0005»</td></tr>
+<tr><td data-th="Симптом">Вивід формально валідний, але зіпсований за змістом</td><td data-th="Причина">Обмеження схеми суперечить задачі (<code>maxLength</code> обрізав цитату)</td><td data-th="Виправлення">У схемі лише форма; довжина, кількість і дослівність — у коді</td></tr>
+<tr><td data-th="Симптом">400 після переходу на Opus 5.5 / Sonnet 5.5</td><td data-th="Причина"><code>tool_choice</code> <code>any</code> чи <code>tool</code> на моделі, яка їх не підтримує</td><td data-th="Виправлення"><code>auto</code> + інструкція + <code>strict: true</code> і перевірка, що виклик був; або <code>output_config.format</code></td></tr>
+<tr><td data-th="Симптом">Відмова <code>reasoning_extraction</code> на звичайному запиті</td><td data-th="Причина">Параметр чи поле схеми просить «міркування крок за кроком»</td><td data-th="Виправлення">Поле <code>explanation</code> з коротким поясненням; міркування лишаються в thinking</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">tool_use</span><span class="h">хто його виконує?</span></span><span class="b"><span class="t">Запит, а не дія</span><span class="d">модель повертає id, name, input; виконує ваш код або сервер</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">is_error: true</span><span class="h">навіщо?</span></span><span class="b"><span class="t">Виклик не вдався</span><span class="d">модель виправляє аргументи або змінює план; текст помилки — інструкція</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">pause_turn</span><span class="h">що робити?</span></span><span class="b"><span class="t">Серверний цикл на паузі</span><span class="d">надіслати відповідь назад як є, з тими самими tools</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">strict: true</span><span class="h">що гарантує?</span></span><span class="b"><span class="t">Валідні аргументи</span><span class="d">sampling обмежено граматикою input_schema</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">JSON outputs</span><span class="h">чим відрізняється від strict?</span></span><span class="b"><span class="t">Схема для відповіді</span><span class="d">output_config.format: за json_schema йде сама відповідь моделі, а не аргументи виклику</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">--json-schema</span><span class="h">як працює в Claude Code?</span></span><span class="b"><span class="t">Через інструмент</span><span class="d">harness додає StructuredOutput, валідує його вхід і за потреби просить повторити</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Сервіс витягає дані з рахунків через <code>tool_choice: {"type": "tool", "name": "record_invoice"}</code>. Після переходу на Opus 5.5 усі запити падають з 400. Що зробити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Замінити на <code>{"type": "any"}</code>: примус до будь-якого інструмента Opus 5.5 дозволяє</span></label><label class="opt"><input type="radio" name="q1"><span>Прибрати інструмент і попросити «лише JSON» з префілом <code>{</code></span></label><label class="opt ok"><input type="radio" name="q1"><span>Перенести схему в <code>output_config.format</code>: інструмент існував лише заради JSON</span></label></div>
+    <div class="why yes">Так. Opus 5.5 відхиляє і <code>any</code>, і <code>tool</code>. Коли примусовий виклик потрібен лише для форми, structured outputs дає ту саму гарантію без інструмента.</div>
+    <div class="why no"><code>any</code> на Opus 5.5 теж дає 400, префіл на моделях 4.6+ — так само, а промпт без схеми — це рівень 1 без гарантій. Правильна заміна — <code>output_config.format</code> (або <code>auto</code> + <code>strict</code>, якщо виклик справді потрібен).</div></div>
+  <div class="q"><div class="qt">2. Модель повернула три <code>tool_use</code>. Другий (запис файлу) впав, третій ви не запускали, бо він залежав від другого. Як відповісти?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Одне повідомлення з трьома <code>tool_result</code>: успіх, помилка, «Not executed…»</span></label><label class="opt"><input type="radio" name="q2"><span>Повернути результати лише двох виконаних викликів: третього фактично не було</span></label><label class="opt"><input type="radio" name="q2"><span>Три окремі user-повідомлення, по одному на кожен <code>tool_result</code></span></label></div>
+    <div class="why yes">Так. Кожен id отримує результат, усі в одному повідомленні; невиконаний виклик позначено помилкою з поясненням.</div>
+    <div class="why no">Без результату для кожного id API поверне 400, а окремі повідомлення «вчать» модель не паралелити. Усі три результати йдуть одним повідомленням.</div></div>
+  <div class="q"><div class="qt">3. Запит з <code>web_search</code> повернув <code>stop_reason: "pause_turn"</code>. Що далі?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Додати свій <code>tool_result</code> для останнього <code>server_tool_use</code> і продовжити</span></label><label class="opt ok"><input type="radio" name="q3"><span>Надіслати відповідь назад як є, з тим самим <code>tools</code>, обмеживши продовження</span></label><label class="opt"><input type="radio" name="q3"><span>Надіслати відповідь назад без <code>tools</code>, щоб модель дописала текст без пошуку</span></label></div>
+    <div class="why yes">Так. Серверний цикл досяг ліміту ітерацій (типово 10). Відповідь, надіслана назад, дає йому продовжити з того самого місця.</div>
+    <div class="why no">Робота не завершена, а <code>tool_result</code> для серверних інструментів ви не формуєте: їх виконує Anthropic. Відповідь надсилають назад без змін і з тим самим <code>tools</code>, інакше буде помилка валідації.</div></div>
+  <div class="q"><div class="qt">4. Агент має 40 інструментів, більшість з яких кличе рідко, і рахунок за вхідні токени росте. Що найменше шкодить якості?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Скоротити описи всіх інструментів до одного речення, щоб зменшити схеми</span></label><label class="opt ok"><input type="radio" name="q4"><span>Рідкісні — через <code>tool_search</code> і <code>defer_loading</code>, решта — стабільний набір під кеш</span></label><label class="opt"><input type="radio" name="q4"><span>Увімкнути <code>disable_parallel_tool_use</code>, щоб схеми не надсилалися з кожним викликом</span></label></div>
+    <div class="why yes">Так. Відкладені схеми не потрапляють у контекст, доки інструмент не знайдено, а стабільний набір дозволяє prompt caching спрацювати.</div>
+    <div class="why no">Описи — головний важіль якості виклику, різати їх найдорожче. Паралельність на токени схем не впливає: схеми оплачуються в кожному запиті.</div></div>
+  <div class="q"><div class="qt">5. У схемі <code>output_config.format</code> стоїть <code>"options": {"type": "array", "minItems": 4}</code>. Що станеться при прямому запиті до API?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>400: <code>minItems</code> понад 1 не підтримується; кількість перевіряють у коді</span></label><label class="opt"><input type="radio" name="q5"><span>Граматика гарантує щонайменше 4 варіанти, а рівно 4 задає <code>maxItems</code></span></label><label class="opt"><input type="radio" name="q5"><span>Обмеження тихо ігнорується, і модель поверне скільки завгодно варіантів</span></label></div>
+    <div class="why yes">Так. Граматика підтримує лише <code>minItems</code> 0 і 1. SDK-хелпери прибирають непідтримане обмеження, дописують його в опис і валідують відповідь.</div>
+    <div class="why no">Непідтримана можливість схеми дає 400 з поясненням, а не тихе ігнорування, і граматика підтримує лише <code>minItems</code> 0 і 1. Кількість варіантів перевіряє ваш код, наприклад Pydantic; SDK-хелпер робить це сам.</div></div>
+  <div class="q"><div class="qt">6. У нашому прогоні модель передала в Read шлях з дефісами замість слешів. Що завадило б такому виклику нашкодити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span><code>strict: true</code> на інструменті: граматика схеми не пропустить неіснуючого шляху</span></label><label class="opt ok"><input type="radio" name="q6"><span>Перевірка в обробнику (шлях у межах проєкту, файл існує) і <code>is_error</code> з підказкою</span></label><label class="opt"><input type="radio" name="q6"><span>Детальний опис формату шляху в параметрі: модель його неодмінно дотримається</span></label></div>
+    <div class="why yes">Так. Тип правильний, рядок, тож схема виклику не відхилить. Значення перевіряє лише код, і з добрим текстом помилки модель виправляється з першої спроби.</div>
+    <div class="why no"><code>strict</code> гарантує форму, а не правильне значення, а опис параметра — лише підказка. Тип тут правильний, рядок, тож захист — валідація аргументів там, де їх виконують.</div></div>
+  <div class="q"><div class="qt">7. Pydantic-модель без <code>strict=True</code> отримує <code>"correct_index": "3"</code>. Що буде?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>ValidationError: correct_index · Input should be a valid integer</span></label><label class="opt"><input type="radio" name="q7"><span>Pydantic лишить рядок <code>"3"</code>, і помилка вилізе вже в БД</span></label><label class="opt ok"><input type="radio" name="q7"><span>Значення мовчки стане <code>3</code>, валідація пройде</span></label></div>
+    <div class="why yes">Так, ми це бачили: у lax-режимі помилок було 2 замість 3. Якщо рядок замість числа означає зламаний генератор, вмикайте strict.</div>
+    <div class="why no">Типовий режим Pydantic — lax: рядок <code>"3"</code> перетворюється на int. Помилку дає лише <code>strict=True</code>.</div></div>
+  <div class="q"><div class="qt">8. Цитата пройшла перевірку <code>quote in lecture</code>, але виявилась шматком речення, бо в схемі стояв <code>maxLength: 60</code>. Що змінити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Прибрати обмеження зі схеми, а в коді перевіряти, що цитата — ціле речення</span></label><label class="opt"><input type="radio" name="q8"><span>Збільшити <code>maxLength</code> до 200: довших речень у лекціях майже немає</span></label><label class="opt"><input type="radio" name="q8"><span>Написати в промпті «ціле речення» великими літерами й повторити вимогу двічі</span></label></div>
+    <div class="why yes">Так. Обмеження схеми переважує промпт. Те, що суперечить задачі, має жити в перевірці після генерації.</div>
+    <div class="why no">Промпт уже просив ціле речення, і схема його перемогла. Будь-яка межа довжини знову зріже довге речення. Довжину й межі речень перевіряє код.</div></div>
+  <div class="q"><div class="qt">9. Агентові потрібен пошук в інтернеті і читання клієнтської БД з персональними даними. Як розподілити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Обидва — server tools: Anthropic сам виконає й залогує виклики, а коду менше</span></label><label class="opt ok"><input type="radio" name="q9"><span>Пошук — server tool <code>web_search</code>; БД — client tool з вашими дозволами й логами</span></label><label class="opt"><input type="radio" name="q9"><span>Пошук — client tool, бо $10 за 1 000 пошуків; БД — серверний MCP connector</span></label></div>
+    <div class="why yes">Так. Server tool знімає з вас цикл, але й контроль. Доступ до персональних даних має проходити через ваш код.</div>
+    <div class="why no">Серверний інструмент, MCP connector теж, виконує Anthropic, і повз ваш код такий виклик не перевірити й не залогувати. Для PII потрібен client tool, а пошук можна віддати серверу.</div></div>
+  <div class="q"><div class="qt">10. Модель кличе <code>lectern_search_lectures</code> на питання із загальних знань і плутає його з <code>find_lectures</code>. Перший крок?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Ставити <code>tool_choice: none</code> на питання, які класифікатор визнав загальними</span></label><label class="opt"><input type="radio" name="q10"><span>Перейти на сильнішу модель, яка краще розрізняє схожі інструменти</span></label><label class="opt ok"><input type="radio" name="q10"><span>Злити два інструменти в один і дописати в опис, коли його не кликати</span></label></div>
+    <div class="why yes">Так. Два інструменти з описами, що перекриваються, — типова причина неправильного вибору. Опис зі сценарієм «коли не кликати» — найдешевше виправлення.</div>
+    <div class="why no">Класифікатор «загальних» питань — ще один виклик і ще одне джерело помилок, а сильніша модель не виправить двозначних описів. Почніть з набору інструментів і описів.</div></div>
+  <div class="q"><div class="qt">11. Потрібен JSON за схемою з Cursor CLI у CI. Як?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q11"><span>Формат у промпті, <code>.result</code> з <code>--output-format json</code>, валідація Pydantic і повтор</span></label><label class="opt"><input type="radio" name="q11"><span><code>agent -p --json-schema schema.json</code>: прапорець працює так само, як у Claude Code</span></label><label class="opt"><input type="radio" name="q11"><span><code>--output-format stream-json</code>: потік подій сам валідує відповідь за схемою</span></label></div>
+    <div class="why yes">Так. У Cursor CLI немає прапорця для схеми, тож гарантію дає лише ваша валідація з повтором.</div>
+    <div class="why no">На 14.10.2026 у параметрах Cursor CLI немає ні <code>--json-schema</code>, ні аналога. <code>stream-json</code> — формат подій, а не схема відповіді.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>tool definition</td><td>Опис інструмента в <code>tools</code>: <code>name</code>, <code>description</code>, <code>input_schema</code>, за потреби <code>strict</code>, <code>input_examples</code>.</td></tr>
+<tr><td>input_schema</td><td>JSON Schema аргументів інструмента; модель бачить її разом з описом.</td></tr>
+<tr><td>tool_use</td><td>Блок відповіді моделі з <code>id</code>, <code>name</code>, <code>input</code>: запит на виклик.</td></tr>
+<tr><td>tool_result</td><td>Блок у наступному user-повідомленні з <code>tool_use_id</code>, <code>content</code> і, за потреби, <code>is_error</code>.</td></tr>
+<tr><td>is_error</td><td>Позначка невдалого чи невиконаного виклику; модель виправляє аргументи або змінює план.</td></tr>
+<tr><td>tool_choice</td><td><code>auto</code> / <code>any</code> / <code>tool</code> / <code>none</code>; на Opus 5.5 і Sonnet 5.5 лише <code>auto</code> і <code>none</code>.</td></tr>
+<tr><td>parallel tool use</td><td>Кілька <code>tool_use</code> в одній відповіді; усі результати — одним повідомленням.</td></tr>
+<tr><td>client vs server tools</td><td>Client виконує ваш код (user-defined і Anthropic-schema), server — Anthropic у межах запиту.</td></tr>
+<tr><td>pause_turn</td><td>Серверний цикл досяг ліміту ітерацій; відповідь надсилають назад як є.</td></tr>
+<tr><td>structured outputs</td><td>Constrained decoding за JSON Schema: <code>output_config.format</code> для відповіді і <code>strict: true</code> для інструментів.</td></tr>
+<tr><td>strict tool use</td><td><code>strict: true</code>: аргументи гарантовано відповідають <code>input_schema</code>.</td></tr>
+<tr><td>JSON Schema</td><td>Стандарт опису форми JSON; API підтримує підмножину без числових і рядкових меж.</td></tr>
+<tr><td>--json-schema</td><td>Прапорець <code>claude -p</code>: результат за схемою в <code>structured_output</code>, через інструмент StructuredOutput.</td></tr>
+<tr><td>Pydantic-валідація</td><td>Перевірка виходу моделі Python-моделлю: типи, межі, бізнес-правила, <code>strict=True</code>.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Набір інструментів для Lectern</h3>
+<p>Спроєктуйте 3–4 інструменти агента Lectern (повні визначення з описами і схемами), розподіліть їх на client і server, задайте <code>tool_choice</code> і поясніть обробку помилок і великих результатів. Обов'язкове.</p>
+<h3>2. Розбір зламаного циклу</h3>
+<p>За наведеним у завданні журналом запитів знайдіть порушення протоколу tool use і структурованого виводу, поясніть, що поверне API або як зміниться поведінка моделі, і перепишіть фрагмент правильно.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 14.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works" target="_blank" rel="noopener">Claude API — How tool use works</a><span>контракт, три типи інструментів, клієнтський і серверний цикли, коли інструмент не потрібен</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools" target="_blank" rel="noopener">Claude API — Define tools</a><span><code>input_schema</code>, правила описів, <code>input_examples</code>, <code>tool_choice</code> і моделі без примусового виклику</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls" target="_blank" rel="noopener">Claude API — Handle tool calls</a><span>формат <code>tool_result</code>, порядок блоків, <code>is_error</code>, помилки серверних інструментів</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use" target="_blank" rel="noopener">Claude API — Parallel tool use</a><span>виконання пачки, один user-message для результатів, <code>disable_parallel_tool_use</code></span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/server-tools" target="_blank" rel="noopener">Claude API — Server tools</a><span><code>server_tool_use</code>, <code>pause_turn</code>, змішані ходи</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-reference" target="_blank" rel="noopener">Claude API — Tool reference</a><span>усі інструменти Anthropic з версіями і місцем виконання</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs" target="_blank" rel="noopener">Claude API — Structured outputs</a><span><code>output_config.format</code>, підмножина JSON Schema, ліміти складності, невалідні виходи</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/strict-tool-use" target="_blank" rel="noopener">Claude API — Strict tool use</a><span><code>strict: true</code> і grammar-constrained sampling</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude API — Pricing</a><span>службовий промпт tool use за моделями, ціни web search, code execution, toolsets</span></li>
+<li><a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">Anthropic — Writing effective tools for agents — with agents</a><span>11.09.2025 · вибір і консолідація, простори імен, ощадливі відповіді, описи</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run Claude Code programmatically</a><span><code>--output-format json</code>, <code>--json-schema</code>, <code>structured_output</code></span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/structured-outputs" target="_blank" rel="noopener">Claude Agent SDK — Structured outputs</a><span>валідація за draft-07, повтори, <code>error_max_structured_output_retries</code></span></li>
+<li><a href="https://code.claude.com/docs/en/mcp" target="_blank" rel="noopener">Claude Code — MCP</a><span>ліміти виводу інструментів: 10 000 / 25 000 токенів, <code>MAX_MCP_OUTPUT_TOKENS</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">Codex — Non-interactive mode</a><span><code>codex exec --output-schema</code>, <code>-o</code>, <code>--json</code></span></li>
+<li><a href="https://cursor.com/docs/cli/reference/parameters" target="_blank" rel="noopener">Cursor CLI — Parameters</a><span><code>--output-format text | json | stream-json</code>; прапорця для схеми немає</span></li>
+<li><a href="https://developers.openai.com/api/docs/guides/structured-outputs" target="_blank" rel="noopener">OpenAI — Structured Outputs</a><span>JSON mode проти Structured Outputs: валідний JSON ≠ відповідність схемі</span></li>
+<li><a href="https://docs.pydantic.dev/latest/concepts/strict_mode/" target="_blank" rel="noopener">Pydantic — Strict mode</a><span>lax-перетворення типів і як їх вимкнути; також <a href="https://docs.pydantic.dev/latest/concepts/validators/" target="_blank" rel="noopener">Validators</a></span></li>
+<li><a href="https://json-schema.org/understanding-json-schema/about" target="_blank" rel="noopener">Understanding JSON Schema</a><span>довідник стандарту</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 2.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 2.1 · Senomi<br><br><a href="lesson-08.html">← Урок 1.5</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-10.html">Урок 2.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 0.2. Карта курсу й ролей; наскрізний проєкт Lectern — продуктова постановка</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 0.2 · Модуль 0</div>
+<h1>Карта курсу й ролей; наскрізний проєкт Lectern — продуктова постановка</h1>
+<p class="lead">Карта курсу: 17 модулів у п'яти треках, маршрути за ролями і як звіряти факти, що старіють. Потім — продуктова постановка Lectern: користувачі, цінність, межі MVP, метрики, ризики, бюджет і односторінковий PRD.</p>
+<div class="hero-meta"><span class="chip">Старт: що таке agentic engineering</span><span class="chip t">≈ 45 хв</span><span class="chip a">14 карток</span><span class="chip g">перевірено 14.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Створення успішного застосунку на основі LLM починається з чіткого визначення критеріїв успіху і проєктування evals, які вимірюють результат відносно них.</p><cite>Anthropic, документація Claude, «Define success criteria and build evaluations» · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 17 розділів</summary><nav class="toc"><a href="#map"><b>01</b>Карта курсу</a><a href="#roles"><b>02</b>Ролі й маршрути</a><a href="#study"><b>03</b>Як навчатися</a><a href="#cert"><b>04</b>Сертифікація</a><a href="#lectern"><b>05</b>Lectern: проблема і користувачі</a><a href="#scope"><b>06</b>MVP і non-goals</a><a href="#metrics"><b>07</b>Метрики успіху</a><a href="#risks"><b>08</b>Ризики й бюджет</a><a href="#arch"><b>09</b>Архітектура</a><a href="#prd"><b>10</b>Односторінковий PRD</a><a href="#critique"><b>11</b>Критика PRD агентом</a><a href="#project"><b>12</b>Наскрізний проєкт</a><a href="#practice"><b>13</b>Практика</a><a href="#quiz"><b>14</b>Квіз</a><a href="#terms"><b>15</b>Терміни уроку</a><a href="#homework"><b>16</b>Домашнє завдання</a><a href="#resources"><b>17</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>прочитати карту курсу (5 треків, 17 модулів, залежності) і обрати маршрут за роллю;</li>
+    <li>звіряти факти, що старіють, з першоджерелом;</li>
+    <li>поставити задачу AI-фічі: користувачі, jobs-to-be-done, цінність, MVP і non-goals;</li>
+    <li>задати вимірювані метрики (North Star, основні, guardrail) і закласти evaluation з першого дня;</li>
+    <li>написати односторінковий PRD і отримати на нього критику агента.</li>
+  </ul>
+</div>
+
+<section class="sec" id="map">
+<div class="sec-h"><span class="num">01</span><h2>Карта курсу<span class="sub">17 модулів у п'яти треках</span></h2></div>
+<p>Кожен трек спирається на попередній: модель → агент → інструменти → метод → масштаб.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 692" role="img" aria-label="Карта курсу: 17 модулів у п'яти треках з кроками проєкту Lectern">
+  <path d="M34 34 V 41 M34 63 V 69 M34 91 V 97 M34 119 V 125 M34 147 V 156 M34 182 V 189 M34 211 V 217 M34 239 V 245 M34 267 V 273 M34 295 V 304 M34 330 V 337 M34 359 V 365 M34 387 V 393 M34 415 V 421 M34 443 V 449 M34 471 V 480 M34 506 V 513 M34 535 V 541 M34 563 V 569 M34 591 V 600 M34 626 V 633" class="ln"/>
+  <rect x="8" y="8" width="344" height="26" rx="8" class="bx a"/>
+  <text x="20" y="26" class="tx b">Фундамент</text>
+  <text x="344" y="26" text-anchor="end" class="tx s">мод. 0–3 · 18 уроків</text>
+  <circle cx="34" cy="52" r="11" class="bx a"/><text x="34" y="56" text-anchor="middle" class="tx b">0</text>
+  <text x="54" y="56" class="tx">Старт: що таке agentic engineering</text>
+  <circle cx="34" cy="80" r="11" class="bx a"/><text x="34" y="84" text-anchor="middle" class="tx b">1</text>
+  <text x="54" y="84" class="tx">Як працюють LLM</text>
+  <circle cx="34" cy="108" r="11" class="bx a"/><text x="34" y="112" text-anchor="middle" class="tx b">2</text>
+  <text x="54" y="112" class="tx">Від моделі до агента</text>
+  <circle cx="34" cy="136" r="11" class="bx a"/><text x="34" y="140" text-anchor="middle" class="tx b">3</text>
+  <text x="54" y="140" class="tx">Екосистема coding-асистентів</text>
+  <rect x="8" y="156" width="344" height="26" rx="8" class="bx t"/>
+  <text x="20" y="174" class="tx b">Інструменти</text>
+  <text x="344" y="174" text-anchor="end" class="tx s">мод. 4–7 · 19 уроків</text>
+  <circle cx="34" cy="200" r="11" class="bx t"/><text x="34" y="204" text-anchor="middle" class="tx b">4</text>
+  <text x="54" y="204" class="tx">Claude Code: налаштування</text>
+  <circle cx="34" cy="228" r="11" class="bx t"/><text x="34" y="232" text-anchor="middle" class="tx b">5</text>
+  <text x="54" y="232" class="tx">Prompt і context engineering</text>
+  <circle cx="34" cy="256" r="11" class="bx t"/><text x="34" y="260" text-anchor="middle" class="tx b">6</text>
+  <text x="54" y="260" class="tx">Skills, hooks, plugins, SDK</text>
+  <circle cx="34" cy="284" r="11" class="bx t"/><text x="34" y="288" text-anchor="middle" class="tx b">7</text>
+  <text x="54" y="288" class="tx">MCP та інтеграції</text>
+  <rect x="8" y="304" width="344" height="26" rx="8" class="bx m"/>
+  <text x="20" y="322" class="tx b">Метод</text>
+  <text x="344" y="322" text-anchor="end" class="tx s">мод. 8–12 · 24 уроки</text>
+  <circle cx="34" cy="348" r="11" class="bx m"/><text x="34" y="352" text-anchor="middle" class="tx b">8</text>
+  <text x="54" y="352" class="tx">Spec-Driven Development</text>
+  <circle cx="34" cy="376" r="11" class="bx m"/><text x="34" y="380" text-anchor="middle" class="tx b">9</text>
+  <text x="54" y="380" class="tx">Архітектура AI-систем</text>
+  <circle cx="34" cy="404" r="11" class="bx m"/><text x="34" y="408" text-anchor="middle" class="tx b">10</text>
+  <text x="54" y="408" class="tx">SDLC 1: підготовка проєкту</text>
+  <circle cx="34" cy="432" r="11" class="bx m"/><text x="34" y="436" text-anchor="middle" class="tx b">11</text>
+  <text x="54" y="436" class="tx">SDLC 2: розробка фічей</text>
+  <circle cx="34" cy="460" r="11" class="bx m"/><text x="34" y="464" text-anchor="middle" class="tx b">12</text>
+  <text x="54" y="464" class="tx">Якість і evals</text>
+  <rect x="8" y="480" width="344" height="26" rx="8" class="bx p"/>
+  <text x="20" y="498" class="tx b">Масштаб</text>
+  <text x="344" y="498" text-anchor="end" class="tx s">мод. 13–15 · 12 уроків</text>
+  <circle cx="34" cy="524" r="11" class="bx p"/><text x="34" y="528" text-anchor="middle" class="tx b">13</text>
+  <text x="54" y="528" class="tx">Командна робота</text>
+  <circle cx="34" cy="552" r="11" class="bx p"/><text x="34" y="556" text-anchor="middle" class="tx b">14</text>
+  <text x="54" y="556" class="tx">Команди агентів</text>
+  <circle cx="34" cy="580" r="11" class="bx p"/><text x="34" y="584" text-anchor="middle" class="tx b">15</text>
+  <text x="54" y="584" class="tx">Продакшн</text>
+  <rect x="8" y="600" width="344" height="26" rx="8" class="bx"/>
+  <text x="20" y="618" class="tx b">Сертифікація</text>
+  <text x="344" y="618" text-anchor="end" class="tx s">мод. 16 · 5 уроків</text>
+  <circle cx="34" cy="644" r="11" class="bx"/><text x="34" y="648" text-anchor="middle" class="tx b">16</text>
+  <text x="54" y="648" class="tx">CCA-F, пробний іспит, фінал</text>
+  <rect x="290" y="43" width="62" height="18" rx="9" class="bx a"/><text x="321" y="56" text-anchor="middle" class="tx s">PRD</text>
+  <rect x="290" y="99" width="62" height="18" rx="9" class="bx a"/><text x="321" y="112" text-anchor="middle" class="tx s">агент</text>
+  <rect x="290" y="247" width="62" height="18" rx="9" class="bx a"/><text x="321" y="260" text-anchor="middle" class="tx s">сервіс</text>
+  <rect x="290" y="275" width="62" height="18" rx="9" class="bx a"/><text x="321" y="288" text-anchor="middle" class="tx s">MCP</text>
+  <rect x="290" y="339" width="62" height="18" rx="9" class="bx a"/><text x="321" y="352" text-anchor="middle" class="tx s">spec</text>
+  <rect x="290" y="367" width="62" height="18" rx="9" class="bx a"/><text x="321" y="380" text-anchor="middle" class="tx s">RAG</text>
+  <rect x="290" y="395" width="62" height="18" rx="9" class="bx a"/><text x="321" y="408" text-anchor="middle" class="tx s">репо</text>
+  <rect x="290" y="423" width="62" height="18" rx="9" class="bx a"/><text x="321" y="436" text-anchor="middle" class="tx s">фіча</text>
+  <rect x="290" y="451" width="62" height="18" rx="9" class="bx a"/><text x="321" y="464" text-anchor="middle" class="tx s">evals</text>
+  <rect x="290" y="543" width="62" height="18" rx="9" class="bx a"/><text x="321" y="556" text-anchor="middle" class="tx s">команда</text>
+  <rect x="290" y="571" width="62" height="18" rx="9" class="bx a"/><text x="321" y="584" text-anchor="middle" class="tx s">деплой</text>
+  <rect x="290" y="635" width="62" height="18" rx="9" class="bx a"/><text x="321" y="648" text-anchor="middle" class="tx s">захист</text>
+  <rect x="8" y="668" width="40" height="18" rx="9" class="bx a"/>
+  <text x="56" y="681" class="tx s">що отримує Lectern у цьому модулі</text>
+</svg>
+<figcaption>Кольори — треки, капсули — крок Lectern; модулі без капсули дають основу наступним крокам.</figcaption>
+</figure>
+<div class="levels">
+  <div class="lvl"><span class="no">1</span><div><b>Фундамент · 0–3</b><span class="m">Токени, контекстне вікно, ціна, tool use, agentic loop, harness.</span></div></div>
+  <div class="lvl"><span class="no">2</span><div><b>Інструменти · 4–7</b><span class="m">Claude Code з паралелями в Codex і Cursor.</span><div class="ex">спирається на: контекстне вікно, tool use, harness</div></div></div>
+  <div class="lvl"><span class="no">3</span><div><b>Метод · 8–12</b><span class="m">Від вдалої сесії до повторюваного процесу.</span><div class="ex">спирається на: CLAUDE.md, промпти, MCP</div></div></div>
+  <div class="lvl"><span class="no">4</span><div><b>Масштаб · 13–15</b><span class="m">Команда, кілька агентів, продакшн.</span><div class="ex">спирається на: метод, evals, архітектуру</div></div></div>
+  <div class="lvl"><span class="no">5</span><div><b>Сертифікація · 16</b><span class="m">CCA-F за доменами, пробний іспит, захист Lectern.</span></div></div>
+</div>
+</section>
+
+<section class="sec" id="roles">
+<div class="sec-h"><span class="num">02</span><h2>Ролі й маршрути<span class="sub">Хто які модулі проходить</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Роль</th><th>Обов'язкові модулі</th><th>За бажанням</th><th>Уроків в обов'язкових</th></tr></thead>
+<tbody>
+<tr><td data-th="Роль">AI Product Engineer (фіча від ідеї до продакшну)</td><td data-th="Обов&#x27;язкові модулі">усі, 0–16</td><td data-th="За бажанням">—</td><td data-th="Уроків в обов&#x27;язкових">78</td></tr>
+<tr><td data-th="Роль">Backend / Frontend / Fullstack розробник</td><td data-th="Обов&#x27;язкові модулі">0–9, 11–13, 15</td><td data-th="За бажанням">10, 14, 16; фронтенд — урок 11.4 (Playwright MCP)</td><td data-th="Уроків в обов&#x27;язкових">66</td></tr>
+<tr><td data-th="Роль">Tech Lead / Architect</td><td data-th="Обов&#x27;язкові модулі">0–3, 5, 8–10, 12–15</td><td data-th="За бажанням">16 (іспит — для архітекторів), решта</td><td data-th="Уроків в обов&#x27;язкових">54</td></tr>
+<tr><td data-th="Роль">PM / Product Designer</td><td data-th="Обов&#x27;язкові модулі">0–3, 5, 8, 10, 13</td><td data-th="За бажанням">9.5 (метрика успіху AI-фічі), 11 оглядово, 12.3 (evals)</td><td data-th="Уроків в обов&#x27;язкових">36</td></tr>
+<tr><td data-th="Роль">QA / Test Engineer</td><td data-th="Обов&#x27;язкові модулі">0–7, 11, 12</td><td data-th="За бажанням">8 (трасування вимога → тест), 15</td><td data-th="Уроків в обов&#x27;язкових">47</td></tr>
+</tbody></table></div>
+<p>Хто складатиме іспит — проходить і модуль 16.</p>
+<div class="cols">
+<div class="cmp good"><h4>PM — модулі 1–3</h4><ul>
+<li>звідки беруться ціна і затримка AI-фічі;</li>
+<li>коли потрібен workflow, а коли агент;</li>
+<li>галюцинації, prompt injection, privacy — однією мовою з інженерами.</li>
+</ul></div>
+<div class="cmp good"><h4>Розробник — модуль 9</h4><ul>
+<li>агент оптимізує локально — межі й контракти тримає людина;</li>
+<li>бюджет латентності й вартості — рішення архітектури, а не налаштування.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="sec" id="study">
+<div class="sec-h"><span class="num">03</span><h2>Як навчатися<span class="sub">Темп і факти, що старіють</span></h2></div>
+<ul>
+<li><b>Термінали</b> — реальний вивід; незапущену команду позначено в підписі.</li>
+<li><b>ДЗ:</b> перше обов'язкове, друге за бажанням; AI оцінює за критеріями й вагами з умови.</li>
+<li><b>Темп:</b> 2–3 уроки на тиждень — повний курс за 26–39 тижнів, маршрут PM за 12–18.</li>
+</ul>
+<h3>Конвенція «перевірено DD.MM.YYYY»</h3>
+<p>Дата — у шапці уроку, блоках «Перевірено» і «Ресурсах». Застарілий факт звіряйте так:</p>
+<ol class="steps">
+<li><b>Прапорці</b> — <code>--version</code>, <code>--help</code> самого інструмента.</li>
+<li><b>Зміни</b> — changelog (у Claude Code — <code>CHANGELOG.md</code> на GitHub).</li>
+<li><b>Ціни й моделі</b> — лише офіційна сторінка цін, не блог і не пам'ять моделі.</li>
+<li><b>Принцип</b> живе довше за прапорець: команда зникла — шукайте новий спосіб зробити те саме.</li>
+</ol>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~</span></div>
+<pre><span class="ps">$ </span><span class="c">claude --version</span>
+2.1.299 (Claude Code)
+<span class="ps">$ </span><span class="c">claude --help | grep -A1 -- '--max-budget-usd'</span>
+  --max-budget-usd &lt;amount&gt;             Maximum dollar amount to spend on API
+                                        calls (only works with --print)</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · 14.10.2026</div></div>
+</section>
+
+<section class="sec" id="cert">
+<div class="sec-h"><span class="num">04</span><h2>Сертифікація<span class="sub">Іспит CCA-F</span></h2></div>
+<p>Модуль 16 готує до іспиту <b>Claude Certified Architect – Foundations</b> (код CCAR-F; у спільноті — CCA-F): рішення-компроміси на Claude Code, Agent SDK, Claude API і MCP.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Домен іспиту</th><th>Вага</th><th>Де в курсі</th></tr></thead>
+<tbody>
+<tr><td data-th="Домен іспиту">1 · Agentic Architecture &amp; Orchestration</td><td data-th="Вага">27%</td><td data-th="Де в курсі">модулі 2, 9, 14</td></tr>
+<tr><td data-th="Домен іспиту">2 · Tool Design &amp; MCP Integration</td><td data-th="Вага">18%</td><td data-th="Де в курсі">модулі 6, 7</td></tr>
+<tr><td data-th="Домен іспиту">3 · Claude Code Configuration &amp; Workflows</td><td data-th="Вага">20%</td><td data-th="Де в курсі">модулі 4, 6, 11</td></tr>
+<tr><td data-th="Домен іспиту">4 · Prompt Engineering &amp; Structured Output</td><td data-th="Вага">20%</td><td data-th="Де в курсі">модулі 2, 5</td></tr>
+<tr><td data-th="Домен іспиту">5 · Context Management &amp; Reliability</td><td data-th="Вага">15%</td><td data-th="Де в курсі">модулі 1, 5, 12, 15</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 14.10.2026</span>
+<p>Офіційний exam guide, версія 1.0, чинна з липня 2026: 60 питань з однією або кількома правильними відповідями · 4 сценарії з банку 6 · 120 хв · прохідний бал 720 зі 100–1000 · з наглядом (proctored) · 125 $ · сертифікат на 12 місяців. Домени й ваги — звідти ж; гайд «може змінюватися без попередження».</p>
+</div>
+</section>
+
+<section class="sec" id="lectern">
+<div class="sec-h"><span class="num">05</span><h2>Lectern: проблема і користувачі<span class="sub">Почати з людини, а не з моделі</span></h2></div>
+<div class="note product"><span class="lbl">Продуктове мислення · навіщо наскрізний проєкт</span>
+<p>Компроміси видно лише на <b>одній системі, що росте</b>: RAG змінює вартість, вартість обмежує модель, модель — якість цитат, якість цитат — довіру автора. Тому кожен крок Lectern відповідає: яку метрику рухає і чим за це платимо.</p>
+</div>
+<div class="key"><h4>Problem statement</h4>
+<p>Автори курсів — викладачі, тренери, експерти — мають лекції в PDF, але перетворити їх на інтерактивний курс з уроками, квізами й картками — багато ручної роботи. Чат-бот пришвидшує чернетку, та її цитати й факти автор звіряє з джерелом вручну, і ця перевірка з'їдає виграний час.</p>
+</div>
+<p>Рішення («зробімо сервіс квізів на LLM») у постановці немає: лише користувач, ситуація, біль і чому наявні способи не працюють.</p>
+<h3>Користувачі</h3>
+<div class="cols">
+<div class="cmp good"><h4>Основний: автор курсу</h4><ul>
+<li>5–30 лекцій у PDF, бракує часу на квізи й картки;</li>
+<li>відповідає репутацією за кожне речення — боїться спотворених цитат;</li>
+<li>платить сам або через заклад.</li>
+</ul></div>
+<div class="cmp good"><h4>Вторинний: слухач курсу</h4><ul>
+<li>вчиться з телефона, короткими сесіями;</li>
+<li>довіряє більше, коли бачить джерело: «лекція 3, с. 12»;</li>
+<li>про Lectern не знає і не мусить знати.</li>
+</ul></div>
+</div>
+<p>Обидві <b>персони</b> — гіпотези до інтерв'ю в модулі 10.</p>
+<h3>Jobs-to-be-done</h3>
+<blockquote class="q-src">
+<p>Люди «наймають» продукти чи послуги, коли в їхньому житті виникають «роботи».</p>
+<p class="orig">“people “hire” products or services when “jobs” arise in their lives.”</p>
+<cite>Christensen Institute, «Jobs to Be Done» · перевірено 14.10.2026</cite>
+</blockquote>
+<p>Формат: <b>«Коли [ситуація], я хочу [дія], щоб [результат]»</b>.</p>
+<ol class="steps">
+<li><b>Автор:</b> коли маю PDF щойно прочитаної лекції, я хочу за вечір отримати урок, квіз і картки, щоб опублікувати модуль цього ж тижня.</li>
+<li><b>Автор:</b> коли переглядаю згенерований урок, я хочу бачити біля кожної цитати сторінку джерела, щоб перевірити її за секунди.</li>
+<li><b>Слухач:</b> коли маю десять хвилин у дорозі, я хочу пройти квіз за розділом, щоб зрозуміти, що справді запам'ятав.</li>
+</ol>
+<p>Конкуренти за цю роботу — квізи власноруч у вихідні, найнятий методист, PDF у чат-боті.</p>
+<div class="note product"><span class="lbl">Ціннісна пропозиція · гіпотеза</span>
+<p><b>Для</b> авторів курсів з лекціями в PDF <b>Lectern</b> робить інтерактивний модуль, <b>де кожна цитата прив'язана до сторінки й перевірена автоматично</b>. <b>На відміну від</b> чат-бота, автор переглядає лише позначене як сумнівне.</p>
+</div>
+</section>
+
+<section class="sec" id="scope">
+<div class="sec-h"><span class="num">06</span><h2>MVP і non-goals<span class="sub">Що робимо і від чого свідомо відмовляємось</span></h2></div>
+<p><b>MVP</b> за Еріком Рісом — версія нового продукту, що дає команді зібрати максимум перевірених знань про клієнтів з найменшими зусиллями, тобто <b>найдешевша перевірка головної гіпотези</b>.</p>
+<p class="orig">“the minimum viable product is that version of a new product which allows a team to collect the maximum amount of validated learning about customers with the least effort.” — Eric Ries, «Minimum Viable Product: a guide», 03.08.2009</p>
+<p>Гіпотеза Lectern: автор довірятиме модулю, якщо цитати перевірені. Тому перевірка цитат — у MVP, решта почекає.</p>
+<div class="cols">
+<div class="cmp good"><h4>У MVP</h4><ul>
+<li>одна лекція (PDF з текстовим шаром) → один модуль;</li>
+<li>HTML-урок з цитатами й номерами сторінок;</li>
+<li>квіз на 8–12 питань, 10–15 карток;</li>
+<li>автоматична перевірка кожної цитати;</li>
+<li>обов'язкове рев'ю автора;</li>
+<li>CLI; експорт у HTML і JSON.</li>
+</ul></div>
+<div class="cmp bad"><h4>Non-goals (не в MVP)</h4><ul>
+<li>скани без тексту (OCR) — пізніше;</li>
+<li>автопублікація без рев'ю — ніколи за замовчуванням;</li>
+<li>відео, аудіо, слайди;</li>
+<li>мобільний застосунок, оплата, маркетплейс;</li>
+<li>LMS-інтеграції (SCORM тощо);</li>
+<li>переклад.</li>
+</ul></div>
+</div>
+<div class="note tip"><span class="lbl">Non-goals читає й агент</span>
+<p>Побачивши «OCR не робимо», агент не додасть залежність для розпізнавання тексту «про всяк випадок».</p>
+</div>
+</section>
+
+<section class="sec" id="metrics">
+<div class="sec-h"><span class="num">07</span><h2>Метрики успіху<span class="sub">Як дізнатися, що Lectern працює</span></h2></div>
+<p>Метрику можна <b>порахувати з подій у системі</b>: «квізи якісні» — не метрика, «частка питань, прийнятих автором без правок» — метрика. <b>North Star</b> — одна метрика цінності для користувача; <b>основні</b> — важелі, якими команда її рухає; <b>guardrail</b> — те, що не можна погіршити, поки рухаєте основні.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Метрика</th><th>Тип</th><th>Як міряємо</th><th>Ціль MVP (гіпотеза)</th></tr></thead>
+<tbody>
+<tr><td data-th="Метрика">Модулі, опубліковані за тиждень</td><td data-th="Тип">North Star</td><td data-th="Як міряємо">Подія «опубліковано» після рев'ю; модуль, переписаний з нуля, не рахується</td><td data-th="Ціль MVP (гіпотеза)">Зростає щотижня в пілоті</td></tr>
+<tr><td data-th="Метрика">Час до модуля</td><td data-th="Тип">основна</td><td data-th="Як міряємо">Медіана від завантаження PDF до публікації, окремо — рев'ю; базова лінія — з інтерв'ю</td><td data-th="Ціль MVP (гіпотеза)">У 3 рази менше за базову лінію</td></tr>
+<tr><td data-th="Метрика">Дослівність цитат</td><td data-th="Тип">guardrail</td><td data-th="Як міряємо">Для кожної цитати: нормалізований текст є в PDF на вказаній сторінці</td><td data-th="Ціль MVP (гіпотеза)">100% в опублікованому: без збігу публікацію заблоковано</td></tr>
+<tr><td data-th="Метрика">Підтримка тези цитатою</td><td data-th="Тип">основна</td><td data-th="Як міряємо">LLM-суддя на всіх цитатах + ручна вибірка 50 цитат на реліз</td><td data-th="Ціль MVP (гіпотеза)">≥ 95% у вибірці</td></tr>
+<tr><td data-th="Метрика">Якість квізу</td><td data-th="Тип">основна</td><td data-th="Як міряємо">Частка питань без правок; автоматично — рівно одна правильна відповідь, підтверджена цитатою</td><td data-th="Ціль MVP (гіпотеза)">≥ 80% питань без правок</td></tr>
+<tr><td data-th="Метрика">Вартість модуля</td><td data-th="Тип">guardrail</td><td data-th="Як міряємо">Токени з <code>usage</code> × ціна, за кроками конвеєра</td><td data-th="Ціль MVP (гіпотеза)">≤ бюджету модуля</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Архітектура · почати з evaluation</span>
+<p>Документація Anthropic бере точність цитат саме за приклад критерію успіху: «Сильна точність цитування може бути критичною для медичних застосунків, але менш важливою для звичайних чат-ботів».</p>
+<p class="orig">“Strong citation accuracy might be critical for medical apps but less so for casual chatbots.” — Anthropic, «Define success criteria and build evaluations»</p>
+<p>Для Lectern точність цитат і є продукт, тому перевірку проєктуємо <b>до генератора</b>: ingest зберігає сторінку кожного фрагмента, генератор видає цитати як «текст + сторінка», з першого дня є golden set — PDF з відомими цитатами для прогону кожної зміни. Перевірка, додана наприкінці, змусить переробити формат даних і генератор.</p>
+</div>
+</section>
+
+<section class="sec" id="risks">
+<div class="sec-h"><span class="num">08</span><h2>Ризики й бюджет<span class="sub">Що може зламатися і скільки це коштує</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ризик</th><th>Як знижуємо</th><th>Де в курсі</th></tr></thead>
+<tbody>
+<tr><td data-th="Ризик">Вигадана або вирвана з контексту цитата</td><td data-th="Як знижуємо">Перевірка дослівності за PDF; «немає цитати — немає тези»; рев'ю автора</td><td data-th="Де в курсі">9.2, 12.3</td></tr>
+<tr><td data-th="Ризик">Авторське право на лекції (заклад, чужі матеріали)</td><td data-th="Як знижуємо">Автор підтверджує права при завантаженні; цитати короткі, з посиланням; остаточно оцінює юрист</td><td data-th="Де в курсі">3.3, 15.3</td></tr>
+<tr><td data-th="Ризик">Вартість довгих PDF</td><td data-th="Як знижуємо">Бюджет на модуль, модель під крок, кешування, batch, ліміт витрат у CLI</td><td data-th="Де в курсі">1.5, 5.5, 15.2</td></tr>
+<tr><td data-th="Ризик">Prompt injection у тексті PDF</td><td data-th="Як знижуємо">Вміст PDF — дані, не інструкції; генератор без небезпечних інструментів</td><td data-th="Де в курсі">3.4, 15.3</td></tr>
+<tr><td data-th="Ризик">Скан без текстового шару</td><td data-th="Як знижуємо">Приймаємо лише PDF з текстом, про скан повідомляємо автора</td><td data-th="Де в курсі">9.2</td></tr>
+<tr><td data-th="Ризик">Один хибний квіз — і автор іде</td><td data-th="Як знижуємо">Обов'язкове рев'ю; джерело біля кожного питання; сумнівне позначено</td><td data-th="Де в курсі">9.5</td></tr>
+</tbody></table></div>
+<p>Перший ризик Anthropic радить закривати так:</p>
+<blockquote class="q-src">
+<p>Зробіть відповідь Claude придатною для перевірки: нехай він наводить цитати й джерела для кожного свого твердження. […] Якщо він не може знайти цитату, він мусить відкликати твердження.</p>
+<p class="orig">“Make Claude's response auditable by having it cite quotes and sources for each of its claims. … If it can't find a quote, it must retract the claim.”</p>
+<cite>Anthropic, «Reduce hallucinations» · перевірено 14.10.2026</cite>
+</blockquote>
+<p>Друга опора — <b>Citations</b> у Claude API: PDF ділиться на речення, цитати повертаються з номерами сторінок і, за документацією, гарантовано містять коректні вказівники на надані документи; <code>cited_text</code> не входить у вихідні токени. Коректний вказівник ще не означає, що цитата <b>підтверджує</b> тезу, — звідси дві метрики. Зображення з PDF не цитуються — звідси OCR у non-goals.</p>
+<h3>Бюджет на курс: метод</h3>
+<pre class="code" data-lang="text"><span class="cm"># вартість у доларах</span>
+виклик = вхідні_токени × ціна_входу
+       + вихідні_токени × ціна_виходу
+модуль = Σ викликів конвеєра
+         (ingest, генерація, перевірка,
+          переписування)
+курс   = Σ модулів ≤ бюджет курсу</pre>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Модель</th><th>Вхід, $ / 1 млн токенів</th><th>Вихід, $ / 1 млн токенів</th><th>Роль у Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Модель">Claude Opus 5.5</td><td data-th="Вхід, $ / 1 млн токенів">4</td><td data-th="Вихід, $ / 1 млн токенів">20</td><td data-th="Роль у Lectern">планування модуля, складні рішення</td></tr>
+<tr><td data-th="Модель">Claude Sonnet 5.5</td><td data-th="Вхід, $ / 1 млн токенів">2</td><td data-th="Вихід, $ / 1 млн токенів">10</td><td data-th="Роль у Lectern">генерація уроку</td></tr>
+<tr><td data-th="Модель">Claude Haiku 5.5</td><td data-th="Вхід, $ / 1 млн токенів">0,10 (запит до 100 тис. токенів) · 0,50 (довший)</td><td data-th="Вихід, $ / 1 млн токенів">0,50 · 2,50</td><td data-th="Роль у Lectern">масова перевірка цитат</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 14.10.2026</span>
+<p>За Anthropic Pricing: Batch API — знижка 50% на вхід і вихід; читання з кешу промпту для Opus 5.5 і Sonnet 5.5 — 0,05 від базової ціни входу (для інших моделей 0,1). У Claude 4.7 і новіших новий токенізатор: той самий текст — приблизно на 30% більше токенів, тож міряйте їх на своїх даних (урок 1.1).</p>
+</div>
+<p><b>Приклад</b> (обсяги — <b>припущення</b>, не виміри): генерація модуля читає 300 тис. і пише 50 тис. токенів, перевірка цитат — 200 тис. і 10 тис. у запитах, коротших за 100 тис.</p>
+<pre class="code" data-lang="text"><span class="cm"># млн токенів × $ за 1 млн</span>
+Opus 5.5    0,3×4 + 0,05×20 = 2,20 $
+Sonnet 5.5  0,3×2 + 0,05×10 = 1,10 $
+Haiku 5.5   0,2×0,10 + 0,01×0,50
+            = 0,025 $</pre>
+<div class="bars">
+  <div class="bar p"><span class="k">Генерація на Opus 5.5</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">$2,20</b></span></div>
+  <div class="bar"><span class="k">Генерація на Sonnet 5.5</span><span class="tr"><i style="--v:50%"></i><b style="--v:50%">$1,10</b></span></div>
+  <div class="bar t"><span class="k">Перевірка цитат на Haiku 5.5</span><span class="tr"><i style="--v:1.2%"></i><b style="--v:1.2%">$0,025</b></span></div>
+</div>
+<p>Висновок стійкий до припущень: <b>масова перевірка на малій моделі майже безкоштовна</b>, бюджет визначає генерація — там і економлять моделлю, кешуванням, batch. Реальна рецензія PRD нижче коштувала 0,0067 дол. на Haiku 5.5.</p>
+</section>
+
+<section class="sec" id="arch">
+<div class="sec-h"><span class="num">09</span><h2>Архітектура<span class="sub">Конвеєр Lectern по модулях</span></h2></div>
+<p>Lectern наприкінці курсу; капсула — модуль, де з'являється частина.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 632" role="img" aria-label="Архітектура Lectern: від PDF до експорту з перевіркою цитат">
+  <defs>
+    <marker id="l2a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="l2b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="48" y="8" width="294" height="52" rx="10" class="bx m"/>
+  <text x="62" y="30" class="tx b">PDF-лекції автора</text>
+  <text x="62" y="48" class="tx s">вхід · права на матеріали</text>
+  <rect x="266" y="25" width="70" height="18" rx="9" class="bx"/><text x="301" y="38" text-anchor="middle" class="tx s">вхід</text>
+  <path d="M195 60 V 80" class="ln a" marker-end="url(#l2a)"/>
+  <rect x="48" y="84" width="294" height="52" rx="10" class="bx"/>
+  <text x="62" y="106" class="tx b">1 · Ingest</text>
+  <text x="62" y="124" class="tx s">текст і номери сторінок</text>
+  <rect x="266" y="101" width="70" height="18" rx="9" class="bx a"/><text x="301" y="114" text-anchor="middle" class="tx s">мод. 2</text>
+  <path d="M195 136 V 156" class="ln a" marker-end="url(#l2a)"/>
+  <rect x="48" y="160" width="294" height="52" rx="10" class="bx t"/>
+  <text x="62" y="182" class="tx b">2 · Chunking і embeddings</text>
+  <text x="62" y="200" class="tx s">фрагменти з номером сторінки</text>
+  <rect x="266" y="177" width="70" height="18" rx="9" class="bx a"/><text x="301" y="190" text-anchor="middle" class="tx s">мод. 9</text>
+  <path d="M195 212 V 232" class="ln a" marker-end="url(#l2a)"/>
+  <rect x="48" y="236" width="294" height="52" rx="10" class="bx t"/>
+  <text x="62" y="258" class="tx b">3 · Індекс і пошук (RAG)</text>
+  <text x="62" y="276" class="tx s">MCP-сервер: пошук по матеріалах</text>
+  <rect x="266" y="253" width="70" height="18" rx="9" class="bx a"/><text x="301" y="266" text-anchor="middle" class="tx s">мод. 7 · 9</text>
+  <rect x="8" y="300" width="344" height="166" rx="12" class="bx" style="fill:none" stroke-dasharray="5 4"/>
+  <path d="M195 288 V 308" class="ln a" marker-end="url(#l2a)"/>
+  <rect x="48" y="312" width="294" height="52" rx="10" class="bx a"/>
+  <text x="62" y="334" class="tx b">4 · Агент-автор</text>
+  <text x="62" y="352" class="tx s">урок, квіз, картки, ДЗ + цитати</text>
+  <rect x="266" y="329" width="70" height="18" rx="9" class="bx a"/><text x="301" y="342" text-anchor="middle" class="tx s">мод. 2 · 11</text>
+  <path d="M195 364 V 384" class="ln a" marker-end="url(#l2a)"/>
+  <rect x="48" y="388" width="294" height="52" rx="10" class="bx p"/>
+  <text x="62" y="410" class="tx b">5 · Перевірка цитат</text>
+  <text x="62" y="428" class="tx s">evaluator: є в PDF? підтверджує?</text>
+  <rect x="266" y="405" width="70" height="18" rx="9" class="bx a"/><text x="301" y="418" text-anchor="middle" class="tx s">мод. 12</text>
+  <path d="M48 420 C 20 410, 20 352, 46 344" class="ln d" marker-end="url(#l2b)"/>
+  <text x="38" y="386" text-anchor="middle" class="tx s">ні</text>
+  <text x="342" y="458" text-anchor="end" class="tx s">мод. 14 · команда агентів</text>
+  <path d="M195 440 V 484" class="ln a" marker-end="url(#l2a)"/>
+  <text x="186" y="480" text-anchor="end" class="tx s">так</text>
+  <rect x="48" y="488" width="294" height="52" rx="10" class="bx m"/>
+  <text x="62" y="510" class="tx b">6 · Рев'ю автора</text>
+  <text x="62" y="528" class="tx s">людина в циклі: правки, схвалення</text>
+  <rect x="266" y="505" width="70" height="18" rx="9" class="bx"/><text x="301" y="518" text-anchor="middle" class="tx s">людина</text>
+  <path d="M195 540 V 560" class="ln a" marker-end="url(#l2a)"/>
+  <rect x="48" y="564" width="294" height="52" rx="10" class="bx t"/>
+  <text x="62" y="586" class="tx b">7 · Експорт</text>
+  <text x="62" y="604" class="tx s">HTML-уроки, картки, квіз, ДЗ</text>
+  <rect x="266" y="581" width="70" height="18" rx="9" class="bx a"/><text x="301" y="594" text-anchor="middle" class="tx s">мод. 15</text>
+</svg>
+<figcaption>Цитату не знайдено або вона не підтверджує тезу — фрагмент повертається агентові-автору (пунктир «ні»). Пунктирна рамка — частина, яку в модулі 14 виконує команда агентів.</figcaption>
+</figure>
+<p>Петля «автор → перевірка» — workflow <b>evaluator-optimizer</b> (урок 2.4); за Anthropic, він особливо ефективний за чітких критеріїв оцінки — ще одна причина визначити метрику цитат заздалегідь. <b>Людина стоїть у циклі до експорту</b>: за курс відповідає автор.</p>
+</section>
+
+<section class="sec" id="prd">
+<div class="sec-h"><span class="num">10</span><h2>Односторінковий PRD<span class="sub">Шаблон і практична задача</span></h2></div>
+<p><b>PRD</b> (product requirements document), за Мартіном Кейганом (SVPG), чітко й однозначно формулює призначення продукту, можливості, функціональність і поведінку.</p>
+<p class="orig">“The purpose of the product requirements document (PRD) or product spec is to clearly and unambiguously articulate the product's purpose, features, functionality, and behavior.” — Martin Cagan, «How To Write a Good PRD», SVPG</p>
+<p>Другий читач PRD — агент: усе, що можна витлумачити двояко, він витлумачить. З цього шаблону в модулі 8 виросте специфікація, у модулі 10 — повний PRD.</p>
+<pre class="code" data-lang="markdown"><span class="k"># Lectern — PRD (одна сторінка)</span>
+<span class="cm">статус: чернетка · власник: …</span>
+
+<span class="k">## 1. Проблема</span>
+Автори курсів мають лекції в PDF, але
+перетворення на інтерактивний курс
+забирає багато ручної роботи; чернетці
+з чат-бота не довіряють, бо цитати
+доводиться звіряти з джерелом вручну.
+
+<span class="k">## 2. Користувачі й JTBD</span>
+- Основний: автор курсу. Коли я маю PDF
+  лекції, я хочу за вечір отримати урок,
+  квіз і картки, щоб опублікувати модуль
+  цього тижня.
+- Вторинний: слухач. Коли в мене
+  10 хвилин, я хочу пройти квіз, щоб
+  перевірити, що запам'ятав.
+
+<span class="k">## 3. Ціннісна пропозиція</span>
+Модуль з PDF, у якому кожна цитата
+прив'язана до сторінки й перевірена.
+
+<span class="k">## 4. Обсяг MVP</span>
+1 PDF з текстом → урок (HTML) + квіз
+8–12 + картки 10–15; перевірка кожної
+цитати; обов'язкове рев'ю автора; CLI;
+експорт HTML і JSON.
+
+<span class="k">## 5. Non-goals</span>
+OCR сканів · автопублікація · відео й
+аудіо · мобільний застосунок · оплата ·
+LMS/SCORM · переклад.
+
+<span class="k">## 6. Метрики</span>
+- North Star: модулі, опубліковані
+  авторами за тиждень.
+- Основні: час до модуля (медіана);
+  підтримка тези цитатою ≥ 95%;
+  питання квізу без правок ≥ 80%.
+- Guardrails: дослівність цитат 100%
+  в опублікованому; вартість модуля
+  ≤ бюджету.
+
+<span class="k">## 7. Як перевіряємо (evals)</span>
+Golden set: N лекцій з відомими
+цитатами; запуск на кожну зміну.
+
+<span class="k">## 8. Ризики й обмеження</span>
+Вигадані цитати · авторське право ·
+вартість · prompt injection у PDF.
+Бюджет на модуль: … $. Дані автора не
+виходять за межі його курсу.
+
+<span class="k">## 9. Відкриті питання</span>
+Скільки часу автор витрачає на модуль
+вручну (базова лінія)? Хто платить:
+автор чи заклад?</pre>
+<div class="task"><span class="lbl">Практична задача</span>
+<p>Для AI-фічі зі своєї роботи (або для Lectern) напишіть:</p>
+<ol>
+<li><b>Problem statement</b> одним абзацом, без «AI» як рішення.</li>
+<li><b>Три метрики</b> — North Star, основну й guardrail: з яких подій кожну рахувати і ціль з позначкою «гіпотеза».</li>
+</ol>
+<p>Тест: чи можна порахувати кожну метрику, не питаючи вас, що ви мали на увазі? Текст піде в домашнє завдання 1.</p>
+</div>
+</section>
+
+<section class="sec" id="critique">
+<div class="sec-h"><span class="num">11</span><h2>Критика PRD агентом<span class="sub">Друга думка за хвилину</span></h2></div>
+<p>Навмисно слабка чернетка: аудиторія «викладачі та студенти», метрики «користувачам подобаються курси» і «квізи якісні», у MVP — мобільний застосунок і оплата. Агент лише читає, Haiku для короткого тексту досить, витрати обмежує <code>--max-budget-usd</code>.</p>
+<div class="tabs">
+<input type="radio" name="crit-t" id="crit-t1" checked><input type="radio" name="crit-t" id="crit-t2"><input type="radio" name="crit-t" id="crit-t3">
+<div class="tab-l"><label for="crit-t1">Claude Code</label><label for="crit-t2">Codex CLI</label><label for="crit-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Ти — досвідчений продакт-менеджер. Прочитай PRD.md і дай критику: 5 найважливіших проблем (кожна — одне речення) і для кожної — як виправити. Окремо: чи вимірювані метрики і що прибрати з MVP. Нічого не редагуй. Відповідай українською, до 200 слів." --model haiku --tools Read --allowedTools Read --max-budget-usd 0.20 --output-format stream-json --verbose &gt; run.jsonl</span></pre>
+<div class="cap">реальна сесія · 14.10.2026 · модель claude-haiku-5-5</div></div>
+</div>
+<div class="tab-p">
+<p><code>codex exec</code> типово працює в пісочниці лише для читання:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec "Ти — досвідчений продакт-менеджер. Прочитай PRD.md і дай критику: 5 найважливіших проблем і як їх виправити. Нічого не редагуй."</span></pre>
+<div class="cap">команда з офіційної документації Codex · не запускалась у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p>Без <code>--force</code> Cursor CLI не записує змін у файли:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">agent -p "Ти — досвідчений продакт-менеджер. Прочитай PRD.md і дай критику: 5 найважливіших проблем і як їх виправити. Нічого не редагуй."</span></pre>
+<div class="cap">команда з офіційної документації Cursor · не запускалась у цьому уроці</div></div>
+</div>
+</div>
+<p>Відповідь з <code>run.jsonl</code>, без змін:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run.jsonl — відповідь агента</span></div>
+<pre><span class="y">● Read</span>  PRD.md
+<span class="c">5 найважливіших проблем і виправлення
+
+1. Аудиторія розмита. «Викладачі та студенти» — це два сегменти з різними потребами. Оберіть головного (викладач, який створює курс) і опишіть його завдання.
+2. Проблема не кількісна. «Довго» без цифр не можна перевірити. Зафіксуйте базу: скільки годин зараз іде на один курс.
+3. Немає цілі успіху. Не сказано, чого досягаємо за квартал. Додайте 1–2 показники, наприклад частку викладачів, які опублікували курс у перший місяць.
+4. Ризик якості AI не розглянуто. Ідеться про галюцинації, помилки в квізах і авторські права на PDF. Опишіть, як викладач перевіряє матеріал перед публікацією.
+5. MVP завеликий. Шість пунктів, зокрема мобільний застосунок і оплата, не вкладаються в один реліз.
+
+Метрики не вимірювані:
+- «Курси подобаються» → оцінка ≥ 4/5 після першого опублікованого курсу.
+- «Квізи якісні» → ≥ 80% квізів публікуються без правок.
+- «Генерація швидка» → від PDF до готового курсу ≤ 10 хв (p90).
+
+Що прибрати з MVP: мобільний застосунок, оплату і SCORM (лишити HTML). «Генерацію всього курсу» замінити на генерацію по одному модулю з ручним переглядом.
+
+Нічого не редагував.</span>
+
+<span class="d">result · num_turns 2 · duration 13,3 с · total_cost_usd 0.0067 · is_error false</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · 14.10.2026 · розмітку Markdown прибрано</div></div>
+<div class="note warn"><span class="lbl">Що ми перевірили самі</span>
+<p>Цифри «≤ 10 хв» і «≥ 4/5» агент <b>запропонував, а не дізнався</b> — це такі самі гіпотези. А головне для Lectern, точність цитат, він пропустив: чого не сказали рецензентові, того він не перевірить.</p>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">12</span><h2>Наскрізний проєкт<span class="sub">Lectern, крок 0: постановка</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 0 з 16 · постановка</div><div class="pb">
+<ol>
+<li>Збережіть <code>lectern/docs/PRD.md</code> за шаблоном, замінивши «…» своїми рішеннями.</li>
+<li>Позначте кожну ціль у метриках словом «гіпотеза» — переглянете в уроці 9.5.</li>
+<li><b>Golden set</b> у <code>docs/golden.md</code>: 2 PDF-лекції з правами на них, по 5 дослівних цитат зі сторінкою (для модулів 9 і 12).</li>
+</ol>
+<p>Репозиторій і перший коміт — в уроці 0.3.</p>
+</div></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">13</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">PRD</span><span class="h">що це?</span></span><span class="b"><span class="t">Документ вимог до продукту</span><span class="d">призначення, можливості, поведінка, метрики, межі</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">JTBD</span><span class="h">формат запису</span></span><span class="b"><span class="t">Коли …, я хочу …, щоб …</span><span class="d">ситуація, дія і результат, заради якого «наймають» продукт</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">MVP</span><span class="h">за Рісом</span></span><span class="b"><span class="t">Максимум знань, мінімум зусиль</span><span class="d">найдешевший спосіб перевірити головну гіпотезу про клієнтів</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">non-goals</span><span class="h">навіщо?</span></span><span class="b"><span class="t">Свідомо поза обсягом</span><span class="d">агент не додасть заборонене «про всяк випадок»</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">guardrail-метрика</span><span class="h">що це?</span></span><span class="b"><span class="t">Що не можна погіршити</span><span class="d">точність цитат, поки пришвидшуємо генерацію</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">точність цитат</span><span class="h">два рівні</span></span><span class="b"><span class="t">Дослівність і підтримка</span><span class="d">цитата є в PDF на вказаній сторінці і доводить тезу</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">evaluator</span><span class="h">у Lectern</span></span><span class="b"><span class="t">Перевірка цитат</span><span class="d">повертає фрагмент агентові-автору на переписування</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">North Star</span><span class="h">для Lectern</span></span><span class="b"><span class="t">Опубліковані модулі за тиждень</span><span class="d">одна метрика цінності для автора</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">14</span><h2>Квіз<span class="sub">12 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>12 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Ви хочете одразу перейти до модуля 8 (Spec-Driven Development), пропустивши модулі 4–7. Чому це погана ідея за картою?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Модуль 8 відкривається лише після домашніх завдань модулів 4–7</span></label><label class="opt ok"><input type="radio" name="q1"><span>Трек «Метод» спирається на CLAUDE.md, промпти й MCP з модулів 4–7</span></label><label class="opt"><input type="radio" name="q1"><span>Модулі 4–7 покривають найбільший домен іспиту, і без них не скласти CCA-F</span></label></div>
+    <div class="why yes">Так. Кожен трек спирається на попередній: «Метод» використовує те, що дає трек «Інструменти».</div>
+    <div class="why no">Модулі не блокуються, а найбільший домен іспиту покривають модулі 2, 9 і 14. Справа в залежностях: трек «Метод» (8–12) спирається на інструменти, CLAUDE.md, промпти й MCP з модулів 4–7.</div></div>
+  <div class="q"><div class="qt">2. Навіщо PM проходити модулі 1–3 про LLM, агентів і екосистему?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Щоб розуміти, звідки беруться ціна, затримка й ризики AI-фічі</span></label><label class="opt"><input type="radio" name="q2"><span>Щоб самостійно прототипувати агентів і не чекати на інженерів</span></label><label class="opt"><input type="radio" name="q2"><span>Бо на них стоїть іспит CCA-F, обов'язковий у маршруті PM</span></label></div>
+    <div class="why yes">Так. Без розуміння механіки продуктові рішення про AI-фічу стають вгадуванням.</div>
+    <div class="why no">Мета не в тому, щоб PM писав код, а модуля 16 з іспитом серед обов'язкових для PM немає. Модулі 1–3 дають мову і розуміння ціни, затримки та ризиків, без яких AI-фічу не поставити.</div></div>
+  <div class="q"><div class="qt">3. Команда з уроку піврічної давності більше не працює. Що робити насамперед?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Знайти свіжий блог-пост з тією самою командою і взяти прапорці звідти</span></label><label class="opt"><input type="radio" name="q3"><span>Спитати модель, яка команда правильна: вона знає новішу версію CLI</span></label><label class="opt ok"><input type="radio" name="q3"><span>Звірити з <code>--help</code>, changelog і документацією, а ідею уроку зберегти</span></label></div>
+    <div class="why yes">Так. Прапорці змінюються швидше за принципи. Першоджерело — інструмент і його документація.</div>
+    <div class="why no">Принцип уроку зазвичай живе довше за прапорець. Факт звіряють з першоджерелом — <code>--help</code>, changelog, офіційні документи, — а не з блогом чи пам'яттю моделі.</div></div>
+  <div class="q"><div class="qt">4. Що зайве в problem statement?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Ситуація користувача: 5–30 лекцій у PDF і брак часу</span></label><label class="opt ok"><input type="radio" name="q4"><span>Рішення: «згенеруємо квізи за допомогою LLM»</span></label><label class="opt"><input type="radio" name="q4"><span>Чому наявні способи, зокрема чат-боти, не працюють</span></label></div>
+    <div class="why yes">Так. Постановка описує проблему. Рішення, зокрема вибір AI, — окреме рішення, яке ще треба обґрунтувати.</div>
+    <div class="why no">Ситуація і причини, чому альтернативи (чат-боти теж) не працюють, — серце постановки. Зайве саме рішення: якщо «LLM» стоїть у постановці, ви вже вирішили, не зрозумівши проблему.</div></div>
+  <div class="q"><div class="qt">5. Який запис найкраще відповідає формату jobs-to-be-done?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>«Автор курсу, 35–50 років, викладач університету, має 5–30 лекцій у PDF і мало часу»</span></label><label class="opt"><input type="radio" name="q5"><span>«Lectern має за вечір генерувати з PDF урок, квіз і картки за допомогою Claude»</span></label><label class="opt ok"><input type="radio" name="q5"><span>«Коли маю PDF лекції, я хочу за вечір отримати квіз, щоб опублікувати модуль цього тижня»</span></label></div>
+    <div class="why yes">Так: ситуація, дія і результат, заради якого користувач «наймає» продукт.</div>
+    <div class="why no">Опис автора з віком і кількістю лекцій — це персона, а «Lectern має генерувати…» — вимога до рішення. JTBD описує роботу: «коли …, я хочу …, щоб …».</div></div>
+  <div class="q"><div class="qt">6. Команда пропонує MVP Lectern: урок, квіз і картки, а перевірку цитат — «у v2». Що не так?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Він не перевіряє головної гіпотези: автор довіряє модулю, бо цитати перевірені</span></label><label class="opt"><input type="radio" name="q6"><span>Нічого: MVP — найменший робочий продукт, а перевірку цитат можна додати після пілоту</span></label><label class="opt"><input type="radio" name="q6"><span>Бракує OCR: без розпізнавання сканів автори не завантажать частину лекцій</span></label></div>
+    <div class="why yes">Так. За Рісом, MVP — найдешевший спосіб отримати перевірене знання про клієнтів. Без перевірки цитат він перевіряє гіпотезу, яку вже закрили чат-боти.</div>
+    <div class="why no">MVP — не «найменше, що можна зробити», а найдешевша перевірка головної гіпотези; OCR свідомо винесено в non-goals. Гіпотеза Lectern — про довіру до цитат, тож їхню перевірку відкласти не можна.</div></div>
+  <div class="q"><div class="qt">7. Чому non-goals особливо важливі, коли код пише агент?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Агент бачить лише розділ «Обсяг MVP», тож межі доводиться дублювати окремим списком</span></label><label class="opt ok"><input type="radio" name="q7"><span>Явна межа («OCR не робимо») не дасть агентові розширити обсяг «про всяк випадок»</span></label><label class="opt"><input type="radio" name="q7"><span>Non-goals задають агентові чергу: він візьметься за них після MVP, у другій ітерації</span></label></div>
+    <div class="why yes">Так. Явні межі захищають обсяг і від людей, і від агента, який охоче додає залежності й функції.</div>
+    <div class="why no">Агент читає весь документ і non-goals «на потім» не відкладає: це записане рішення «ні». Без нього те, що не заборонено явно, агент може вирішити зробити.</div></div>
+  <div class="q"><div class="qt">8. Яка метрика Lectern є guardrail?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Підтримка тези цитатою ≥ 95% у вибірці</span></label><label class="opt"><input type="radio" name="q8"><span>Модулі, опубліковані авторами за тиждень</span></label><label class="opt ok"><input type="radio" name="q8"><span>Дослівність цитат 100% в опублікованому</span></label></div>
+    <div class="why yes">Так. Її не можна погіршити, хоч би як ми пришвидшували генерацію: цитата без збігу блокує публікацію.</div>
+    <div class="why no">Модулі за тиждень — North Star, підтримка тези — основна метрика, яку ми покращуємо. Guardrail — те, що не можна погіршити: дослівність цитат і вартість модуля.</div></div>
+  <div class="q"><div class="qt">9. Чому перевірку цитат у Lectern проєктують раніше за генератор?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Бо вона задає формат даних: сторінки у фрагментах, структуровані цитати, golden set</span></label><label class="opt"><input type="radio" name="q9"><span>Бо перевірка на малій моделі дешева, і її простіше налагодити до дорогого генератора</span></label><label class="opt"><input type="radio" name="q9"><span>Бо генератором стане готовий Citations API, і проєктувати лишається лише перевірку</span></label></div>
+    <div class="why yes">Так. Якщо додати перевірку наприкінці, доведеться переробити і ingest, і формат виводу генератора.</div>
+    <div class="why no">Ціна тут ні до чого, а Citations гарантує лише вказівники, не всю перевірку. Перевірка задає вимоги до всього конвеєра: без номерів сторінок і структурованих цитат перевіряти нічого.</div></div>
+  <div class="q"><div class="qt">10. Що гарантує функція Citations у Claude API, а що ні?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Гарантує, що цитата підтверджує тезу поруч, але номер сторінки треба звіряти самому</span></label><label class="opt ok"><input type="radio" name="q10"><span>Коректні вказівники на наданий документ — так; підтвердження тези цитатою — ні</span></label><label class="opt"><input type="radio" name="q10"><span>Гарантує відповідь без галюцинацій, але <code>cited_text</code> рахується у вихідних токенах</span></label></div>
+    <div class="why yes">Так. Тому в Lectern дві метрики: дослівність (вказівник коректний) і підтримка тези (цитата справді доводить твердження).</div>
+    <div class="why no">Документація обіцяє лише коректні вказівники на надані документи (для PDF — з номерами сторінок), а <code>cited_text</code> у вихідні токени не входить. Чи підтверджує цитата тезу, треба перевіряти окремо.</div></div>
+  <div class="q"><div class="qt">11. За прикладом розрахунку бюджету, де найвигідніше шукати економію?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q11"><span>У генерації: модель під крок, кешування промпту, batch</span></label><label class="opt"><input type="radio" name="q11"><span>У перевірці цитат: брати вибірку замість кожної цитати</span></label><label class="opt"><input type="radio" name="q11"><span>У токенізації: моделі 4.7+ рахують той самий текст меншою кількістю токенів</span></label></div>
+    <div class="why yes">Так. Генерація становить майже весь бюджет, а перевірка на малій моделі коштує центи, тому заощаджувати на ній — ризикувати якістю задарма.</div>
+    <div class="why no">Перевірка на Haiku 5.5 у прикладі коштує 0,025 дол. проти 1,10–2,20 дол. за генерацію, а новий токенізатор дає приблизно на 30% більше токенів, не менше. Гроші — у генерації, там і економлять.</div></div>
+  <div class="q"><div class="qt">12. До іспиту CCA-F два тижні, часу — на три модулі повторення. Які взяти першими?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q12"><span>Модулі 4, 6 і 11 (Claude Code Configuration &amp; Workflows)</span></label><label class="opt"><input type="radio" name="q12"><span>Модулі 2 і 5 (Prompt Engineering &amp; Structured Output)</span></label><label class="opt ok"><input type="radio" name="q12"><span>Модулі 2, 9 і 14 (Agentic Architecture &amp; Orchestration)</span></label></div>
+    <div class="why yes">Так. Це найбільший домен, 27% за офіційним exam guide, а модуль 2 ще й покриває Prompt Engineering (20%).</div>
+    <div class="why no">Claude Code Configuration &amp; Workflows і Prompt Engineering важать по 20%. Найбільший домен — Agentic Architecture &amp; Orchestration (27%), його покривають модулі 2, 9 і 14.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">15</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>PRD</td><td>Документ вимог до продукту: призначення, можливості, поведінка, метрики, межі.</td></tr>
+<tr><td>problem statement</td><td>Постановка проблеми: хто, у якій ситуації, що болить і чому наявні способи не працюють.</td></tr>
+<tr><td>jobs-to-be-done (JTBD)</td><td>Погляд на продукт через «роботу», заради якої його «наймають»: «коли …, я хочу …, щоб …».</td></tr>
+<tr><td>персона</td><td>Узагальнений портрет користувача; гіпотеза, яку перевіряють на інтерв'ю.</td></tr>
+<tr><td>ціннісна пропозиція</td><td>Для кого продукт, яку роботу виконує і чим кращий за альтернативи.</td></tr>
+<tr><td>MVP</td><td>Версія продукту, що дає максимум перевірених знань про клієнтів з найменшими зусиллями.</td></tr>
+<tr><td>non-goals</td><td>Те, що свідомо не входить в обсяг, записане явно.</td></tr>
+<tr><td>метрика успіху</td><td>Показник, який можна однозначно порахувати і за яким вирішують, чи фіча працює.</td></tr>
+<tr><td>North Star metric</td><td>Одна метрика, яка найкраще відбиває цінність для користувача.</td></tr>
+<tr><td>guardrail-метрика</td><td>Показник, який не можна погіршити, поки покращуєте основні.</td></tr>
+<tr><td>базова лінія</td><td>Значення метрики до змін; без неї ціль «у 3 рази швидше» не має сенсу.</td></tr>
+<tr><td>evaluator</td><td>Компонент або агент, що оцінює результат іншого агента і повертає його на доопрацювання.</td></tr>
+<tr><td>точність цитат</td><td>Дослівність (цитата є в джерелі на вказаній сторінці) і підтримка тези (цитата її доводить).</td></tr>
+<tr><td>наскрізний проєкт</td><td>Один продукт, який росте впродовж усього курсу і на якому видно компроміси між темами.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">16</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Односторінковий PRD для AI-фічі</h3>
+<p>PRD за шаблоном уроку для власної AI-фічі або Lectern — від problem statement до evals, ризиків і бюджету.</p>
+<h3>2. Розбір кейсу: метрики, що нічого не міряють</h3>
+<p>Знайдіть проблеми в чернетці PRD «AI-підсумок дзвінка підтримки» і перепишіть метрики, non-goals і план перевірки якості.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">17</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 14.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests" target="_blank" rel="noopener">Anthropic — Define success criteria and build evaluations</a><span>документація Claude · критерії успіху (specific, measurable, achievable, relevant) і evals</span></li>
+<li><a href="https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations" target="_blank" rel="noopener">Anthropic — Reduce hallucinations</a><span>документація Claude · прямі цитати, перевірка через цитати, право сказати «не знаю»</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/citations" target="_blank" rel="noopener">Claude API — Citations</a><span>документація · цитати з номерами сторінок для PDF, обмеження для сканів</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Anthropic — Pricing</a><span>офіційні ціни моделей, кешування промптів, Batch API</span></li>
+<li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a><span>19.12.2024 · workflow evaluator-optimizer</span></li>
+<li><a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener">Claude Code — документація</a><span>огляд; <a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">неінтерактивний режим</a>; <a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">довідник CLI</a></span></li>
+<li><a href="https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Claude Code — CHANGELOG</a><span>що змінилося у кожній версії</span></li>
+<li><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">Codex — non-interactive mode</a><span>офіційна документація: <code>codex exec</code>, типова пісочниця лише для читання</span></li>
+<li><a href="https://cursor.com/docs/cli/headless" target="_blank" rel="noopener">Cursor CLI — headless</a><span>офіційна документація: <code>agent -p</code>, без <code>--force</code> зміни лише пропонуються</span></li>
+<li><a href="https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification" target="_blank" rel="noopener">Claude Certified Architect – Foundations</a><span>офіційна сторінка іспиту; <a href="https://everpath-course-content.s3-accelerate.amazonaws.com/instructor%2F6nizmqk8tpzpfjvt6qmmav7rh%2Fpublic%2F1783542750%2FClaude+Certified+Architect+%E2%80%93+Foundations+Exam+Guide.pdf" target="_blank" rel="noopener">exam guide (PDF)</a>, версія 1.0, липень 2026</span></li>
+<li><a href="https://anthropic.skilljar.com/" target="_blank" rel="noopener">Anthropic Academy</a><span>безкоштовні курси Anthropic</span></li>
+<li><a href="https://hbr.org/2016/09/know-your-customers-jobs-to-be-done" target="_blank" rel="noopener">Christensen, Hall, Dillon, Duncan — Know Your Customers' “Jobs to Be Done”</a><span>Harvard Business Review, вересень 2016</span></li>
+<li><a href="https://www.christenseninstitute.org/theory/jobs-to-be-done/" target="_blank" rel="noopener">Christensen Institute — Jobs to Be Done</a><span>теорія JTBD від її авторів</span></li>
+<li><a href="https://www.startuplessonslearned.com/2009/08/minimum-viable-product-guide.html" target="_blank" rel="noopener">Eric Ries — Minimum Viable Product: a guide</a><span>03.08.2009 · визначення MVP</span></li>
+<li><a href="https://www.svpg.com/assets/Files/goodprd.pdf" target="_blank" rel="noopener">Martin Cagan — How To Write a Good PRD</a><span>Silicon Valley Product Group · класичний текст про PRD</span></li>
+<li><a href="https://amplitude.com/books/north-star" target="_blank" rel="noopener">Amplitude — North Star Playbook</a><span>як обрати North Star metric і метрики, що на неї впливають</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 0.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 0.2 · Senomi<br><br><a href="lesson-01.html">← Урок 0.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-03.html">Урок 0.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

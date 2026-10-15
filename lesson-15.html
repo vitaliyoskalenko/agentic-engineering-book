@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 3.2. Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI: порівняння і вибір</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 3.2 · Модуль 3</div>
+<h1>Claude Code, Codex, Cursor, GitHub Copilot, Gemini CLI: порівняння і вибір</h1>
+<p class="lead">П'ять інструментів відрізняються не «розумністю», а поверхнями, моделями, механізмами розширення, пісочницею, способом оплати й тим, як дорого з них піти. Порівнюємо їх за офіційною документацією, проганяємо одну задачу по-справжньому і пишемо ADR вибору для Lectern.</p>
+<div class="hero-meta"><span class="chip">Екосистема coding assistants</span><span class="chip t">≈ 55 хв</span><span class="chip a">13 карток</span><span class="chip g">перевірено 14.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#axes"><b>01</b>Що саме ви обираєте</a><a href="#map"><b>02</b>Карта на 14.10.2026</a><a href="#extend"><b>03</b>Розширення й інструкції</a><a href="#autonomy"><b>04</b>Без людини поруч</a><a href="#money"><b>05</b>Гроші й контроль</a><a href="#bench"><b>06</b>Бенчмарки</a><a href="#run"><b>07</b>Одна задача, справжній прогін</a><a href="#choose"><b>08</b>Як обирати</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розкласти будь-який coding-асистент на п'ять рішень: поверхня, модель, harness, розширення, гроші й контроль;</li>
+    <li>порівняти Claude Code, Codex, Cursor, GitHub Copilot і Gemini CLI за документацією, а не за враженнями, і знайти, що застаріло з минулого року;</li>
+    <li>зробити <code>AGENTS.md</code> єдиним джерелом інструкцій для кількох агентів і знати, кому його треба підключати вручну;</li>
+    <li>читати Terminal-Bench і SWE-bench як оцінку пари «harness + модель», а не інструмента;</li>
+    <li>обрати основний і запасний інструмент під ситуацію команди й оцінити ціну переходу;</li>
+    <li>записати рішення у форматі ADR.</li>
+  </ul>
+</div>
+
+<section class="sec" id="axes">
+<div class="sec-h"><span class="num">01</span><h2>Що саме ви обираєте<span class="sub">П'ять рішень під однією назвою</span></h2></div>
+<p>Назва продукту ховає п'ять незалежних рішень. Два інструменти можуть працювати з однією моделлю і поводитися по-різному (урок 2.3), а один інструмент — бути дешевим у підписці й дорогим на виході з нього.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 420" role="img" aria-label="П'ять шарів вибору coding-асистента: від поверхні до грошей і контролю; ціна переходу зростає донизу">
+  <defs>
+    <marker id="l15a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar p"/></marker>
+  </defs>
+  <rect x="44" y="8" width="308" height="66" rx="10" class="bx m"/>
+  <text x="58" y="31" class="tx b">1 · Поверхня</text>
+  <text x="58" y="50" class="tx s">термінал · IDE · веб · хмара · CI</text>
+  <text x="58" y="66" class="tx s">де живе цикл і хто його бачить</text>
+  <rect x="44" y="90" width="308" height="66" rx="10" class="bx a"/>
+  <text x="58" y="113" class="tx b">2 · Модель</text>
+  <text x="58" y="132" class="tx s">свої моделі чи кілька вендорів</text>
+  <text x="58" y="148" class="tx s">свій API-ключ, локальні моделі</text>
+  <rect x="44" y="172" width="308" height="66" rx="10" class="bx t"/>
+  <text x="58" y="195" class="tx b">3 · Harness</text>
+  <text x="58" y="214" class="tx s">інструменти · дозволи · sandbox</text>
+  <text x="58" y="230" class="tx s">headless-режим, ліцензія коду</text>
+  <rect x="44" y="254" width="308" height="66" rx="10" class="bx t"/>
+  <text x="58" y="277" class="tx b">4 · Розширення й контекст</text>
+  <text x="58" y="296" class="tx s">MCP · hooks · skills · субагенти</text>
+  <text x="58" y="312" class="tx s">файл інструкцій проєкту</text>
+  <rect x="44" y="336" width="308" height="66" rx="10" class="bx p"/>
+  <text x="58" y="359" class="tx b">5 · Гроші й контроль</text>
+  <text x="58" y="378" class="tx s">тариф · ліміти · SSO · політики</text>
+  <text x="58" y="394" class="tx s">хто вимикає що в організації</text>
+  <path d="M20 20 V 396" class="ln p" marker-end="url(#l15a)"/>
+  <text x="14" y="210" text-anchor="middle" class="tx s" transform="rotate(-90 14 210)">ціна переходу зростає</text>
+</svg>
+<figcaption>Шари 1–3 змінюються за день: інша команда в терміналі. Шари 4–5 — це конфігурація, скрипти й домовленості команди; саме вони тримають вас в інструменті.</figcaption>
+</figure>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Питання «хто кращий» не має відповіді без задачі. Робочі питання: <b>де команда вже живе</b> (термінал, IDE, GitHub), <b>хто платить і як</b> (підписка на людину чи токени на рахунок), <b>що мусить контролювати адмін</b> і <b>скільки коштуватиме піти</b>, коли вендор змінить тарифи. За останні пів року троє з п'ятьох вендорів змінили модель доступу — дивіться далі.</p>
+</div>
+</section>
+
+<section class="sec" id="map">
+<div class="sec-h"><span class="num">02</span><h2>Карта на 14.10.2026<span class="sub">Поверхні, моделі, ліцензія</span></h2></div>
+<p>Кожна клітинка нижче звірена з документацією, тарифами або changelog вендора в день перевірки. Таблиці розбито за питаннями, на які вони відповідають.</p>
+<h3>Де працює агент</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Термінал, IDE, десктоп</th><th>Веб і хмара</th><th>GitHub, CI, чати</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент"><b>Claude Code</b><br>Anthropic</td><td data-th="Термінал, IDE, десктоп">CLI <code>claude</code>; розширення VS Code (і форків), плагін JetBrains (потребує CLI); десктоп-застосунок macOS і Windows, Linux — бета</td><td data-th="Веб і хмара">Claude Code on the web (<code>claude.ai/code</code>); мобільний застосунок — лише клієнт до сесій</td><td data-th="GitHub, CI, чати">GitHub Actions (<code>@claude</code> у PR та issue), GitLab CI/CD (бета, підтримує GitLab), Slack</td></tr>
+<tr><td data-th="Інструмент"><b>Codex</b><br>OpenAI</td><td data-th="Термінал, IDE, десктоп">CLI <code>codex</code>; розширення для VS Code, Cursor, Windsurf; Xcode і JetBrains — власні інтеграції; ChatGPT desktop app</td><td data-th="Веб і хмара">Codex Cloud (<code>chatgpt.com/codex</code>), мобільний ChatGPT</td><td data-th="GitHub, CI, чати"><code>@codex review</code> у PR, <code>openai/codex-action@v1</code>, Codex SDK (TypeScript, Python), Slack через <code>@ChatGPT</code>, Linear, GitLab (бета)</td></tr>
+<tr><td data-th="Інструмент"><b>Cursor</b><br>Anysphere</td><td data-th="Термінал, IDE, десктоп">Власна IDE (розширення з Open VSX); CLI <code>agent</code></td><td data-th="Веб і хмара">Cloud Agents: веб <code>cursor.com/agents</code>, застосунок iOS, PWA на Android</td><td data-th="GitHub, CI, чати"><code>@cursor</code> у PR та issue GitHub і Bitbucket, Slack, Linear, Bugbot (рев'ю PR), Cloud Agents API (бета)</td></tr>
+<tr><td data-th="Інструмент"><b>GitHub Copilot</b><br>GitHub</td><td data-th="Термінал, IDE, десктоп">Agent mode у VS Code, Visual Studio, JetBrains, Eclipse, Xcode (у Neovim немає); Copilot CLI <code>copilot</code> (GA з 25.02.2026); десктопний GitHub Copilot app на базі CLI</td><td data-th="Веб і хмара"><b>Copilot cloud agent</b> (до квітня 2026 — coding agent) на github.com</td><td data-th="GitHub, CI, чати">Рев'ю PR; сторонні агенти Claude і Codex прямо на GitHub (публічне прев'ю)</td></tr>
+<tr><td data-th="Інструмент"><b>Gemini CLI</b><br>Google</td><td data-th="Термінал, IDE, десктоп">CLI <code>gemini</code>; Gemini CLI Companion для VS Code-сумісних редакторів; JetBrains і Zed через ACP</td><td data-th="Веб і хмара">Cloud Shell без встановлення; хмарний агент Google — окремий продукт Jules</td><td data-th="GitHub, CI, чати"><code>google-github-actions/run-gemini-cli</code></td></tr>
+</tbody></table></div>
+<h3>Моделі, власний ключ, відкритість</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Моделі</th><th>Свій ключ або провайдер</th><th>Код harness</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент"><b>Claude Code</b></td><td data-th="Моделі">Лише Claude: Opus, Sonnet, Haiku 5.5. Маршрутизацію на не-Claude моделі через gateway документація прямо не підтримує</td><td data-th="Свій ключ або провайдер"><code>ANTHROPIC_API_KEY</code> або акаунт Console; Amazon Bedrock, Google Cloud Agent Platform (колишній Vertex AI), Microsoft Foundry</td><td data-th="Код harness">Пропрієтарний, Commercial Terms</td></tr>
+<tr><td data-th="Інструмент"><b>Codex</b></td><td data-th="Моделі">Моделі OpenAI, для складних задач рекомендована GPT-6.1 Sol; <code>--oss</code> — локальні через Ollama або LM Studio</td><td data-th="Свій ключ або провайдер"><code>codex login --with-api-key</code>, у CI — <code>CODEX_API_KEY</code>; свій провайдер лише з Responses API</td><td data-th="Код harness">CLI і SDK — Apache-2.0; IDE-розширення і Codex Cloud закриті</td></tr>
+<tr><td data-th="Інструмент"><b>Cursor</b></td><td data-th="Моделі">Anthropic, OpenAI, Google, Grok і власна Composer 2.5; режим Auto (Cursor Router)</td><td data-th="Свій ключ або провайдер">OpenAI, Anthropic, Google, Azure OpenAI, Bedrock — лише для chat-моделей; Tab лишається на моделях Cursor</td><td data-th="Код harness">Пропрієтарний</td></tr>
+<tr><td data-th="Інструмент"><b>GitHub Copilot</b></td><td data-th="Моделі">OpenAI, Anthropic, Google, Microsoft, Moonshot AI, xAI — вибір у model picker</td><td data-th="Свій ключ або провайдер">Local BYOK у VS Code, JetBrains, Xcode, CLI, Copilot app; CLI — OpenAI-сумісний endpoint, Azure OpenAI, Anthropic, Ollama</td><td data-th="Код harness">CLI — пропрієтарна ліцензія; Copilot Chat для VS Code — MIT</td></tr>
+<tr><td data-th="Інструмент"><b>Gemini CLI</b></td><td data-th="Моделі">Лише Gemini (3.x, 2.5)</td><td data-th="Свій ключ або провайдер"><code>GEMINI_API_KEY</code>, Vertex AI</td><td data-th="Код harness">Apache-2.0</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Свій ключ — не нейтральна опція</span>
+<p>У Cursor із власним ключем <b>не діє Zero Data Retention</b> самого Cursor, а на плані Plus власні ключі й сторонні моделі недоступні взагалі. У Copilot корпоративний BYOK — публічне прев'ю. Перш ніж рахувати економію на ключі, перевірте, які функції і гарантії ви при цьому втрачаєте (урок 3.3).</p>
+</div>
+<div class="note fact"><span class="lbl">Перевірено · 14.10.2026 · що змінилося за пів року</span>
+<p><b>Copilot:</b> coding agent перейменовано на cloud agent (01.04.2026); з 01.06.2026 замість premium requests — оплата за токени в GitHub AI Credits. <b>Cursor:</b> продається як частина The X Subscription разом із Grok; Pro і Pro+ стали legacy-планами; сторонні моделі не входять у пул плану. <b>Gemini CLI:</b> з 18.06.2026 не обслуговує безкоштовний доступ і Google AI Pro/Ultra; наступник для них — <b>Antigravity CLI</b> (<code>agy</code>), закритий, з моделями Gemini, Claude і GPT-OSS. README репозиторію Gemini CLI досі обіцяє безкоштовний tier — <b>звіряйте блог і changelog вендора, а не README</b>.</p>
+</div>
+</section>
+
+<section class="sec" id="extend">
+<div class="sec-h"><span class="num">03</span><h2>Розширення й інструкції<span class="sub">Що переноситься між інструментами</span></h2></div>
+<p>За набором механізмів інструменти зійшлися: MCP, hooks, skills і субагенти тепер є в усіх п'яти. Відрізняються <b>формати й місця</b>, і саме вони визначають, скільки роботи буде при переході.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>MCP і hooks</th><th>Skills, субагенти, плагіни</th><th>Файл інструкцій</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент"><b>Claude Code</b></td><td data-th="MCP і hooks">MCP (<code>.mcp.json</code>); hooks у settings.json</td><td data-th="Skills, субагенти, плагіни">Skills (<code>SKILL.md</code>), субагенти (<code>.claude/agents</code>), плагіни й маркетплейси</td><td data-th="Файл інструкцій"><code>CLAUDE.md</code>; <code>AGENTS.md</code> — лише якщо немає <code>CLAUDE.md</code></td></tr>
+<tr><td data-th="Інструмент"><b>Codex</b></td><td data-th="MCP і hooks">MCP у <code>config.toml</code> або <code>codex mcp add</code>; hooks типово увімкнені</td><td data-th="Skills, субагенти, плагіни">Skills у <code>.agents/skills</code>; субагенти — TOML у <code>.codex/agents</code>; плагіни</td><td data-th="Файл інструкцій"><code>AGENTS.md</code> і <code>AGENTS.override.md</code>, ланцюжок від кореня до поточної папки, до 32 KiB</td></tr>
+<tr><td data-th="Інструмент"><b>Cursor</b></td><td data-th="MCP і hooks">MCP (<code>mcp.json</code>); hooks (<code>hooks.json</code>)</td><td data-th="Skills, субагенти, плагіни">Agent Skills, читає й <code>.claude/skills</code>, <code>.codex/skills</code>; субагенти, читає <code>.claude/agents</code>; плагіни з ручним рев'ю</td><td data-th="Файл інструкцій"><code>.cursor/rules/*.mdc</code>; <code>AGENTS.md</code> у корені й підпапках; <code>CLAUDE.md</code> — так само</td></tr>
+<tr><td data-th="Інструмент"><b>GitHub Copilot</b></td><td data-th="MCP і hooks">MCP в IDE, CLI і cloud agent; hooks — лише cloud agent і CLI (<code>.github/hooks/*.json</code>)</td><td data-th="Skills, субагенти, плагіни">Agent skills у <code>.github/skills</code>, <code>.claude/skills</code> або <code>.agents/skills</code>; custom agents у <code>.github/agents/</code>; prompt files — лише в IDE</td><td data-th="Файл інструкцій"><code>.github/copilot-instructions.md</code> і <code>.github/instructions/**/*.instructions.md</code>; плюс <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>GEMINI.md</code> — залежно від поверхні</td></tr>
+<tr><td data-th="Інструмент"><b>Gemini CLI</b></td><td data-th="MCP і hooks">MCP у <code>settings.json</code>; hooks</td><td data-th="Skills, субагенти, плагіни">Extensions (пакують MCP, команди, hooks, субагенти, skills); команди — <code>.toml</code></td><td data-th="Файл інструкцій"><code>GEMINI.md</code>: глобальний, проєктний, підпапки на вимогу; <code>AGENTS.md</code> — лише через налаштування</td></tr>
+</tbody></table></div>
+<h3>AGENTS.md як крос-інструментний стандарт</h3>
+<p>Формат випустила OpenAI в серпні 2025; 09.12.2025 він став одним із трьох стартових проєктів Agentic AI Foundation під Linux Foundation, поруч із MCP. Сайт <code>agents.md</code> заявляє понад 60 тисяч проєктів і правило вкладених файлів: <b>діє найближчий до редагованого файла <code>AGENTS.md</code></b>, а явний запит у чаті переважає все. Claude Code у списку сумісних інструментів на сайті немає, хоча документація Claude Code підтримку описує. «Підтримує» означає різне:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Читає <code>AGENTS.md</code></th><th>Нюанс</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент">Codex</td><td data-th="Читає AGENTS.md">Так, рідний формат</td><td data-th="Нюанс">У кожній папці — щонайбільше один файл; <code>AGENTS.override.md</code> перекриває</td></tr>
+<tr><td data-th="Інструмент">Cursor</td><td data-th="Читає AGENTS.md">Так</td><td data-th="Нюанс">Корінь і підпапки; <code>CLAUDE.md</code> читає так само</td></tr>
+<tr><td data-th="Інструмент">Copilot cloud agent, CLI, code review</td><td data-th="Читає AGENTS.md">Так</td><td data-th="Нюанс">Діє найближчий файл; також <code>CLAUDE.md</code> і <code>GEMINI.md</code></td></tr>
+<tr><td data-th="Інструмент">Copilot у VS Code</td><td data-th="Читає AGENTS.md">Налаштуванням <code>chat.useAgentsMdFile</code></td><td data-th="Нюанс">Вкладені файли — окремим експериментальним налаштуванням, типово вимкнено</td></tr>
+<tr><td data-th="Інструмент">Claude Code</td><td data-th="Читає AGENTS.md">Лише без <code>CLAUDE.md</code> (з 2.1.277)</td><td data-th="Нюанс">Навіть <code>CLAUDE.local.md</code> вимикає читання; обидва файли разом — <code>claude-md-and-agents-md</code></td></tr>
+<tr><td data-th="Інструмент">Gemini CLI</td><td data-th="Читає AGENTS.md">Ні, типово <code>GEMINI.md</code></td><td data-th="Нюанс">Потрібен <code>context.fileName</code>; наступник Antigravity CLI читає обидва</td></tr>
+</tbody></table></div>
+<p>Робочий рецепт: правила — в <code>AGENTS.md</code>, а файли конкретних інструментів лише підключають його. Перший блок — <code>CLAUDE.md</code>, другий — <code>.gemini/settings.json</code>:</p>
+<pre class="code" data-lang="markdown">@AGENTS.md
+
+<span class="k">## Лише для Claude Code</span>
+- …</pre>
+<pre class="code" data-lang="json">{
+  <span class="s">"context"</span>: {
+    <span class="s">"fileName"</span>: [<span class="s">"AGENTS.md"</span>, <span class="s">"GEMINI.md"</span>]
+  }
+}</pre>
+<div class="note tip"><span class="lbl">Пастка з CLAUDE.local.md</span>
+<p>Команда живе на <code>AGENTS.md</code>; один розробник додає собі <code>CLAUDE.local.md</code> з особистими нотатками — і його Claude Code <b>перестає читати</b> командні правила, бо локальний файл рахується як <code>CLAUDE.md</code>. Симптом — «агент забув, як запускати тести» лише в однієї людини.</p>
+</div>
+</section>
+
+<section class="sec" id="autonomy">
+<div class="sec-h"><span class="num">04</span><h2>Без людини поруч<span class="sub">Headless, sandbox і хмарні агенти</span></h2></div>
+<p>Коли агент працює в CI або в хмарі, дві речі важливіші за модель: <b>як його запустити скриптом</b> і <b>що зупинить його, якщо він помилиться</b>.</p>
+<h3>Локально: headless-режим і пісочниця</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Headless</th><th>Межа на рівні ОС</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент"><b>Claude Code</b></td><td data-th="Headless"><code>claude -p</code>, <code>--output-format json|stream-json</code></td><td data-th="Межа на рівні ОС">Sandbox лише для Bash: Seatbelt (macOS), bubblewrap (Linux, WSL2). Файлові інструменти, MCP і hooks — поза ним; на нативній Windows sandbox немає</td></tr>
+<tr><td data-th="Інструмент"><b>Codex</b></td><td data-th="Headless"><code>codex exec</code>, <code>--json</code>; типово лише читання</td><td data-th="Межа на рівні ОС">Sandbox увімкнений типово: <code>workspace-write</code> — запис лише в робочу папку, мережа вимкнена. Seatbelt, bwrap + seccomp, власний sandbox на Windows</td></tr>
+<tr><td data-th="Інструмент"><b>Cursor</b></td><td data-th="Headless"><code>agent -p</code>; без <code>--force</code> зміни лише пропонуються</td><td data-th="Межа на рівні ОС">Seatbelt; Landlock + seccomp на Linux. Режими Auto-review, Allowlist, Run Everything документація називає «best-effort guardrails», а не жорсткою межею</td></tr>
+<tr><td data-th="Інструмент"><b>Copilot CLI</b></td><td data-th="Headless"><code>copilot -p</code>, <code>--allow-tool</code> / <code>--deny-tool</code></td><td data-th="Межа на рівні ОС">Trusted directories — «евристика без гарантій»; локальний sandbox — GA з 07.10.2026 (<code>/sandbox enable</code>)</td></tr>
+<tr><td data-th="Інструмент"><b>Gemini CLI</b></td><td data-th="Headless"><code>gemini -p</code>, <code>-o json|stream-json</code>, коди виходу 42 і 53</td><td data-th="Межа на рівні ОС">Вмикається <code>--sandbox</code>: Docker, Podman, gVisor або Seatbelt (типовий профіль пише лише в проєкт, мережа відкрита)</td></tr>
+</tbody></table></div>
+<p>Відмінність не косметична: у Codex межа є <b>за замовчуванням</b>, у Gemini CLI її треба <b>увімкнути</b>, а в Copilot CLI і Cursor частина обмежень — прикладний рівень, який документація сама не вважає бар'єром. Моделі загроз і налаштування — урок 3.4.</p>
+<h3>У хмарі: агент, який повертає pull request</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Агент</th><th>Де виконується</th><th>Як запускають</th><th>Обмеження й результат</th></tr></thead>
+<tbody>
+<tr><td data-th="Агент"><b>Claude Code on the web</b></td><td data-th="Де виконується">Ізольована VM Anthropic або self-hosted середовище організації</td><td data-th="Як запускають"><code>claude.ai/code</code>, мобільний застосунок</td><td data-th="Обмеження й результат">Плани Pro, Max, Team; в Enterprise — premium-місця або Chat + Claude Code</td></tr>
+<tr><td data-th="Агент"><b>Codex Cloud</b></td><td data-th="Де виконується">VM на кожну задачу</td><td data-th="Як запускають"><code>chatgpt.com/codex</code>, <code>@codex</code> на GitHub, Slack, Linear</td><td data-th="Обмеження й результат">В Enterprise-воркспейсах типово вимкнений; з API-ключем хмарних функцій немає</td></tr>
+<tr><td data-th="Агент"><b>Cursor Cloud Agents</b></td><td data-th="Де виконується">Ізольовані Ubuntu-VM</td><td data-th="Як запускають">IDE, веб, iOS, <code>@cursor</code> на GitHub і Bitbucket, Slack, Linear, API</td><td data-th="Обмеження й результат">Від плану Premium; на Plus недоступні</td></tr>
+<tr><td data-th="Агент"><b>Copilot cloud agent</b></td><td data-th="Де виконується">Ефемерне середовище на GitHub Actions, до 59 хвилин</td><td data-th="Як запускають">Issue або задача на github.com, IDE, CLI</td><td data-th="Обмеження й результат">Один PR на задачу; пушить лише в гілки <code>copilot/</code>; workflow стартують після кнопки «Approve and run workflows»; сам не схвалює і не зливає PR</td></tr>
+<tr><td data-th="Агент"><b>Jules</b> (Google)</td><td data-th="Де виконується">Cloud VM, клон репозиторію</td><td data-th="Як запускають"><code>jules.google</code></td><td data-th="Обмеження й результат">Асинхронний агент на моделях Gemini; окремий продукт, не Gemini CLI</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Хмарний агент переносить межу безпеки з вашого ноутбука в процес рев'ю: найсильніший контроль у таблиці — не VM, а правила Copilot «лише своя гілка» і «CI стартує після людини». Якщо обираєте хмарного агента іншого вендора, відтворіть ці два правила самі: захист гілок і ручний запуск workflow для PR від бота.</p>
+</div>
+</section>
+
+<section class="sec" id="money">
+<div class="sec-h"><span class="num">05</span><h2>Гроші й контроль<span class="sub">Тарифна модель і адмін-політики</span></h2></div>
+<p>Ціни змінюються частіше за функції, тому тут — модель оплати й посилання; цифри дивіться на сторінках тарифів у день рішення.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Як платять</th><th>Що контролює адмін</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент"><b>Claude Code</b></td><td data-th="Як платять">Входить у підписки Pro, Max, Team, Enterprise (від 20 місць); або API через Console за токени. <a href="https://claude.com/pricing" target="_blank" rel="noopener">Тарифи</a></td><td data-th="Що контролює адмін">SSO, SCIM, managed settings, які не перевизначить жоден рівень; аналітика використання; в Enterprise — ролі й Compliance API</td></tr>
+<tr><td data-th="Інструмент"><b>Codex</b></td><td data-th="Як платять">Входить у плани ChatGPT від Free до Enterprise; ліміти залежать від моделі, з п'ятигодинними вікнами; понад ліміт — кредити; або API-ключ за тарифами API. <a href="https://learn.chatgpt.com/docs/pricing" target="_blank" rel="noopener">Тарифи</a></td><td data-th="Що контролює адмін"><code>requirements.toml</code> — обмеження, які користувач не змінить (sandbox, MCP allowlist, мережа), доставка через MDM; RBAC; Compliance API</td></tr>
+<tr><td data-th="Інструмент"><b>Cursor</b></td><td data-th="Як платять">Частина The X Subscription: Free, Plus, Premium, Super, Ultra, Teams, Enterprise; тижневий пул на моделі Cursor; сторонні моделі — від Premium, за ціною API з передплаченого кредиту. <a href="https://cursor.com/pricing" target="_blank" rel="noopener">Тарифи</a></td><td data-th="Що контролює адмін">SAML SSO (Teams, Enterprise), SCIM, примусовий Privacy Mode, audit logs, обмеження моделей і MCP-серверів, заборона власних ключів</td></tr>
+<tr><td data-th="Інструмент"><b>GitHub Copilot</b></td><td data-th="Як платять">З 01.06.2026 — за токени: кожен план має пакет GitHub AI Credits (1 кредит = $0.01); CLI і Copilot app — у всіх планах, cloud agent — у платних. <a href="https://docs.github.com/en/copilot/get-started/plans" target="_blank" rel="noopener">Плани</a></td><td data-th="Що контролює адмін">Політики фіч, агентів і моделей; content exclusion; audit log (без локальних промптів); IP indemnity в організаційних планах</td></tr>
+<tr><td data-th="Інструмент"><b>Gemini CLI</b></td><td data-th="Як платять">З 18.06.2026 — ліцензії Gemini Code Assist Standard/Enterprise (нові вже не продаються) або платний API-ключ. <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener">Тарифи API</a></td><td data-th="Що контролює адмін">Enterprise Admin Controls: Strict Mode блокує yolo, розширення типово вимкнені; системні settings — «не надійна межа безпеки»</td></tr>
+</tbody></table></div>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Дві моделі оплати по-різному розподіляють ризик. <b>Підписка на людину</b> — передбачуваний бюджет, але ліміт закінчується посеред задачі. <b>Оплата за токени</b> — платите за роботу, але один агент у циклі спалює місячний бюджет за ніч, тому потрібні ліміти з уроку 2.2. Copilot за рік перейшов із запитів на токени, Cursor — на пули з окремою платою за чужі моделі: закладайте в рішення, що модель оплати зміниться.</p>
+</div>
+</section>
+
+<section class="sec" id="bench">
+<div class="sec-h"><span class="num">06</span><h2>Бенчмарки<span class="sub">Що з них можна чесно взяти</span></h2></div>
+<p>Незалежних рейтингів «інструментів» немає. Є бенчмарки, де оцінюють <b>пару harness + модель</b> з конкретним рівнем міркувань.</p>
+<p><b>Terminal-Bench 4.0</b> (реліз 26.08.2026): довгі задачі в терміналі з різних доменів — бази даних, ML-чекпоінти, RTL-дизайни, формальні доведення, код на Python, C і CUDA, середовища з кількома контейнерами й GPU. У версії 4.0 вісім задач прибрали і 19 виправили, лишилося 66; одна спроба лідера триває в середньому 80 хвилин. Таблиця має окремі колонки для агента, моделі, effort, токенів і вартості прогону.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">Claude Code · Opus 5.5 · max · $4,7 тис.</span><span class="tr"><i style="--v:64.8%"></i><b style="--v:64.8%">64,8%</b></span></div>
+  <div class="bar t"><span class="k">Claude Code · Sonnet 5.5 · max · $7,3 тис.</span><span class="tr"><i style="--v:61.8%"></i><b style="--v:61.8%">61,8%</b></span></div>
+  <div class="bar m"><span class="k">Codex · GPT-6.1 Sol · max · $0,6 тис.</span><span class="tr"><i style="--v:58.2%"></i><b style="--v:58.2%">58,2%</b></span></div>
+  <div class="bar m"><span class="k">Codex · GPT-6 Astra · max · $3,3 тис.</span><span class="tr"><i style="--v:58.2%"></i><b style="--v:58.2%">58,2%</b></span></div>
+  <div class="bar t"><span class="k">Claude Code · Fable 5.1 · max</span><span class="tr"><i style="--v:57.9%"></i><b style="--v:57.9%">57,9%</b></span></div>
+  <div class="bar t"><span class="k">Claude Code · Fable 5.1 · low</span><span class="tr"><i style="--v:43.3%"></i><b style="--v:43.3%">43,3%</b></span></div>
+  <div class="bar p"><span class="k">mini-SWE-agent · Gemini 3.8 Flash · high</span><span class="tr"><i style="--v:19.1%"></i><b style="--v:19.1%">19,1%</b></span></div>
+</div>
+<figcaption>Terminal-Bench 4.0, частка розв'язаних задач (330 спроб на рядок, похибка ±3–4 п. п.), таблиця оновлена 06.10.2026; сума — вартість усього прогону з тієї ж таблиці. Перші п'ять рядків таблиці і два для порівняння. Cursor, Copilot і Gemini CLI у таблиці немає — їх не подавали, це не оцінка.</figcaption>
+</figure>
+<ul>
+<li><b>Ціна за бал різниться в рази:</b> між другою і третьою позицією 3,6 п. п. при вартості прогону $7,3 тис. проти $0,6 тис. Для CI з сотнями запусків це важливіше за перше місце.</li>
+<li><b>Effort — така сама змінна, як модель:</b> та сама пара Claude Code + Fable 5.1 дає 43,3% на <code>low</code> і 57,9% на <code>max</code>.</li>
+<li><b>Похибка ±3 п. п.</b> робить місця 3–8 статистично нерозрізненними.</li>
+</ul>
+<p><b>SWE-bench Verified</b> розділяє дві таблиці: повна порівнює довільні системи, а <b>Bash Only</b> проганяє всі моделі в одному мінімальному harness (mini-SWE-agent) — «scores compare models rather than harnesses». Останні записи датовані лютим 2026, тож для свіжих моделей це вже історія.</p>
+<div class="note warn"><span class="lbl">Як читати будь-який рейтинг</span>
+<p>Перевірте п'ять речей: <b>дата</b> рядка, <b>хто подав</b> (вендор чи незалежні), <b>harness</b> і <b>effort</b>, <b>похибка</b>, <b>вартість</b>. Якщо чогось із цього немає — це маркетинг, а не вимір. Свій вимір — 10–20 задач з вашого репозиторію з автоматичною перевіркою (модуль 12).</p>
+</div>
+</section>
+
+<section class="sec" id="run">
+<div class="sec-h"><span class="num">07</span><h2>Одна задача, справжній прогін<span class="sub">AGENTS.md, Claude Code і ціна в центах</span></h2></div>
+<p>Чим перевіряти інструмент — порівняльною таблицею чи власною задачею? Таблиця відсіює, задача вирішує. Мінімальний стенд: репозиторій з одним тестом, що падає, і <code>AGENTS.md</code> <b>без</b> <code>CLAUDE.md</code>. Останній рядок інструкції — маркер, за яким видно, що агент файл прочитав.</p>
+<pre class="code" data-lang="markdown"><span class="cm"># Lectern (toy)</span>
+- Tests: `python3 -m unittest -q`. Do not install packages.
+- Change only the code under test, never the tests.
+- Final answer: at most 3 lines, in Ukrainian; last line exactly `AGENTS.md: ok`.</pre>
+<pre class="code" data-lang="python"><span class="cm"># slug.py; падає тест:</span>
+<span class="cm"># "Hash Tables: Part 2!" → "hash-tables-part-2"</span>
+<span class="k">def</span> slugify(title: str) -&gt; str:
+    words = re.findall(<span class="s">r"[a-z0-9]+"</span>, title)
+    <span class="k">return</span> <span class="s">"-"</span>.join(words)</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/toy</span></div>
+<pre><span class="ps">$ </span><span class="c">for c in claude codex agent copilot gemini; do command -v $c || echo "$c: not found"; done</span>
+~/.local/bin/claude
+codex: not found
+agent: not found
+copilot: not found
+gemini: not found
+<span class="ps">$ </span><span class="c">claude -p "Один тест падає. Виправ і перевір." --model haiku --setting-sources project --strict-mcp-config --permission-mode acceptEdits --allowedTools "Read" "Edit" "Bash(python3 -m unittest*)" --output-format json &gt; run.json</span>
+<span class="ps">$ </span><span class="c">jq -r .result run.json</span>
+Упав `test_case_and_punctuation`: `slugify` не переводив рядок у нижній регістр, тому регулярний вираз `[a-z0-9]` відкидав великі літери ("Hash" ставав "ash").
+Виправлено в `slug.py`: `re.findall(r"[a-z0-9]+", title.lower())`; тести не чіпав, пакети не встановлював.
+Усі 2 тести проходять (`python3 -m unittest -q` → OK).
+<span class="ok">AGENTS.md: ok</span>
+<span class="ps">$ </span><span class="c">git diff --stat</span>
+ slug.py | 2 <span class="ok">+</span><span class="er">-</span>
+ 1 file changed, 1 insertion(+), 1 deletion(-)</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299, модель claude-haiku-5-5 · 14.10.2026 · шлях скорочено до ~</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Поле <code>run.json</code></th><th>Значення</th><th>Що з цього випливає</th></tr></thead>
+<tbody>
+<tr><td data-th="Поле run.json"><code>num_turns</code></td><td data-th="Значення">8</td><td data-th="Що з цього випливає">Однорядкова правка — вісім ходів циклу: прочитати, запустити, виправити, перевірити.</td></tr>
+<tr><td data-th="Поле run.json"><code>duration_ms</code> / <code>ttft_ms</code></td><td data-th="Значення">17 999 / 1 727</td><td data-th="Що з цього випливає">18 с на всю задачу; перший токен — за 1,7 с.</td></tr>
+<tr><td data-th="Поле run.json">кеш: читання / запис</td><td data-th="Значення">179 836 / 10 608 токенів</td><td data-th="Що з цього випливає">Системний промпт і визначення інструментів повторюються щоходу; без prompt caching (урок 1.5) задача коштувала б у рази дорожче.</td></tr>
+<tr><td data-th="Поле run.json"><code>output_tokens</code></td><td data-th="Значення">1 689</td><td data-th="Що з цього випливає">Розмір самої роботи — менше 1% від прочитаного.</td></tr>
+<tr><td data-th="Поле run.json"><code>total_cost_usd</code></td><td data-th="Значення">0.00488</td><td data-th="Що з цього випливає">Пів цента за списковою ціною API; на підписці списується з ліміту плану.</td></tr>
+<tr><td data-th="Поле run.json"><code>permission_denials</code></td><td data-th="Значення">1</td><td data-th="Що з цього випливає">Агент спробував <code>python3 -m unittest -q 2&gt;&amp;1; echo …; git status</code> — складена команда не підпала під правило, і harness її не пустив.</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Що показав прогін</span>
+<p><b>Портативність:</b> файл, написаний для «всіх агентів», Claude Code прочитав без жодного імпорту — маркер на місці. <b>Накладні витрати harness:</b> на дрібних задачах ціну визначає не код, а повторюваний контекст агента; порівнювати інструменти треба на <b>ваших</b> задачах і за їхніми власними звітами про токени, а не за ціною моделі.</p>
+</div>
+<p>Та сама задача в інших інструментах. Жоден із них на цій машині не встановлено, тож це команди з документації, а не прогони:</p>
+<div class="tabs">
+<input type="radio" name="run-t" id="run-t1" checked><input type="radio" name="run-t" id="run-t2"><input type="radio" name="run-t" id="run-t3"><input type="radio" name="run-t" id="run-t4">
+<div class="tab-l"><label for="run-t1">Codex</label><label for="run-t2">Cursor</label><label for="run-t3">Copilot</label><label for="run-t4">Gemini</label></div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/toy</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec --sandbox workspace-write --json "Один тест падає. Виправ і перевір."</span></pre>
+<div class="cap">команда з офіційної документації Codex · не запускалась у цьому уроці</div></div>
+<p><code>AGENTS.md</code> — рідний формат Codex. <code>codex exec</code> типово лише читає; з <code>--json</code> stdout стає потоком JSONL-подій.</p>
+</div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/toy</span></div>
+<pre><span class="ps">$ </span><span class="c">agent -p --force --output-format json "Один тест падає. Виправ і перевір."</span></pre>
+<div class="cap">команда з офіційної документації Cursor · не запускалась у цьому уроці</div></div>
+<p>Без <code>--force</code> зміни лише пропонуються. Cursor читає <code>AGENTS.md</code> у корені й підпапках.</p>
+</div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/toy</span></div>
+<pre><span class="ps">$ </span><span class="c">copilot -p "Один тест падає. Виправ і перевір." --allow-tool='write' --allow-tool='shell(python3)'</span></pre>
+<div class="cap">команда з офіційної документації GitHub Copilot CLI · не запускалась у цьому уроці</div></div>
+<p><code>--allow-tool</code> дозволяє інструмент без питань, <code>--deny-tool</code> має пріоритет над ним. CLI читає <code>AGENTS.md</code>, а також <code>CLAUDE.md</code> і <code>GEMINI.md</code>.</p>
+</div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/toy</span></div>
+<pre><span class="ps">$ </span><span class="c">gemini -p "Один тест падає. Виправ і перевір." --approval-mode auto_edit -o json</span></pre>
+<div class="cap">команда з офіційної документації Gemini CLI · не запускалась у цьому уроці</div></div>
+<p><code>auto_edit</code> схвалює правки файлів; дозволи на shell-команди задають правила Policy Engine. <b>Наш <code>AGENTS.md</code> Gemini CLI типово не прочитає</b> — потрібне налаштування <code>context.fileName</code> (наступний розділ).</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="choose">
+<div class="sec-h"><span class="num">08</span><h2>Як обирати<span class="sub">Таблиця рішень і ціна переходу</span></h2></div>
+<p>Основний інструмент — де йде щоденна робота; запасний — для крос-рев'ю іншою родиною моделей і на випадок, коли основний змінить умови.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ситуація</th><th>Основний</th><th>Запасний</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Ситуація">Соло-розробник, живе в терміналі</td><td data-th="Основний">Claude Code</td><td data-th="Запасний">Codex CLI</td><td data-th="Чому">Обидва термінальні з headless і hooks, обидва читають <code>AGENTS.md</code>; різні родини моделей ловлять різні помилки; Codex CLI — Apache-2.0</td></tr>
+<tr><td data-th="Ситуація">Команда на GitHub, усе через PR</td><td data-th="Основний">Copilot cloud agent</td><td data-th="Запасний">Claude Code GitHub Action або <code>@codex review</code></td><td data-th="Чому">Агент живе там, де процес: issue → PR у гілці <code>copilot/</code>, CI після людини, політики організації; Claude і Codex доступні як сторонні агенти на GitHub</td></tr>
+<tr><td data-th="Ситуація">Фронтенд-команда в IDE</td><td data-th="Основний">Cursor (план із Cloud Agents і сторонніми моделями) або Copilot agent mode у VS Code</td><td data-th="Запасний">Claude Code у VS Code</td><td data-th="Чому">Візуальний diff, Tab-автодоповнення, вибір моделі під задачу; на Cursor Plus немає сторонніх моделей і власних ключів</td></tr>
+<tr><td data-th="Ситуація">Регульоване підприємство</td><td data-th="Основний">Те, що вже пройшло закупівлю: Copilot Business/Enterprise, Claude Code через Bedrock, Google Cloud або Foundry, Codex з <code>requirements.toml</code></td><td data-th="Запасний">—</td><td data-th="Чому">Вирішують SSO і SCIM, політики, яких не обійде користувач, аудит, де обробляються дані (урок 3.3), а не бал на бенчмарку</td></tr>
+<tr><td data-th="Ситуація">Лише відкритий код</td><td data-th="Основний">Codex CLI з <code>--oss</code> і локальною моделлю</td><td data-th="Запасний">OpenCode (MIT, 75+ провайдерів) або Aider (Apache-2.0)</td><td data-th="Чому">Gemini CLI теж Apache-2.0, але з червня 2026 працює лише з платним ключем чи ліцензією Code Assist; відкритий тільки harness, хмара й моделі вендорів — ні</td></tr>
+<tr><td data-th="Ситуація">Потрібні моделі кількох вендорів</td><td data-th="Основний">Cursor або Copilot</td><td data-th="Запасний">Codex <code>--oss</code> для локальних</td><td data-th="Чому">Claude Code працює лише з Claude, Gemini CLI — лише з Gemini; у Cursor сторонні моделі оплачуються окремо від пулу плану</td></tr>
+</tbody></table></div>
+<h3>Ціна переходу: що забираєте з собою</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Артефакт</th><th>Переноситься?</th><th>Як здешевити вихід</th></tr></thead>
+<tbody>
+<tr><td data-th="Артефакт">Файл інструкцій</td><td data-th="Переноситься?">Майже: <code>AGENTS.md</code> читають усі п'ять, двом треба допомогти</td><td data-th="Як здешевити вихід">Правила в <code>AGENTS.md</code>; <code>CLAUDE.md</code> = <code>@AGENTS.md</code>; Gemini — <code>context.fileName</code></td></tr>
+<tr><td data-th="Артефакт">MCP-сервери</td><td data-th="Переноситься?">Протокол спільний, конфіги різні (<code>.mcp.json</code>, <code>config.toml</code>, <code>mcp.json</code>, <code>settings.json</code>)</td><td data-th="Як здешевити вихід">Сервер — окремий пакет; конфіг під кожен інструмент — п'ять рядків</td></tr>
+<tr><td data-th="Артефакт">Skills</td><td data-th="Переноситься?">Здебільшого: <code>SKILL.md</code> — відкритий стандарт Agent Skills; Cursor і Copilot читають <code>.claude/skills</code></td><td data-th="Як здешевити вихід">Одна тека skills, решта — симлінки</td></tr>
+<tr><td data-th="Артефакт">Hooks</td><td data-th="Переноситься?">Ні: різні події, формати й семантика</td><td data-th="Як здешевити вихід">Логіка — у скрипті чи <code>make check</code>, hook лише викликає його</td></tr>
+<tr><td data-th="Артефакт">Хмарні середовища, адмін-політики, білінг</td><td data-th="Переноситься?">Ні</td><td data-th="Як здешевити вихід">Закладати в рішення як вартість, а не як деталь</td></tr>
+</tbody></table></div>
+<div class="note product"><span class="lbl">Продуктове мислення · vendor lock-in</span>
+<p>Lock-in тут не в коді, а в <b>конфігурації й звичках</b>: hooks, субагенти, налаштоване хмарне середовище, домовленості команди. Навіть «рідний» переїзд Gemini CLI → Antigravity CLI, до якого Google дав місяць, змінив шляхи: skills переїхали з <code>.gemini/skills</code> у <code>.agents/skills</code>, MCP — у новий файл конфігурації, extensions стали плагінами з конвертером <code>agy plugin import gemini</code>. Без змін пережили переїзд лише <code>GEMINI.md</code> і <code>AGENTS.md</code> — Antigravity читає обидва.</p>
+</div>
+<h3>Типові помилки вибору</h3>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Помилка</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td>Обрати за першим місцем у рейтингу моделей</td><td>Рейтинг міряє пару harness + модель з певним effort; приміряйте на своїх 10–20 задачах і рахуйте ціну за розв'язану</td></tr>
+<tr><td>Вірити README, огляду чи власній пам'яті річної давнини</td><td>Звіряти документацію, тарифи й changelog у день рішення; README Gemini CLI досі обіцяє безкоштовний tier</td></tr>
+<tr><td>Правила лише в <code>CLAUDE.md</code> у команді з різними інструментами</td><td>Codex типово читає лише <code>AGENTS.md</code> (інші імена — через <code>project_doc_fallback_filenames</code>); джерело правил — <code>AGENTS.md</code></td></tr>
+<tr><td>Вважати режими дозволів межею безпеки</td><td>Межа — sandbox ОС, ізольована VM і захист гілок; allowlist у Cursor і trusted directories у Copilot CLI самі вендори так не називають</td></tr>
+<tr><td>Порівнювати ціни за прайсом моделі</td><td>Порівнювати за звітом інструмента: у нашому прогоні понад 99% токенів — контекст harness, а не робота</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: ADR вибору інструментів</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 3.2 · <code>docs/adr/0001-coding-agents.md</code></div><div class="pb">
+<p>Команда Lectern — автор, який працює в терміналі щодня, і контриб'ютор, що приходить раз на кілька тижнів зі своїм інструментом. Код уже залежить від Claude Code: шлях <code>--engine sdk</code> з уроку 2.5 запускає Claude Agent SDK. ADR фіксує рішення так, щоб через пів року було видно, <b>чому</b> його прийняли і що його скасує.</p>
+<pre class="code" data-lang="markdown"><span class="cm"># ADR 0001 — Coding agents</span>
+Status: accepted · 14.10.2026
+
+<span class="k">## Context</span>
+Solo author, terminal-first, Python;
+1 occasional contributor, tool unknown.
+Runtime uses Claude Code (agent_sdk.py);
+agent_api.py is the exit path.
+Budget: 1 subscription; no SSO needs.
+
+<span class="k">## Options</span>
+A Claude Code · B Claude Code + Codex CLI
+C Cursor · D Copilot cloud agent
+
+<span class="k">## Decision</span>
+B. Primary: Claude Code — same harness
+as the product runtime; hooks, skills.
+Secondary: Codex CLI — cross-model review
+of risky diffs; Apache-2.0, AGENTS.md.
+AGENTS.md = single source of rules;
+CLAUDE.md = "@AGENTS.md" + Claude notes.
+
+<span class="k">## Consequences</span>
++ Contributor's tool reads AGENTS.md.
++ Checks live in `make check`; hooks
+  only call it, so no hook lock-in.
+- Two vendors to track: revisit on a
+  pricing or AGENTS.md support change.</pre>
+<p>Ваш крок: скопіюйте шаблон у <code>docs/adr/</code>, замініть контекст на свій, створіть <code>AGENTS.md</code> з командами Lectern (<code>python -m pytest</code>, <code>lectern check</code>) і <code>CLAUDE.md</code> з одним рядком <code>@AGENTS.md</code>. Перевірте, що маркер з розділу «Справжній прогін» з'являється у відповіді <code>claude -p</code>.</p>
+</div></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Ситуація → інструмент</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">AGENTS.md є, Gemini CLI його «не бачить»</span><span class="h">чому?</span></span><span class="b"><span class="t">Типово лише GEMINI.md</span><span class="d"><code>context.fileName: ["AGENTS.md", "GEMINI.md"]</code> у <code>.gemini/settings.json</code></span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">PR від агента не може сам запустити CI</span><span class="h">хто так уміє з коробки?</span></span><span class="b"><span class="t">Copilot cloud agent</span><span class="d">workflow чекають «Approve and run» людини; push лише в <code>copilot/</code></span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Межа на рівні ОС типово увімкнена</span><span class="h">у кого з п'яти?</span></span><span class="b"><span class="t">Codex</span><span class="d"><code>workspace-write</code>: запис лише в робочу папку, мережа вимкнена</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Відкритий harness + локальна модель</span><span class="h">без хмари вендора</span></span><span class="b"><span class="t">Codex CLI <code>--oss</code></span><span class="d">Apache-2.0; Ollama або LM Studio</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Свій ключ у Cursor</span><span class="h">що втрачаєте?</span></span><span class="b"><span class="t">ZDR Cursor і Tab</span><span class="d">ключ працює лише для chat-моделей, Zero Data Retention Cursor не діє</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">12 hooks із логікою всередині</span><span class="h">додаємо другий інструмент</span></span><span class="b"><span class="t">Логіку — у скрипти</span><span class="d">hook лише викликає <code>make check</code>; формати hooks не переносяться</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. У репозиторії є <code>AGENTS.md</code> з правилами команди і <code>CLAUDE.md</code> з двома рядками про стиль комітів. Розробник у Claude Code скаржиться, що агент не знає команди тестів з <code>AGENTS.md</code>. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span><code>AGENTS.md</code> більший за 32 KiB, і Claude Code відкинув хвіст разом із командою тестів</span></label><label class="opt"><input type="radio" name="q1"><span>Claude Code бере лише найближчий до редагованого файла <code>AGENTS.md</code>, а цей лежить у корені</span></label><label class="opt ok"><input type="radio" name="q1"><span>Поруч лежить <code>CLAUDE.md</code>, тож типово читається лише він: потрібен <code>@AGENTS.md</code> у ньому</span></label></div>
+    <div class="why yes">Так. З 2.1.277 Claude Code читає <code>AGENTS.md</code> лише за відсутності <code>CLAUDE.md</code>; імпорт <code>@AGENTS.md</code> або режим <code>claude-md-and-agents-md</code> вмикають обидва.</div>
+    <div class="why no">Ліміт 32 KiB — це Codex, а «діє найближчий файл» — правило agents.md і Copilot. Claude Code читає <code>AGENTS.md</code>, але типово лише тоді, коли поруч немає <code>CLAUDE.md</code>.</div></div>
+  <div class="q"><div class="qt">2. Команда живе на одному <code>AGENTS.md</code>. Розробниця створює собі <code>CLAUDE.local.md</code> з особистими нотатками. Що зміниться для неї?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Її Claude Code перестане читати командний <code>AGENTS.md</code></span></label><label class="opt"><input type="radio" name="q2"><span>Нічого: локальний файл лише доповнює командні правила</span></label><label class="opt"><input type="radio" name="q2"><span>Агент читатиме обидва, а локальний переважить при суперечностях</span></label></div>
+    <div class="why yes">Так. <code>CLAUDE.local.md</code> рахується як <code>CLAUDE.md</code>, і типовий режим вимикає <code>AGENTS.md</code>. Рішення — <code>claude-md-and-agents-md</code>.</div>
+    <div class="why no">Документація прямо попереджає: <code>CLAUDE.local.md</code> входить у перевірку «чи є CLAUDE.md», тож <code>AGENTS.md</code> більше не завантажується — ні як доповнення, ні як другий файл.</div></div>
+  <div class="q"><div class="qt">3. Банк хоче хмарного агента, який бере issue і повертає PR, але жоден код від бота не має запускатися в CI без людини. Що найближче до цього з коробки?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Codex Cloud: кожна задача виконується в окремій VM, тож код бота не дістанеться вашого CI</span></label><label class="opt ok"><input type="radio" name="q3"><span>Copilot cloud agent: push лише в <code>copilot/</code>, workflow — після «Approve and run workflows»</span></label><label class="opt"><input type="radio" name="q3"><span>Cursor Cloud Agents: ізольовані Ubuntu-VM і запуск через <code>@cursor</code> прямо з issue</span></label></div>
+    <div class="why yes">Так. VM ізолює виконання задачі, але не ваш CI; правило ручного запуску workflow — саме те, що потрібно.</div>
+    <div class="why no">Ізоляція VM захищає машину агента, а не ваш pipeline: PR від бота однаково запускає workflow. Copilot cloud agent не запускає workflow до схвалення людиною і не зливає PR сам.</div></div>
+  <div class="q"><div class="qt">4. Terminal-Bench 4.0: Claude Code + Opus 5.5 — 64,8% за $4,7 тис., Codex + GPT-6.1 Sol — 58,2% за $0,6 тис. (обидва ±3 п. п.). Ви плануєте сотні прогонів агента в CI на місяць. Який висновок коректний?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Брати Claude Code + Opus 5.5: перевага в 6,6 п. п. більша за похибку обох рядків</span></label><label class="opt"><input type="radio" name="q4"><span>Брати Codex: дешевша пара за майже рівного балу означає кращий harness</span></label><label class="opt ok"><input type="radio" name="q4"><span>Обидві пари — кандидати; рішення — за ціною розв'язаної задачі на вашому наборі</span></label></div>
+    <div class="why yes">Так. Бенчмарк оцінює пари harness + модель + effort, а для масового CI вартість у 7 разів — аргумент такої самої ваги, як 6,6 п. п.</div>
+    <div class="why no">Рейтинг не порівнює «інструменти» окремо від моделі й effort і не знає вашого розподілу задач. Перевага в балах реальна, але різниця в ціні — у рази; перевірте обидві пари на своїх задачах.</div></div>
+  <div class="q"><div class="qt">5. Колега каже: «Cursor і Copilot немає в Terminal-Bench 4.0, отже вони слабші». Що відповісти?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Відсутність рядка означає, що результат не подавали, а не що він гірший</span></label><label class="opt"><input type="radio" name="q5"><span>Так: Terminal-Bench сам проганяє популярні агенти й публікує кожен результат</span></label><label class="opt"><input type="radio" name="q5"><span>Їх там і не могло бути: бенчмарк приймає лише агенти без IDE</span></label></div>
+    <div class="why yes">Так. Рядки з'являються, коли хтось подає прогін. Висновків про тих, кого немає, бенчмарк не дає.</div>
+    <div class="why no">Таблиця містить лише подані прогони, тож про відсутніх вона мовчить. До того ж обидва інструменти мають CLI (<code>agent</code>, <code>copilot</code>).</div></div>
+  <div class="q"><div class="qt">6. Стартап на Cursor Plus хоче підключити свій ключ Anthropic, щоб заощадити і «залишити Zero Data Retention». Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Нічого: ключ лише змінює, хто виставляє рахунок, а ZDR Cursor діє як і раніше</span></label><label class="opt ok"><input type="radio" name="q6"><span>На Plus власні ключі недоступні, а з власним ключем ZDR самого Cursor не діє</span></label><label class="opt"><input type="radio" name="q6"><span>Ключ спрацює лише для Tab, а chat-моделі лишаться на пулі плану</span></label></div>
+    <div class="why yes">Так. До того ж на старших планах ключ працює лише для chat-моделей, Tab лишається на моделях Cursor.</div>
+    <div class="why no">Документація Cursor прямо каже, що його Zero Data Retention на власні ключі не поширюється, а на Plus їх і не підключити. І навпаки: ключ працює для chat-моделей, а Tab лишається на моделях Cursor.</div></div>
+  <div class="q"><div class="qt">7. Вимога: лише відкритий код harness і жодної хмари вендора — модель локальна. Що обрати з п'ятірки?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Gemini CLI: Apache-2.0, а з <code>--sandbox</code> він працює без хмари вендора</span></label><label class="opt"><input type="radio" name="q7"><span>Claude Code з LLM gateway, що веде запити на локальну модель</span></label><label class="opt ok"><input type="radio" name="q7"><span>Codex CLI з <code>--oss</code> (Apache-2.0, Ollama або LM Studio)</span></label></div>
+    <div class="why yes">Так. Відкритий CLI і офіційна підтримка локальних провайдерів.</div>
+    <div class="why no">Gemini CLI відкритий, але працює лише з моделями Gemini через платний ключ або ліцензію; <code>--sandbox</code> обмежує доступ до файлів, а не те, куди йдуть запити. Claude Code пропрієтарний, а маршрутизацію на не-Claude моделі документація не підтримує.</div></div>
+  <div class="q"><div class="qt">8. У прогоні уроку: 179 836 токенів прочитано з кешу, 1 689 згенеровано, $0,0049. Що з цього найкорисніше для порівняння інструментів?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Ціну дрібної задачі визначає контекст harness: порівнюйте за звітами інструментів</span></label><label class="opt"><input type="radio" name="q8"><span>Порівнювати за прайсом моделі: 1 689 вихідних токенів і є вартість роботи</span></label><label class="opt"><input type="radio" name="q8"><span>Кеш маскує реальну ціну агента, тож для чесного порівняння prompt caching варто вимкнути</span></label></div>
+    <div class="why yes">Так. Робота — менше 1% токенів; решта — системний промпт і визначення інструментів, які кожен harness має свої. Порівнюйте на своїх задачах.</div>
+    <div class="why no">Понад 99% токенів займає контекст самого агента, тож прайс за вихід мало що каже. А кеш — не викривлення, а нормальний режим: без нього той самий контекст коштував би в рази дорожче.</div></div>
+  <div class="q"><div class="qt">9. У команди 12 hooks Claude Code з логікою перевірок усередині JSON-команд. Додають Codex як другий інструмент. Що зробити спершу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Переписати всі 12 hooks у формат Codex і тримати дві копії синхронними</span></label><label class="opt ok"><input type="radio" name="q9"><span>Винести логіку в <code>make check</code>: hooks обох інструментів лише викликатимуть його</span></label><label class="opt"><input type="radio" name="q9"><span>Перенести перевірки в <code>AGENTS.md</code>: його читають обидва, а формати hooks різні</span></label></div>
+    <div class="why yes">Так. Hooks мають різні події й формати; спільний скрипт робить їх тонкими і переносними.</div>
+    <div class="why no">Дублювати логіку у двох форматах — подвоїти lock-in. Правило в <code>AGENTS.md</code> — інструкція для моделі, а не перевірка, яку запускає harness. Codex має hooks, і вони типово увімкнені; спільний скрипт пишеться один раз.</div></div>
+  <div class="q"><div class="qt">10. Бюджет на Copilot для команди склали за статтею минулого року в «premium requests». Що перевірити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Лише назву: з 01.04.2026 coding agent став cloud agent, а модель оплати та сама</span></label><label class="opt"><input type="radio" name="q10"><span>Чи всі мають платні місця: CLI і Copilot app тепер доступні лише в платних планах</span></label><label class="opt ok"><input type="radio" name="q10"><span>З 01.06.2026 Copilot рахує токени в GitHub AI Credits; бюджет треба перерахувати</span></label></div>
+    <div class="why yes">Так. Модель оплати змінилася з запитів на токени, і ціна взаємодії тепер залежить від моделі й обсягу.</div>
+    <div class="why no">Перейменування агента (01.04.2026) — окрема зміна, а request-based billing замінено оплатою за токени з 01.06.2026. CLI і Copilot app є в усіх планах; лише cloud agent — у платних.</div></div>
+  <div class="q"><div class="qt">11. Соло-розробник у терміналі на підписці Claude хоче другий інструмент для крос-рев'ю ризикових diff. Який вибір найкраще обґрунтований?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q11"><span>Codex CLI: інша родина моделей, читає той самий <code>AGENTS.md</code>, відкритий код</span></label><label class="opt"><input type="radio" name="q11"><span>Другий акаунт Claude Code з Opus замість Sonnet: інша модель — інший погляд</span></label><label class="opt"><input type="radio" name="q11"><span>Gemini CLI: інша родина моделей, Apache-2.0 і безкоштовний вхід через Google</span></label></div>
+    <div class="why yes">Так. Різні родини моделей помиляються по-різному, а спільний <code>AGENTS.md</code> не вимагає дублювати правила.</div>
+    <div class="why no">Модель тієї самої родини ловить менше нових помилок. Безкоштовний доступ Gemini CLI через Google-акаунт припинено 18.06.2026, а <code>AGENTS.md</code> він типово не читає.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>Codex Cloud</td><td>Хмарний режим Codex: задача виконується у VM, запуск з <code>chatgpt.com/codex</code>, GitHub, Slack, Linear.</td></tr>
+<tr><td>Cursor<br>Cloud Agents</td><td>Фонові агенти Cursor в ізольованих Ubuntu-VM; запуск з IDE, вебу, iOS, <code>@cursor</code> чи API.</td></tr>
+<tr><td>Copilot<br>cloud agent</td><td>Колишній Copilot coding agent: працює на GitHub Actions, повертає PR у гілці <code>copilot/</code>.</td></tr>
+<tr><td>Copilot<br>agent mode</td><td>Агентний режим Copilot в IDE: сам редагує кілька файлів і запускає команди.</td></tr>
+<tr><td>Gemini CLI</td><td>Відкритий (Apache-2.0) термінальний агент Google на моделях Gemini; з 18.06.2026 — для ліцензій Code Assist і платних ключів.</td></tr>
+<tr><td>Antigravity<br>CLI</td><td>Закритий наступник Gemini CLI (<code>agy</code>) з моделями Gemini, Claude і GPT-OSS.</td></tr>
+<tr><td>GEMINI.md</td><td>Файл інструкцій Gemini CLI: глобальний, проєктний і в підпапках.</td></tr>
+<tr><td>copilot-<br>instructions.md</td><td>Інструкції Copilot на рівні репозиторію: <code>.github/copilot-instructions.md</code>.</td></tr>
+<tr><td>AGENTS.md<br>(стандарт)</td><td>Відкритий формат інструкцій агентів під Agentic AI Foundation; діє найближчий файл.</td></tr>
+<tr><td>BYO API key</td><td>Власний ключ провайдера моделі в інструменті; змінює рахунок, а часто й доступні функції та гарантії даних.</td></tr>
+<tr><td>vendor lock-in</td><td>Ціна переходу на інший інструмент: конфігурація, hooks, середовища, політики, звички.</td></tr>
+<tr><td>Terminal-Bench</td><td>Бенчмарк задач у терміналі; оцінює пари агент + модель + effort, з вартістю прогону.</td></tr>
+<tr><td>SWE-bench<br>Bash Only</td><td>Таблиця SWE-bench Verified, де всі моделі працюють в одному мінімальному harness.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. ADR вибору інструментів для вашої команди</h3>
+<p>Опишіть свою ситуацію, порівняйте щонайменше три інструменти за п'ятьма шарами з фактами, датою і посиланнями, оберіть основний і запасний і запишіть ADR із планом зменшення ціни переходу.</p>
+<h3>2. Міні-бенчмарк на власних задачах</h3>
+<p>Проженіть три задачі з автоматичною перевіркою через дві конфігурації (два інструменти або один з різними моделями чи effort) і порівняйте успіх, ходи, час і ціну за звітами інструментів.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 14.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener">Claude Code — огляд</a><span>поверхні, провайдери; <a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">CLAUDE.md і AGENTS.md</a>, <a href="https://code.claude.com/docs/en/sandboxing" target="_blank" rel="noopener">sandboxing</a>, <a href="https://code.claude.com/docs/en/claude-code-on-the-web" target="_blank" rel="noopener">Claude Code on the web</a></span></li>
+<li><a href="https://claude.com/pricing" target="_blank" rel="noopener">Claude — тарифи</a><span>які плани включають Claude Code</span></li>
+<li><a href="https://learn.chatgpt.com/docs/" target="_blank" rel="noopener">Codex — документація</a><span>поверхні й моделі; <a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md" target="_blank" rel="noopener">AGENTS.md</a>, <a href="https://learn.chatgpt.com/docs/sandboxing" target="_blank" rel="noopener">sandboxing</a>, <a href="https://learn.chatgpt.com/docs/pricing" target="_blank" rel="noopener">тарифи</a>, <a href="https://learn.chatgpt.com/docs/open-source" target="_blank" rel="noopener">що відкрито</a></span></li>
+<li><a href="https://github.com/openai/codex" target="_blank" rel="noopener">openai/codex</a><span>CLI, Apache-2.0, релізи</span></li>
+<li><a href="https://cursor.com/docs/context/rules" target="_blank" rel="noopener">Cursor — Rules і AGENTS.md</a><span>а також <a href="https://cursor.com/docs/cloud-agent" target="_blank" rel="noopener">Cloud Agents</a>, <a href="https://cursor.com/docs/agent/security" target="_blank" rel="noopener">безпека агента</a>, <a href="https://cursor.com/docs/models-and-pricing" target="_blank" rel="noopener">моделі й тарифи</a></span></li>
+<li><a href="https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-coding-agent" target="_blank" rel="noopener">Copilot cloud agent</a><span>середовище, обмеження; <a href="https://docs.github.com/en/copilot/concepts/agents/coding-agent/risks-and-mitigations" target="_blank" rel="noopener">ризики й захист</a></span></li>
+<li><a href="https://docs.github.com/en/copilot/reference/custom-instructions-support" target="_blank" rel="noopener">Copilot — підтримка файлів інструкцій</a><span>copilot-instructions.md, AGENTS.md, CLAUDE.md, GEMINI.md за поверхнями</span></li>
+<li><a href="https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli" target="_blank" rel="noopener">Copilot CLI</a><span><code>-p</code>, <code>--allow-tool</code>, trusted directories; <a href="https://docs.github.com/en/copilot/get-started/plans" target="_blank" rel="noopener">плани</a></span></li>
+<li><a href="https://github.blog/changelog/2026-04-01-research-plan-and-code-with-copilot-cloud-agent/" target="_blank" rel="noopener">GitHub — coding agent → cloud agent</a><span>01.04.2026</span></li>
+<li><a href="https://github.com/google-gemini/gemini-cli" target="_blank" rel="noopener">google-gemini/gemini-cli</a><span>Apache-2.0; <a href="https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/gemini-md.md" target="_blank" rel="noopener">GEMINI.md і context.fileName</a></span></li>
+<li><a href="https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/" target="_blank" rel="noopener">Google — Transitioning Gemini CLI to Antigravity CLI</a><span>19.05.2026; <a href="https://antigravity.google/docs/cli/gcli-migration/" target="_blank" rel="noopener">гайд міграції</a></span></li>
+<li><a href="https://agents.md/" target="_blank" rel="noopener">AGENTS.md</a><span>формат, список сумісних агентів; <a href="https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation" target="_blank" rel="noopener">Agentic AI Foundation</a>, 09.12.2025</span></li>
+<li><a href="https://agentskills.io" target="_blank" rel="noopener">Agent Skills</a><span>відкритий стандарт SKILL.md</span></li>
+<li><a href="https://www.tbench.ai/" target="_blank" rel="noopener">Terminal-Bench</a><span><a href="https://www.tbench.ai/news/terminal-bench-4-0" target="_blank" rel="noopener">версія 4.0</a>; <a href="https://hub.harborframework.com/datasets/terminal-bench/terminal-bench/latest?tab=leaderboard&amp;leaderboard=4-0-0" target="_blank" rel="noopener">таблиця лідерів</a>, оновлена 06.10.2026</span></li>
+<li><a href="https://www.swebench.com/" target="_blank" rel="noopener">SWE-bench</a><span>таблиці Verified і Bash Only; <a href="https://www.swebench.com/verified.html" target="_blank" rel="noopener">методика Verified</a></span></li>
+<li><a href="https://opencode.ai/docs/rules/" target="_blank" rel="noopener">OpenCode — rules</a><span>MIT, читає AGENTS.md; <a href="https://github.com/Aider-AI/aider" target="_blank" rel="noopener">Aider</a> — Apache-2.0, будь-яка модель зі своїм ключем</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 3.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 3.2 · Senomi<br><br><a href="lesson-14.html">← Урок 3.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-16.html">Урок 3.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

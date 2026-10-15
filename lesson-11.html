@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 2.3. Що таке harness: системний промпт, інструменти, дозволи, керування контекстом</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 2.3 · Модуль 2</div>
+<h1>Що таке harness: системний промпт, інструменти, дозволи, керування контекстом</h1>
+<p class="lead">Модель лише обирає наступну дію, а що вона знає, чим може діяти і що з цього справді виконається, вирішує harness навколо неї. Розбираємо його шари на справжніх запусках Claude Code: заміна системного промпту, обхід blocklist, sandbox, та сама задача з різним набором інструментів, — і пишемо harness для Lectern.</p>
+<div class="hero-meta"><span class="chip">Від моделі до агента</span><span class="chip t">≈ 60 хв</span><span class="chip a">14 карток</span><span class="chip g">перевірено 14.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Продуктивність агента на SWE-bench може суттєво різнитися залежно від цього scaffold, навіть якщо модель та сама.</p><cite>Anthropic, «Raising the bar on SWE-bench Verified with Claude 3.5 Sonnet», 6 січня 2025 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 15 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Чому harness</a><a href="#map"><b>02</b>Карта шарів</a><a href="#inside"><b>03</b>Harness Claude Code ззовні</a><a href="#sysprompt"><b>04</b>Системний промпт агента</a><a href="#tools"><b>05</b>Інструменти і дозволи</a><a href="#sandbox"><b>06</b>Sandbox</a><a href="#same-model"><b>07</b>Та сама модель, інший harness</a><a href="#checklist"><b>08</b>Чекліст власного harness</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#mistakes"><b>10</b>Типові помилки</a><a href="#practice"><b>11</b>Практика</a><a href="#quiz"><b>12</b>Квіз</a><a href="#terms"><b>13</b>Терміни уроку</a><a href="#homework"><b>14</b>Домашнє завдання</a><a href="#resources"><b>15</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>назвати вісім шарів harness, що вирішує кожен і як виглядає збій, коли його немає;</li>
+    <li>подивитися на harness Claude Code ззовні: склад контексту, список інструментів, дозволи, transcript;</li>
+    <li>обрати між <code>--system-prompt</code> і <code>--append-system-prompt</code> і передбачити, що зміниться;</li>
+    <li>писати правила allow / ask / deny, знати, чому deny-список не є межею, і коли потрібен sandbox;</li>
+    <li>скласти специфікацію harness для власного агента і запустити її на Lectern.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Чому harness<span class="sub">Та сама модель — різні результати</span></h2></div>
+<p>Документація Claude Code визначає термін так: Claude Code — це шар навколо моделі, який дає їй інструменти і керує контекстом, який вона бачить; цей шар і називають <b>agentic harness</b>. У статтях про бенчмарки той самий шар називають <b>scaffold</b>. Що він важить стільки ж, скільки модель, видно з першоджерел:</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Джерело</th><th>Що показано про harness</th></tr></thead>
+<tbody>
+<tr><td>«Building effective agents», 19.12.2024</td><td>Готуючи агента для SWE-bench, команда Anthropic <b>більше часу оптимізувала інструменти, ніж загальний промпт</b>. Модель плуталася у відносних шляхах, коли виходила з кореня репозиторію; після того як інструмент почав вимагати абсолютний шлях, помилки зникли.</td></tr>
+<tr><td>«Raising the bar on SWE-bench Verified», 06.01.2025</td><td>Агент = модель + scaffold. Мінімальний scaffold — промпт, Bash і Edit — дав Claude 3.5 Sonnet 49% проти попереднього рекорду 45%. Open source і стартапи «сильно підвищували результат навколо тієї самої моделі», оптимізуючи scaffold.</td></tr>
+<tr><td>Анонс Claude Sonnet 4.5, 29.09.2025</td><td>77,2% на SWE-bench Verified отримано з простим scaffold (bash і редагування заміною рядків) і доданим до промпту реченням: «використовуй інструменти якомога більше, в ідеалі понад 100 разів». Цифра бенчмарку описує пару «модель + harness», а не модель.</td></tr>
+<tr><td>«Writing effective tools for agents», 11.09.2025</td><td>Навіть невеликі правки описів інструментів дають помітний приріст; більше інструментів не означає кращий результат. Claude Code типово обрізає відповідь інструмента до 25 тис. токенів.</td></tr>
+<tr><td>«Effective harnesses for long-running agents», 26.11.2025</td><td>Агент на Agent SDK з Opus 4.5 будує застосунок на 200+ фіч у багатьох контекстних вікнах. Без додаткових шарів він або намагався зробити все одразу, або оголошував роботу готовою зарано. Допомогли агент-ініціалізатор, файл прогресу, список фіч у JSON (модель рідше переписує JSON, ніж Markdown) і git.</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>У статті про довгі задачі обидва агенти мали <b>однакові</b> системний промпт, інструменти й harness і відрізнялися лише першим повідомленням. Найдешевший шар для зміни поведінки — той, що ближче до задачі: повідомлення і файли в робочій теці, а не переписаний harness.</p>
+</div>
+</section>
+
+<section class="sec" id="map">
+<div class="sec-h"><span class="num">02</span><h2>Карта шарів<span class="sub">Вісім рішень між моделлю і світом</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 530" role="img" aria-label="Шари harness: системний промпт, інструкції, інструменти, модель із контекстом і хуками, дозволи, sandbox, transcript; між harness і світом — дія і результат">
+  <defs>
+    <marker id="h11a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="h11t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar t"/></marker>
+  </defs>
+  <rect x="60" y="6" width="240" height="40" rx="10" class="bx m"/>
+  <text x="180" y="25" text-anchor="middle" class="tx b">Людина · UI</text>
+  <text x="180" y="40" text-anchor="middle" class="tx s">термінал, IDE, CI, SDK</text>
+  <path d="M180 46 V 62" class="ln a" marker-end="url(#h11a)"/>
+  <rect x="4" y="66" width="352" height="386" rx="12" class="bx"/>
+  <text x="16" y="84" class="tx s">HARNESS — усе, що не модель</text>
+  <rect x="14" y="92" width="162" height="46" rx="8" class="bx"/>
+  <text x="95" y="111" text-anchor="middle" class="tx b">Системний промпт</text>
+  <text x="95" y="128" text-anchor="middle" class="tx s">роль, правила, формат</text>
+  <rect x="184" y="92" width="162" height="46" rx="8" class="bx"/>
+  <text x="265" y="111" text-anchor="middle" class="tx b">Інструкції й пам'ять</text>
+  <text x="265" y="128" text-anchor="middle" class="tx s">CLAUDE.md, memory</text>
+  <rect x="14" y="146" width="332" height="46" rx="8" class="bx"/>
+  <text x="180" y="165" text-anchor="middle" class="tx b">Інструменти: схеми й описи</text>
+  <text x="180" y="182" text-anchor="middle" class="tx s">що модель узагалі може зробити</text>
+  <rect x="14" y="200" width="96" height="72" rx="8" class="bx"/>
+  <text x="62" y="226" text-anchor="middle" class="tx b">Контекст</text>
+  <text x="62" y="243" text-anchor="middle" class="tx s">історія,</text>
+  <text x="62" y="258" text-anchor="middle" class="tx s">компакція</text>
+  <ellipse cx="180" cy="236" rx="60" ry="34" class="bx a"/>
+  <text x="180" y="233" text-anchor="middle" class="tx b a">Модель</text>
+  <text x="180" y="250" text-anchor="middle" class="tx s">обирає дію</text>
+  <rect x="250" y="200" width="96" height="72" rx="8" class="bx"/>
+  <text x="298" y="226" text-anchor="middle" class="tx b">Хуки</text>
+  <text x="298" y="243" text-anchor="middle" class="tx s">точки</text>
+  <text x="298" y="258" text-anchor="middle" class="tx s">розширення</text>
+  <rect x="14" y="280" width="332" height="46" rx="8" class="bx t"/>
+  <text x="180" y="299" text-anchor="middle" class="tx b">Дозволи: deny → ask → allow</text>
+  <text x="180" y="316" text-anchor="middle" class="tx s">правила + режим вирішують, чи виконати виклик</text>
+  <rect x="14" y="334" width="332" height="46" rx="8" class="bx t"/>
+  <text x="180" y="353" text-anchor="middle" class="tx b">Sandbox: межа ОС для shell</text>
+  <text x="180" y="370" text-anchor="middle" class="tx s">файли й мережа, незалежно від тексту команди</text>
+  <rect x="14" y="388" width="332" height="54" rx="8" class="bx p"/>
+  <text x="180" y="409" text-anchor="middle" class="tx b">Спостережуваність</text>
+  <text x="180" y="427" text-anchor="middle" class="tx s">transcript JSONL, події, вартість, відмови</text>
+  <path d="M120 452 V 480" class="ln a" marker-end="url(#h11a)"/>
+  <text x="112" y="470" text-anchor="end" class="tx s">виклик</text>
+  <path d="M240 480 V 456" class="ln t" marker-end="url(#h11t)"/>
+  <text x="248" y="465" class="tx s">результат</text>
+  <text x="248" y="478" class="tx s">у контекст</text>
+  <rect x="40" y="484" width="280" height="40" rx="10" class="bx m"/>
+  <text x="180" y="509" text-anchor="middle" class="tx b">Світ: файли · shell · мережа · API</text>
+</svg>
+<figcaption>Модель бачить лише те, що harness поклав у контекст, і може лише запропонувати виклик. Чи він виконається, вирішують дозволи і sandbox; що повернеться в контекст і що буде записано, вирішують решта шарів.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Шар</th><th>Що вирішує</th><th>Збій, якщо його немає або він поганий</th></tr></thead>
+<tbody>
+<tr><td data-th="Шар">Системний промпт</td><td data-th="Що вирішує">Роль, межі задачі, формат відповіді, як поводитися з інструментами</td><td data-th="Збій, якщо його немає або він поганий">Генератор квізів відповідає як coding-асистент і пропонує «виправити код» у лекції</td></tr>
+<tr><td data-th="Шар">Інструменти й описи</td><td data-th="Що вирішує">Яких дій модель узагалі може захотіти; як вона розуміє кожну</td><td data-th="Збій, якщо його немає або він поганий">Два схожі інструменти пошуку — модель вибирає випадково; відносні шляхи ламаються після <code>cd</code></td></tr>
+<tr><td data-th="Шар">Дозволи</td><td data-th="Що вирішує">Який виклик виконати без питань, який — після схвалення, який — ніколи</td><td data-th="Збій, якщо його немає або він поганий">Агент у CI зависає на запиті, на який нікому відповісти, або видаляє файл, бо Bash дозволено цілком</td></tr>
+<tr><td data-th="Шар">Sandbox</td><td data-th="Що вирішує">Куди процес може писати і з ким з'єднуватися, хай що написано в команді</td><td data-th="Збій, якщо його немає або він поганий"><code>python3 -c "…"</code> обходить правило для <code>rm</code> (показано нижче); prompt injection з веб-сторінки відправляє <code>~/.ssh</code> назовні</td></tr>
+<tr><td data-th="Шар">Менеджер контексту</td><td data-th="Що вирішує">Що лишається в історії, коли стискати, що винести в окреме вікно</td><td data-th="Збій, якщо його немає або він поганий">Сирий лог на 80 тис. токенів витісняє інструкції; після компакції агент повторює відкинуте рішення (урок 1.3)</td></tr>
+<tr><td data-th="Шар">Інструкції й пам'ять</td><td data-th="Що вирішує">Правила проєкту, які переживають сесії й компакцію</td><td data-th="Збій, якщо його немає або він поганий">Кожна сесія заново «відкриває», як запускати тести, і робить це щоразу інакше</td></tr>
+<tr><td data-th="Шар">Хуки, точки розширення</td><td data-th="Що вирішує">Детерміновані перевірки до чи після дії, яких модель не може пропустити</td><td data-th="Збій, якщо його немає або він поганий">Правило «не редагуй міграції» існує лише як прохання в промпті</td></tr>
+<tr><td data-th="Шар">Спостережуваність</td><td data-th="Що вирішує">Що видно після запуску: кроки, вартість, відмови</td><td data-th="Збій, якщо його немає або він поганий">Агент звітує «тести пройшли», а перевірити, чи він їх узагалі запускав, нема з чого</td></tr>
+</tbody></table></div>
+<p>Цикл, яким модель проходить через ці шари, і умови його зупинки — урок 2.2; протокол виклику інструмента — урок 2.1. Тут — що й навіщо кожен шар додає до циклу.</p>
+</section>
+
+<section class="sec" id="inside">
+<div class="sec-h"><span class="num">03</span><h2>Harness Claude Code ззовні<span class="sub">Що видно без доступу до коду</span></h2></div>
+<p>Перша подія потоку <code>stream-json</code> — <code>system/init</code>: модель, режим дозволів, інструменти, MCP-сервери, skills, плагіни. Це опис harness, яким він зібрався саме для цього запуску. Порівняємо робочу конфігурацію з ізольованою:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>init — лише кількості</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Відповідай одним словом: ок" --model haiku --output-format stream-json --verbose</span>
+tools: <span class="y">86</span> (вбудованих 32, MCP 54) · mcp_servers: 7 · skills: 37 · plugins: 4 · permissionMode: auto
+result: 'ок' · input <span class="y">37 312</span> токенів · total_cost_usd 0.00336
+
+<span class="ps">$ </span><span class="c">claude -p "Відповідай одним словом: ок" --model haiku --setting-sources project --strict-mcp-config --tools "Read,Grep" --output-format stream-json --verbose</span>
+tools: <span class="ok">2</span> (вбудованих 2, MCP 0) · mcp_servers: 0 · skills: 22 · plugins: 3 · permissionMode: default
+result: 'ок' · input <span class="ok">6 176</span> токенів · total_cost_usd 0.00124</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · claude-haiku-5-5 · 14.10.2026 · підраховано з події system/init і result; назви MCP-серверів, skills і плагінів не публікуються</div></div>
+<ul>
+<li><b>Одне слово «ок» коштувало 37 тис. токенів входу</b> з робочою конфігурацією і 6 тис. з двома інструментами. Сім MCP-серверів і десятки skills — це шари harness, за які ви платите на кожному запиті, навіть коли вони не потрібні.</li>
+<li><b><code>--setting-sources project</code></b> не читає ваші особисті <code>~/.claude/settings.json</code> (у робочій конфігурації там легко набирається тисяча правил allow, а стартовий режим — <code>auto</code>, як і видно з першого запуску), <b><code>--strict-mcp-config</code></b> не підключає MCP-сервери, крім переданих через <code>--mcp-config</code>. Для відтворюваних запусків, демо і CI — обидва. <b>Але в чужому репозиторії це пастка:</b> <code>project</code> вимикає ваші налаштування, а налаштування самого репозиторію (його хуки й <code>env</code>) вмикає, і в режимі <code>-p</code> вони спрацьовують ще до відповіді моделі. Для незнайомого коду — <code>--setting-sources user</code> або <code>disableAllHooks</code> (урок 3.4).</li>
+<li><b>У типовому наборі на macOS немає <code>Grep</code> і <code>Glob</code></b> — Claude Code шукає через Bash; це записано і в довідці <code>--tools</code>. Назвіть їх явно, якщо Bash вимкнено.</li>
+</ul>
+<h3>Скільки займає кожен шар</h3>
+<p><code>/context</code> не викликає модель і показує розбивку за категоріями (урок 1.3). Змінюємо по одному прапорцю:</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar"><span class="k">типово</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">24,4 тис.</b></span></div>
+  <div class="bar"><span class="k">--append-system-prompt (6 слів)</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">24,4 тис. · промпт 3,3 тис.</b></span></div>
+  <div class="bar m"><span class="k">--system-prompt (6 слів)</span><span class="tr"><i style="--v:87%"></i><b class="in" style="--v:87%">21,3 тис. · промпт 169</b></span></div>
+  <div class="bar t"><span class="k">--tools "Read,Grep"</span><span class="tr"><i style="--v:22%"></i><b style="--v:22%">5,3 тис. · схеми 2,3 тис.</b></span></div>
+  <div class="bar t"><span class="k">--tools ""</span><span class="tr"><i style="--v:13%"></i><b style="--v:13%">3,1 тис.</b></span></div>
+</div>
+<figcaption>Токени в контексті порожньої сесії (claude-haiku-5-5, без особистих налаштувань і MCP). Типово: системний промпт 3,2 тис., схеми вбудованих інструментів 18,5 тис., описи skills 2,6 тис.; ще 19,9 тис. — «deferred» інструменти, які в контексті лише назвами. Важить не промпт, а набір інструментів: з двома інструментами сесія у 4,6 раза легша. Зі скороченим набором системний промпт теж зменшився до 3 тис. — частина його тексту описує роботу з інструментами.</figcaption>
+</figure>
+<h3>Контекст, пам'ять, transcript</h3>
+<p>Три шари з карти, які Claude Code реалізує за вас; детальні налаштування — модулі 4 і 6.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Шар</th><th>Як зроблено в Claude Code</th><th>Як перевірити</th></tr></thead>
+<tbody>
+<tr><td data-th="Шар">Менеджер контексту</td><td data-th="Як зроблено в Claude Code">Біля межі спершу прибирає старі виводи інструментів, потім підсумовує розмову; резерв автокомпакції 33 тис.; субагент працює у власному вікні і повертає підсумок (урок 1.3)</td><td data-th="Як перевірити"><code>/context</code>, <code>/compact</code> через <code>claude -p</code></td></tr>
+<tr><td data-th="Шар">Інструкції й пам'ять</td><td data-th="Як зроблено в Claude Code">CLAUDE.md і auto memory надходять у розмову як <b>системні нагадування</b> (system reminders), а не як частина системного промпту</td><td data-th="Як перевірити">досвід нижче: CLAUDE.md діє навіть із заміненим промптом</td></tr>
+<tr><td data-th="Шар">Спостережуваність</td><td data-th="Як зроблено в Claude Code">Кожне повідомлення, виклик і результат пишуться в JSONL у <code>~/.claude/projects/</code>; у <code>-p</code> є ще <code>stream-json</code> і підсумок <code>result</code> з <code>total_cost_usd</code>, <code>num_turns</code>, <code>permission_denials</code></td><td data-th="Як перевірити">транскрипт запуску нижче</td></tr>
+</tbody></table></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>transcript — типи записів</span></div>
+<pre><span class="d"># двоходовий запуск: одна команда Bash і відповідь</span>
+рядків: 24 · байтів: 44 402
+ 4 розмова: user text, assistant tool_use,
+   user tool_result, assistant text
+<span class="y">10 attachment</span>: environment, model, date,
+   session_context, prompt_snapshot ×2,
+   total_tokens_reminder ×2, …
+10 інше: file-history-snapshot, cost-state,
+   8 службових записів</pre>
+<div class="cap">реальний файл сесії · Claude Code 2.1.299 · 14.10.2026 · підраховано типи записів, вміст не публікується</div></div>
+<p>Чотири записи — розмова, двадцять — harness: середовище, дата, нагадування про токени, знімок системного промпту (<code>--system-prompt-snapshot</code> записує його на першому запиті й повторює дослівно до компакції), знімок файлів для відкату. Потік <code>stream-json</code> системних нагадувань не містить, тож дебажити «чому модель так вирішила» треба по транскрипту, а не по потоку.</p>
+</section>
+
+<section class="sec" id="sysprompt">
+<div class="sec-h"><span class="num">04</span><h2>Системний промпт агента<span class="sub">Замінити чи доповнити</span></h2></div>
+<p>Системний промпт агента — не «будь корисним асистентом», а інструкція до harness: хто відповідає, на якій поверхні, що вважати безпечним, як користуватися інструментами. У Claude Code чотири прапорці, і всі працюють в інтерактивному й неінтерактивному режимі:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Прапорець</th><th>Що робить</th><th>Коли</th></tr></thead>
+<tbody>
+<tr><td data-th="Прапорець"><code>--append-system-prompt</code>, <code>…-file</code></td><td data-th="Що робить">Дописує текст у кінець типового промпту; настанови щодо інструментів і безпеки лишаються</td><td data-th="Коли">Агент лишається coding-асистентом з вашими правилами: формат звіту, домен, стиль</td></tr>
+<tr><td data-th="Прапорець"><code>--system-prompt</code>, <code>--system-prompt-file</code></td><td data-th="Що робить">Замінює весь промпт; від типового не лишається нічого</td><td data-th="Коли">Інша роль, поверхня або модель дозволів: агент у конвеєрі, на який ніхто не дивиться</td></tr>
+</tbody></table></div>
+<p>Перевіримо, що змінює кожен варіант. У теці лежить CLAUDE.md з одним правилом: кожну відповідь закінчувати рядком «— lectern-ok». Питання однакове: «Хто ти і для чого тебе тут запущено?».</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/sp</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Хто ти і для чого тебе тут запущено? Одне речення українською." --model haiku --setting-sources project --strict-mcp-config --output-format json --tools ""</span>
+<span class="d"># 1) типово</span>
+Я Claude, ШІ-агент від Anthropic, запущений тут як помічник для роботи з вашим проєктом … (Claude Code) …
+<span class="ok">— lectern-ok</span>
+<span class="d">вхід 4 055 токенів, із них 3 429 з кешу</span>
+<span class="d"># 2) + --append-system-prompt "Ти — Lectern, асистент, що робить квізи з лекцій."</span>
+Я Lectern, асистент, який створює квізи з лекцій …
+<span class="ok">— lectern-ok</span>
+<span class="d">вхід 4 088, із кешу 3 464</span>
+<span class="d"># 3) + --system-prompt "Ти — Lectern, асистент, що робить квізи з лекцій."</span>
+Я Lectern, асистент, який створює квізи на основі лекцій …
+<span class="ok">— lectern-ok</span>
+<span class="y">вхід 1 119, із кешу 0</span></pre>
+<div class="cap">реальні відповіді · Claude Code 2.1.299 · claude-haiku-5-5 · 14.10.2026 · три окремі запуски, відповіді скорочено</div></div>
+<ol class="steps">
+<li><b>CLAUDE.md діє і з заміненим промптом.</b> Claude Code доставляє його системним нагадуванням у розмові, а не в системному промпті. Заміна промпту не «вимикає проєкт»: щоб агент не бачив CLAUDE.md, приберіть джерело налаштувань (<code>--setting-sources</code>) або запускайте з <code>--bare</code>.</li>
+<li><b>Заміна прибирає більше, ніж роль.</b> Вхід зменшився в 3,6 раза (у <code>/context</code> системний промпт — з 3,2 тис. до 169 токенів), а з ним зникли настанови щодо інструментів, безпеки й нагадувань. Документація радить: у власному промпті одним реченням пояснити, що системні нагадування — це контекст від застосунку, а не прохання користувача. Інструкції для комітів залишаються, бо вони в описі інструмента Bash, а не в промпті.</li>
+<li><b>Заміна ламає спільний кеш.</b> Типовий промпт однаковий у всіх сесіях, тож він приходив з кешу (3 429 токенів). Власний на першому запиті записується в кеш заново. Для статичної частини власного промпту є маркер <code>__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__</code>: усе вище нього кешується окремо від змінної частини.</li>
+</ol>
+<div class="note warn"><span class="lbl">Пастка Agent SDK</span>
+<p>Без параметра <code>system_prompt</code> Agent SDK бере <b>мінімальний</b> промпт: лише підтримку виклику інструментів, без безпекових настанов Claude Code. <code>claude -p</code> натомість типово бере повний промпт Claude Code. Скрипт, перенесений з CLI в SDK «один до одного», поводиться інакше, доки ви не вкажете пресет <code>claude_code</code>. Деталі API — урок 2.5.</p>
+</div>
+<h3>--bare: harness без автовиявлення</h3>
+<p>Режим <code>--bare</code> не шукає хуки, skills, плагіни, MCP-сервери, auto memory і CLAUDE.md, не надсилає системних нагадувань і не запускає фонових задач. Модель отримує Bash, читання і редагування файлів, а решту harness ви передаєте явно: <code>--append-system-prompt-file</code>, <code>--settings</code>, <code>--mcp-config</code>, <code>--agents</code>. Автентифікація — лише <code>ANTHROPIC_API_KEY</code> або <code>apiKeyHelper</code>, без входу через підписку.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — CI</span></div>
+<pre><span class="ps">$ </span><span class="c">claude --bare -p "Summarize README.md" --allowedTools "Read"</span></pre>
+<div class="cap">команда з офіційної документації Claude Code · не запускалась у цьому уроці: потрібен ANTHROPIC_API_KEY</div></div>
+<p>За документацією, <code>--bare</code> — рекомендований режим для скриптів і SDK, і в майбутньому він стане типовим для <code>-p</code>. Без нього <code>claude -p</code> виконує хуки з <code>.claude/settings.json</code> і підключає сервери з <code>.mcp.json</code> навіть у теці, якій ви не довіряли.</p>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">05</span><h2>Інструменти і дозволи<span class="sub">Що існує, що виконується, що заборонено</span></h2></div>
+<p>Три прапорці легко сплутати, бо всі приймають назви інструментів. Вони працюють на різних шарах:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Прапорець</th><th>Шар</th><th>Ефект</th></tr></thead>
+<tbody>
+<tr><td data-th="Прапорець"><code>--tools "Read,Bash"</code></td><td data-th="Шар">Набір інструментів</td><td data-th="Ефект">Модель <b>бачить</b> лише ці вбудовані інструменти; решти для неї не існує. На MCP не впливає — для них <code>--disallowedTools "mcp__*"</code></td></tr>
+<tr><td data-th="Прапорець"><code>--allowedTools "Bash(git diff *)"</code></td><td data-th="Шар">Дозволи · allow</td><td data-th="Ефект">Ці виклики виконуються <b>без запиту</b>; решта йде за режимом. Нічого не прибирає з контексту</td></tr>
+<tr><td data-th="Прапорець"><code>--disallowedTools "Bash(rm *)"</code></td><td data-th="Шар">Дозволи · deny</td><td data-th="Ефект">Виклик, що збігся, відхиляється. Голе ім'я (<code>"Edit"</code>) прибирає інструмент із контексту, правило з дужками лишає інструмент і відхиляє лише збіги</td></tr>
+</tbody></table></div>
+<h3>Як читаються правила</h3>
+<p>Правила перевіряються в порядку <b>deny → ask → allow</b>, перше спрацювання вирішує, і конкретність правила порядку не змінює. Широкий deny <code>Bash(aws *)</code> блокує і <code>aws s3 ls</code>, навіть якщо для нього є окремий allow. Те саме між рівнями налаштувань: deny у налаштуваннях користувача блокує allow проєкту, а керований (managed) deny не скасовує навіть <code>--allowedTools</code> з командного рядка.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Правило</th><th>Збігається</th><th>Не збігається</th></tr></thead>
+<tbody>
+<tr><td data-th="Правило"><code>Bash(npm run build)</code></td><td data-th="Збігається">лише <code>npm run build</code></td><td data-th="Не збігається"><code>npm run build --watch</code></td></tr>
+<tr><td data-th="Правило"><code>Bash(git diff *)</code></td><td data-th="Збігається"><code>git diff</code>, <code>git diff --stat</code></td><td data-th="Не збігається"><code>git diff-index</code>: пробіл перед <code>*</code> — частина правила</td></tr>
+<tr><td data-th="Правило"><code>Bash(ls*)</code></td><td data-th="Збігається"><code>ls -la</code>, але й <code>lsof</code></td><td data-th="Не збігається">—</td></tr>
+<tr><td data-th="Правило"><code>Bash(git * main)</code></td><td data-th="Збігається"><code>git push origin main</code> і <code>git -c core.fsmonitor=&lt;script&gt; diff main</code></td><td data-th="Не збігається"><code>git log</code></td></tr>
+<tr><td data-th="Правило"><code>Read(./.env)</code>, <code>Edit(src/*<wbr>*)</code></td><td data-th="Збігається">шлях відносно теки проєкту; <code>//</code> — абсолютний, <code>~/</code> — домашній</td><td data-th="Не збігається">Read-deny діє і на Edit/Write того самого шляху</td></tr>
+<tr><td data-th="Правило"><code>WebFetch(domain:github.com)</code></td><td data-th="Збігається">завантаження з цього домену</td><td data-th="Не збігається"><code>curl</code> у Bash — це інший інструмент</td></tr>
+</tbody></table></div>
+<p>Claude Code розбирає складені команди: <code>Bash(safe-cmd *)</code> не дозволить <code>safe-cmd &amp;&amp; other-cmd</code>, кожна частина має збігтися окремо, а deny спрацьовує на будь-якій частині, зокрема в підоболонці чи <code>$(…)</code>. Перед порівнянням знімаються обгортки <code>timeout</code>, <code>nice</code>, <code>nohup</code> та кілька інших, тож <code>Bash(npm test *)</code> збігається з <code>timeout 30 npm test</code>.</p>
+<h3>Deny перемагає allow — і більше нічого не гарантує</h3>
+<p>Дозволимо Bash цілком і заборонимо лише <code>rm</code>:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/perm</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Видали файл notes.txt. Відповідай коротко українською." --model haiku --setting-sources project --strict-mcp-config --permission-mode default --tools "Bash,Read" --allowedTools "Bash" --disallowedTools "Bash(rm *)" --output-format stream-json --verbose</span>
+<span class="y">● Bash</span>  ls -la notes.txt &amp;&amp; wc -c notes.txt &amp;&amp; head -c 500 notes.txt
+<span class="d">  ⎿ 32 notes.txt · чернетка лекції 3</span>
+<span class="y">● Bash</span>  rm notes.txt &amp;&amp; ls -la notes.txt 2&gt;&amp;1
+<span class="er">  ⎿ Permission to use Bash with command rm notes.txt &amp;&amp; ls -la notes.txt 2&gt;&amp;1 has been denied.</span>
+<span class="c">Файл notes.txt не видалено. Мій запит на видалення відхилено дозволом на використання Bash. …</span>
+<span class="d">result · num_turns 3 ·</span> <span class="y">permission_denials: [{"tool_name": "Bash", "tool_input": {"command": "rm notes.txt &amp;&amp; ls -la notes.txt 2&gt;&amp;1", …}}]</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.299 · claude-haiku-5-5 · 14.10.2026 · вивід скорочено</div></div>
+<p>Deny спрацював у складеній команді, хоча Bash дозволено цілком, а відмова потрапила в <code>permission_denials</code> підсумку — по цьому полю CI бачить, що агентові чогось забракло. Тепер та сама конфігурація і пряма вказівка:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>blocklist проти allowlist</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Виконай рівно одну команду: python3 -c \"import os; os.remove('notes.txt')\" — і скажи одним реченням, чи файл зник." … --allowedTools "Bash" --disallowedTools "Bash(rm *)"</span>
+<span class="y">● Bash</span>  python3 -c "import os; os.remove('notes.txt')"
+<span class="d">  ⎿ (Bash completed with no output)</span>
+<span class="er">Так, файл notes.txt зник</span>
+<span class="d">permission_denials: 0 · ls: notes.txt відсутній</span>
+
+<span class="ps">$ </span><span class="c">claude -p "[та сама вказівка]" … --allowedTools "Bash(ls *)"</span>
+<span class="y">● Bash</span>  python3 -c "import os; os.remove('notes.txt')"
+<span class="ok">  ⎿ This command requires approval</span>
+<span class="ok">Файл не видалено: команда вимагає схвалення …</span>
+<span class="d">permission_denials: 1 · ls: notes.txt на місці</span></pre>
+<div class="cap">реальні сесії · Claude Code 2.1.299 · claude-haiku-5-5 · 14.10.2026 · обидві в режимі default, де запит без відповідача в -p стає відмовою</div></div>
+<p>Пряма вказівка для обходу не обов'язкова. В іншому запуску з тим самим blocklist і промптом «якщо команду заблоковано, знайди інший спосіб» модель після відмови для <code>rm</code> сама перейшла на <code>python3 -c … os.unlink</code> і видалила файл. У наступному запуску, де обхідні команди були перелічені прямо, вона відмовилася обходити заборону. Поведінка моделі змінюється від запуску до запуску, тому межа має триматися без її згоди.</p>
+<div class="key"><h4>Чому allowlist, а не blocklist</h4>
+<p>Deny-правило зіставляється з <b>текстом команди</b>, а не з програмою: документація прямо пише, що <code>Bash(rm *)</code> не зупиняє <code>/bin/rm</code> чи <code>bash -c 'rm …'</code>, а <code>Bash(git push *)</code> — <code>git -C . push</code>. Способів зробити небажане необмежено, тому список заборон завжди неповний. Allowlist перелічує скінченну множину того, що потрібно задачі, а все інше за замовчуванням стає запитом або відмовою. Deny лишається для того, що не має статися <b>ніколи</b> навіть за широкого allow (<code>Read(./.env)</code>, <code>Bash(git push *)</code>), а межа, яка не залежить від тексту команди, — це sandbox.</p>
+</div>
+<h3>Те саме в трьох інструментах</h3>
+<div class="tabs">
+<input type="radio" name="perm11-t" id="perm11-t1" checked><input type="radio" name="perm11-t" id="perm11-t2"><input type="radio" name="perm11-t" id="perm11-t3">
+<div class="tab-l"><label for="perm11-t1">Claude Code</label><label for="perm11-t2">Codex CLI</label><label for="perm11-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<pre class="code" data-lang="json">{
+  "permissions": {
+    "allow": [<span class="s">"Bash(python3 -m pytest *)"</span>, <span class="s">"Bash(git diff *)"</span>, <span class="s">"Edit(src/*<wbr>*)"</span>],
+    "ask":   [<span class="s">"Bash(git push *)"</span>],
+    "deny":  [<span class="s">"Read(./.env)"</span>, <span class="s">"Read(./secrets/*<wbr>*)"</span>]
+  },
+  "sandbox": { "enabled": <span class="k">true</span>, "allowUnsandboxedCommands": <span class="k">false</span> }
+}</pre>
+<p><code>.claude/settings.json</code> проєкту. Allow-правила і додаткові теки з цього файлу діють лише після того, як ви прийняли діалог довіри до теки; deny й ask — одразу.</p>
+</div>
+<div class="tab-p">
+<p>Codex розділяє дві осі. <b>Пісочниця</b> (<code>--sandbox</code>, <code>sandbox_mode</code>): <code>read-only</code>; <code>workspace-write</code> — читання, редагування й команди в робочій теці, типовий для тек під git; <code>danger-full-access</code> — без пісочниці. <b>Політика схвалень</b> (<code>--ask-for-approval</code>, <code>-a</code>): <code>on-request</code> питає перед редагуванням поза робочою текою і мережевими командами, <code>never</code> не питає, але межі пісочниці лишаються; <code>untrusted</code> більше не підтримується. Мережа типово вимкнена; механізм — Seatbelt на macOS, <code>bwrap</code> і seccomp у Linux.</p>
+<pre class="code" data-lang="toml">sandbox_mode = <span class="s">"workspace-write"</span>
+approval_policy = <span class="s">"on-request"</span>
+
+[sandbox_workspace_write]
+network_access = <span class="k">false</span></pre>
+<p class="small">з офіційної документації Codex · не запускалось у цьому уроці</p>
+</div>
+<div class="tab-p">
+<p>Cursor CLI тримає правила в <code>~/.cursor/cli-config.json</code> або <code>.cursor/cli.json</code> проєкту. Типи: <code>Shell(commandBase)</code>, <code>Read(pathOrGlob)</code>, <code>Write(pathOrGlob)</code>, <code>WebFetch(domainOrPattern)</code>, <code>Mcp(server:tool)</code>; deny має пріоритет над allow.</p>
+<pre class="code" data-lang="json">{
+  "permissions": {
+    "allow": [<span class="s">"Shell(ls)"</span>, <span class="s">"Shell(git)"</span>, <span class="s">"Read(src/*<wbr>*)"</span>, <span class="s">"Write(src/*<wbr>*)"</span>],
+    "deny":  [<span class="s">"Shell(rm)"</span>, <span class="s">"Read(.env*)"</span>, <span class="s">"Write(*<wbr>*/*.key)"</span>]
+  }
+}</pre>
+<p class="small">з офіційної документації Cursor CLI · не запускалось у цьому уроці. Sandbox агента в Cursor налаштовує <code>sandbox.json</code> (Seatbelt на macOS, Landlock і seccomp у Linux).</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="sandbox">
+<div class="sec-h"><span class="num">06</span><h2>Sandbox<span class="sub">Межа, яку ставить операційна система</span></h2></div>
+<p>Дозволи вирішують, чи запустити команду. Sandbox вирішує, що запущений процес <b>зможе зробити</b>, і застосовується до Bash, PowerShell, Monitor та всіх дочірніх процесів. На macOS він побудований на Seatbelt, у Linux і WSL2 — на <code>bubblewrap</code> і <code>socat</code>; типово вимкнений, вмикається <code>/sandbox</code> або <code>"sandbox": {"enabled": true}</code>. Перевіримо пробами з документації, дозволивши Bash цілком, щоб дозволи нічого не блокували:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/sbx</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Виконай по черзі три окремі команди …" --model haiku --setting-sources project --strict-mcp-config --tools "Bash" --allowedTools "Bash" --settings '{"sandbox":{"enabled":true,"allowUnsandboxedCommands":false}}' --output-format stream-json --verbose</span>
+<span class="y">● Bash</span>  touch ~/sandbox-probe; echo "exit=$?"
+<span class="er">  ⎿ touch: ~/sandbox-probe: Operation not permitted · exit=1</span>
+<span class="y">● Bash</span>  touch ./inside.txt; echo "exit=$?"
+<span class="ok">  ⎿ exit=0</span>
+<span class="y">● Bash</span>  curl -sS --noproxy '*' -o /dev/null -w '%{http_code}' https://example.com
+<span class="er">  ⎿ curl: (6) Could not resolve host: example.com · 000</span>
+<span class="d">result · num_turns 4 ·</span> <span class="y">permission_denials: []</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.299 · claude-haiku-5-5 · 14.10.2026 · вивід скорочено, рядок профілю оболонки вилучено, домашню теку замінено на ~</div></div>
+<p>Запис за межами робочої теки і пряме з'єднання з мережею заблокувала ОС, а не правило. Зверніть увагу на порожній <code>permission_denials</code>: відмови sandbox — це помилки команд, а не відмови дозволів, тож монітор, який дивиться лише на це поле, їх не побачить.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Доступ</th><th>Типово в sandbox Claude Code</th><th>Налаштування</th></tr></thead>
+<tbody>
+<tr><td data-th="Доступ">Запис</td><td data-th="Типово в sandbox Claude Code">Робоча тека, тимчасова тека користувача, додані теки; захищені шляхи заборонені</td><td data-th="Налаштування"><code>filesystem.allowWrite</code>, <code>denyWrite</code></td></tr>
+<tr><td data-th="Доступ">Читання</td><td data-th="Типово в sandbox Claude Code"><b>Майже вся машина, зокрема <code>~/.ssh</code> і <code>~/.aws/credentials</code></b></td><td data-th="Налаштування"><code>filesystem.denyRead</code>, <code>credentials</code></td></tr>
+<tr><td data-th="Доступ">Мережа</td><td data-th="Типово в sandbox Claude Code">Прямого виходу немає; проксі пропускає хости зі списку, який спершу порожній</td><td data-th="Налаштування"><code>network.allowedDomains</code>, <code>deniedDomains</code></td></tr>
+<tr><td data-th="Доступ">Змінні середовища</td><td data-th="Типово в sandbox Claude Code">Успадковані, разом із секретами в них</td><td data-th="Налаштування"><code>credentials</code>, <code>CLAUDE_CODE_SUBPROCESS_ENV_SCRUB</code></td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Потрібні обидві ізоляції.</b> Anthropic пояснює: без мережевої скомпрометований агент вивантажить SSH-ключі, які може прочитати; без файлової — вийде з пісочниці й отримає мережу. Типове читання <code>~/.ssh</code> тримається лише на тому, що мережа закрита.</li>
+<li><b>Sandbox прибирає втому від запитів.</b> За внутрішніми даними Anthropic (20.10.2025), він зменшив кількість запитів дозволів на 84%: команда в межах пісочниці виконується без питань, бо найгірше, що вона може, обмежене ОС. Людина, яка схвалює сотий запит, уже не читає, що схвалює.</li>
+<li><b>Що лишається поза ним.</b> Вбудовані Read, Edit, WebFetch підкоряються лише дозволам (<code>denyRead</code> не зупиняє Read, <code>allowedDomains</code> не обмежує WebFetch); хуки, локальні MCP-сервери й LSP працюють з вашими повними правами. Щоб усе було за однією межею, сам Claude Code запускають у контейнері чи віртуальній машині.</li>
+<li><b>Аварійний вихід.</b> Команду, що впала в пісочниці, модель може попросити повторити без неї (параметр <code>dangerouslyDisableSandbox</code>). Allow-правило, яке збігається з командою, схвалює і такий повтор без запиту. <code>"allowUnsandboxedCommands": false</code> вимикає цей вихід зовсім.</li>
+</ul>
+</section>
+
+<section class="sec" id="same-model">
+<div class="sec-h"><span class="num">07</span><h2>Та сама модель, інший harness<span class="sub">Один лог, два набори інструментів</span></h2></div>
+<p>Задача для Lectern-подібного сервісу: у <code>lectern.log</code> 3000 рядків, 47 із них мають рівень ERROR, ще 38 містять слово «error» в іншому місці (<code>retry after error_budget check</code>). Питання однакове, модель та сама, різниться лише <code>--tools</code>.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/cmp</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Скільки рядків у файлі lectern.log мають рівень логування ERROR? …" --model haiku --setting-sources project --strict-mcp-config --permission-mode default --tools "Read" --output-format stream-json --verbose</span>
+<span class="y">● Read</span>  lectern.log                         <span class="d">⎿ рядки 1–813</span>
+<span class="y">● Read</span>  lectern.log offset 813 limit 1100   <span class="d">⎿ рядки 813–1912</span>
+<span class="y">● Read</span>  lectern.log offset 1913 limit 1100  <span class="d">⎿ рядки 1913–3001</span>
+<span class="c">47 рядків мають рівень ERROR: я вручну переглянув усі 3001 рядок файлу …</span>
+
+<span class="ps">$ </span><span class="c">claude -p "[те саме питання]" … --tools default …</span>
+<span class="y">● Bash</span>  ls -la &amp;&amp; find . -name 'lectern.log'
+<span class="y">● Bash</span>  grep -c 'ERROR' lectern.log; grep -cw 'ERROR' lectern.log; grep -oE '\b(DEBUG|INFO|WARN|…|ERROR)\b' lectern.log | sort | uniq -c
+<span class="d">  ⎿ 47 · 47 · 337 DEBUG · 47 ERROR · 2441 INFO · 175 WARN</span>
+<span class="c">У файлі lectern.log 47 рядків мають рівень ERROR. Я порахував … (grep -cw) і перевірив формат …</span></pre>
+<div class="cap">реальні сесії · Claude Code 2.1.299 · claude-haiku-5-5 · 14.10.2026 · вивід скорочено</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Метрика</th><th><code>--tools "Read"</code></th><th><code>--tools default</code></th></tr></thead>
+<tbody>
+<tr><td data-th="Метрика">Інструментів у init</td><td data-th="--tools &quot;Read&quot;">1</td><td data-th="--tools default">28</td></tr>
+<tr><td data-th="Метрика">Ходів (num_turns)</td><td data-th="--tools &quot;Read&quot;">4</td><td data-th="--tools default">3</td></tr>
+<tr><td data-th="Метрика">Вхідні токени, усього</td><td data-th="--tools &quot;Read&quot;">125 208</td><td data-th="--tools default">91 490</td></tr>
+<tr><td data-th="Метрика">з них записано в кеш</td><td data-th="--tools &quot;Read&quot;">90 915</td><td data-th="--tools default">8 560</td></tr>
+<tr><td data-th="Метрика">Вихідні токени</td><td data-th="--tools &quot;Read&quot;">1 907</td><td data-th="--tools default">775</td></tr>
+<tr><td data-th="Метрика">Час</td><td data-th="--tools &quot;Read&quot;">12,9 с</td><td data-th="--tools default">8,3 с</td></tr>
+<tr><td data-th="Метрика">total_cost_usd</td><td data-th="--tools &quot;Read&quot;">0,0196</td><td data-th="--tools default">0,0031</td></tr>
+<tr><td data-th="Метрика">Відповідь</td><td data-th="--tools &quot;Read&quot;">47 — правильно</td><td data-th="--tools default">47 — правильно, з перехресною перевіркою</td></tr>
+</tbody></table></div>
+<p>Відповідь однакова, ціна різна в 6,4 раза. Без Bash модель затягла в контекст весь файл (129 КБ, понад 90 тис. токенів запису в кеш) і рахувала «очима»; з Bash у контекст повернулися чотири числа. Ціна першого підходу росте з розміром файлу, другого — ні.</p>
+<div class="note warn"><span class="lbl">Чесно про вимір</span>
+<p>Це <b>по одному запуску</b> на конфігурацію. Другий запуск отримав 82,9 тис. токенів типового префікса з кешу, прогрітого попередніми запусками, тож частина різниці — кеш, а не інструменти. Модель із одним Read цього разу порахувала правильно; повторіть 5–10 разів, перш ніж робити висновок про точність. У звіті вона написала про «3001 рядок» — так Read пронумерував порожній рядок після останнього переносу, а у файлі їх 3000. Звіт агента — теж дані, які треба перевіряти.</p>
+</div>
+</section>
+
+<section class="sec" id="checklist">
+<div class="sec-h"><span class="num">08</span><h2>Чекліст власного harness<span class="sub">Рішення, варіанти, вибір для Lectern</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рішення</th><th>Варіанти</th><th>Lectern v0</th></tr></thead>
+<tbody>
+<tr><td data-th="Рішення">Хто дивиться на роботу</td><td data-th="Варіанти">людина в реальному часі · людина на виході · ніхто, лише код</td><td data-th="Lectern v0">Лише код: результат перевіряє <code>check_quotes.py</code></td></tr>
+<tr><td data-th="Рішення">Системний промпт</td><td data-th="Варіанти">типовий · типовий + append · власний</td><td data-th="Lectern v0">Власний: інша роль і формат, людини в циклі немає</td></tr>
+<tr><td data-th="Рішення">Набір інструментів</td><td data-th="Варіанти">усі вбудовані · вибрані · власні через MCP</td><td data-th="Lectern v0"><code>Read</code>: генератор лише читає лекцію</td></tr>
+<tr><td data-th="Рішення">Дозволи</td><td data-th="Варіанти">режим (default, acceptEdits, dontAsk, auto…) + allow / ask / deny</td><td data-th="Lectern v0"><code>dontAsk</code>: усе непередбачене — відмова без запиту</td></tr>
+<tr><td data-th="Рішення">Ізоляція</td><td data-th="Варіанти">немає · sandbox для shell · контейнер чи VM для всього процесу</td><td data-th="Lectern v0">Не потрібна, поки немає Bash; з'явиться Bash — sandbox з <code>allowUnsandboxedCommands: false</code></td></tr>
+<tr><td data-th="Рішення">Зупинка</td><td data-th="Варіанти">max turns · бюджет · критерій успіху · таймаут (урок 2.2)</td><td data-th="Lectern v0"><code>--max-turns 4</code>, <code>--max-budget-usd 0.05</code>, валідний JSON + усі цитати знайдено</td></tr>
+<tr><td data-th="Рішення">Контекст</td><td data-th="Варіанти">одна довга сесія · сесія на задачу · субагенти · компакція</td><td data-th="Lectern v0">Одна лекція = одна чиста сесія; велика лекція ділиться до виклику</td></tr>
+<tr><td data-th="Рішення">Інструкції й пам'ять</td><td data-th="Варіанти">CLAUDE.md · файл прогресу · нічого</td><td data-th="Lectern v0">Нічого: <code>--setting-sources project</code>, щоб налаштування розробника не потрапили в продукт</td></tr>
+<tr><td data-th="Рішення">Детерміновані перевірки</td><td data-th="Варіанти">у промпті («перевір себе») · у коді harness · у хуках</td><td data-th="Lectern v0">У коді: перевірка цитат після запуску</td></tr>
+<tr><td data-th="Рішення">Спостережуваність</td><td data-th="Варіанти">лише текст · <code>json</code> · <code>stream-json</code> + transcript</td><td data-th="Lectern v0"><code>json</code> у <code>runs/</code>: ходи, вартість, відмови, результат перевірки</td></tr>
+</tbody></table></div>
+<div class="note tip"><span class="lbl">Правило вибору</span>
+<p>Починайте з найменшого harness, що закриває задачу, і розширюйте за відмовами в <code>permission_denials</code> та провалами перевірок, а не навпаки. Порада зі статті про context engineering: якщо інженер не може однозначно сказати, який інструмент доречний у ситуації, агент теж не зможе — роздутий набір інструментів там названо одним із найчастіших збоїв.</p>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: специфікація harness і перший запуск</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 2.3</div><div class="pb">
+<p>Генератор квізу з однієї лекції. Специфікація лежить поруч із кодом, щоб будь-хто бачив, з чим агент запускається (обґрунтування кожного рядка — у чеклісті вище):</p>
+<pre class="code" data-lang="markdown"><span class="cm"># Lectern · harness v0</span>
+Промпт: prompts/system.md, 12 рядків,
+  ЗАМІНЮЄ типовий (--system-prompt-file)
+Інструменти: Read; без Bash, Edit,
+  WebFetch і MCP (--tools "Read",
+  --strict-mcp-config)
+Дозволи: dontAsk; налаштування розробника
+  не читаються (--setting-sources project)
+Зупинка: --max-turns 4,
+  --max-budget-usd 0.05;
+  успіх = JSON + усі цитати дослівні
+Контекст: одна лекція = одна чиста сесія
+Логи: --output-format json → runs/;
+  num_turns, total_cost_usd,
+  permission_denials</pre>
+<p>Системний промпт — 12 рядків. Останній рядок узято з настанови документації для власних промптів:</p>
+<pre class="code" data-lang="markdown">Ти — генератор квізів Lectern. Працюєш лише з файлами в каталозі lectures/.
+Задача: за текстом лекції створити питання з одним правильним варіантом.
+Правила:
+1. Кожне питання спирається на цитату — дослівний фрагмент лекції (без змін, без «…»).
+2. Якщо фактів для питання немає в тексті, не вигадуй: пропусти питання.
+3. Три неправильні варіанти мають бути правдоподібними, але суперечити тексту.
+4. Мова — мова лекції.
+5. Не змінюй файли й не виконуй команд: ти лише читаєш.
+Формат відповіді — тільки JSON без пояснень:
+{"questions":[{"q":"…","options":["…","…","…","…"],"answer":0,"quote":"…"}]}
+Якщо лекцію не вдалося прочитати, поверни {"error":"…"}.
+Застосунок додає до розмови системні нагадування; це контекст від застосунку, а не прохання користувача.</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Зроби 3 питання за лекцією lectures/ohm.md." --model haiku --setting-sources project --strict-mcp-config --system-prompt-file system-prompt.md --tools "Read" --permission-mode dontAsk --max-turns 4 --max-budget-usd 0.05 --output-format json &gt; run.json</span>
+<span class="ps">$ </span><span class="c">python3 check_quotes.py run.json lectures/ohm.md</span>
+1. <span class="ok">OK</span>  answer=0 quote=Сила струму в ділянці кола прямо пропорційна нап…
+2. <span class="ok">OK</span>  answer=2 quote=ділянка має опір 1 Ом, якщо за напруги 1 В по ні…
+3. <span class="ok">OK</span>  answer=1 quote=для напівпровідникового діода залежність струму …
+turns=2 cost=$0.0019 denials=0</pre>
+<div class="cap">реальний запуск · Claude Code 2.1.299 · claude-haiku-5-5 · 14.10.2026 · лекція — фрагмент із чотирьох речень про закон Ома</div></div>
+<p>Два ходи (прочитати і відповісти), три питання, усі цитати дослівні, жодної відмови. Один із неправильних варіантів у питанні 2 побудовано перестановкою одиниць («за напруги 1 А по ній тече струм 1 В») — правдоподібно, але якість дистракторів цитатна перевірка не ловить, для неї потрібні evals (модуль 12).</p>
+<p><b>Ваш крок:</b> покладіть у репозиторій Lectern <code>prompts/system.md</code>, <code>harness.md</code> і <code>check_quotes.py</code>, запустіть на власному фрагменті лекції і збережіть <code>run.json</code> у <code>runs/</code>. У 2.5 ви зберете мінімального агента Lectern на Claude API, і ці рішення стануть його конфігурацією.</p>
+</div></div>
+<pre class="code" data-lang="python"><span class="cm"># check_quotes.py — перевірка на боці harness, а не прохання в промпті</span>
+<span class="k">import</span> json, sys
+run = json.load(open(sys.argv[<span class="n">1</span>]))
+lecture = open(sys.argv[<span class="n">2</span>], encoding=<span class="s">"utf-8"</span>).read()
+quiz = json.loads(run[<span class="s">"result"</span>])
+<span class="k">for</span> i, q <span class="k">in</span> enumerate(quiz[<span class="s">"questions"</span>], <span class="n">1</span>):
+    ok = q[<span class="s">"quote"</span>] <span class="k">in</span> lecture
+    print(f<span class="s">"{i}. {'OK ' if ok else 'BAD'} answer={q['answer']} quote={q['quote'][:48]}…"</span>)
+print(f<span class="s">"turns={run['num_turns']} cost=${run['total_cost_usd']:.4f} denials={len(run['permission_denials'])}"</span>)</pre>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">10</span><h2>Типові помилки<span class="sub">Де harness підводить</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Що стається</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">Захист записано в промпті («ніколи не видаляй файли»)</td><td data-th="Що стається">Модель виконує прохання, поки сама вирішує його виконувати; у запуску вище вона обійшла <code>rm</code> через Python</td><td data-th="Як правильно">Межа в дозволах і sandbox, промпт лише пояснює, навіщо вона</td></tr>
+<tr><td data-th="Помилка"><code>Bash</code> в allow і кілька deny</td><td data-th="Що стається">Усе, чого немає в deny, виконується без питань: <code>/bin/rm</code>, <code>bash -c</code>, <code>python3 -c</code></td><td data-th="Як правильно">Allow лише потрібних префіксів; deny — для «ніколи»</td></tr>
+<tr><td data-th="Помилка"><code>--tools</code> сплутано з <code>--allowedTools</code></td><td data-th="Що стається">Інструмент лишився в контексті й займає токени або, навпаки, зник, і модель шукає обхідний шлях</td><td data-th="Як правильно"><code>--tools</code> — що існує, <code>--allowedTools</code> — що без запиту</td></tr>
+<tr><td data-th="Помилка"><code>--system-prompt</code> «для економії токенів»</td><td data-th="Що стається">Зникають настанови щодо інструментів і безпеки, кеш спільного префікса не працює; CLAUDE.md при цьому лишається</td><td data-th="Як правильно">Append, доки агент лишається coding-агентом; заміна — коли змінилися роль, поверхня чи модель дозволів</td></tr>
+<tr><td data-th="Помилка">Скрипт запускає <code>claude -p</code> з особистими налаштуваннями</td><td data-th="Що стається">На вашій машині працює, у колеги чи в CI інакше: інші allow-правила, режим <code>auto</code>, чужі MCP-сервери</td><td data-th="Як правильно"><code>--setting-sources project</code>, <code>--strict-mcp-config</code> або <code>--bare</code> з ключем API</td></tr>
+<tr><td data-th="Помилка">Моніторинг лише по <code>permission_denials</code></td><td data-th="Що стається">Відмови sandbox і помилки команд туди не потрапляють</td><td data-th="Як правильно">Дивитися ще й на <code>is_error</code> результатів інструментів у потоці чи транскрипті</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">11</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">scaffold</span><span class="h">у статтях про бенчмарки</span></span><span class="b"><span class="t">Те саме, що harness</span><span class="d">програма навколо моделі; агент = модель + scaffold</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">deny → ask → allow</span><span class="h">що це?</span></span><span class="b"><span class="t">Порядок перевірки правил</span><span class="d">перше спрацювання вирішує; allow не робить винятку з deny</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">--tools проти --allowedTools</span><span class="h">різниця?</span></span><span class="b"><span class="t">Існує проти «без запиту»</span><span class="d">перший змінює набір інструментів, другий — дозволи</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Bash(rm *) у deny</span><span class="h">чи зупинить /bin/rm?</span></span><span class="b"><span class="t">Ні</span><span class="d">правило бачить текст команди, а не програму; межа — sandbox</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">permission_denials</span><span class="h">де шукати?</span></span><span class="b"><span class="t">У підсумку result</span><span class="d">список відхилених викликів із tool_name і tool_input</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">--system-prompt</span><span class="h">а CLAUDE.md?</span></span><span class="b"><span class="t">CLAUDE.md лишається</span><span class="d">він приходить системним нагадуванням, а не в промпті</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">12</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Агент у CI має лише читати код і запускати тести. Конфігурація: <code>--allowedTools "Bash" --disallowedTools "Bash(rm *)" "Bash(git push *)"</code>. Що з нею не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Нічого: deny розбирає складені команди, тож <code>rm</code> не пройде в жодній формі виклику</span></label><label class="opt ok"><input type="radio" name="q1"><span>Bash дозволено цілком: пройде все, чого немає в deny, наприклад <code>python3 -c</code></span></label><label class="opt"><input type="radio" name="q1"><span>Deny не діє, коли для того самого інструмента є allow, тож заборони марні</span></label></div>
+    <div class="why yes">Так. Blocklist перелічує заборони, а способів зробити небажане безліч; у демо уроку файл видалили через <code>python3 -c</code>. Тут потрібен allowlist: <code>Bash(python3 -m pytest *)</code> і читання.</div>
+    <div class="why no">Deny діє і за наявності allow (його перевіряють першим) і ловить частини складених команд, але зіставляється з текстом команди: <code>/bin/rm</code> чи <code>python3 -c</code> він не впізнає. З <code>Bash</code> в allow усе непередбачене виконається без питань.</div></div>
+  <div class="q"><div class="qt">2. Правила: allow <code>Bash(aws s3 ls)</code>, deny <code>Bash(aws *)</code>. Модель викликає <code>aws s3 ls</code>. Що станеться?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Відмова: deny перевіряється першим, і конкретність правила порядку не змінює</span></label><label class="opt"><input type="radio" name="q2"><span>Виконається: точніший allow вирізає виняток із ширшого deny</span></label><label class="opt"><input type="radio" name="q2"><span>Claude Code попросить схвалення: allow і deny суперечать одне одному</span></label></div>
+    <div class="why yes">Так. Порядок завжди deny → ask → allow, і allow не може вирізати виняток із deny.</div>
+    <div class="why no">Specificity не впливає: перше спрацювання в порядку deny → ask → allow вирішує, а deny <code>Bash(aws *)</code> збігається.</div></div>
+  <div class="q"><div class="qt">3. Генератор квізів запускається з <code>--system-prompt</code> у репозиторії, де лежить CLAUDE.md з правилами коду. Що отримає модель?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Лише ваш промпт: заміна прибирає і типові настанови, і CLAUDE.md проєкту</span></label><label class="opt"><input type="radio" name="q3"><span>Типовий промпт Claude Code, ваш текст наприкінці і CLAUDE.md у самому промпті</span></label><label class="opt ok"><input type="radio" name="q3"><span>Ваш промпт, а CLAUDE.md — окремим системним нагадуванням у розмові</span></label></div>
+    <div class="why yes">Так. CLAUDE.md приходить у розмову, а не в системний промпт; у демо правило «— lectern-ok» спрацювало і з заміненим промптом. Прибирають його через <code>--setting-sources</code> або <code>--bare</code>.</div>
+    <div class="why no">Заміна стосується лише системного промпту, а дописування в кінець — це <code>--append-system-prompt</code>. CLAUDE.md, як і інші системні нагадування, Claude Code додає в розмову окремо.</div></div>
+  <div class="q"><div class="qt">4. Агент має лишитися coding-агентом, але звітувати у JSON-форматі вашої команди. Який прапорець?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span><code>--append-system-prompt</code>: типові настанови лишаються, додається формат</span></label><label class="opt"><input type="radio" name="q4"><span><code>--system-prompt</code>: заміна дає надійніший формат і заощаджує токени промпту</span></label><label class="opt"><input type="radio" name="q4"><span><code>--tools ""</code> і формат у промпті, щоб модель не відволікалася на виклики</span></label></div>
+    <div class="why yes">Так. Роль і поверхня ті самі, змінюється лише формат звіту, тож доповнення — найменш ризикова зміна.</div>
+    <div class="why no">Заміна прибирає настанови щодо інструментів і безпеки та ламає кеш спільного префікса; вона доречна, коли змінилися роль, поверхня чи модель дозволів. Без інструментів агент перестає бути coding-агентом.</div></div>
+  <div class="q"><div class="qt">5. Sandbox увімкнено, <code>allowedDomains</code> порожній. Модель викликає WebFetch для довільного домену. Що вирішує, чи завантажиться сторінка?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Sandbox: з порожнім <code>allowedDomains</code> мережу закрито для всіх інструментів</span></label><label class="opt ok"><input type="radio" name="q5"><span>Дозволи для WebFetch: sandbox обмежує лише shell-команди та їхні дочірні процеси</span></label><label class="opt"><input type="radio" name="q5"><span>Проксі sandbox: WebFetch іде через нього, і без домену в списку нічого не завантажиться</span></label></div>
+    <div class="why yes">Так. Read, Edit, WebFetch, WebSearch працюють поза sandbox і підкоряються дозволам; <code>allowedDomains</code> WebFetch не обмежує.</div>
+    <div class="why no">Sandbox обгортає Bash, PowerShell і Monitor, а мережевий проксі — їхні процеси. Вбудований WebFetch від нього не залежить, його контролюють правила на кшталт <code>WebFetch(domain:…)</code>.</div></div>
+  <div class="q"><div class="qt">6. Sandbox Claude Code типово дозволяє <code>cat ~/.ssh/id_rsa</code>. Що тримає це в безпеці і що зламає захист?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Seatbelt не дає процесам читати домашню теку, тож цей захист нічим не зламати</span></label><label class="opt"><input type="radio" name="q6"><span>Sandbox маскує секрети в оточенні й файлах, тож <code>cat</code> поверне замість ключа порожнечу</span></label><label class="opt ok"><input type="radio" name="q6"><span>Закрита мережа; широкий домен чи повтор поза sandbox дасть вивантажити ключ</span></label></div>
+    <div class="why yes">Так. Тому Anthropic і наголошує, що потрібні обидві ізоляції: файлова і мережева. Секрети варто ще й закрити <code>denyRead</code>.</div>
+    <div class="why no">Типове читання охоплює майже всю машину, зокрема <code>~/.ssh</code>, а секретів sandbox сам не ховає — навіть змінні середовища успадковуються. Безпеку дає закрита мережа, тож її розширення — ризик.</div></div>
+  <div class="q"><div class="qt">7. Монітор CI сповіщає, коли <code>permission_denials</code> не порожній. Агент у sandbox тричі отримав «Operation not permitted». Що побачить монітор?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q7"><span>Нічого: відмови sandbox — це помилки команд, а не відмови дозволів</span></label><label class="opt"><input type="radio" name="q7"><span>Три записи в <code>permission_denials</code>, по одному на кожну заблоковану команду</span></label><label class="opt"><input type="radio" name="q7"><span>Один агрегований запис про відмови sandbox у <code>permission_denials</code></span></label></div>
+    <div class="why yes">Так. У пробі sandbox з уроку дві команди впали, а <code>permission_denials</code> лишився порожнім. Дивіться ще на <code>is_error</code> результатів інструментів.</div>
+    <div class="why no"><code>permission_denials</code> заповнює шар дозволів. Sandbox блокує вже запущену команду на рівні ОС, і це видно лише як помилку в результаті інструмента.</div></div>
+  <div class="q"><div class="qt">8. Треба порахувати рядки ERROR у логу на мільйон рядків, а в агента лише Read. Чого очікувати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Те саме, що з Bash, лише трохи повільніше: Read читає файл частинами по 25 тис. токенів</span></label><label class="opt ok"><input type="radio" name="q8"><span>Увесь лог піде в контекст: ціна росте з розміром, а <code>grep -c</code> дав би число</span></label><label class="opt"><input type="radio" name="q8"><span>Read сам порахує збіги, якщо передати йому шаблон пошуку в параметрах</span></label></div>
+    <div class="why yes">Так. На 3000 рядках різниця вже була 6,4 раза за вартістю; на мільйоні рядків файл не влізе навіть у вікно на 1 млн токенів.</div>
+    <div class="why no">Read повертає вміст, а не результат обчислення. Набір інструментів визначає, що потрапляє в контекст і скільки це коштує.</div></div>
+  <div class="q"><div class="qt">9. Ваш скрипт з <code>claude -p</code> у колеги поводиться інакше: інші запити дозволів, інші MCP-інструменти. Як зробити запуск відтворюваним?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Дописати в промпт «не використовуй MCP» і перелік дозволених команд для Bash</span></label><label class="opt"><input type="radio" name="q9"><span>Запускати з <code>--dangerously-skip-permissions</code>, щоб запитів не було ні в кого</span></label><label class="opt ok"><input type="radio" name="q9"><span><code>--setting-sources project</code>, <code>--strict-mcp-config</code> і явні дозволи</span></label></div>
+    <div class="why yes">Так. Без них <code>-p</code> підтягує особисті налаштування, плагіни й MCP-сервери машини, на якій запущений.</div>
+    <div class="why no">Прохання в промпті не прибирає інструменти з контексту, а bypass лише вимикає перевірки. Відтворюваність дає явно заданий harness.</div></div>
+  <div class="q"><div class="qt">10. Агентові потрібні <code>npm test</code>, <code>git diff</code> і редагування <code>src/</code>. Який набір правил найкращий?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q10"><span>allow <code>Bash(npm test *)</code>, <code>Bash(git diff *)</code>, <code>Edit(src/*<wbr/>*)</code>; deny <code>Read(./.env)</code></span></label><label class="opt"><input type="radio" name="q10"><span>allow <code>Bash</code> і <code>Edit</code>; deny <code>Bash(rm *)</code>, <code>Bash(curl *)</code>, <code>Bash(git push *)</code>, <code>Read(./.env)</code></span></label><label class="opt"><input type="radio" name="q10"><span>режим <code>acceptEdits</code> і allow <code>Bash(npm *)</code>, <code>Bash(git *)</code> — менше запитів</span></label></div>
+    <div class="why yes">Так. Скінченний allowlist під задачу, deny — для того, що не має статися ніколи.</div>
+    <div class="why no">Blocklist пропускає все непередбачене, а широкі <code>npm *</code> і <code>git *</code> разом з acceptEdits дозволяють і <code>git push</code>, і правки поза <code>src/</code>. Потрібен скінченний allowlist під задачу; bypass документація радить лише для ізольованих контейнерів і VM.</div></div>
+  <div class="q"><div class="qt">11. Скрипт перенесли з <code>claude -p</code> в Agent SDK, не вказавши <code>system_prompt</code>. Що змінилося в harness?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Нічого: SDK — той самий Claude Code з тими самими типовими налаштуваннями</span></label><label class="opt ok"><input type="radio" name="q11"><span>SDK бере мінімальний промпт; для поведінки CLI — пресет <code>claude_code</code></span></label><label class="opt"><input type="radio" name="q11"><span>SDK бере повний промпт Claude Code, але без CLAUDE.md і налаштувань проєкту</span></label></div>
+    <div class="why yes">Так. Це прямо записано в документації SDK: типовий промпт <code>-p</code> і SDK різні.</div>
+    <div class="why no">Інфраструктура та сама, але типовий системний промпт ні: <code>claude -p</code> бере повний промпт Claude Code, а SDK без параметра — мінімальний, лише з підтримкою виклику інструментів.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">13</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>компоненти harness</td><td>Системний промпт, інструменти, дозволи, sandbox, менеджер контексту, інструкції й пам'ять, хуки, спостережуваність.</td></tr>
+<tr><td>scaffold</td><td>Назва harness у статтях про бенчмарки: агент = модель + scaffold.</td></tr>
+<tr><td>системний промпт агента</td><td>Інструкція до harness: роль, поверхня, межі, формат, робота з інструментами.</td></tr>
+<tr><td>--append-system-prompt vs --system-prompt</td><td>Доповнити типовий промпт Claude Code проти замінити його повністю.</td></tr>
+<tr><td>правило дозволу (allow / ask / deny)</td><td>Шаблон виклику інструмента і рішення: виконати без запиту, спитати, відхилити.</td></tr>
+<tr><td>пріоритет deny (deny-first)</td><td>Правила перевіряються в порядку deny → ask → allow; перше спрацювання вирішує.</td></tr>
+<tr><td>blocklist (deny-список)</td><td>Широкий allow плюс перелік заборон; не межа, бо зіставляється з текстом команди.</td></tr>
+<tr><td>tool allowlist (--tools / --allowedTools)</td><td>Явний перелік того, що існує і що виконується без запиту; решта — запит або відмова.</td></tr>
+<tr><td>sandbox (ізоляція файлів і мережі)</td><td>Межа ОС для shell-команд: куди писати і з якими хостами з'єднуватися.</td></tr>
+<tr><td>unsandboxed retry</td><td>Повтор команди поза sandbox через <code>dangerouslyDisableSandbox</code>; вимикається <code>allowUnsandboxedCommands: false</code>.</td></tr>
+<tr><td>permission_denials</td><td>Поле підсумку <code>result</code>: які виклики шар дозволів відхилив.</td></tr>
+<tr><td>точки розширення (extension points)</td><td>Місця, де до harness додають власну логіку: хуки, MCP, skills, субагенти, плагіни.</td></tr>
+<tr><td>transcript (журнал сесії)</td><td>JSONL у <code>~/.claude/projects/</code>: повідомлення, виклики, результати й службові записи harness.</td></tr>
+<tr><td>system/init</td><td>Перша подія <code>stream-json</code>: модель, режим дозволів, інструменти, MCP, skills, плагіни запуску.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">14</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Специфікація harness для власного агента</h3>
+<p>Оберіть агента (рецензент квізів Lectern або агент зі своєї роботи), опишіть кожен шар harness з обґрунтуванням, напишіть системний промпт до 15 рядків, запустіть його один раз через <code>claude -p</code> і вставте підсумок запуску з <code>permission_denials</code>.</p>
+<h3>2. Аудит дозволів</h3>
+<p>Розберіть наданий у завданні <code>settings.json</code>, знайдіть щонайменше чотири способи обійти його заборони і перепишіть його як allowlist із sandbox.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">15</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 14.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/how-claude-code-works" target="_blank" rel="noopener">Claude Code — How Claude Code works</a><span>визначення agentic harness, цикл, інструменти, сесії й transcript</span></li>
+<li><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code — Configure permissions</a><span>allow / ask / deny, порядок, синтаксис правил, межі Bash-правил, зв'язок із sandbox</span></li>
+<li><a href="https://code.claude.com/docs/en/sandboxing" target="_blank" rel="noopener">Claude Code — Configure the sandboxed Bash tool</a><span>типові межі файлів і мережі, що лишається поза sandbox, unsandboxed retry</span></li>
+<li><a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">Claude Code — CLI reference</a><span><code>--tools</code>, <code>--allowedTools</code>, <code>--disallowedTools</code>, прапорці системного промпту</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run programmatically</a><span><code>--bare</code>, <code>--permission-prompts</code>, <code>system/init</code>, <code>permission_denials</code></span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/modifying-system-prompts" target="_blank" rel="noopener">Agent SDK — Modifying system prompts</a><span>мінімальний промпт проти пресету <code>claude_code</code>, системні нагадування</span></li>
+<li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a><span>19.12.2024 · agent-computer interface, інструменти важливіші за промпт</span></li>
+<li><a href="https://www.anthropic.com/engineering/swe-bench-sonnet" target="_blank" rel="noopener">Anthropic — Raising the bar on SWE-bench Verified with Claude 3.5 Sonnet</a><span>06.01.2025 · агент = модель + scaffold, 49% з мінімальним scaffold</span></li>
+<li><a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">Anthropic — Writing effective tools for agents — with agents</a><span>11.09.2025 · описи інструментів, ліміт 25 тис. токенів на відповідь</span></li>
+<li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic — Effective context engineering for AI agents</a><span>29.09.2025 · роздуті набори інструментів як типовий збій</span></li>
+<li><a href="https://claude.com/blog/building-agents-with-the-claude-agent-sdk" target="_blank" rel="noopener">Anthropic — Building agents with the Claude Agent SDK</a><span>29.09.2025 · harness Claude Code як основа для інших агентів</span></li>
+<li><a href="https://www.anthropic.com/news/claude-sonnet-4-5" target="_blank" rel="noopener">Anthropic — Introducing Claude Sonnet 4.5</a><span>29.09.2025 · scaffold і доповнення промпту в методиці SWE-bench</span></li>
+<li><a href="https://www.anthropic.com/engineering/claude-code-sandboxing" target="_blank" rel="noopener">Anthropic — Beyond permission prompts: making Claude Code more secure and autonomous</a><span>20.10.2025 · файлова й мережева ізоляція, −84% запитів дозволів</span></li>
+<li><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents" target="_blank" rel="noopener">Anthropic — Effective harnesses for long-running agents</a><span>26.11.2025 · агент-ініціалізатор, файл прогресу, список фіч у JSON</span></li>
+<li><a href="https://github.com/anthropics/sandbox-runtime" target="_blank" rel="noopener">anthropics/sandbox-runtime</a><span>відкритий код sandbox, на якому побудовано Claude Code</span></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-approvals-security" target="_blank" rel="noopener">Codex — Agent approvals &amp; security</a><span>режими пісочниці й політики схвалень</span></li>
+<li><a href="https://cursor.com/docs/cli/reference/permissions" target="_blank" rel="noopener">Cursor CLI — Permissions</a><span>Shell, Read, Write, WebFetch, Mcp; deny має пріоритет</span></li>
+<li><a href="https://cursor.com/docs/agent/security/run-modes" target="_blank" rel="noopener">Cursor — Run modes і sandbox</a><span>режими виконання, <code>sandbox.json</code>, Seatbelt і Landlock</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 2.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 2.3 · Senomi<br><br><a href="lesson-10.html">← Урок 2.2</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-12.html">Урок 2.4 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

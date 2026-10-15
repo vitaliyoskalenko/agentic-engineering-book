@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 1.1. Токени й токенізація: чому кирилиця дорожча, як рахувати, ліміти</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="32" width="56" height="56" rx="8"/><rect x="48" y="48" width="24" height="24" rx="3"/><path d="M44 20v12M60 20v12M76 20v12M44 88v12M60 88v12M76 88v12M20 44h12M20 60h12M20 76h12M88 44h12M88 60h12M88 76h12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 1.1 · Модуль 1</div>
+<h1>Токени й токенізація: чому кирилиця дорожча, як рахувати, ліміти</h1>
+<p class="lead">Модель читає, рахує ліміти й виставляє рахунок у токенах, а не в словах чи символах. Міряємо той самий текст українською, англійською, кодом і JSON у чотирьох токенізаторах, розбираємо, як працює BPE, як рахуються контекстне вікно, max_tokens і думання, і рахуємо бюджет курсу Lectern з власних вимірів.</p>
+<div class="hero-meta"><span class="chip">Як працюють LLM — механіка під капотом</span><span class="chip t">≈ 55 хв</span><span class="chip a">12 карток</span><span class="chip g">перевірено 14.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Мовні моделі не бачать текст так, як ми з вами. Натомість вони бачать послідовність чисел, відомих як токени.</p><cite>README бібліотеки tiktoken (OpenAI) · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 13 розділів</summary><nav class="toc"><a href="#token"><b>01</b>Що таке токен</a><a href="#bpe"><b>02</b>BPE</a><a href="#measure"><b>03</b>Вимірювання</a><a href="#count"><b>04</b>Як рахувати</a><a href="#limits"><b>05</b>Ліміти</a><a href="#inflate"><b>06</b>Що роздуває токени</a><a href="#project"><b>07</b>Наскрізний проєкт</a><a href="#mistakes"><b>08</b>Типові помилки</a><a href="#practice"><b>09</b>Практика</a><a href="#quiz"><b>10</b>Квіз</a><a href="#terms"><b>11</b>Терміни уроку</a><a href="#homework"><b>12</b>Домашнє завдання</a><a href="#resources"><b>13</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>пояснити, як BPE будує словник і чому той самий текст різні моделі ріжуть на різну кількість токенів;</li>
+    <li>виміряти токени свого тексту локально (tiktoken) і для Claude (count_tokens або поле <code>usage</code>);</li>
+    <li>оцінити «вартість мови» для українського контенту і знати, де новий токенізатор Claude її змінив;</li>
+    <li>скласти бюджет запиту: контекстне вікно, <code>max_tokens</code>, думання, поріг 100 тис. токенів у Haiku 5.5;</li>
+    <li>знаходити, що роздуває токени (base64, JSON з <code>\u</code>-екрануванням, URL, PDF як зображення), і прибирати це.</li>
+  </ul>
+</div>
+
+<section class="sec" id="token">
+<div class="sec-h"><span class="num">01</span><h2>Що таке токен<span class="sub">Не слово і не символ</span></h2></div>
+<p>На вхід модель отримує послідовність цілих чисел з фіксованого словника. <b>Токенізатор</b> перетворює текст на ці числа і назад без втрат. Рахунок, ліміт контекстного вікна і <code>max_tokens</code> рахуються саме в цих одиницях. Ось як два токенізатори OpenAI, доступні локально через бібліотеку <code>tiktoken</code>, ріжуть кілька рядків:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>split.py — tiktoken 0.14.0</span></div>
+<pre><span class="d"># o200k_base (словник ≈ 200 тис.)</span>
+'tokenization'   2 'token|ization'
+' tokenization'  2 ' token|ization'
+'токенізація'    5 'т|ок|ен|іза|ція'
+' токенізація'   4 ' ток|ен|іза|ція'
+' 2026'          3 ' |202|6'
+'    return'     2 '   | return'
+<span class="d"># cl100k_base (словник ≈ 100 тис.)</span>
+' tokenization'  2 ' token|ization'
+' токенізація'   9 ' т|ок|ен|і|з|а|ц|і|я'</pre>
+<div class="cap">реальний вивід · 14.10.2026 · колонки: рядок, кількість токенів, межі токенів · скорочено, списки ідентифікаторів прибрано</div></div>
+<p>Чотири спостереження, які далі пояснюють усі цифри уроку:</p>
+<ol class="steps">
+<li><b>Пробіл — частина токена.</b> Слово на початку рядка і те саме слово всередині речення — різні послідовності: «токенізація» без пробілу коштує 5 токенів, з пробілом 4.</li>
+<li><b>Часте слово — один-два токени, рідкісне — кілька.</b> Англійське «tokenization» в обох словниках займає 2 токени. Українське в старому словнику майже розпадається на літери (9 токенів), у новому — на 4 частини.</li>
+<li><b>Числа ріжуться групами до трьох цифр.</b> « 2026» — це пробіл, «202» і «6». Довгі ідентифікатори, хеші й номери дорогі.</li>
+<li><b>Відступи теж токени.</b> Чотири пробіли перед <code>return</code> стали окремим токеном. У коді з глибокою вкладеністю це помітна частка.</li>
+</ol>
+<p>Звідси правило: <b>токен ≠ слово ≠ символ</b>, і перерахунок між ними залежить від мови, типу тексту і конкретного токенізатора. Для нашого українського абзацу з 101 слова й 653 символів Claude Haiku 5.5 нарахував 265 токенів, а для його англійського перекладу (124 слова, 704 символи) — 197.</p>
+</section>
+
+<section class="sec" id="bpe">
+<div class="sec-h"><span class="num">02</span><h2>BPE<span class="sub">Як токенізатор будує словник</span></h2></div>
+<p>Більшість сучасних токенізаторів — варіанти <b>BPE (byte-pair encoding)</b>, який для мовних моделей адаптували Sennrich та співавтори (2015): рідкісні слова кодуються як послідовності частин слів (subword units). Навчання словника — простий жадібний цикл:</p>
+<ol class="steps">
+<li>почати з базових символів (у byte-level BPE це 256 значень байта);</li>
+<li>порахувати всі сусідні пари символів у навчальному корпусі;</li>
+<li>злити найчастішу пару в новий символ і додати його до словника;</li>
+<li>повторювати, доки словник не досягне заданого розміру (у <code>cl100k_base</code> — 100 277 записів, у <code>o200k_base</code> — 200 019).</li>
+</ol>
+<p>Під час кодування токенізатор застосовує вивчені злиття в тому самому порядку. Ось повний цикл на корпусі з восьми слів:</p>
+<pre class="code" data-lang="python"><span class="k">from</span> collections <span class="k">import</span> Counter
+
+corpus = <span class="s">"лекція лекції лекцій лектор лектора курс курси курсу"</span>.split()
+words = Counter(tuple(w) + (<span class="s">"·"</span>,) <span class="k">for</span> w <span class="k">in</span> corpus)   <span class="cm"># «·» — кінець слова</span>
+
+<span class="k">def</span> pair_counts(words):
+    pairs = Counter()
+    <span class="k">for</span> symbols, freq <span class="k">in</span> words.items():
+        <span class="k">for</span> a, b <span class="k">in</span> zip(symbols, symbols[<span class="n">1</span>:]):
+            pairs[a, b] += freq
+    <span class="k">return</span> pairs
+
+<span class="k">def</span> merge(words, pair):
+    out = {}
+    <span class="k">for</span> symbols, freq <span class="k">in</span> words.items():
+        s, i = [], <span class="n">0</span>
+        <span class="k">while</span> i &lt; len(symbols):
+            <span class="k">if</span> symbols[i:i + <span class="n">2</span>] == pair:
+                s.append(symbols[i] + symbols[i + <span class="n">1</span>]); i += <span class="n">2</span>
+            <span class="k">else</span>:
+                s.append(symbols[i]); i += <span class="n">1</span>
+        out[tuple(s)] = freq
+    <span class="k">return</span> out
+
+<span class="k">for</span> step <span class="k">in</span> range(<span class="n">1</span>, <span class="n">7</span>):
+    (a, b), n = pair_counts(words).most_common(<span class="n">1</span>)[<span class="n">0</span>]
+    words = merge(words, (a, b))
+    print(<span class="s">f"крок {step}: {a}+{b} → {a + b}   частота {n}"</span>)
+print(<span class="s">" "</span>.join(<span class="s">"|"</span>.join(s) <span class="k">for</span> s <span class="k">in</span> words))</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 toy_bpe.py</span>
+крок 1: л+е → ле   частота 5
+крок 2: ле+к → лек   частота 5
+крок 3: лек+ц → лекц   частота 3
+крок 4: лекц+і → лекці   частота 3
+крок 5: к+у → ку   частота 3
+крок 6: ку+р → кур   частота 3
+лекці|я|· лекці|ї|· лекці|й|· лек|т|о|р|· лек|т|о|р|а|· кур|с|· кур|с|и|· кур|с|у|·</pre>
+<div class="cap">реальний вивід · Python 3.9 · 14.10.2026</div></div>
+<p>Після шести злиттів словник уже має основи «лекці», «лек» і «кур», а закінчення лишилися окремими символами. Так і виникають «частини слів»: токенізатор не знає морфології, він лише запам'ятовує, що часто трапляється поруч <b>у його навчальному корпусі</b>.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 440" role="img" aria-label="Шлях слова токенізація: UTF-8 байти, злиття BPE, ідентифікатори">
+  <defs>
+    <marker id="t11a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="20" y="10" width="320" height="58" rx="10" class="bx m"/>
+  <text x="180" y="34" text-anchor="middle" class="tx b">« токенізація»</text>
+  <text x="180" y="54" text-anchor="middle" class="tx s">1 пробіл + 11 кириличних літер</text>
+  <path d="M180 68 V 96" class="ln a" marker-end="url(#t11a)"/>
+  <rect x="20" y="100" width="320" height="72" rx="10" class="bx"/>
+  <text x="180" y="124" text-anchor="middle" class="tx b">UTF-8: 23 байти</text>
+  <text x="180" y="144" text-anchor="middle" class="tx s">кирилична літера = 2 байти, латинська = 1</text>
+  <text x="180" y="161" text-anchor="middle" class="tx s">« tokenization» = 13 байтів</text>
+  <path d="M180 172 V 200" class="ln a" marker-end="url(#t11a)"/>
+  <rect x="20" y="204" width="320" height="72" rx="10" class="bx a"/>
+  <text x="180" y="228" text-anchor="middle" class="tx b a">злиття BPE зі словника</text>
+  <text x="180" y="248" text-anchor="middle" class="tx s">o200k: « ток» | «ен» | «іза» | «ція»</text>
+  <text x="180" y="265" text-anchor="middle" class="tx s">cl100k: 9 частин, майже по літері</text>
+  <path d="M180 276 V 304" class="ln a" marker-end="url(#t11a)"/>
+  <rect x="20" y="308" width="320" height="58" rx="10" class="bx t"/>
+  <text x="180" y="332" text-anchor="middle" class="tx b">ідентифікатори (o200k)</text>
+  <text x="180" y="352" text-anchor="middle" class="tx s">75096 · 776 · 67825 · 79028</text>
+  <path d="M180 366 V 394" class="ln a" marker-end="url(#t11a)"/>
+  <rect x="90" y="398" width="180" height="34" rx="10" class="bx"/>
+  <text x="180" y="420" text-anchor="middle" class="tx b">модель: 4 позиції</text>
+</svg>
+<figcaption>Шлях одного слова. Byte-level BPE стартує з байтів, тому кириличний текст на старті має вдвічі більше базових символів. Скільки з них зіллється, залежить від того, скільки кирилиці було в навчальному корпусі й наскільки великий словник.</figcaption>
+</figure>
+<p>Звідси <b>чому токенізатори прив'язані до моделі</b>: корпус, розмір словника і правила попереднього розбиття (по пробілах, по цифрах) у кожного свої, а модель навчена на ідентифікаторах саме свого словника. Підмінити токенізатор без перенавчання неможливо, і порахувати токени для Claude через <code>tiktoken</code> теж: це інший словник. Подвоєння словника OpenAI (cl100k → o200k) майже не змінило англійський абзац (138 → 137 токенів), а український скоротило з 366 до 217: нові записи словника пішли переважно на інші мови.</p>
+<h3>Спеціальні токени</h3>
+<p>Окрім звичайних частин тексту, словник має <b>спеціальні токени</b> — службові позначки на кшталт кінця тексту чи меж повідомлень. Їх не можна отримати зі звичайного тексту, і <code>tiktoken</code> за замовчуванням відмовляється кодувати рядок, який збігається зі спецтокеном:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>special.py — tiktoken 0.14.0, o200k_base</span></div>
+<pre>special: ['&lt;|endofprompt|&gt;', '&lt;|endoftext|&gt;']
+<span class="er">encode(s) -&gt; ValueError: Encountered text corresponding to disallowed special token '&lt;|endoftext|&gt;'.</span>
+як звичайний текст: [338, 99379, 464, 91, 419, 1440, 919, 91, 29, 47707, 60350]
+як спецтокен:       [338, 99379, 220, <span class="y">199999</span>, 47707, 60350]</pre>
+<div class="cap">реальний вивід · рядок s = "текст &lt;|endoftext|&gt; ще текст"</div></div>
+<div class="note warn"><span class="lbl">Пастка</span>
+<p>Якщо ви токенізуєте <b>користувацький</b> текст своїм кодом, кодуйте його як звичайний текст (<code>disallowed_special=()</code>), а не <code>allowed_special="all"</code>. Інакше рядок із документа стає керівним токеном — один токен 199999 замість семи звичайних. У Claude API ви спецтокенів не надсилаєте зовсім: розмітку повідомлень будує сервер, а ви передаєте структуровані <code>system</code>, <code>messages</code> і <code>tools</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="measure">
+<div class="sec-h"><span class="num">03</span><h2>Вимірювання<span class="sub">Один текст — чотири токенізатори</span></h2></div>
+<p>Таблиці «скільки токенів у слові» з інтернету застарівають з кожним новим токенізатором. Тому міряємо самі: той самий український абзац, його англійський переклад, фрагмент Python, однакові дані в JSON трьох видів, base64 українського абзацу і довгий URL з UTM-мітками. Тексти лежать у <code>console/texts/</code>.</p>
+<p><b>OpenAI:</b> <code>tiktoken</code> з PyPI у тимчасовому venv, словники <code>o200k_base</code> (за мапою моделей у tiktoken 0.14.0 — GPT-4o, o-серія, GPT-4.1, GPT-5) і <code>cl100k_base</code> (GPT-4, GPT-3.5).</p>
+<p><b>Claude:</b> локальної бібліотеки токенізатора в документації немає, офіційний лічильник — endpoint <code>count_tokens</code>, а він потребує API-ключа. Тому міряємо через поле <code>usage</code> у відповіді <code>claude -p</code>: однаковий системний промпт, жодних інструментів, промпт A — коротка інструкція, промпт B — та сама інструкція плюс текст. Кількість токенів тексту ≈ input(B) − input(A), де input = <code>input_tokens</code> + <code>cache_creation_input_tokens</code> + <code>cache_read_input_tokens</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Reply with exactly: OK" --model haiku --output-format json --tools "" --strict-mcp-config --system-prompt "Reply with exactly: OK" --no-session-persistence | jq -c '{result, usage: (.usage | {input_tokens, cache_creation_input_tokens, cache_read_input_tokens, output_tokens}), total_cost_usd}'</span>
+{"result":"OK","usage":{"input_tokens":2,"cache_creation_input_tokens":1125,"cache_read_input_tokens":0,"output_tokens":4},"total_cost_usd":0.0003526}
+<span class="ps">$ </span><span class="c">python3 measure_claude.py haiku,claude-haiku-4-5 uk.txt,en.txt,code.py,…</span>
+haiku baseline [1132, 1130]
+haiku uk.txt input=1397 delta=265
+haiku en.txt input=1329 delta=197
+haiku code.py input=1330 delta=198
+<span class="d">…</span>
+haiku baseline after 1130
+claude-haiku-4-5 baseline [900, 898]
+claude-haiku-4-5 uk.txt input=1166 delta=266
+claude-haiku-4-5 en.txt input=1040 delta=140
+<span class="d">…</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · 14.10.2026 · скорочено, повний лог у console/claude_final.txt</div></div>
+<div class="note fact"><span class="lbl">Точність методу</span>
+<p>Базовий запит між запусками давав від 1127 до 1135 токенів, тож похибка дельти — кілька токенів (до того ж дельта включає роздільник з двох переносів рядка). Для абзацу на 200 токенів це 1–3%, для лекції на 1 700 — менше за 0,5%. Ми повторили вимір двома проходами, різниця між ними — не більше 6 токенів. Для рахунку й маршрутизації в продукті використовуйте <code>count_tokens</code>, а не цей прийом.</p>
+</div>
+<div class="tbl-wrap"><table class="tbl nostack">
+<thead><tr><th>Текст</th><th>cl100k</th><th>o200k</th><th>Claude<br>≤4.6</th><th>Claude<br>5.5</th></tr></thead>
+<tbody>
+<tr><td>Абзац UK</td><td>366</td><td>217</td><td>266</td><td><b>265</b></td></tr>
+<tr><td>Абзац EN</td><td>138</td><td>137</td><td>140</td><td><b>197</b></td></tr>
+<tr><td>Python</td><td>133</td><td>134</td><td>166</td><td><b>198</b></td></tr>
+<tr><td>JSON, відступ 4</td><td>255</td><td>205</td><td>259</td><td><b>270</b></td></tr>
+<tr><td>JSON, мінім.</td><td>193</td><td>146</td><td>174</td><td><b>196</b></td></tr>
+<tr><td>JSON, <code>\uXXXX</code></td><td>742</td><td>745</td><td>944</td><td><b>970</b></td></tr>
+<tr><td>UK у base64</td><td>1 132</td><td>1 068</td><td>1 384</td><td><b>1 578</b></td></tr>
+<tr><td>URL</td><td>78</td><td>80</td><td>92</td><td><b>108</b></td></tr>
+</tbody></table></div>
+<p>«Claude ≤4.6» — старий токенізатор, виміряно на Haiku 4.5; «Claude 5.5» — новий, Haiku 5.5. Розміри текстів: український абзац — 101 слово і 653 символи, англійський — 124 слова і 704 символи, Python — 16 рядків і 538 символів, JSON — та сама картка на 414 символів у мінімізованому вигляді, URL — 204 символи.</p>
+<p>Перевірка, що всі моделі покоління 5.5 ділять один токенізатор: Sonnet 5.5 дав 264 і 197 токенів для українського й англійського абзаців — у межах похибки від Haiku 5.5.</p>
+<h3>Вартість мови</h3>
+<p>Відношення кількості токенів того самого змісту в мові A і в англійській називають <b>tokenizer premium</b> («вартість мови»; термін з роботи Petrov et al., 2023, яка показала розрив до 15 разів між мовами). Для нашого абзацу:</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar p"><span class="k">cl100k_base (GPT-4)</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">×2,65</b></span></div>
+  <div class="bar m"><span class="k">Claude до 4.6</span><span class="tr"><i style="--v:71.7%"></i><b style="--v:71.7%">×1,90</b></span></div>
+  <div class="bar"><span class="k">o200k_base (GPT-4o / GPT-5)</span><span class="tr"><i style="--v:59.8%"></i><b style="--v:59.8%">×1,58</b></span></div>
+  <div class="bar t"><span class="k">Claude 4.7+ (5.5)</span><span class="tr"><i style="--v:50.8%"></i><b style="--v:50.8%">×1,35</b></span></div>
+</div>
+<figcaption>Скільки токенів коштує український абзац відносно його англійського перекладу. Один текст, виміряно 14.10.2026. На інших текстах відношення буде іншим, тому для свого продукту міряйте свій корпус.</figcaption>
+</figure>
+<h3>Новий токенізатор Claude: +30% — для кого саме</h3>
+<p>Сторінка цін Anthropic попереджає: моделі Claude 4.7 і новіші використовують новий токенізатор, який для того самого тексту дає <b>приблизно на 30% більше токенів</b>, а точне збільшення залежить від контенту. Наші виміри показують, наскільки сильно залежить:</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar p"><span class="k">англійський абзац</span><span class="tr"><i style="--v:91%"></i><b class="in" style="--v:91%">+41%</b></span></div>
+  <div class="bar m"><span class="k">Python</span><span class="tr"><i style="--v:42%"></i><b style="--v:42%">+19%</b></span></div>
+  <div class="bar m"><span class="k">URL</span><span class="tr"><i style="--v:38%"></i><b style="--v:38%">+17%</b></span></div>
+  <div class="bar"><span class="k">base64</span><span class="tr"><i style="--v:31%"></i><b style="--v:31%">+14%</b></span></div>
+  <div class="bar"><span class="k">JSON без пробілів</span><span class="tr"><i style="--v:29%"></i><b style="--v:29%">+13%</b></span></div>
+  <div class="bar t"><span class="k">український абзац</span><span class="tr"><i style="--v:0.5%"></i><b style="--v:0.5%">0% (266 → 265)</b></span></div>
+  <div class="bar t"><span class="k">українська лекція, 577 слів</span><span class="tr"><i style="--v:0.5%"></i><b style="--v:0.5%">0% (1671 → 1672)</b></span></div>
+</div>
+<figcaption>Зміна кількості токенів при переході з Haiku 4.5 (старий токенізатор) на Haiku 5.5 (новий). Англійський текст подорожчав найбільше, український не змінився.</figcaption>
+</figure>
+<p>Отже, «вартість мови» в Claude впала з ×1,90 до ×1,35 не тому, що українська подешевшала в токенах, а тому, що англійська подорожчала. Два практичні висновки. Перший: мігруючи з моделі до 4.7, <b>не переносьте старі виміри</b> — документація прямо радить перерахувати промпти під нову модель. Другий: для англомовного навантаження реальне зростання може бути більшим за «приблизно 30%», для українського — близьким до нуля. Перевіряйте на своєму корпусі.</p>
+</section>
+
+<section class="sec" id="count">
+<div class="sec-h"><span class="num">04</span><h2>Як рахувати<span class="sub">count_tokens до запиту, usage після</span></h2></div>
+<p><b>До запиту</b> — <code>POST /v1/messages/count_tokens</code>. Він приймає ту саму структуру, що й Messages API (<code>system</code>, <code>messages</code>, <code>tools</code>, зображення, PDF), і повертає одне число:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="ps">$ </span><span class="c">curl https://api.anthropic.com/v1/messages/count_tokens \
+    -H "x-api-key: $ANTHROPIC_API_KEY" \
+    -H "content-type: application/json" \
+    -H "anthropic-version: 2023-06-01" \
+    -d '{
+      "model": "claude-opus-5-5",
+      "system": "You are a scientist",
+      "messages": [{"role": "user", "content": "Hello, Claude"}]
+    }'</span>
+{ "input_tokens": 14 }</pre>
+<div class="cap">команда і відповідь з офіційної документації Token counting · не запускалась у цьому уроці (немає API-ключа)</div></div>
+<p>Що про нього варто знати, щоб не помилитися в розрахунках:</p>
+<ul>
+<li><b>Безкоштовний</b>, але має власний ліміт запитів на хвилину: 5 000 / 10 000 / 20 000 для рівнів Start / Build / Scale, окремо від лімітів Messages API. Тому його можна викликати перед кожним запитом, щоб вибрати модель або обрізати контекст.</li>
+<li><b>Рахує токенізатором тієї моделі, яку ви передали</b> в <code>model</code>. Порівняти старий і новий токенізатор можна двома викликами з різними <code>model</code>.</li>
+<li><b>Це оцінка.</b> Фактичне <code>input_tokens</code> може трохи відрізнятися. У підрахунок можуть потрапити службові токени, які Anthropic додає сама, — за них не платите.</li>
+<li><b>Кешування не застосовує</b>: <code>cache_control</code> приймає, але кеш працює лише при справжньому створенні повідомлення.</li>
+<li><b>Не все приймає:</b> запит із серверними інструментами (web search, web fetch, code execution) повертає помилку, а PDF — тільки base64, без <code>url</code> чи <code>file</code>.</li>
+</ul>
+<p><b>Після запиту</b> — поле <code>usage</code> у відповіді. Повний вхід — це сума <code>input_tokens</code>, <code>cache_creation_input_tokens</code> і <code>cache_read_input_tokens</code>. Хто дивиться лише на перше поле, бачить 2 токени там, де модель прочитала 1 127 (див. запуск вище). <code>output_tokens</code> включає токени думання.</p>
+<h3>Де токени видно в інструментах</h3>
+<div class="tabs">
+<input type="radio" name="cnt-t" id="cnt-t1" checked><input type="radio" name="cnt-t" id="cnt-t2"><input type="radio" name="cnt-t" id="cnt-t3">
+<div class="tab-l"><label for="cnt-t1">Claude Code</label><label for="cnt-t2">Codex CLI</label><label for="cnt-t3">Cursor</label></div>
+<div class="tab-p">
+<p>У сесії: <code>/usage</code> (аліаси <code>/cost</code> і <code>/stats</code>) показує токени сесії за моделями і вартість, яку Claude Code рахує локально за прайс-листом. <code>/context</code> малює, чим заповнене контекстне вікно. У headless-режимі <code>--output-format json</code> повертає <code>usage</code> і <code>total_cost_usd</code> — саме так ми міряли токени вище.</p>
+</div>
+<div class="tab-p">
+<p><code>codex exec --json</code> пише потік подій JSON Lines. Подія <code>turn.completed</code> несе лічильники ходу:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec --json "summarize the repo structure" | jq</span>
+{ "type": "turn.completed", "usage": { "input_tokens": 24763, "cached_input_tokens": 24448, "output_tokens": 122, "reasoning_output_tokens": 0 } }</pre>
+<div class="cap">команда і приклад події з офіційної документації Codex (non-interactive mode) · не запускалась у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p>Підсумковий JSON <code>agent -p --output-format json</code> за документацією містить <code>result</code>, <code>duration_ms</code>, <code>session_id</code>, але <b>полів з токенами в ньому немає</b>. Витрати видно в налаштуваннях редактора і на сторінці <code>cursor.com/dashboard/usage</code>. Сторінка цін Cursor окремо попереджає про оновлений токенізатор Claude Sonnet 5: той самий вхід може дати більше токенів.</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="limits">
+<div class="sec-h"><span class="num">05</span><h2>Ліміти<span class="sub">Вікно, max_tokens і думання в одному бюджеті</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Модель</th><th>Контекстне вікно</th><th>Макс. вивід</th><th>$ / 1 млн токенів, вхід · вихід</th></tr></thead>
+<tbody>
+<tr><td data-th="Модель">Claude Opus 5.5</td><td data-th="Контекстне вікно">1 млн</td><td data-th="Макс. вивід">128 тис.</td><td data-th="$ / 1 млн токенів, вхід · вихід">4 · 20</td></tr>
+<tr><td data-th="Модель">Claude Sonnet 5.5</td><td data-th="Контекстне вікно">1 млн</td><td data-th="Макс. вивід">128 тис.</td><td data-th="$ / 1 млн токенів, вхід · вихід">2 · 10</td></tr>
+<tr><td data-th="Модель">Claude Haiku 5.5</td><td data-th="Контекстне вікно">1 млн</td><td data-th="Макс. вивід">128 тис.</td><td data-th="$ / 1 млн токенів, вхід · вихід">0,10 · 0,50 (промпт ≤ 100 тис.)<br>0,50 · 2,50 (промпт &gt; 100 тис.)</td></tr>
+</tbody></table></div>
+<p>Як ці числа складаються в один запит:</p>
+<ol class="steps">
+<li><b>У вікно йде все:</b> системний промпт, усі повідомлення разом з результатами інструментів, зображеннями й документами, визначення інструментів і згенерований вивід разом з думанням. Закешований префікс теж займає вікно: кеш змінює ціну, а не розмір.</li>
+<li><b><code>max_tokens</code> — стеля виводу за хід</b>, до 128 тис. у синхронному API. На Message Batches API моделі 5.5 дають до 300 тис. з бета-заголовком <code>output-300k-2026-03-24</code>.</li>
+<li><b>Думання — частина <code>max_tokens</code>.</b> На Opus, Sonnet і Haiku 5.5 воно ввімкнене без налаштувань і за замовчуванням не показується (<code>display: "omitted"</code>). Платите ви за повне думання як за вихідні токени, навіть коли бачите лише резюме або порожній блок. Тому оплачений <code>output_tokens</code> не збігається з довжиною видимої відповіді, і <code>max_tokens</code> треба брати із запасом.</li>
+<li><b>Переповнення.</b> Якщо вже вхід більший за вікно — 400 <code>prompt is too long</code>. Якщо вхід плюс <code>max_tokens</code> більші за вікно, моделі 4.5+ запит приймають, а генерацію зупиняють із <code>stop_reason: "model_context_window_exceeded"</code>.</li>
+<li><b>Поріг Haiku 5.5.</b> Запит із промптом понад 100 тис. токенів (рахуються й читання та запис кешу) платить уп'ятеро більше за весь запит, а не лише за надлишок. Інші моделі 5.5 мають єдину ціну на все вікно.</li>
+<li><b>Невидимі токени запиту.</b> Якщо в запиті є <code>tools</code>, API додає службовий системний промпт для tool use: 286 токенів на Opus, Sonnet і Haiku 5.5 при <code>tool_choice: auto</code>. Вони оплачуються як звичайний вхід.</li>
+</ol>
+<div class="note arch"><span class="lbl">Скільки української влазить у 1 млн</span>
+<p>Документація оцінює 1 млн токенів на новому токенізаторі як <b>≈ 555 тис. слів або ≈ 2,5 млн символів</b>. За символами наші виміри збігаються: 2,46–2,52 символу на токен для української прози. За словами — ні: українська дала 2,6–2,9 токена на слово, тобто в 1 млн влазить приблизно <b>345–380 тис. слів</b>, на третину менше за довідкову цифру. Оцінюйте за символами, а не за словами.</p>
+</div>
+</section>
+
+<section class="sec" id="inflate">
+<div class="sec-h"><span class="num">06</span><h2>Що роздуває токени<span class="sub">Формат важить більше за мову</span></h2></div>
+<p>Ті самі дані в різній формі, Claude Haiku 5.5:</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">JSON без пробілів</span><span class="tr"><i style="--v:12.4%"></i><b style="--v:12.4%">196</b></span></div>
+  <div class="bar"><span class="k">JSON з відступом 4</span><span class="tr"><i style="--v:17.1%"></i><b style="--v:17.1%">270 · +38%</b></span></div>
+  <div class="bar m"><span class="k">JSON з \uXXXX</span><span class="tr"><i style="--v:61.5%"></i><b style="--v:61.5%">970 · ×4,9</b></span></div>
+  <div class="bar t"><span class="k">абзац як текст</span><span class="tr"><i style="--v:16.8%"></i><b style="--v:16.8%">265</b></span></div>
+  <div class="bar p"><span class="k">той самий абзац у base64</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">1578 · ×6,0</b></span></div>
+</div>
+<figcaption>Токени для однакового змісту. Верхні три смуги — ті самі дані картки, нижні дві — той самий український абзац. Виміряно 14.10.2026.</figcaption>
+</figure>
+<ul>
+<li><b><code>\uXXXX</code>-екранування — найдорожча помилка.</b> <code>json.dumps</code> у Python за замовчуванням має <code>ensure_ascii=True</code> і перетворює кожну кириличну літеру на шість ASCII-символів. Той самий JSON став у 4,9 раза дорожчим. Лікується одним аргументом: <code>ensure_ascii=False</code>.</li>
+<li><b>base64 як текст — ×6.</b> Зображення й PDF передавайте блоками <code>image</code> / <code>document</code>, а не рядком у промпті. Рядок base64 модель ще й не прочитає як картинку.</li>
+<li><b>Відступи й пробіли.</b> Відформатований JSON дорожчий за мінімізований на 38%. Для машинних даних мінімізуйте, для коду, який агент має редагувати, залишайте як є.</li>
+<li><b>URL і ідентифікатори.</b> URL на 204 символи коштував 108 токенів — 1,9 символу на токен проти 2,5 у прозі. UUID, хеші, UTM-мітки й сесійні параметри майже не стискаються. Прибирайте з контексту все, що модель не використає.</li>
+</ul>
+<h3>PDF: текст і зображення кожної сторінки</h3>
+<p>Коли ви надсилаєте PDF, API перетворює <b>кожну сторінку на зображення</b> і додає до нього витягнутий текст. Тому сторінка коштує двічі:</p>
+<ul>
+<li><b>текст:</b> за документацією зазвичай 1 500–3 000 токенів на сторінку залежно від щільності;</li>
+<li><b>зображення:</b> за формулою vision — <code>⌈ширина / 28⌉ × ⌈висота / 28⌉</code> візуальних токенів. Моделі 4.7+ працюють у high-resolution режимі: до 2 576 px по довгому боці й до 4 784 токенів на зображення. Наприклад, 1000×1000 px — 1 296 токенів, 1920×1080 — 2 691.</li>
+</ul>
+<p>Обмеження запиту: до 600 сторінок (100, якщо вікно менше за 1 млн) і 32 МБ. Щільні PDF заповнюють вікно раніше, ніж досягнуть ліміту сторінок. Правило вибору: якщо модель має бачити графіки, таблиці й верстку, надсилайте PDF. Якщо потрібен лише текст, витягніть його самі й надішліть текстом — ви не платитимете за зображення. Для Haiku 5.5 це ще й питання порогу: 50 сторінок за нижньою оцінкою — уже 75 тис. токенів одного тексту, а з зображеннями запит легко перейде 100 тис. і подорожчає вп'ятеро.</p>
+<div class="key"><h4>Швидка оцінка без лічильника (Claude 4.7+, наші виміри)</h4>
+<p>Українська проза: <b>токени ≈ символи / 2,5 ≈ слова × 2,8</b>. Англійська: символи / 3,6 ≈ слова × 1,6. Python: символи / 2,7. Це оцінка для планування бюджету й вікна з точністю ±15%. Для рахунку, порогу Haiku і рішення «влазить чи ні» викликайте <code>count_tokens</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Наскрізний проєкт<span class="sub">Lectern: бюджет курсу з власних вимірів</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 1 з 16</div><div class="pb">
+<p>Lectern читає лекції і пише з них уроки, квізи, картки й домашні завдання. Майже все це — українська проза на вході й на виході, тому бюджет має спиратися на виміряний коефіцієнт, а не на англомовні «4 символи на токен». Візьмемо зразок лекції з теорії ймовірностей (<code>console/texts/lecture.txt</code>): 577 слів, 4 208 символів.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 measure_claude.py haiku,claude-haiku-4-5 lecture.txt</span>
+haiku baseline [1131, 1130]
+haiku lecture.txt input=2803 delta=<span class="y">1672</span>
+haiku baseline after 1129
+claude-haiku-4-5 baseline [899, 899]
+claude-haiku-4-5 lecture.txt input=2570 delta=1671
+claude-haiku-4-5 baseline after 897</pre>
+<div class="cap">реальний вивід · 14.10.2026 · tiktoken o200k_base для того самого тексту: 1 410</div></div>
+<p>1 672 токени на 577 слів — <b>2,90 токена на слово</b>, 2,52 символу на токен. Тепер модуль бюджету. Виміряні величини позначено як виміри, решту — як припущення, які ви заміните своїми, коли Lectern почне писати справжні уроки:</p>
+<pre class="code" data-lang="python"><span class="cm"># lectern/budget.py — ціни: $ за 1 млн токенів (Anthropic Pricing, 14.10.2026)</span>
+PRICE = {<span class="s">"opus-5-5"</span>: (<span class="n">4.00</span>, <span class="n">20.00</span>), <span class="s">"sonnet-5-5"</span>: (<span class="n">2.00</span>, <span class="n">10.00</span>),
+         <span class="s">"haiku-5-5"</span>: (<span class="n">0.10</span>, <span class="n">0.50</span>)}   <span class="cm"># Haiku: промпт ≤ 100k</span>
+
+TOK_PER_WORD_UK = <span class="n">1672</span> / <span class="n">577</span>   <span class="cm"># виміряно: зразок лекції, Haiku 5.5</span>
+EN_VS_UK = <span class="n">197</span> / <span class="n">265</span>           <span class="cm"># виміряно: паралельний абзац EN/UK</span>
+
+LECTURES = <span class="n">10</span>
+LECTURE_WORDS = <span class="n">6000</span>    <span class="cm"># припущення: конспект 90-хвилинної лекції</span>
+PROMPT_TOK = <span class="n">2000</span>       <span class="cm"># припущення: інструкції + схема виводу на виклик</span>
+OUT_WORDS = {<span class="s">"lesson"</span>: <span class="n">3500</span>, <span class="s">"quiz"</span>: <span class="n">800</span>, <span class="s">"cards"</span>: <span class="n">1500</span>, <span class="s">"homework"</span>: <span class="n">400</span>}
+THINK_TOK = <span class="n">3000</span>        <span class="cm"># припущення: думання на виклик, оплачується як вихід</span>
+CHECK_OUT_TOK = <span class="n">800</span>     <span class="cm"># припущення: звіт перевірки цитат</span>
+
+<span class="k">def</span> course_cost(gen_model, check_model=<span class="s">"haiku-5-5"</span>, lang_factor=<span class="n">1.0</span>):
+    lecture = LECTURE_WORDS * TOK_PER_WORD_UK * lang_factor
+    gen_in = len(OUT_WORDS) * (lecture + PROMPT_TOK)          <span class="cm"># 4 виклики, кожен читає лекцію</span>
+    gen_out = (sum(OUT_WORDS.values()) * TOK_PER_WORD_UK * lang_factor
+               + len(OUT_WORDS) * THINK_TOK)
+    lesson = OUT_WORDS[<span class="s">"lesson"</span>] * TOK_PER_WORD_UK * lang_factor
+    chk_in, chk_out = lecture + lesson + PROMPT_TOK, CHECK_OUT_TOK + THINK_TOK
+    pi, po = PRICE[gen_model]
+    ci, co = PRICE[check_model]
+    per_lecture = (gen_in * pi + gen_out * po + chk_in * ci + chk_out * co) / <span class="n">1e6</span>
+    <span class="k">return</span> LECTURES * per_lecture, LECTURES * gen_in, LECTURES * gen_out</pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 lectern_cost.py</span>
+токенів на лекцію: 17,386
+курс: вхід 775k, вихід 300k
+      токенів генерації
+$ за курс     UK    EN  UK batch
+opus-5-5    9.14  7.50      4.57
+sonnet-5-5  4.60  3.77      2.30
+haiku-5-5   0.28  0.23      0.14</pre>
+<div class="cap">реальний вивід · рядок «курс» перенесено · повний скрипт з циклом друку — console/lectern_cost.py</div></div>
+<p>Що видно з розрахунку:</p>
+<ul>
+<li><b>Вихід дорожчий за вхід</b>, хоча токенів у ньому вдвічі менше: на Sonnet 5.5 вхід коштує 1,55 дол., а вихід — 3,00. Тому скорочувати варто передусім згенерований текст і думання, а не лекцію на вході.</li>
+<li><b>Вартість мови на всьому конвеєрі менша, ніж на тексті:</b> 9,14 проти 7,50 дол., тобто +22%, а не +34%. Інструкції й думання від мови курсу не залежать.</li>
+<li><b>Лекція в 17 тис. токенів далеко від порогу Haiku 5.5</b> (100 тис.), тож перевірка цитат лишається за нижньою ціною. Поріг стане реальним, коли Lectern почне надсилати модулі з кількох лекцій одним запитом.</li>
+</ul>
+<p><b>Ваш крок:</b> додайте <code>src/lectern/budget.py</code> у скелет з уроку 0.3. Візьміть одну свою лекцію або конспект, виміряйте коефіцієнт <code>TOK_PER_WORD_UK</code> на ній і перерахуйте бюджет. Збережіть число і дату виміру в коментарі: після наступної зміни токенізатора його доведеться оновити.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">08</span><h2>Типові помилки<span class="sub">Де бюджет розходиться з рахунком</span></h2></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Помилка</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td>Рахувати токени Claude через <code>tiktoken</code></td><td>Це інший словник: для українського абзацу o200k дав 217, Claude 5.5 — 265. Для Claude — <code>count_tokens</code> з тим <code>model</code>, який підете в прод.</td></tr>
+<tr><td>Переносити старі виміри на нову модель</td><td>Англійський текст на новому токенізаторі подорожчав на 41%. Після зміни моделі перерахуйте промпти.</td></tr>
+<tr><td>Дивитися лише на <code>usage.input_tokens</code></td><td>Додайте <code>cache_creation_input_tokens</code> і <code>cache_read_input_tokens</code>: інакше закешований контекст «зникає» з обліку.</td></tr>
+<tr><td>Ставити <code>max_tokens</code> під довжину очікуваної відповіді</td><td>Думання входить у <code>max_tokens</code>. Залишайте запас, інакше відповідь обріжеться з <code>stop_reason: "max_tokens"</code>.</td></tr>
+<tr><td>Серіалізувати дані з <code>ensure_ascii=True</code></td><td><code>ensure_ascii=False</code>: той самий JSON у 4,9 раза дешевший.</td></tr>
+<tr><td>Оцінювати місткість вікна в словах за довідковою цифрою</td><td>555 тис. слів — середнє, а не українська. Українською виходить 345–380 тис. слів; рахуйте за символами (÷ 2,5).</td></tr>
+<tr><td>Надсилати PDF там, де потрібен лише текст</td><td>Кожна сторінка — ще й зображення. Витягніть текст самі, якщо графіки й верстка не потрібні.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">09</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<p>Натисніть на картку, щоб побачити визначення.</p>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">BPE</span><span class="h">як будується словник?</span></span><span class="b"><span class="t">Злиття найчастіших пар</span><span class="d">від байтів до частин слів, доки словник не досягне розміру</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">token fertility</span><span class="h">що міряє?</span></span><span class="b"><span class="t">Токенів на слово</span><span class="d">українська проза в Claude 5.5 — 2,6–2,9, англійська — 1,6</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">tokenizer premium</span><span class="h">«вартість мови»</span></span><span class="b"><span class="t">Токени мови / токени англійської</span><span class="d">для того самого змісту; у Claude 5.5 ми виміряли ×1,35</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">спеціальні токени</span><span class="h">навіщо?</span></span><span class="b"><span class="t">Службові позначки</span><span class="d">кінець тексту, межі повідомлень; зі звичайного тексту їх не отримати</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">count_tokens</span><span class="h">скільки коштує?</span></span><span class="b"><span class="t">Безкоштовно</span><span class="d">окремий ліміт RPM; оцінка під токенізатор переданої моделі</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">max_tokens</span><span class="h">що в нього входить?</span></span><span class="b"><span class="t">Весь вивід ходу</span><span class="d">видима відповідь + думання; до 128 тис. у моделях 5.5</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">10</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Ви оцінили промпт для Claude Sonnet 5.5 через tiktoken (o200k_base): 217 токенів українського тексту. Що з цією оцінкою?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q1"><span>Вона занижена: у Claude інший словник, для цього тексту він дав 265</span></label><label class="opt"><input type="radio" name="q1"><span>Вона точна: обидва — byte-level BPE і ріжуть кирилицю однаково</span></label><label class="opt"><input type="radio" name="q1"><span>Вона завищена: Claude стискає кирилицю краще за будь-який токенізатор OpenAI</span></label></div>
+    <div class="why yes">Так. Токенізатор прив'язаний до моделі. Для Claude рахуйте через <code>count_tokens</code> з потрібним <code>model</code>.</div>
+    <div class="why no">У кожної моделі свій словник, корпус і правила розбиття, навіть якщо обидва — BPE. На нашому абзаці o200k дав 217, а Claude 5.5 — 265 токенів, тобто на 22% більше.</div></div>
+  <div class="q"><div class="qt">2. Англомовний бот підтримки переїжджає з Haiku 4.5 на Haiku 5.5. Що станеться з кількістю токенів на ті самі діалоги?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Не зміниться: токени — властивість тексту, а зміниться лише ціна за токен</span></label><label class="opt ok"><input type="radio" name="q2"><span>Зросте, і може більше ніж на 30%: наш англійський абзац виріс на 41%</span></label><label class="opt"><input type="radio" name="q2"><span>Зросте рівно на 30% для будь-якої мови: це фіксований коефіцієнт</span></label></div>
+    <div class="why yes">Так. Документація каже «приблизно 30%, залежить від контенту». Перерахуйте свої промпти з новим <code>model</code>, перш ніж оцінювати бюджет.</div>
+    <div class="why no">Моделі 4.7+ мають новий токенізатор, а «приблизно 30%» залежить від контенту: англійський абзац у нашому вимірі виріс з 140 до 197 токенів, а український майже не змінився.</div></div>
+  <div class="q"><div class="qt">3. Що дешевше надіслати Claude: мінімізований JSON з <code>ensure_ascii=True</code> чи той самий JSON з відступами і кирилицею як є?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Мінімізований: пробіли й відступи — найдорожча частина JSON</span></label><label class="opt"><input type="radio" name="q3"><span>Однаково: модель бачить ті самі дані, а рахують зміст</span></label><label class="opt ok"><input type="radio" name="q3"><span>З відступами і кирилицею: це дешевше, ніж <code>\uXXXX</code> без пробілів</span></label></div>
+    <div class="why yes">Так: 270 токенів проти 970. Відступи коштують +38%, а <code>\uXXXX</code> — ×4,9. Найдешевше — мінімізований з <code>ensure_ascii=False</code> (196).</div>
+    <div class="why no">Відступи коштують лише +38%, а екранування перетворює кожну кириличну літеру на шість ASCII-символів — ×4,9. Тому JSON з відступами і кирилицею (270) дешевший за мінімізований з <code>\uXXXX</code> (970).</div></div>
+  <div class="q"><div class="qt">4. На Sonnet 5.5 ви поставили <code>max_tokens: 1000</code> для відповіді, яка має займати близько 800 токенів. Відповідь обрізається. Найімовірніша причина?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span>Думання входить у <code>max_tokens</code> і забрало частину бюджету</span></label><label class="opt"><input type="radio" name="q4"><span>Вхід разом із <code>max_tokens</code> перевищив контекстне вікно моделі</span></label><label class="opt"><input type="radio" name="q4"><span>Українські токени рахуються в <code>max_tokens</code> з коефіцієнтом ×1,35</span></label></div>
+    <div class="why yes">Так. На моделях 5.5 думання ввімкнене, і воно є частиною <code>max_tokens</code>. Залишайте запас.</div>
+    <div class="why no">Вікно — 1 млн токенів, а його переповнення дало б <code>model_context_window_exceeded</code>; «вартість мови» змінює кількість токенів, а не правило рахунку. Обріз із <code>stop_reason: "max_tokens"</code> означає, що вивід разом із думанням досяг стелі.</div></div>
+  <div class="q"><div class="qt">5. Запит до Haiku 5.5: документ на 95 тис. токенів і системний промпт на 8 тис., який читається з кешу. Як його тарифікують?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>За нижньою ціною: читання кешу в поріг 100 тис. не рахується</span></label><label class="opt ok"><input type="radio" name="q5"><span>Увесь запит за вищою ціною: у поріг входять і читання кешу</span></label><label class="opt"><input type="radio" name="q5"><span>Перші 100 тис. токенів — за нижньою ціною, решта — за вищою</span></label></div>
+    <div class="why yes">Так. Довжина промпту рахує всі вхідні токени, включно з кешем, і запит понад 100 тис. платить вищі ціни. Скоротіть документ до 90 тис., і ціна буде вп'ятеро нижчою.</div>
+    <div class="why no">Документація: поріг рахує всі вхідні токени, зокрема cache reads і cache writes, а запит понад поріг платить вищі ціни, навіть якщо частина промпту — кеш.</div></div>
+  <div class="q"><div class="qt">6. У відповіді API <code>input_tokens: 2</code>, <code>cache_creation_input_tokens: 1125</code>, <code>cache_read_input_tokens: 0</code>. Скільки токенів займає вхід у контекстному вікні?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>2</span></label><label class="opt"><input type="radio" name="q6"><span>1 125</span></label><label class="opt ok"><input type="radio" name="q6"><span>1 127</span></label></div>
+    <div class="why yes">Так. Усі три поля разом — повний вхід, і всі три займають вікно.</div>
+    <div class="why no">Кешування змінює ціну, а не розмір. Повний вхід = <code>input_tokens</code> + <code>cache_creation_input_tokens</code> + <code>cache_read_input_tokens</code>.</div></div>
+  <div class="q"><div class="qt">7. Скільки слів української прози приблизно влазить в 1 млн токенів Claude 5.5?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q7"><span>≈ 350 тис.</span></label><label class="opt"><input type="radio" name="q7"><span>≈ 555 тис.</span></label><label class="opt"><input type="radio" name="q7"><span>≈ 750 тис.</span></label></div>
+    <div class="why yes">Так: 2,6–2,9 токена на слово дають 345–380 тис. слів. За символами довідкова цифра (≈ 2,5 млн) збігається з виміром.</div>
+    <div class="why no">750 тис. — оцінка для старого токенізатора, 555 тис. — середня для нового. Українська з 2,6–2,9 токена на слово дає приблизно 350 тис.</div></div>
+  <div class="q"><div class="qt">8. З 40-сторінкового PDF-звіту потрібен лише текст, графіків і таблиць немає. Як надіслати його дешевше?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Як PDF-документ: API сам витягне текст, тож зайвого не порахує</span></label><label class="opt"><input type="radio" name="q8"><span>Як PDF через <code>url</code>, а не base64: тоді сторінки не стають картинками</span></label><label class="opt ok"><input type="radio" name="q8"><span>Витягти текст самостійно й надіслати текстом, без зображень сторінок</span></label></div>
+    <div class="why yes">Так. API перетворює кожну сторінку PDF ще й на зображення, тож ви платите і за текст, і за картинку.</div>
+    <div class="why no">Хоч як надіслати PDF, API перетворює кожну сторінку ще й на зображення, тож ви платите і за текст, і за картинку. Коли графіки й верстка не потрібні, текст витягають самі.</div></div>
+  <div class="q"><div class="qt">9. Чому «токенізація» на початку рядка коштує 5 токенів, а всередині речення 4?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Пробіл перед словом — частина токена, тож це різні послідовності</span></label><label class="opt"><input type="radio" name="q9"><span>Велика літера на початку рядка розбиває слово на дрібніші частини</span></label><label class="opt"><input type="radio" name="q9"><span>На початку рядка токенізатор додає спеціальний токен початку тексту</span></label></div>
+    <div class="why yes">Так. У словнику є « ток» з пробілом, а для слова без пробілу довелося взяти «т» і «ок» окремо.</div>
+    <div class="why no">Регістр в обох рядках однаковий, а спецтокен зі звичайного тексту не виникає. Справа в пробілі: BPE злив « ток» разом із пробілом, а варіант без пробілу розпався на дрібніші частини.</div></div>
+  <div class="q"><div class="qt">10. Ви хочете перед кожним запитом рахувати токени, щоб обирати між Haiku і Sonnet. Що врахувати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Кожен виклик оплачується як вхідні токени, тож вхід фактично подвоюється</span></label><label class="opt ok"><input type="radio" name="q10"><span>Він безкоштовний, має окремий ліміт RPM, але дає оцінку без урахування кешу</span></label><label class="opt"><input type="radio" name="q10"><span>Він ділить ліміт RPM з Messages API, тож кожен підрахунок з'їдає квоту запитів</span></label></div>
+    <div class="why yes">Так. Для маршрутизації цього досить. Точне число після запиту — в <code>usage</code>.</div>
+    <div class="why no"><code>count_tokens</code> безкоштовний і має власний ліміт запитів на хвилину, окремо від Messages API. Кешування він не застосовує, тож це оцінка; точне число після запиту — в <code>usage</code>.</div></div>
+  <div class="q"><div class="qt">11. У бюджеті Lectern український текст дорожчий за англійський на 34%, а весь курс — лише на 22%. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Новий токенізатор зробив українську дешевшою, ніж на Claude 4.6</span></label><label class="opt ok"><input type="radio" name="q11"><span>Інструкції й думання не залежать від мови курсу і розбавляють різницю</span></label><label class="opt"><input type="radio" name="q11"><span>Вихід дорожчий за вхід, а згенерований український текст коротший за англійський</span></label></div>
+    <div class="why yes">Так. Чим більша в конвеєрі частка мовно-нейтральних токенів, тим менша вартість мови для всього продукту.</div>
+    <div class="why no">Ціни однакові для всіх мов, український текст на новому токенізаторі не подешевшав (266 → 265), а згенерований вивід рахується з тим самим мовним коефіцієнтом. Різницю розбавляють фіксовані частини — промпти й думання, які не ростуть разом з українським текстом.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">11</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>токен</td><td>Одиниця, у якій модель читає текст і в якій рахуються ліміти й ціна: слово, частина слова, пробіл з літерами, байт.</td></tr>
+<tr><td>токенізатор</td><td>Перетворює текст на послідовність ідентифікаторів зі свого словника і назад без втрат; свій у кожної моделі.</td></tr>
+<tr><td>BPE<br>(byte-pair<br>encoding)</td><td>Алгоритм, що будує словник, раз за разом зливаючи найчастішу пару сусідніх символів корпусу.</td></tr>
+<tr><td>byte-level BPE</td><td>BPE, який стартує з 256 значень байта UTF-8: працює з будь-яким текстом, але кирилична літера на старті — два символи.</td></tr>
+<tr><td>словник<br>токенізатора<br>(vocabulary)</td><td>Фіксований набір токенів з номерами: <code>cl100k_base</code> — 100 277, <code>o200k_base</code> — 200 019.</td></tr>
+<tr><td>subword-<br>токенізація</td><td>Розбиття рідкісних слів на частини, які є в словнику, замість окремого «невідомого слова».</td></tr>
+<tr><td>token<br>fertility</td><td>Середня кількість токенів на слово; українська проза в Claude 5.5 — 2,6–2,9, англійська — 1,6.</td></tr>
+<tr><td>tokenizer<br>premium<br>(«вартість<br>мови»)</td><td>Відношення токенів того самого змісту в мові до токенів англійською; ×1,35 у Claude 5.5 на нашому абзаці.</td></tr>
+<tr><td>спеціальні<br>токени</td><td>Службові токени словника (кінець тексту, межі повідомлень), які не утворюються зі звичайного тексту.</td></tr>
+<tr><td>tiktoken</td><td>Відкрита бібліотека OpenAI для BPE-токенізації їхніми словниками; токенів Claude не рахує.</td></tr>
+<tr><td>count_tokens</td><td>Безкоштовний endpoint Claude API, що оцінює вхідні токени запиту під токенізатор указаної моделі.</td></tr>
+<tr><td>max_tokens</td><td>Стеля виводу за хід, включно з думанням; до 128 тис. у моделях 5.5.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">12</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Вартість мови на вашому корпусі</h3>
+<p>Виміряйте токени трьох своїх текстів (українська проза, її англійський відповідник, код або JSON) у tiktoken і в Claude, порахуйте «вартість мови», символів на токен і токенів на слово, а потім місячний бюджет однієї своєї AI-фічі з формулою.</p>
+<h3>2. Аудит запиту, який коштує забагато</h3>
+<p>Розберіть описаний у завданні запит Lectern: знайдіть, що роздуває токени й ламає ліміти, оцініть економію в токенах і перепишіть запит.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">13</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 14.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/token-counting" target="_blank" rel="noopener">Claude — Token counting</a><span>endpoint <code>count_tokens</code>: що приймає, ліміти RPM, примітка про новий токенізатор</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/messages/count_tokens" target="_blank" rel="noopener">Claude API — Count tokens in a Message</a><span>довідник API</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/models/overview" target="_blank" rel="noopener">Claude — Models overview</a><span>контекстне вікно, максимальний вивід, ціни моделей 5.5; 1 млн токенів ≈ 555 тис. слів ≈ 2,5 млн символів</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude — Pricing</a><span>ціни, поріг 100 тис. для Haiku 5.5, новий токенізатор (+≈30%), токени tool use</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/context-windows" target="_blank" rel="noopener">Claude — Context windows</a><span>що рахується у вікно, думання, переповнення</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/thinking" target="_blank" rel="noopener">Claude — Thinking</a><span>думання як вихідні токени, <code>display</code>, оплата повного думання</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/pdf-support" target="_blank" rel="noopener">Claude — PDF support</a><span>сторінка = текст + зображення, 1 500–3 000 токенів тексту на сторінку, ліміти</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/vision" target="_blank" rel="noopener">Claude — Vision</a><span>формула візуальних токенів, high-resolution режим моделей 4.7+</span></li>
+<li><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code — Manage costs</a><span><code>/usage</code>, облік токенів сесії; <a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">headless-режим</a> і <code>--output-format json</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">Codex — Non-interactive mode</a><span><code>codex exec --json</code>, подія <code>turn.completed</code> з <code>usage</code></span></li>
+<li><a href="https://cursor.com/docs/cli/reference/output-format" target="_blank" rel="noopener">Cursor CLI — Output format</a><span>поля JSON-результату; облік витрат — <a href="https://cursor.com/docs/account/pricing" target="_blank" rel="noopener">Cursor Pricing</a></span></li>
+<li><a href="https://github.com/openai/tiktoken" target="_blank" rel="noopener">openai/tiktoken</a><span>бібліотека BPE-токенізації, версія 0.14.0 у цьому уроці</span></li>
+<li><a href="https://arxiv.org/abs/1508.07909" target="_blank" rel="noopener">Sennrich, Haddow, Birch — Neural Machine Translation of Rare Words with Subword Units</a><span>2015 · BPE для частин слів</span></li>
+<li><a href="https://arxiv.org/abs/2305.15425" target="_blank" rel="noopener">Petrov et al. — Language Model Tokenizers Introduce Unfairness Between Languages</a><span>2023 · tokenization premium, розрив до 15 разів</span></li>
+<li><a href="https://arxiv.org/abs/2012.15613" target="_blank" rel="noopener">Rust et al. — How Good is Your Tokenizer?</a><span>2020 · subword fertility як метрика токенізатора</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 1.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 1.1 · Senomi<br><br><a href="lesson-03.html">← Урок 0.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-05.html">Урок 1.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 9.2. RAG глибоко: chunking, embeddings, гібридний пошук, reranking, оцінка</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 9.2 · Модуль 9</div>
+<h1>RAG глибоко: chunking, embeddings, гібридний пошук, reranking, оцінка</h1>
+<p class="lead">Будуємо й міряємо пошук над PDF-лекціями Lectern: два способи різати текст, BM25, локальні multilingual embeddings, злиття через RRF і cross-encoder на golden set з 31 питання. Кожне рішення — з цифрою recall@5, MRR і затримки, а відповідь моделі показується лише з цитатами, сторінки яких перевірив код.</p>
+<div class="hero-meta"><span class="chip">Архітектура AI-систем і архітектурне мислення</span><span class="chip t">≈ 80 хв</span><span class="chip a">12 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 15 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Пошук — окрема система</a><a href="#chunking"><b>02</b>Chunking</a><a href="#embeddings"><b>03</b>Embeddings</a><a href="#hybrid"><b>04</b>Гібридний пошук</a><a href="#rerank"><b>05</b>Reranking</a><a href="#golden"><b>06</b>Golden set і метрики</a><a href="#matrix"><b>07</b>Експеримент</a><a href="#e2e"><b>08</b>Наскрізно</a><a href="#failures"><b>09</b>Режими відмови</a><a href="#project"><b>10</b>Наскрізний проєкт</a><a href="#practice"><b>11</b>Практика</a><a href="#quiz"><b>12</b>Квіз</a><a href="#terms"><b>13</b>Терміни уроку</a><a href="#homework"><b>14</b>Домашнє завдання</a><a href="#resources"><b>15</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>обрати спосіб chunking і розмір фрагмента під токенізатор embedding-моделі, а не «на око», і зберегти номери сторінок для цитат;</li>
+    <li>вибрати embedding-модель для української, правильно нормувати вектори й вирішити, коли numpy досить, а коли потрібні pgvector чи Qdrant;</li>
+    <li>злити BM25 і dense через Reciprocal Rank Fusion і передбачити, на яких запитах виграє кожен;</li>
+    <li>поставити cross-encoder reranker і порахувати, скільки recall він дає за кожну секунду затримки;</li>
+    <li>скласти golden set для пошуку, міряти recall@k і MRR, відрізняти сигнал від шуму на малому наборі;</li>
+    <li>показувати відповідь лише з цитатами, сторінки яких перевірив код, і діагностувати промах пошуку за симптомом.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Пошук — окрема система<span class="sub">Що будуємо і чим міряємо</span></h2></div>
+<p>ADR 0007 Lectern вирішив: питання по курсу до 100 тис. токенів (Haiku) іде з усім курсом у кешованому промпті, більше — через гібридний RAG. Урок 5.3 показав, як ламається наївний RAG: BM25 top-3 дав 6/10 і дві <b>тихі</b> помилки — «у матеріалах цього немає» про факт, який є, і впевнений неповний список. Обидві — провали пошуку, а не моделі: модель чесно переказала те, що їй дали.</p>
+<p>Тому пошук будуємо і приймаємо як окремий компонент з власним контрактом: на вході питання, на виході k фрагментів зі сторінками; якість — recall@k і MRR на golden set, вартість — мілісекунди й символи контексту. Відповідь моделі — другий шар, і його приймаємо окремо: кожна цитата проходить <code>check_quote</code>, сторінку рахує код (рішення D9 специфікації з уроку 8.5).</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 540" role="img" aria-label="Конвеєр RAG Lectern: індексація і запит">
+  <defs>
+    <marker id="r92a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="r92d" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <text x="10" y="18" class="tx s">ІНДЕКСАЦІЯ · раз на зміну PDF</text>
+  <rect x="10" y="28" width="340" height="44" rx="10" class="bx m"/>
+  <text x="180" y="47" text-anchor="middle" class="tx b">PDF → pypdf → сторінки</text>
+  <text x="180" y="63" text-anchor="middle" class="tx s">sha256 кожного файлу — для «індекс застарів»</text>
+  <path d="M180 72 V 92" class="ln a" marker-end="url(#r92a)"/>
+  <rect x="10" y="96" width="340" height="44" rx="10" class="bx t"/>
+  <text x="180" y="115" text-anchor="middle" class="tx b">chunks: сторінка або вікно речень</text>
+  <text x="180" y="131" text-anchor="middle" class="tx s">pages [перша, остання] рахує код</text>
+  <path d="M110 140 V 160" class="ln a" marker-end="url(#r92a)"/>
+  <path d="M250 140 V 160" class="ln a" marker-end="url(#r92a)"/>
+  <rect x="10" y="164" width="160" height="44" rx="10" class="bx p"/>
+  <text x="90" y="183" text-anchor="middle" class="tx b">BM25</text>
+  <text x="90" y="199" text-anchor="middle" class="tx s">слова, без моделі</text>
+  <rect x="190" y="164" width="160" height="44" rx="10" class="bx p"/>
+  <text x="270" y="183" text-anchor="middle" class="tx b">вектори 1024</text>
+  <text x="270" y="199" text-anchor="middle" class="tx s">e5-large, норма 1</text>
+  <line x1="10" y1="226" x2="350" y2="226" class="ln d"/>
+  <text x="10" y="246" class="tx s">ЗАПИТ · на кожне питання</text>
+  <rect x="10" y="256" width="340" height="36" rx="10" class="bx m"/>
+  <text x="180" y="279" text-anchor="middle" class="tx b">питання</text>
+  <path d="M90 292 V 312" class="ln a" marker-end="url(#r92a)"/>
+  <path d="M270 292 V 312" class="ln a" marker-end="url(#r92a)"/>
+  <rect x="10" y="316" width="160" height="40" rx="10" class="bx p"/>
+  <text x="90" y="341" text-anchor="middle" class="tx">список BM25</text>
+  <rect x="190" y="316" width="160" height="40" rx="10" class="bx p"/>
+  <text x="270" y="341" text-anchor="middle" class="tx">список dense</text>
+  <path d="M90 356 L 160 376" class="ln a" marker-end="url(#r92a)"/>
+  <path d="M270 356 L 200 376" class="ln a" marker-end="url(#r92a)"/>
+  <rect x="60" y="380" width="240" height="40" rx="10" class="bx a"/>
+  <text x="180" y="405" text-anchor="middle" class="tx b a">RRF: Σ 1/(60 + місце)</text>
+  <path d="M180 420 V 436" class="ln d" marker-end="url(#r92d)"/>
+  <rect x="60" y="440" width="240" height="34" rx="10" class="bx t"/>
+  <text x="180" y="462" text-anchor="middle" class="tx">rerank top-20 → top-5 (опційно)</text>
+  <path d="M180 474 V 490" class="ln a" marker-end="url(#r92a)"/>
+  <rect x="10" y="494" width="340" height="40" rx="10" class="bx a"/>
+  <text x="180" y="512" text-anchor="middle" class="tx b">модель → цитати → check_quote</text>
+  <text x="180" y="527" text-anchor="middle" class="tx s">сторінки з коду; невідома цитата — код виходу 1</text>
+</svg>
+<figcaption>Конвеєр <code>lectern index</code> / <code>lectern ask</code>. Верхня частина працює раз на зміну PDF, нижня — на кожне питання. Пунктирна стрілка — необов'язковий reranker.</figcaption>
+</figure>
+</section>
+
+<section class="sec" id="chunking">
+<div class="sec-h"><span class="num">02</span><h2>Chunking<span class="sub">Межі фрагмента вирішують, що взагалі можна знайти</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Спосіб</th><th>Як ріже</th><th>Сильне місце</th><th>Ламається на</th></tr></thead>
+<tbody>
+<tr><td data-th="Спосіб">Фіксований</td><td data-th="Як ріже">N символів або токенів з перекриттям</td><td data-th="Сильне місце">Простий, рівні фрагменти, передбачуваний бюджет</td><td data-th="Ламається на">Ріже речення й таблиці посередині; номер сторінки треба виводити окремо</td></tr>
+<tr><td data-th="Спосіб">Структурний</td><td data-th="Як ріже">Сторінка, розділ, заголовок</td><td data-th="Сильне місце">Природна одиниця цитування; сторінка = адреса</td><td data-th="Ламається на">Нерівні розміри: довга сторінка перевищує вікно моделі, коротка — шум</td></tr>
+<tr><td data-th="Спосіб">Семантичний</td><td data-th="Як ріже">Межа там, де падає схожість сусідніх речень</td><td data-th="Сильне місце">Одна думка — один фрагмент</td><td data-th="Ламається на">Потребує embeddings під час індексації; межі змінюються зі зміною моделі</td></tr>
+</tbody></table></div>
+<p>Lectern порівнює два варіанти, обидва <b>page-aware</b>: <code>page</code> — одна сторінка PDF; <code>window</code> — вікно речень ~1000 символів, наступне повторює хвостові речення попереднього (≤ 200 символів). Вікно не зважає на межі сторінок, тому речення, перенесене на нову сторінку, лишається цілим, а фрагмент отримує діапазон <code>pages: [2, 3]</code>. Сторінки рахує код з позицій першого й останнього символу, а модель номерів не бачить і не пише.</p>
+<pre class="code" data-lang="python"><span class="cm"># rag.py — вікно речень: межі лише між реченнями, сторінки з позицій символів</span>
+<span class="k">while</span> j + <span class="n">1</span> &lt; len(spans) <span class="k">and</span> spans[j][<span class="n">1</span>] - spans[i][<span class="n">0</span>] &lt; size:
+    j += <span class="n">1</span>
+a, b = spans[i][<span class="n">0</span>], spans[j][<span class="n">1</span>]
+chunks.append(Chunk(<span class="s">f"{lecture_id}#w{len(chunks) + 1}"</span>, lecture_id,
+                    (_page_at(starts, a), _page_at(starts, b - <span class="n">1</span>)), body))
+nxt = j                                   <span class="cm"># перекриття: хвіст ≤ overlap, мінімум одне речення</span>
+<span class="k">while</span> nxt - <span class="n">1</span> &gt; i <span class="k">and</span> spans[j][<span class="n">1</span>] - spans[nxt - <span class="n">1</span>][<span class="n">0</span>] &lt;= overlap:
+    nxt -= <span class="n">1</span></pre>
+<h3>«400 токенів» — чиїх токенів?</h3>
+<p>1000 символів — це ~400 токенів Claude для української (урок 1.1). Але вектор рахує інша модель зі своїм токенізатором, і її ліміт входу обрізає текст мовчки. Виміряли токенізатором кожної моделі на нашому корпусі:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag92</span></div>
+<pre><span class="ps">$ </span><span class="c">python tokens.py</span>
+page   multilingual-e5-large                  tokens median 501.0 max 559 over limit 7 / 22 chars/token 4.06
+page   paraphrase-multilingual-MiniLM-L12-v2  tokens median 499.0 max 557 over limit 22 / 22 chars/token 4.07
+window multilingual-e5-large                  tokens median 259.5 max 301 over limit 0 / 50 chars/token 4.02
+window paraphrase-multilingual-MiniLM-L12-v2  tokens median 257.5 max 299 over limit 47 / 50 chars/token 4.05</pre>
+<div class="cap">реальний вивід · 15.10.2026 · fastembed 0.9.0 · ліміти моделей: e5 — 512, MiniLM — 128 токенів · console/runs/</div></div>
+<p>Сторінка (~2000 символів) — ~500 токенів XLM-R: у 7 з 22 сторінок e5 не бачить хвоста. MiniLM з лімітом 128 бачить лише першу чверть <b>кожної</b> сторінки й кожного вікна. Розмір фрагмента підбирають під ліміт embedding-моделі, а не під вікно LLM; модель з довгим входом (у Voyage 4 — 32 тис. токенів) знімає цю проблему, але не проблему «один вектор на кілька тем».</p>
+<h3>Заголовок фрагмента: виміряли, а не повірили</h3>
+<p>Ідея Contextual Retrieval (урок 5.3): фрагмент губить, про що він, тож перед індексацією до нього дописують контекст. Ми перевірили два варіанти на вікнах: статичний заголовок «назва лекції · с. N» (безкоштовно) і контекст від Haiku за промптом зі статті Anthropic дослівно — 50 викликів, $0,063 разом.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Вікна, recall@5 / MRR</th><th>dense</th><th>hybrid</th><th>hybrid + rerank</th></tr></thead>
+<tbody>
+<tr><td data-th="Вікна, recall@5 / MRR">без заголовка</td><td data-th="dense">0,765 / 0,738</td><td data-th="hybrid">0,773 / 0,812</td><td data-th="hybrid + rerank">0,781 / 0,793</td></tr>
+<tr><td data-th="Вікна, recall@5 / MRR">статичний заголовок</td><td data-th="dense">0,823 / 0,742</td><td data-th="hybrid">0,773 / 0,793</td><td data-th="hybrid + rerank">—</td></tr>
+<tr><td data-th="Вікна, recall@5 / MRR">контекст від Haiku</td><td data-th="dense">0,812 / 0,758</td><td data-th="hybrid">0,800 / 0,794</td><td data-th="hybrid + rerank">0,831 / 0,796</td></tr>
+</tbody></table></div>
+<p>Dense виграв від обох заголовків, hybrid — лише від LLM-контексту, і на 1–2 питання. Висновок для Lectern: статичний заголовок майже нічого не коштує, тож його варто міряти першим; LLM-контекст — коли статичного мало і є бюджет на переіндексацію після кожної зміни лекції.</p>
+</section>
+
+<section class="sec" id="embeddings">
+<div class="sec-h"><span class="num">03</span><h2>Embeddings<span class="sub">Модель, нормування, де тримати вектори</span></h2></div>
+<p>Що таке embedding і косинус — урок 1.2. Тут — вибір під продакшн-пошук українською. Без API-ключів беремо локальні моделі через <code>fastembed</code> (ONNX, CPU) і порівнюємо з тим, що радить документація Claude.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Модель</th><th>Вимір · вхід</th><th>Ліцензія · розмір</th><th>Що врахувати</th></tr></thead>
+<tbody>
+<tr><td data-th="Модель">paraphrase-multilingual-MiniLM-L12-v2</td><td data-th="Вимір · вхід">384 · 128 токенів</td><td data-th="Ліцензія · розмір">Apache-2.0 · 0,22 ГБ</td><td data-th="Що врахувати">Швидка, ~50 мов, але бачить лише ~520 символів українського тексту</td></tr>
+<tr><td data-th="Модель">intfloat/multilingual-e5-large</td><td data-th="Вимір · вхід">1024 · 512 токенів</td><td data-th="Ліцензія · розмір">MIT · 2,24 ГБ</td><td data-th="Що врахувати">~100 мов; кожен вхід має починатися з <code>query: </code> або <code>passage: </code></td></tr>
+<tr><td data-th="Модель">voyage-4 / -large / -lite (API)</td><td data-th="Вимір · вхід">1024 типово (256–2048) · 32 тис.</td><td data-th="Ліцензія · розмір">платні: $0,06 / 0,12 / 0,02 за 1 млн токенів</td><td data-th="Що врахувати">Вектори вже нормовані; multilingual заявлено для voyage-4 і -large</td></tr>
+<tr><td data-th="Модель">voyage-4-nano</td><td data-th="Вимір · вхід">2048 типово · 32 тис.</td><td data-th="Ліцензія · розмір">Apache-2.0, відкриті ваги</td><td data-th="Що врахувати">Не доступна через API Voyage — лише самостійний хостинг</td></tr>
+</tbody></table></div>
+<p>Дві пастки ми знайшли в коді й виміряли. <b>Префікс</b>: картка e5 вимагає <code>query: </code>/<code>passage: </code> («інакше якість падає»), а <code>fastembed</code> 0.9 його не додає, бо його <code>query_embed()</code> просто викликає <code>embed()</code>. <b>Норма</b>: для моделей з mean pooling <code>fastembed</code> повертає ненормовані вектори.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag92</span></div>
+<pre><span class="ps">$ </span><span class="c">python tokens.py | tail -2</span>
+raw norm multilingual-e5-large [30.01 28.87]
+raw norm paraphrase-multilingual-MiniLM-L12-v2 [4.07 3.76]</pre>
+<div class="cap">реальний вивід · 15.10.2026 · fastembed 0.9.0</div></div>
+<p>З такими векторами <code>a · b</code> вже не косинус: довший текст із більшою нормою виграє ранжування лише завдяки довжині. <code>FastEmbedder</code> у Lectern додає префікси й нормує рядки до 1, тож пошук — це одне множення матриці на вектор.</p>
+<h3>numpy, pgvector чи Qdrant</h3>
+<p>Індекс Lectern — <code>index.json</code> (фрагменти, сторінки лекцій, sha256 файлів) і <code>vectors.npy</code>: 50 × 1024 float32 = 205 КБ. Пошук займає ~40 мс, і майже весь цей час іде на embedding питання, а не на множення.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Коли</th><th>Сховище</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Коли">До ~100 тис. фрагментів, один процес, індекс перебудовується цілком</td><td data-th="Сховище">numpy / SQLite в процесі</td><td data-th="Чому">Повний перебір за мілісекунди, нуль інфраструктури, файл комітиться поруч з даними</td></tr>
+<tr><td data-th="Коли">Дані вже в Postgres, потрібні транзакції, фільтри по SQL, кілька сервісів</td><td data-th="Сховище">pgvector 0.8 (HNSW, IVFFlat)</td><td data-th="Чому">Вектори поруч з рядками; індекс <code>vector</code> — до 2000 вимірів, <code>halfvec</code> — до 4000 (voyage 2048 — лише як halfvec)</td></tr>
+<tr><td data-th="Коли">Мільйони векторів, інкрементні оновлення, фільтри по payload, гібрид на сервері</td><td data-th="Сховище">Qdrant</td><td data-th="Чому">Злиття на сервері (<code>"query": {"rrf": {}}</code>); <b>k за замовчуванням — 2, а не 60</b>, ранги з нуля, змінюваний k — з 1.16</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Пастка переносу</span>
+<p>Ті самі назви «RRF» і «k» у різних системах означають різні числа. Перенесли пошук з numpy у Qdrant — проженіть golden set ще раз до того, як міняти будь-що інше.</p>
+</div>
+</section>
+
+<section class="sec" id="hybrid">
+<div class="sec-h"><span class="num">04</span><h2>Гібридний пошук<span class="sub">BM25 + dense через Reciprocal Rank Fusion</span></h2></div>
+<p>BM25 бачить слова, dense — зміст, і помиляються вони на різних запитах. Нижче три справжні виклики <code>lectern ask --search-only</code> на індексі з вікон; колонка показує місце фрагмента в кожному списку.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag92/demo</span></div>
+<pre><span class="ps">$ </span><span class="c">lectern ask "Скільки грошей щороку витрачають на одну станцію?" --search-only --mode bm25</span>
+F1  03-transmission#w5   p. 2-3  bm25 #1   «Таке обмеження є прикладом розмежування повноваж…»
+F2  03-transmission#w6   p. 3    bm25 #2   «Ємність визначає запас енергії, а не миттєву пот…»
+F3  03-transmission#w3   p. 1-2  bm25 #3   «Так протокол, канали та контроль даних утворюють…»
+<span class="ok">F4  06-reporting#w3      p. 1-2  bm25 #4   «Це також нагадує, що обробка даних включає не ли…»</span>
+<span class="ps">$ </span><span class="c">lectern ask "Скільки грошей щороку витрачають на одну станцію?" --search-only --mode dense</span>
+<span class="ok">F1  06-reporting#w3      p. 1-2  dense #1  «Це також нагадує, що обробка даних включає не ли…»</span>
+F2  05-maintenance#w1    p. 1    dense #2  «Лекція 5. Обслуговування станцій і безпека Надій…»
+<span class="ps">$ </span><span class="c">lectern ask "Скільки грошей щороку витрачають на одну станцію?" --search-only</span>
+<span class="ok">F1  06-reporting#w3      p. 1-2  bm25 #4 dense #1     «Це також нагадує, що обробка даних включає не ли…»</span>
+F2  03-transmission#w5   p. 2-3  bm25 #1 dense #7     «Таке обмеження є прикладом розмежування повноваж…»
+F3  01-history#w6        p. 3    bm25 #5 dense #3     «Підтоплення є природним ризиком, який враховують…»</pre>
+<div class="cap">реальний вивід, кожен список скорочено до перших рядків · 15.10.2026 · Lectern scratch + rag.py · фрагмент 06-reporting#w3 містить «Річний бюджет на утримання однієї станції становить 84 тис. грн» · console/runs/demo-search.txt</div></div>
+<p>У питанні «грошей», «щороку», «одну станцію», у тексті — «річний бюджет», «однієї станції». Без стемінгу BM25 не бачить, що це ті самі слова, і ставить потрібний фрагмент лише четвертим, за трьома фрагментами про зв'язок. Dense ловить зміст і ставить його першим, а hybrid лишає першим, бо фрагмент добре стоїть в обох списках. Злиття не нормує бали (BM25 і косинус мають різні шкали) — воно складає <b>місця</b>:</p>
+<pre class="code" data-lang="python"><span class="k">def</span> rrf(rankings, k=<span class="n">60</span>):
+    <span class="s">"""score(d) = Σ 1 / (k + rank(d)), rank з 1 (Cormack, Clarke, Büttcher, 2009)."""</span>
+    total = {}
+    <span class="k">for</span> ranking <span class="k">in</span> rankings:
+        <span class="k">for</span> rank, doc <span class="k">in</span> enumerate(ranking, <span class="n">1</span>):
+            total[doc] = total.get(doc, <span class="n">0.0</span>) + <span class="n">1.0</span> / (k + rank)
+    <span class="k">return</span> sorted(total.items(), key=<span class="k">lambda</span> kv: (-kv[<span class="n">1</span>], kv[<span class="n">0</span>]))</pre>
+<p>k = 60 автори зафіксували після пілотних експериментів і написали, що вибір «не критичний». На нашому наборі hybrid дає однакові recall@5 і MRR для k від 10 до 1000; інший результат лише при k = 1, коли перше місце в одному списку переважує все. Важливіша властивість: RRF <b>карає незгоду</b>. Фрагмент №1 у BM25 і №20 у dense програє фрагменту №2 в обох (1/61 + 1/80 &lt; 2/62) — тест <code>test_lec_rag_002_hybrid…</code> фіксує саме це.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип питання (сторінки)</th><th>BM25</th><th>dense</th><th>hybrid</th><th>Хто і чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип питання (сторінки)">Код, ідентифікатор (6)</td><td data-th="BM25">1,00</td><td data-th="dense">1,00</td><td data-th="hybrid">1,00</td><td data-th="Хто і чому">«E-217», «OB-214» — рідкісні токени, BM25 точний; dense теж впорався на малому корпусі</td></tr>
+<tr><td data-th="Тип питання (сторінки)">Перефразування (7)</td><td data-th="BM25">0,71</td><td data-th="dense">0,86</td><td data-th="hybrid">0,86</td><td data-th="Хто і чому">Розрив словника: «гроші щороку» ↔ «річний бюджет»</td></tr>
+<tr><td data-th="Тип питання (сторінки)">Агрегація (3)</td><td data-th="BM25">0,87</td><td data-th="dense">0,63</td><td data-th="hybrid">0,87</td><td data-th="Хто і чому">Dense зводить «усі станції, які закрили» до однієї теми й одного місця</td></tr>
+<tr><td data-th="Тип питання (сторінки)">Українське питання → англ. сторінка (4)</td><td data-th="BM25">0,00</td><td data-th="dense">0,25</td><td data-th="hybrid">0,00</td><td data-th="Хто і чому">Див. «Режими відмови»: мова переважує зміст</td></tr>
+</tbody></table></div>
+<p>Recall@5 на сторінках, e5-large; багатосторінкові питання й таблиці — 1,00 у всіх трьох.</p>
+</section>
+
+<section class="sec" id="rerank">
+<div class="sec-h"><span class="num">05</span><h2>Reranking<span class="sub">Cross-encoder читає питання й фрагмент разом</span></h2></div>
+<p>Bi-encoder (dense) рахує вектор фрагмента один раз, без питання, тому швидкий. Cross-encoder подає в модель пару «питання + фрагмент» і повертає одне число релевантності: точніше, але це повний прохід моделі на кожного кандидата під час запиту. Тому він переставляє лише top-N гібридного пошуку. Anthropic у статті про Contextual Retrieval брала top-150 і лишала top-20 (Cohere reranker), ми — top-20 → top-5 моделлю <code>BAAI/bge-reranker-v2-m3</code> (int8 ONNX, Apache-2.0) на CPU ноутбука.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar m"><span class="k">сторінки · hybrid · recall@5</span><span class="tr"><i style="--v:79.2%"></i><b style="--v:79.2%">0,792 · 42 мс</b></span></div>
+  <div class="bar t"><span class="k">сторінки · hybrid + rerank</span><span class="tr"><i style="--v:87.7%"></i><b class="in" style="--v:87.7%">0,877 · 9,1 с</b></span></div>
+  <div class="bar m"><span class="k">вікна · hybrid</span><span class="tr"><i style="--v:77.3%"></i><b style="--v:77.3%">0,773 · 37 мс</b></span></div>
+  <div class="bar p"><span class="k">вікна · hybrid + rerank</span><span class="tr"><i style="--v:78.1%"></i><b style="--v:78.1%">0,781 · 3,8 с</b></span></div>
+</div>
+<figcaption>Recall@5 і медіана затримки пошуку на питання, golden set з 26 питань з відповіддю. Затримка reranker росте з довжиною кандидатів: 20 сторінок по ~500 токенів — 9 с, 20 вікон по ~260 — 3,8 с.</figcaption>
+</figure>
+<p>На сторінках reranker підняв recall з 0,792 до 0,877 і MRR з 0,768 до 0,837 (+2 питання з 26). На вікнах він майже нічого не дав: лекція з однією темою розпадається на 4–5 сусідніх вікон, і reranker сумлінно ставить їх усі нагору, витісняючи другу лекцію. Ціна — секунди CPU на кожне питання. Для інтерактивного <code>lectern ask</code> це межа прийнятного, для API-reranker (Cohere <code>rerank-v4.0</code>: 32 тис. токенів контексту, понад 100 мов, українська в переліку; Voyage <code>rerank-3</code>: $0,05 за 1 млн токенів) затримку визначає мережа, а не CPU.</p>
+<div class="note warn"><span class="lbl">Ліцензія — частина вибору моделі</span>
+<p><code>jina-reranker-v2-base-multilingual</code> є в каталозі <code>fastembed</code> поруч з bge, але має ліцензію CC-BY-NC-4.0 — «для досліджень і оцінки». Для продукту Lectern він не підходить, хоч би які цифри показав.</p>
+</div>
+</section>
+
+<section class="sec" id="golden">
+<div class="sec-h"><span class="num">06</span><h2>Golden set і метрики<span class="sub">Що саме ми рахуємо</span></h2></div>
+<p>Корпус — 7 синтетичних PDF-лекцій про вигадану мережу метеостанцій «Обрій» (22 сторінки, 42,5 тис. символів). Факти записано вручну, прозу кожної сторінки написала Haiku за $0,038, а скрипт відхиляв сторінку з будь-яким числом поза списком фактів. У корпус навмисно закладено пастки: таблицю, крок процедури на межі сторінок, сторінку-дублікат (правила безпеки повторено в лекції 6), англомовний додаток і колонтитули з номерами сторінок. Реальні лекції авторів у тести не потрапляють (ADR 0005).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип</th><th>К-сть</th><th>Приклад</th><th>Що перевіряє</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип">keyword</td><td data-th="К-сть">6</td><td data-th="Приклад">«Що означає код помилки E-217?»</td><td data-th="Що перевіряє">Точний рідкісний термін</td></tr>
+<tr><td data-th="Тип">paraphrase</td><td data-th="К-сть">7</td><td data-th="Приклад">«Хто вирішує, чи можна оприлюднити підозрілий вимір?»</td><td data-th="Що перевіряє">Розрив словника («сумнівне вимірювання», «публікувати»)</td></tr>
+<tr><td data-th="Тип">multi_page</td><td data-th="К-сть">4</td><td data-th="Приклад">«Опишіть повний порядок калібрування…»</td><td data-th="Що перевіряє">Відповідь на двох сторінках</td></tr>
+<tr><td data-th="Тип">aggregation</td><td data-th="К-сть">3</td><td data-th="Приклад">«Перелічіть усі станції, які закрили…»</td><td data-th="Що перевіряє">Усі частини з різних лекцій</td></tr>
+<tr><td data-th="Тип">table</td><td data-th="К-сть">2</td><td data-th="Приклад">«Кого сповіщають при помаранчевому рівні?»</td><td data-th="Що перевіряє">Таблиця після витягу pypdf</td></tr>
+<tr><td data-th="Тип">cross_lingual</td><td data-th="К-сть">4</td><td data-th="Приклад">«З яким моментом затягують болти щогли?»</td><td data-th="Що перевіряє">Українське питання, англійська сторінка</td></tr>
+<tr><td data-th="Тип">unanswerable</td><td data-th="К-сть">5</td><td data-th="Приклад">«Скільки коштує датчик ВЛ-7?»</td><td data-th="Що перевіряє">Чесне «немає» замість вигадки</td></tr>
+</tbody></table></div>
+<p>Еталон — <b>сторінки, а не фрагменти</b>: <code>"gold": [["02-sensors:3"], ["02-sensors:4"]]</code>. Група — це одна потрібна частина відповіді, а сторінки всередині групи — рівноцінні альтернативи (дублікат). Тому один golden set оцінює будь-який chunking: фрагмент влучає в групу, якщо його діапазон сторінок її містить.</p>
+<ul>
+<li><b>recall@k</b> — частка груп питання, влучених у top-k, усереднена по питаннях. Відповідає на питання, чи бачила модель усе потрібне.</li>
+<li><b>MRR</b> — середнє 1/місце першого влучання (у нас у top-10, 0 — промах). Міра з TREC-8 QA (1999). Відповідає на питання, наскільки високо стоїть перший потрібний фрагмент.</li>
+<li><b>nDCG</b> (Järvelin, Kekäläinen, 2002) враховує градації релевантності й позиції всіх влучань. Для бінарних сторінкових міток нашого набору він майже нічого не додає до цих двох.</li>
+</ul>
+<div class="note fact"><span class="lbl">Перевірено · 15.10.2026</span>
+<p>RAGAS (0.4.3) рахує <b>faithfulness</b> як частку тверджень відповіді, які LLM-суддя вважає підтвердженими контекстом. Це оцінка іншою моделлю. У Lectern faithfulness перевіряє код: цитата або є в лекції, або ні, і сторінку бере з тексту. Суддя потрібен для питання «чи підтримує цитата тезу» — у специфікації це відкрите питання OQ3.</p>
+</div>
+</section>
+
+<section class="sec" id="matrix">
+<div class="sec-h"><span class="num">07</span><h2>Експеримент<span class="sub">2 chunking × 4 retrieval</span></h2></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag92/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/eval_retrieval.py \
+    --embedder intfloat/multilingual-e5-large \
+    --reranker BAAI/bge-reranker-v2-m3-int8</span>
+31 questions · k=5 · embedder … · reranker …
+<span class="d">(8 рядків результатів — у таблиці нижче)</span></pre>
+<div class="cap">реальний прогін · 15.10.2026 · MacBook, CPU · fastembed 0.9.0, rank-bm25 0.2.2 · повний вивід — console/runs/matrix.txt, рядки по питаннях — matrix.jsonl</div></div>
+<div class="tbl-wrap"><table class="tbl nostack">
+<thead><tr><th>chunking · пошук</th><th>recall@5</th><th>MRR</th><th>мс</th></tr></thead>
+<tbody>
+<tr><td>сторінки · bm25</td><td>0,754</td><td>0,702</td><td>0,1</td></tr>
+<tr><td>сторінки · dense</td><td>0,804</td><td>0,774</td><td>41</td></tr>
+<tr><td>сторінки · hybrid</td><td>0,792</td><td>0,768</td><td>42</td></tr>
+<tr><td><b>сторінки · hybrid + rerank</b></td><td><b>0,877</b></td><td><b>0,837</b></td><td>9055</td></tr>
+<tr><td>вікна · bm25</td><td>0,792</td><td>0,686</td><td>0,1</td></tr>
+<tr><td>вікна · dense</td><td>0,765</td><td>0,738</td><td>43</td></tr>
+<tr><td>вікна · hybrid</td><td>0,773</td><td><b>0,812</b></td><td>37</td></tr>
+<tr><td>вікна · hybrid + rerank</td><td>0,781</td><td>0,793</td><td>3770</td></tr>
+</tbody></table></div>
+<p>мс — медіана пошуку на питання. Контекст top-5: сторінки — 10,2–10,3 тис. символів, вікна — 5,1–5,2 тис. Індекс будується 19 с (22 сторінки) і 28 с (50 вікон) на CPU.</p>
+<p>Цифри треба читати з поправкою на розмір. У recall і MRR входять 26 питань з відповіддю, і одне питання з однією групою важить 0,038. Тому <b>різниця менша за 0,08 — це одне-два питання</b>, а не властивість методу. Чотири висновки переживають цю поправку:</p>
+<ol class="steps">
+<li><b>Порівнюйте при однаковому бюджеті контексту.</b> Top-5 сторінок — це 10,2 тис. символів, top-5 вікон — 5,2 тис. При k = 10 (≈10,3 тис. символів) вікна дали dense 0,877 і hybrid 0,838 — стільки ж, скільки сторінки з reranker, але за 87–122 мс замість 9 с.</li>
+<li><b>Reranker вартий свого на довгих фрагментах</b> (+0,085 на сторінках) і майже нічого не дає на вікнах (+0,008).</li>
+<li><b>Hybrid не виграє автоматично.</b> На сторінках він трохи нижчий за dense, на вікнах дає найкращий MRR (0,812). Він страхує від провалу одного з методів (агрегація, коди), а не підсилює кращий.</li>
+<li><b>Модель ембедингів важить менше, ніж здається.</b> MiniLM (0,22 ГБ) на вікнах дав dense 0,804 проти 0,765 у e5-large (2,24 ГБ) — у межах шуму, але в 10 разів швидше (4 мс). Різниця в межах шуму — привід розширити golden set, а не брати більшу модель.</li>
+</ol>
+</section>
+
+<section class="sec" id="e2e">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізно<span class="sub">Haiku відповідає, код перевіряє цитати</span></h2></div>
+<p>Дві конфігурації: найкраща за recall (сторінки + rerank) і найдешевша з найкращим MRR (вікна + hybrid). Haiku отримує 5 фрагментів без номерів сторінок і відповідає JSON-ом <code>{answer, citations: [{fragment, quote}]}</code>, де <code>answer: null</code> означає «відповіді немає». Код перевіряє кожну цитату через <code>check_quote</code> і сам дописує сторінки. Кожне питання — один прогін (n = 1).</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag92/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/eval_retrieval.py \
+    --embedder intfloat/multilingual-e5-large \
+    --reranker BAAI/bge-reranker-v2-m3-int8 --modes hybrid hybrid+rerank \
+    --e2e window:hybrid page:hybrid+rerank --model haiku</span>
+<span class="d">…</span>
+e2e window:hybrid: correct 22/31 · answers with all quotes verified 23/24 · quotes ok 49/50 · $0.0340
+<span class="ok">e2e page:hybrid+rerank: correct 27/31 · answers with all quotes verified 21/24 · quotes ok 58/61 · $0.0547</span></pre>
+<div class="cap">реальний вивід · 15.10.2026 · claude-agent-sdk 0.2.167, модель haiku · $ — оцінка SDK, разом $0,089 за 62 відповіді · рядки по питаннях — console/runs/e2e.jsonl</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип (питань)</th><th>вікна · hybrid</th><th>сторінки · hybrid + rerank</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип (питань)">keyword (6), table (2)</td><td data-th="вікна · hybrid">8/8</td><td data-th="сторінки · hybrid + rerank">8/8</td></tr>
+<tr><td data-th="Тип (питань)">paraphrase (7)</td><td data-th="вікна · hybrid">6/7</td><td data-th="сторінки · hybrid + rerank">7/7</td></tr>
+<tr><td data-th="Тип (питань)">multi_page (4)</td><td data-th="вікна · hybrid">3/4</td><td data-th="сторінки · hybrid + rerank">4/4</td></tr>
+<tr><td data-th="Тип (питань)">aggregation (3)</td><td data-th="вікна · hybrid">0/3</td><td data-th="сторінки · hybrid + rerank">2/3</td></tr>
+<tr><td data-th="Тип (питань)">cross_lingual (4)</td><td data-th="вікна · hybrid">0/4</td><td data-th="сторінки · hybrid + rerank">1/4</td></tr>
+<tr><td data-th="Тип (питань)">unanswerable (5) → <code>null</code></td><td data-th="вікна · hybrid">5/5</td><td data-th="сторінки · hybrid + rerank">5/5</td></tr>
+</tbody></table></div>
+<p>Модель не вигадала жодної відповіді: на всі 5 питань без відповіді вона повернула <code>null</code>. Усі 13 помилок — неповні відповіді або чесне «у фрагментах немає», і кожна пояснюється пошуком. Приклад: «Фрагменти не містять швидкості вітру, за якої заборонено обслуговувати щоглу… Граничні значення вітру у фрагментах стосуються попереджень, а не заборони робіт». Модель відповіла так, хоча пороги 20/25/32 м/с лежали в тих самих фрагментах і їх легко було видати за відповідь. Небезпечна лише одна помилка: на вікнах вона написала «Закрито чотири станції» (їх п'ять). Це та сама впевнена неповна агрегація, що й в уроці 5.3.</p>
+<p>З 111 цитат код відхилив 4: дві коротші за 5 слів і дві, де модель написала перше слово з малої літери («тому з листопада…» замість «Тому…»). Вигаданих цитат не було. Кожна підтверджена цитата знайшлася саме в показаному фрагменті (<code>in_fragment</code>). Відхилення з малої літери — не надмірна суворість: правило цитат (ADR 0004) нормалізує лише переноси, лапки й тире, тож регістр має збігатися.</p>
+<div class="key"><h4>Висновок для Lectern</h4>
+<p>Сторінки + rerank дали на 5 правильних відповідей більше, і вирішив це <b>пошук</b>, а не модель: агрегація 2/3 проти 0/3. Сторінки без reranker наскрізно ми не міряли, тому <code>--rerank</code> лишається опцією, а не типовим режимом, доки цей прогін не покаже різницю (BACKLOG B44).</p>
+</div>
+</section>
+
+<section class="sec" id="failures">
+<div class="sec-h"><span class="num">09</span><h2>Режими відмови<span class="sub">Симптом → що показав наш корпус → що робити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Режим</th><th>Що виміряли</th><th>Що робити</th></tr></thead>
+<tbody>
+<tr><td data-th="Режим"><b>Мова питання ≠ мова документа</b></td><td data-th="Що виміряли">Українське питання про момент затягування болтів: англійська сторінка — 9-та в dense, у BM25 її немає взагалі. Те саме питання англійською — 1-ше місце. Українські сторінки про щоглу й вітер ближчі за мовою, ніж потрібна за змістом.</td><td data-th="Що робити">Перекласти запит і злити обидва списки (multi-query), або індексувати переклад; міряти окремим типом у golden set</td></tr>
+<tr><td data-th="Режим"><b>Одна тема — багато вікон</b></td><td data-th="Що виміряли">«Усі закриті станції»: 4 вікна лекції 1 зайняли top-5, лекція 5 з OB-142 випала (recall 0,5 на вікнах, 1,0 на сторінках)</td><td data-th="Що робити">Різноманітність у top-k: не більше N фрагментів з однієї сторінки, MMR; або кілька пошуків агентом</td></tr>
+<tr><td data-th="Режим"><b>Агрегація ширша за k</b></td><td data-th="Що виміряли">«Обов'язки чергового синоптика» розкидані по 5 лекціях: максимум 0,8 за будь-якої конфігурації при k = 5</td><td data-th="Що робити">Адаптивний k, кілька пошуків, структурований індекс; у 5.3 — увесь корпус</td></tr>
+<tr><td data-th="Режим"><b>Дублікати сторінок</b></td><td data-th="Що виміряли">Правила безпеки (лекція 5) і їхня копія в лекції 6 разом зайняли 2 з 5 місць у 7 з 31 запиту (сторінки, hybrid)</td><td data-th="Що робити">Дедуплікація за нормалізованим текстом під час індексації; обидві сторінки лишити як альтернативні джерела цитати</td></tr>
+<tr><td data-th="Режим"><b>Таблиці</b></td><td data-th="Що виміряли">pypdf витягнув таблицю порогів по клітинці на рядок: «помаранчевий / від 25 м/с / служба порятунку» — три рядки без заголовків колонок</td><td data-th="Що робити">Цитувати з таблиць обережно; для таблиць — окремий екстрактор (pdfplumber, ADR 0008) і фрагмент «рядок + заголовки»</td></tr>
+<tr><td data-th="Режим"><b>Колонтитули в тексті</b></td><td data-th="Що виміряли">«Обрій · Лекція 6 · сторінка 1» стоїть посеред фрагмента: модель бачить номер сторінки, а BM25 — слово «лекція» в кожному фрагменті</td><td data-th="Що робити">Вирізати рядки, що повторюються на більшості сторінок; сторінку все одно бере код, не текст (D9)</td></tr>
+<tr><td data-th="Режим"><b>Обрізання входу embedder</b></td><td data-th="Що виміряли">MiniLM: 22 з 22 сторінок і 47 з 50 вікон довші за 128 токенів</td><td data-th="Що робити">Фрагмент ≤ ліміту моделі або модель з довшим входом</td></tr>
+<tr><td data-th="Режим"><b>Застарілий індекс</b></td><td data-th="Що виміряли">Додали в PDF один байт — <code>ask</code> відмовив з кодом 2 (нижче)</td><td data-th="Що робити">sha256 кожного файлу в індексі; перебудова в тому самому кроці, що й заміна PDF</td></tr>
+</tbody></table></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag92/demo</span></div>
+<pre><span class="ps">$ </span><span class="c">printf '%%' &gt;&gt; lectures/06-reporting.pdf</span>
+<span class="ps">$ </span><span class="c">lectern ask "Скільки грошей щороку витрачають на одну станцію?" --search-only; echo "exit $?"</span>
+<span class="er">lectern: index is stale, rebuild it: 06-reporting.pdf</span>
+exit 2</pre>
+<div class="cap">реальний вивід · 15.10.2026 · потім файл відновлено з копії</div></div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">10</span><h2>Наскрізний проєкт<span class="sub">Lectern: lectern index і lectern ask</span></h2></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag92/demo</span></div>
+<pre><span class="ps">$ </span><span class="c">lectern index lectures</span>
+7 lectures · 22 chunks (page) · embedder intfloat/multilingual-e5-large → .lectern/index
+<span class="ps">$ </span><span class="c">lectern ask "Хто вирішує, чи можна оприлюднити підозрілий вимір?" --rerank BAAI/bge-reranker-v2-m3-int8 2&gt;/dev/null; echo "exit $?"</span>
+Рішення ухвалює черговий синоптик. Програма лише позначає вимірювання як сумнівне, а відповідальність за те, що потрапить до загальнодоступних даних, залишається за фахівцем.
+<span class="ok">  [1] ✓ 04-quality, p. 2 · «Питання про публікацію сумнівного вимірювання не вирішує програма. Ріш»
+  [2] ✓ 04-quality, p. 2 · «відповідальність за те, що потрапить до загальнодоступних даних, залиш»</span>
+verified: 2/2 quotes · hybrid + rerank · 5 fragments · $0.0007
+exit 0</pre>
+<div class="cap">реальний вивід · 15.10.2026 · в обох командах ще --cache-dir з кешем моделей · індекс 22 сторінок будується ~19 с на CPU і займає 377 КБ · console/runs/demo-ask.txt</div></div>
+<p>Той самий запит хвилиною раніше дав другу цитату «Рішення ухвалює черговий синоптик.» — чотири слова. Рядок вийшов з позначкою <code>✗ short</code> і підсумком <code>verified: 1/2</code>, тобто за LEC-RAG-004 відповідь не вважається підтвердженою. Модель пише відповідь, але правило цитат застосовує код, однаково для квізу і для <code>ask</code>.</p>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 9.2 · пошук над PDF з перевіреними цитатами</div><div class="pb">
+<p><b>На злиття в <code>lectern/</code></b> (диф і файли — <code>console/lectern.diff</code>, <code>console/lectern/</code>): <code>src/lectern/rag.py</code>; <code>lectern index</code> / <code>lectern ask</code> у <code>cli.py</code> (<code>--search-only</code>, <code>--rerank</code>, <code>--json</code>, коди 0/1/2); extras <code>rag</code> і <code>rag-local</code>; <code>scripts/eval_retrieval.py</code>, <code>scripts/make_golden_corpus.py</code>, golden set і 7 PDF у <code>tests/fixtures/golden/</code>; <code>tests/test_rag.py</code> — 17 тестів без моделей: справжній BM25, фейковий embedder, модель-функція. Специфікація v3.2: вимоги LEC-RAG-001…006 і задача T14; карта модулів, CLAUDE.kit, CHANGELOG, BACKLOG B41–B45.</p>
+<p><b>ADR 0012 (запропоновано):</b> сторінка як фрагмент, BM25 + e5 через RRF k = 60, сховище numpy у процесі, reranker лише за <code>--rerank</code>, сторінки цитат тільки з коду, sha256-перевірка індексу, будь-яка зміна пошуку — через <code>eval_retrieval.py</code>. Відхилено: вікна як типовий режим, LLM-контекст фрагментів (поки +1 питання), jina-reranker (CC-BY-NC), API-моделі (ADR 0005).</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag92/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q | tail -1; .venv/bin/ruff check . ; .venv/bin/python scripts/trace.py | tail -1</span>
+202 passed in 7.19s
+All checks passed!
+37 requirements, 41 tests: 0 error(s), 0 warning(s)
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/check_context.py | tail -1; .venv/bin/python scripts/mcp_contract.py check</span>
+checked 9 files (35 commands, 38 paths, 16 symbols): 0 problem(s)
+contract unchanged (0.3.0)</pre>
+<div class="cap">реальний вивід, команди запускались окремо · 15.10.2026 · копія канонічного lectern/ станом на 15.10 (з кроками інших уроків модуля 9) + цей крок</div></div>
+<p><b>Ваш крок.</b> Додайте в golden set 5 питань до власних PDF (синтетичних або з дозволу автора) і запустіть <code>eval_retrieval.py</code> до і після однієї зміни — як у домашньому завданні 1.</p>
+</div></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">11</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">page-aware chunk</span><span class="h">хто пише сторінку?</span></span><span class="b"><span class="t">Код, не модель</span><span class="d">pages рахують з позицій символів фрагмента в тексті PDF</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">RRF</span><span class="h">що складає?</span></span><span class="b"><span class="t">Місця, не бали</span><span class="d">Σ 1/(k + rank), k = 60; карає незгоду списків</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">cross-encoder</span><span class="h">чому лише top-20?</span></span><span class="b"><span class="t">Прохід моделі на кожну пару</span><span class="d">у нас 9 с CPU на 20 сторінок проти 42 мс гібриду</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">recall@5 = 0,792 vs 0,773</span><span class="h">26 питань — є різниця?</span></span><span class="b"><span class="t">Ні, це пів питання</span><span class="d">одне питання важить 0,038; різниця до ~0,08 — шум</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">e5 без «query: »</span><span class="h">що не так?</span></span><span class="b"><span class="t">Модель так не вчили</span><span class="d">fastembed 0.9 префікс не додає — додає Lectern</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">норма вектора 30</span><span class="h">fastembed, e5</span></span><span class="b"><span class="t">Нормуйте самі</span><span class="d">інакше a·b — не косинус, і довгі тексти виграють за довжину</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">12</span><h2>Квіз<span class="sub">10 діагнозів</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Індекс зібрано з <code>--embedder none</code>. На питання «скільки грошей щороку йде на станцію» модель каже «у матеріалах немає», а <code>--search-only</code> показує потрібний фрагмент на 14-му місці. Що виправити першим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Посилити промпт: заборонити моделі відповідати «немає», доки вона не перечитає всі фрагменти</span></label><label class="opt ok"><input type="radio" name="q1"><span>Перебудувати індекс з embedder: це розрив словника, і BM25 без dense його не закриває</span></label><label class="opt"><input type="radio" name="q1"><span>Зменшити фрагменти до 300 символів, щоб BM25 точніше зважував рідкісні слова</span></label></div>
+    <div class="why yes">Так. «Гроші щороку» і «річний бюджет» не мають спільних слів, тож BM25 ставить фрагмент низько. Dense ставить такий фрагмент першим (так було в нашій демонстрації), а hybrid лишає його нагорі.</div>
+    <div class="why no">Модель чесно сказала, що в п'яти показаних фрагментах відповіді немає, тож промпт тут ні до чого. Менші фрагменти не додають спільних слів. Причина — розрив словника, і закриває його dense-пошук.</div></div>
+  <div class="q"><div class="qt">2. Після переходу на e5 через fastembed ранжування почало систематично віддавати перевагу довгим фрагментам. Пошук — <code>vectors @ query</code>. Діагноз?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Вектори не нормовані: норми ~30 і різні, тож скалярний добуток — не косинус</span></label><label class="opt"><input type="radio" name="q2"><span>e5 має 1024 виміри, а для скалярного добутку потрібні вектори не довші за 768</span></label><label class="opt"><input type="radio" name="q2"><span>Довгі фрагменти містять більше слів, тож краще збігаються зі змістом питання</span></label></div>
+    <div class="why yes">Так. fastembed 0.9 для моделей з mean pooling повертає сирі вектори, ми виміряли норми 28–30. Без ділення на норму довжина вектора впливає на ранжування.</div>
+    <div class="why no">Розмірність на скалярний добуток не впливає, а «більше слів» — це якраз симптом, а не пояснення. Ненормовані вектори роблять <code>a·b</code> залежним від норми: нормуйте рядки до 1 (і додайте префікси e5).</div></div>
+  <div class="q"><div class="qt">3. Індекс зі сторінок на MiniLM: факти з верхньої частини сторінки знаходяться, з нижньої — ніколи. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>MiniLM погано розуміє українську, тож частина сторінки для неї лише шум</span></label><label class="opt"><input type="radio" name="q3"><span>Поріг подібності занизький: нижні абзаци дають косинус трохи менший за поріг</span></label><label class="opt ok"><input type="radio" name="q3"><span>Ліміт входу 128 токенів: модель бачить лише першу чверть сторінки, решту обрізано</span></label></div>
+    <div class="why yes">Так. Ми виміряли: сторінка — ~500 токенів XLM-R, і всі 22 сторінки довші за 128. Фрагмент має бути коротшим за ліміт моделі, або потрібна модель з довшим входом.</div>
+    <div class="why no">MiniLM підтримує ~50 мов, а порогу в ранжуванні top-k немає взагалі. Відсікання «знизу сторінки» — характерний слід обрізання входу: 128 токенів — це ~520 символів українського тексту.</div></div>
+  <div class="q"><div class="qt">4. Ті самі два списки злили у Qdrant вбудованим RRF (точний пошук, без HNSW), і порядок відрізнився від вашого numpy-коду з k = 60. Найімовірніша причина?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Qdrant перед злиттям нормує бали BM25 і косинуса до спільної шкали</span></label><label class="opt ok"><input type="radio" name="q4"><span>У Qdrant інший k за замовчуванням (2) і ранги рахуються з нуля</span></label><label class="opt"><input type="radio" name="q4"><span>Qdrant зважує dense удвічі сильніше за розріджений список</span></label></div>
+    <div class="why yes">Так. Документація Qdrant: k = 2 за замовчуванням, ранги з нуля, власний k — з версії 1.16. Перед порівнянням систем ставте однакові параметри.</div>
+    <div class="why no">RRF за визначенням не нормує бали, а використовує лише місця. Ваги з'явилися як окрема опція (weighted RRF), і за замовчуванням їх немає. Різниця в константі: k = 2 проти 60, ранги з 0 проти 1.</div></div>
+  <div class="q"><div class="qt">5. На вікнах reranker дав +0,008 recall@5 і 3,8 с на питання. Що робити з типовою конфігурацією?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Лишити reranker: cross-encoder точніший за bi-encoder, тож на більшому наборі різниця виросте</span></label><label class="opt"><input type="radio" name="q5"><span>Замінити e5-large на більшу embedding-модель, щоб reranker отримував кращих кандидатів</span></label><label class="opt ok"><input type="radio" name="q5"><span>Прибрати reranker і порівняти з k = 10 при тому самому обсязі контексту, що й сторінки</span></label></div>
+    <div class="why yes">Так. При k = 10 вікна дали 0,838–0,877 за 87–122 мс, тобто стільки ж, скільки сторінки з reranker. Порівнювати треба при однаковому бюджеті контексту.</div>
+    <div class="why no">«Виросте на більшому наборі» — гіпотеза, і перевіряти її треба на більшому наборі, а не платити за неї 3,8 с на кожне питання. Більша модель не лікує того, що одна тема займає кілька вікон. Вирівняйте контекст (k = 10) і міряйте ще раз.</div></div>
+  <div class="q"><div class="qt">6. На 26 питаннях з відповіддю конфігурація A дала recall@5 0,792, B — 0,773. Обидва прогони детерміновані. Висновок?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Різниця — пів питання; щоб розрізнити A і B, потрібен більший golden set</span></label><label class="opt"><input type="radio" name="q6"><span>A краща на 2,5%, і через детермінованість прогонів цій різниці можна вірити</span></label><label class="opt"><input type="radio" name="q6"><span>B краща, бо в неї вищий MRR, а MRR важливіший за recall для будь-якого RAG</span></label></div>
+    <div class="why yes">Так. Одне питання з однією групою важить 1/26 ≈ 0,038. Детермінованість прибирає шум прогону, але не шум вибірки питань.</div>
+    <div class="why no">Повторюваність прогону не робить 26 питань репрезентативними: інша вибірка питань легко поміняє A і B місцями. Жодна метрика не важливіша «для будь-якого RAG»: recall відповідає за повноту, MRR — за позицію першого влучання.</div></div>
+  <div class="q"><div class="qt">7. «Перелічіть усі закриті станції»: на вікнах top-5 — чотири вікна лекції 1, а лекції 5 (OB-142) немає. Модель упевнено пише «закрито чотири станції». Що змінити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Додати reranker: він поставить фрагмент лекції 5 вище за вікна лекції 1</span></label><label class="opt ok"><input type="radio" name="q7"><span>Обмежити кількість фрагментів з однієї сторінки чи лекції або шукати кілька разів</span></label><label class="opt"><input type="radio" name="q7"><span>Перейти з BM25 на dense, бо «OB-142» — рідкісний код, який BM25 пропускає</span></label></div>
+    <div class="why yes">Так. Одна тема, розрізана на сусідні вікна, витісняє решту з top-k. Допомагає обмеження різноманітності (MMR, «не більше N з однієї сторінки») або агент, що шукає кілька разів.</div>
+    <div class="why no">У нашому вимірі reranker на вікнах лишив Q18 на 0,5: він сумлінно ставить нагору всі релевантні вікна лекції 1. Коди BM25 знаходить добре (keyword — 1,00), а в питанні коду OB-142 немає.</div></div>
+  <div class="q"><div class="qt">8. Модель відповіла, процитувавши «код E-217 означає повну відмову датчиків», і назвала «сторінку 1». Що зробить <code>lectern ask</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Покаже відповідь зі сторінкою 1, бо модель цитувала фрагмент саме з цієї сторінки</span></label><label class="opt"><input type="radio" name="q8"><span>Автоматично повторить пошук з більшим k і попросить модель відповісти ще раз</span></label><label class="opt ok"><input type="radio" name="q8"><span>Позначить цитату ✗ missing, сторінки не покаже, завершиться з кодом 1</span></label></div>
+    <div class="why yes">Так. Сторінку модель не пише (D9), а <code>check_quote</code> не знайшов цитату в лекції. Відповідь не підтверджено, тож код 1 (LEC-RAG-004).</div>
+    <div class="why no">Номер сторінки від моделі Lectern ігнорує: сторінку бере з позиції підтвердженої цитати. Повторного пошуку <code>ask</code> не робить — неперевірена відповідь просто не проходить, і це видно за кодом виходу.</div></div>
+  <div class="q"><div class="qt">9. Відповідь на українське питання є лише в англійському додатку: у dense він 9-й, у BM25 його немає. Що спробувати першим?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Перекласти запит англійською, знайти за обома версіями і злити списки</span></label><label class="opt"><input type="radio" name="q9"><span>Збільшити k у RRF до 1000, щоб dense-список важив більше за BM25</span></label><label class="opt"><input type="radio" name="q9"><span>Перейти на фрагменти-сторінки, щоб англійський текст став довшим</span></label></div>
+    <div class="why yes">Так. Те саме питання англійською поставило сторінку на 1-ше місце. Українські сторінки про щоглу ближчі за мовою, ніж потрібна сторінка за змістом.</div>
+    <div class="why no">k у RRF однаково впливає на обидва списки й не змінює ваги одного з них; у нас k від 10 до 1000 дав той самий результат. Індекс і так зі сторінок: тут 9-те місце — саме для сторінки.</div></div>
+  <div class="q"><div class="qt">10. Скопійована сторінка правил безпеки разом з оригіналом займає 2 з 5 місць у 7 запитах з 31. Як виправити, не зламавши цитування?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Видалити додаток з PDF лекції 6 перед індексацією, щоб копії не було</span></label><label class="opt ok"><input type="radio" name="q10"><span>Дедуплікувати фрагменти за нормалізованим текстом, лишивши обидві сторінки джерелами</span></label><label class="opt"><input type="radio" name="q10"><span>Збільшити k до 10, щоб дублікат займав меншу частку контексту моделі</span></label></div>
+    <div class="why yes">Так. Один фрагмент у top-k і список сторінок, на яких він є, — цитата лишається перевірною в будь-якій з лекцій.</div>
+    <div class="why no">PDF автора Lectern не редагує — це вхідні дані. Більший k додає контекст і вартість, але дублікат далі займає два місця: проблема лишається, просто менше помітна.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">13</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>chunking strategy</td><td>Правило, за яким документ ріжуть на фрагменти для пошуку: фіксоване, структурне (сторінка, розділ) або семантичне.</td></tr>
+<tr><td>chunk overlap</td><td>Повтор хвоста попереднього фрагмента на початку наступного, щоб думка на межі не загубилася.</td></tr>
+<tr><td>page-aware chunk</td><td>Фрагмент, що несе діапазон сторінок джерела, обчислений кодом з позиції тексту.</td></tr>
+<tr><td>contextual<br>chunk header</td><td>Текст, дописаний до фрагмента перед індексацією (назва, сторінка або контекст від LLM), щоб фрагмент не втрачав, про що він.</td></tr>
+<tr><td>dense retrieval</td><td>Пошук за близькістю embedding-векторів питання і фрагментів (bi-encoder).</td></tr>
+<tr><td>hybrid search</td><td>Лексичний (BM25) і dense пошук разом, з одним злитим списком.</td></tr>
+<tr><td>RRF</td><td>Reciprocal Rank Fusion: злиття списків за місцями: score = Σ 1/(k + rank), k = 60.</td></tr>
+<tr><td>cross-encoder<br>reranker</td><td>Модель, що оцінює пару «питання + фрагмент» разом і переставляє top-N кандидатів.</td></tr>
+<tr><td>recall@k</td><td>Частка потрібного (у нас — груп сторінок), що потрапила в перші k результатів.</td></tr>
+<tr><td>MRR</td><td>Середнє 1/місце першого релевантного результату; 0, якщо його немає.</td></tr>
+<tr><td>golden set</td><td>Для пошуку: набір питань з еталонними джерелами відповіді, на якому міряють пошук до і після кожної зміни.</td></tr>
+<tr><td>faithfulness</td><td>Цитування з перевіркою: відповідь спирається лише на джерела; у Lectern кожну цитату перевіряє код, а сторінку дає текст, не модель.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">14</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Golden set і одна зміна з виміром</h3>
+<p>Складіть golden set з 25+ питань (усі шість типів і питання без відповіді) до власного корпусу або до корпусу уроку. Зробіть рівно одну зміну пошуку (chunking, embedder, k, заголовок фрагмента, reranker) і подайте recall@5, MRR і затримку до і після, з розбором трьох питань, де результат змінився, і висновком, що з різниці є сигналом, а що шумом.</p>
+<h3>2. Діагноз промахів пошуку</h3>
+<p>За п'ятьма описами промахів (у завданні) назвіть режим відмови, доказ, який ви зібрали б через <code>--search-only</code> чи рядки eval, виправлення і метрику, за якою приймете виправлення.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">15</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://www.anthropic.com/engineering/contextual-retrieval" target="_blank" rel="noopener">Anthropic — Introducing Contextual Retrieval</a><span>19.09.2024 · промпт контекстуалізації, top-150 → top-20 з reranker, 1 − recall@20</span></li>
+<li><a href="https://platform.claude.com/cookbook/capabilities-contextual-embeddings-guide" target="_blank" rel="noopener">Claude Cookbook — Contextual embeddings guide</a><span>код до статті: BM25 + embeddings, зважене злиття, reranker</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/embeddings" target="_blank" rel="noopener">Claude docs — Embeddings</a><span>моделі Voyage 4, розмірності, нормовані вектори, <code>input_type</code></span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/search-results" target="_blank" rel="noopener">Claude docs — Search results</a><span>блоки <code>search_result</code> для цитування власних фрагментів</span></li>
+<li><a href="https://docs.voyageai.com/docs/reranker" target="_blank" rel="noopener">Voyage AI — Rerankers</a><span><code>rerank-3</code>, <code>rerank-2.5</code>, ліміти; ціни: <a href="https://docs.voyageai.com/docs/pricing" target="_blank" rel="noopener">Pricing</a></span></li>
+<li><a href="https://docs.cohere.com/docs/rerank" target="_blank" rel="noopener">Cohere — Rerank</a><span><code>rerank-v4.0-pro/fast</code>, <code>rerank-v3.5</code>, багатомовність</span></li>
+<li><a href="https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf" target="_blank" rel="noopener">Cormack, Clarke, Büttcher — Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods</a><span>SIGIR 2009 · формула RRF, k = 60 з пілотного дослідження</span></li>
+<li><a href="https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf" target="_blank" rel="noopener">Robertson, Zaragoza — The Probabilistic Relevance Framework: BM25 and Beyond</a><span>2009 · BM25, типові 1,2 &lt; k1 &lt; 2, 0,5 &lt; b &lt; 0,8</span></li>
+<li><a href="https://github.com/dorianbrown/rank_bm25" target="_blank" rel="noopener">rank_bm25</a><span>0.2.2 · <code>BM25Okapi(k1=1.5, b=0.75, epsilon=0.25)</code></span></li>
+<li><a href="https://trec.nist.gov/pubs/trec8/papers/qa_report.pdf" target="_blank" rel="noopener">Voorhees — The TREC-8 Question Answering Track Report</a><span>1999 · mean reciprocal rank</span></li>
+<li><a href="https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/" target="_blank" rel="noopener">RAGAS — Faithfulness</a><span>частка тверджень, підтверджених контекстом, за оцінкою LLM</span></li>
+<li><a href="https://github.com/qdrant/fastembed" target="_blank" rel="noopener">fastembed</a><span>0.9.0, Apache-2.0 · <code>TextEmbedding</code>, <code>TextCrossEncoder</code></span></li>
+<li><a href="https://huggingface.co/intfloat/multilingual-e5-large" target="_blank" rel="noopener">intfloat/multilingual-e5-large</a><span>MIT · 1024 виміри · префікси <code>query: </code>/<code>passage: </code> обов'язкові</span></li>
+<li><a href="https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" target="_blank" rel="noopener">paraphrase-multilingual-MiniLM-L12-v2</a><span>Apache-2.0 · 384 виміри · <code>max_seq_length</code> 128</span></li>
+<li><a href="https://huggingface.co/BAAI/bge-reranker-v2-m3" target="_blank" rel="noopener">BAAI/bge-reranker-v2-m3</a><span>Apache-2.0 · багатомовний cross-encoder</span></li>
+<li><a href="https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual" target="_blank" rel="noopener">jina-reranker-v2-base-multilingual</a><span>CC-BY-NC-4.0 — лише дослідження й оцінка</span></li>
+<li><a href="https://github.com/pgvector/pgvector" target="_blank" rel="noopener">pgvector</a><span>0.8.x · HNSW, IVFFlat · індекс <code>vector</code> до 2000 вимірів, <code>halfvec</code> до 4000</span></li>
+<li><a href="https://qdrant.tech/documentation/concepts/hybrid-queries/" target="_blank" rel="noopener">Qdrant — Hybrid queries</a><span>RRF на сервері, k = 2 за замовчуванням, ранги з нуля</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 9.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 9.2 · Senomi<br><br><a href="lesson-43.html">← Урок 9.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-45.html">Урок 9.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

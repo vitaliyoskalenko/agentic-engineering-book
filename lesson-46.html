@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 9.4. Agent-friendly кодова база</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 9.4 · Модуль 9</div>
+<h1>Agent-friendly кодова база</h1>
+<p class="lead">Які властивості коду, а не інструкцій, роблять агента швидшим і точнішим — і скільки це дає насправді. Два функціонально однакові сервіси, 24 прогони агента з прихованими тестами, скрипт аудиту і три виправлення в Lectern, одне з яких знайшла не модель, а свіжий venv.</p>
+<div class="hero-meta"><span class="chip">Архітектура AI-систем і архітектурне мислення</span><span class="chip t">≈ 70 хв</span><span class="chip a">11 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 13 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Код як інтерфейс агента</a><a href="#properties"><b>02</b>Десять властивостей</a><a href="#experiment"><b>03</b>Експеримент</a><a href="#tools"><b>04</b>Що бачать інструменти</a><a href="#audit"><b>05</b>Аудит</a><a href="#refactor"><b>06</b>Рефакторинг під агента</a><a href="#project"><b>07</b>Наскрізний проєкт</a><a href="#mistakes"><b>08</b>Типові помилки</a><a href="#practice"><b>09</b>Практика</a><a href="#quiz"><b>10</b>Квіз</a><a href="#terms"><b>11</b>Терміни уроку</a><a href="#homework"><b>12</b>Домашнє завдання</a><a href="#resources"><b>13</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>пояснити, на якому кроці циклу агента (пошук, читання, правка, перевірка) кожна властивість коду коштує ходів, часу чи правильності;</li>
+    <li>відрізняти властивості, які дають виміряний ефект, від тих, що лише «здаються» корисними для агента;</li>
+    <li>поставити чесний експеримент «ворожа проти дружньої версії» з прихованими тестами і прочитати його результат;</li>
+    <li>запустити автоматичний аудит репозиторію і відсіяти хибні спрацювання;</li>
+    <li>рефакторити під агента без передчасного розбиття і абстракцій заради абстракцій.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Код як інтерфейс агента<span class="sub">Де властивості коду стають ходами</span></h2></div>
+<p>Інструкції (урок 4.2) і живий контекст (5.4) кажуть агентові, <i>що</i> робити. Цей урок про інше: про властивості <b>самого коду</b>, які визначають ціну кожного кроку циклу. Їх однаково «бачать» Claude Code, Codex і Cursor, бо всі троє шукають текстом, читають файли і запускають ваші тести.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 430" role="img" aria-label="Цикл агента і властивості коду, що задають ціну кожного кроку">
+  <defs>
+    <marker id="a46" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="54" rx="10" class="bx m"/>
+  <text x="180" y="30" text-anchor="middle" class="tx b">0 · Середовище</text>
+  <text x="180" y="49" text-anchor="middle" class="tx s">одна команда setup, lockfile, тести зелені до правки</text>
+  <path d="M180 62 V 80" class="ln a" marker-end="url(#a46)"/>
+  <rect x="8" y="84" width="344" height="68" rx="10" class="bx t"/>
+  <text x="180" y="106" text-anchor="middle" class="tx b">1 · Пошук (Grep, Glob)</text>
+  <text x="180" y="125" text-anchor="middle" class="tx s">унікальні імена, явні виклики,</text>
+  <text x="180" y="142" text-anchor="middle" class="tx s">без getattr / globals()["cmd_" + x]</text>
+  <path d="M180 152 V 170" class="ln a" marker-end="url(#a46)"/>
+  <rect x="8" y="174" width="344" height="68" rx="10" class="bx t"/>
+  <text x="180" y="196" text-anchor="middle" class="tx b">2 · Читання (Read ≤ 25 000 токенів)</text>
+  <text x="180" y="215" text-anchor="middle" class="tx s">модуль = відповідальність, карта модулів,</text>
+  <text x="180" y="232" text-anchor="middle" class="tx s">типи в сигнатурах замість читання викликів</text>
+  <path d="M180 242 V 260" class="ln a" marker-end="url(#a46)"/>
+  <rect x="8" y="264" width="344" height="68" rx="10" class="bx t"/>
+  <text x="180" y="286" text-anchor="middle" class="tx b">3 · Правка</text>
+  <text x="180" y="305" text-anchor="middle" class="tx s">одне джерело правди, без глобального стану,</text>
+  <text x="180" y="322" text-anchor="middle" class="tx s">однакові конвенції — агент копіює сусіда</text>
+  <path d="M180 332 V 350" class="ln a" marker-end="url(#a46)"/>
+  <rect x="8" y="354" width="344" height="68" rx="10" class="bx a"/>
+  <text x="180" y="376" text-anchor="middle" class="tx b a">4 · Перевірка</text>
+  <text x="180" y="395" text-anchor="middle" class="tx s">швидкі детерміновані тести однією командою,</text>
+  <text x="180" y="412" text-anchor="middle" class="tx s">помилки з інструкцією, як виправити</text>
+</svg>
+<figcaption>Кожен крок циклу має ціну в ходах, токенах і секундах, і її задає код. Крок 4 повторюється після кожної правки, тому його властивості множаться на кількість ітерацій.</figcaption>
+</figure>
+<p>Команди, що працюють з агентами в масштабі, інвестують саме сюди, а не в довші інструкції:</p>
+<ul>
+<li><b>Stripe, «Minions»</b> (лютий 2026): devbox з кодом і сервісами піднімається за 10 секунд, локальні лінти на push — менше 5 секунд, а CI агентові дають щонайбільше два раунди. Принцип — «shift feedback left»: усе, що можна перевірити локально, перевіряють до CI. Агенти зливають понад 1 300 PR на тиждень.</li>
+<li><b>OpenAI, «Harness engineering»</b> (лютий 2026): близько мільйона рядків коду, жодного написаного вручну, ~1 500 PR від трьох інженерів. <code>AGENTS.md</code> — карта на ~100 рядків, а не довідник. Шари домену (Types → Config → Repo → Service → Runtime → UI) і навіть розмір файлів перевіряють власні лінтери й структурні тести, і повідомлення цих лінтів пишуть так, щоб вони вносили в контекст агента інструкцію виправлення.</li>
+<li><b>Factory, Agent Readiness</b>: оцінка репозиторію за 9 стовпами (стиль і валідація, збірка, тести, документація, середовище розробки, налагодження й спостережуваність, безпека, пошук задач, продукт і експерименти) і 5 рівнями зрілості; рівень зараховано, коли пройдено 80% критеріїв попереднього.</li>
+</ul>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Ворожий код — податок на <b>кожну</b> задачу кожного агента, і його не видно в жодному окремому прогоні. Але інтуїція погано вгадує, де саме він стягується: нижче експеримент, у якому «дружня» модульна версія коштувала <b>дорожче</b> на фічі, а виграла на іншому.</p>
+</div>
+</section>
+
+<section class="sec" id="properties">
+<div class="sec-h"><span class="num">02</span><h2>Десять властивостей<span class="sub">Механізм → доказ</span></h2></div>
+<p>Для кожної властивості — що саме агент з нею робить і чим підкріплено. «Експеримент» — прогони цього уроку нижче; решта — першоджерела з розділу ресурсів.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Властивість</th><th>Механізм</th><th>Доказ</th></tr></thead>
+<tbody>
+<tr><td data-th="Властивість">1. Швидкі детерміновані тести однією командою</td><td data-th="Механізм">Агент перевіряє себе після кожної правки; ціна перевірки множиться на кількість ітерацій. Нестабільний тест — хибне спостереження</td><td data-th="Доказ">Експеримент: набір на 21–24 с подвоїв-потроїв час; 5 з 12 «ворожих» прогонів лишили набір червоним через чужий flaky-тест. Stripe: лінти &lt; 5 с</td></tr>
+<tr><td data-th="Властивість">2. Імена, які знаходить grep; без string dispatch</td><td data-th="Механізм">Пошук текстовий: Grep у Claude Code працює на ripgrep, Cursor відмовився від embeddings на користь Instant Grep. Ім'я, складене з рядків, для пошуку не існує</td><td data-th="Доказ">3.1: <code>getattr</code> сховав виклик <code>check_quote</code>. Анонімізація імен обвалила MRR пошуку коду GraphCodeBERT з 70,4% до 17,0% (Java)</td></tr>
+<tr><td data-th="Властивість">3. Типи й схеми</td><td data-th="Механізм">Форма даних видна в сигнатурі; порушення ловить перевірка типів, а не рев'ю</td><td data-th="Доказ">PLDI 2025: 94% помилок компіляції TypeScript, згенерованого відкритими LLM, — помилки перевірки типів. Експеримент: логічну помилку типи не зловили</td></tr>
+<tr><td data-th="Властивість">4. Розмір файлу за відповідальністю</td><td data-th="Механізм">Один Read повертає до 25 000 токенів, цілий файл понад 256 KB — лише сторінками</td><td data-th="Доказ">Експеримент: файл на 317 рядків читався одним викликом і для фічі був <b>дешевшим</b>. OpenAI обмежує розмір файлів лінтом</td></tr>
+<tr><td data-th="Властивість">5. Помилки з інструкцією виправлення</td><td data-th="Механізм">Вивід інструмента — наступне спостереження агента</td><td data-th="Доказ">OpenAI: remediation у лінтах. Lectern: гейт ховав <code>No module named lectern</code> за <code>JSONDecodeError</code></td></tr>
+<tr><td data-th="Властивість">6. Середовище однією командою</td><td data-th="Механізм">Агент стартує з чистого контексту і не знає неписаних кроків</td><td data-th="Доказ">Lectern: 11 зі 178 тестів падають у свіжому venv. Anthropic: перша сесія довгого агента пише <code>init.sh</code></td></tr>
+<tr><td data-th="Властивість">7. Документація поруч з кодом</td><td data-th="Механізм">Вкладені <code>CLAUDE.md</code> і <code>AGENTS.md</code> підвантажуються, коли агент заходить у каталог; карта модулів відповідає «де що»</td><td data-th="Доказ">Anthropic про великі кодові бази: кореневий файл — «лише вказівники й критичні пастки». 3.1: карта на 540 рядках не зекономила токенів</td></tr>
+<tr><td data-th="Властивість">8. Без прихованого глобального стану</td><td data-th="Механізм">Щоб зрозуміти функцію, треба знайти всіх, хто пише в ту саму змінну</td><td data-th="Доказ">Експеримент: «ворожі» тести пишуть в один файл у <code>/tmp</code> — паралельні прогони довелося ізолювати окремим <code>TMPDIR</code></td></tr>
+<tr><td data-th="Властивість">9. Однакові конвенції, одне джерело правди</td><td data-th="Механізм">Агент копіює найближчий схожий код; дубль формули правлять в одному місці</td><td data-th="Доказ">Експеримент: формула штрафу в «ворожій» версії стоїть двічі — усі 6 прогонів виправлення знайшли обидва місця</td></tr>
+<tr><td data-th="Властивість">10. Згенероване й vendored позначено для агента</td><td data-th="Механізм">Grep пропускає <code>.gitignore</code>, Glob — ні; <code>linguist-generated</code> агенти ігнорують</td><td data-th="Доказ">Документація Claude Code, Cursor, GitHub (розділ про інструменти)</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Межі доказів</span>
+<p>Дослідження іменування — 2023 рік, енкодерна модель і задача пошуку, а не агент. Цифра 94% — відкриті моделі на HumanEval і MBPP. Обидві показують напрям механізму, а не величину ефекту у вашому репозиторії. Величину міряють на своєму коді.</p>
+</div>
+</section>
+
+<section class="sec" id="experiment">
+<div class="sec-h"><span class="num">03</span><h2>Експеримент<span class="sub">Один сервіс, дві кодові бази, 24 прогони</span></h2></div>
+<p><b>Сервіс</b> — gradebook: оцінки курсу з вагами категорій, відкиданням найгіршого квізу, штрафом за запізнення, CSV-імпортом і звітами; 14 команд CLI. Дві версії з <b>однаковою поведінкою</b> на кожній команді, однією й тією самою помилкою і без однієї фічі:</p>
+<div class="cols">
+<div class="cmp bad"><h4>hostile · 317 + 161 рядків</h4><ul>
+<li>увесь код в <code>app.py</code>, словники з ключами <code>mx</code>, <code>pts</code>, <code>ts</code>;</li>
+<li>команди й правило штрафу через <code>globals()["cmd_" + …]</code>;</li>
+<li>0 з 28 функцій з типами, глобальні <code>DB</code> і <code>CHANGED</code>;</li>
+<li>помилки <code>ERR 2</code>, формула штрафу продубльована у звіті;</li>
+<li>16 тестів за 21–24 с (<code>sleep</code> у setup), один flaky.</li>
+</ul></div>
+<div class="cmp good"><h4>friendly · 511 + 176 рядків</h4><ul>
+<li>12 модулів за відповідальностями, карта в README;</li>
+<li>явна таблиця <code>COMMANDS</code> ім'я → функція;</li>
+<li>dataclass і <code>Literal</code>, 34 з 35 функцій з типами;</li>
+<li><code>error: unknown student 's9' (known: s1, s2)</code>;</li>
+<li>21 тест за 0,4 с, <code>python3 -m pytest</code> у README.</li>
+</ul></div>
+</div>
+<p>Flaky-тест не штучний: випадкові бали без seed, а очікування округлено «половину вгору», тоді як <code>%.2f</code> округлює до парного. На вихідному коді він падав у 6 з 40 запусків.</p>
+<p><b>Задачі</b> — однакові промпти англійською, без підказок, де код і як запускати тести: <b>bug</b> — «студент, що здав на 2 години пізніше, отримав повний бал; кожна розпочата доба коштує 10%, максимум 50%»; <b>feature</b> — команда <code>extend STUDENT ASSIGNMENT HOURS</code> з продовженням дедлайну, що зберігається у файлі й підсумовується. Успіх вирішують <b>приховані тести</b> (7 і 8), які агент не бачить і які ганяють обидві версії лише через CLI.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — bin/run_one.sh (фрагмент)</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$PROMPT" --model "$M" --setting-sources project --strict-mcp-config \
+    --permission-mode acceptEdits --allowedTools "Read" "Edit" "Write" "Glob" "Grep" \
+    "Bash(python3 *)" "Bash(pytest *)" "Bash(ls *)" "Bash(cat *)" "Bash(grep *)" … \
+    --output-format stream-json --verbose &lt; /dev/null &gt; run.jsonl</span>
+<span class="ps">$ </span><span class="c">GB_REPO=repo GB_CMD="-m gradebook" python3 -m pytest -q hidden/test_hidden_$T.py</span></pre>
+<div class="cap">реальний скрипт · Claude Code 2.1.300 · кожен прогін — свіжа копія репозиторію, свій <code>TMPDIR</code>, без CLAUDE.md і auto memory</div></div>
+<p>2 версії × 2 задачі × 2 моделі (haiku, sonnet) × 3 повтори = 24 прогони, усього $1,90:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Клітинка (n = 3)</th><th>Успіх</th><th>Ходи</th><th>Час, с</th><th>Вартість, $</th><th>Токени, тис.</th></tr></thead>
+<tbody>
+<tr><td data-th="Клітинка (n = 3)">bug · haiku · friendly</td><td data-th="Успіх">3/3</td><td data-th="Ходи">10</td><td data-th="Час, с">27</td><td data-th="Вартість, $">0,007</td><td data-th="Токени, тис.">260</td></tr>
+<tr><td data-th="Клітинка (n = 3)">bug · haiku · hostile</td><td data-th="Успіх">3/3</td><td data-th="Ходи">12</td><td data-th="Час, с"><b>90</b></td><td data-th="Вартість, $">0,011</td><td data-th="Токени, тис.">412</td></tr>
+<tr><td data-th="Клітинка (n = 3)">bug · sonnet · friendly</td><td data-th="Успіх">3/3</td><td data-th="Ходи">8</td><td data-th="Час, с">18</td><td data-th="Вартість, $">0,076</td><td data-th="Токени, тис.">207</td></tr>
+<tr><td data-th="Клітинка (n = 3)">bug · sonnet · hostile</td><td data-th="Успіх">3/3</td><td data-th="Ходи">8</td><td data-th="Час, с"><b>39</b></td><td data-th="Вартість, $">0,085</td><td data-th="Токени, тис.">219</td></tr>
+<tr><td data-th="Клітинка (n = 3)">feature · haiku · friendly</td><td data-th="Успіх">3/3</td><td data-th="Ходи">32</td><td data-th="Час, с">87</td><td data-th="Вартість, $">0,022</td><td data-th="Токени, тис.">684</td></tr>
+<tr><td data-th="Клітинка (n = 3)">feature · haiku · hostile</td><td data-th="Успіх">3/3</td><td data-th="Ходи">21</td><td data-th="Час, с"><b>168</b></td><td data-th="Вартість, $">0,018</td><td data-th="Токени, тис.">621</td></tr>
+<tr><td data-th="Клітинка (n = 3)">feature · sonnet · friendly</td><td data-th="Успіх">3/3</td><td data-th="Ходи">26</td><td data-th="Час, с">76</td><td data-th="Вартість, $"><b>0,267</b></td><td data-th="Токени, тис.">489</td></tr>
+<tr><td data-th="Клітинка (n = 3)">feature · sonnet · hostile</td><td data-th="Успіх">3/3</td><td data-th="Ходи">12</td><td data-th="Час, с">81</td><td data-th="Вартість, $">0,148</td><td data-th="Токени, тис.">260</td></tr>
+</tbody></table></div>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">bug · haiku · friendly</span><span class="tr"><i style="--v:16%"></i><b style="--v:16%">27 с</b></span></div>
+  <div class="bar p"><span class="k">bug · haiku · hostile</span><span class="tr"><i style="--v:54%"></i><b style="--v:54%">90 с</b></span></div>
+  <div class="bar t"><span class="k">bug · sonnet · friendly</span><span class="tr"><i style="--v:11%"></i><b style="--v:11%">18 с</b></span></div>
+  <div class="bar p"><span class="k">bug · sonnet · hostile</span><span class="tr"><i style="--v:23%"></i><b style="--v:23%">39 с</b></span></div>
+  <div class="bar t"><span class="k">feature · haiku · friendly</span><span class="tr"><i style="--v:52%"></i><b style="--v:52%">87 с</b></span></div>
+  <div class="bar p"><span class="k">feature · haiku · hostile</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">168 с</b></span></div>
+  <div class="bar t"><span class="k">feature · sonnet · friendly</span><span class="tr"><i style="--v:45%"></i><b style="--v:45%">76 с</b></span></div>
+  <div class="bar p"><span class="k">feature · sonnet · hostile</span><span class="tr"><i style="--v:48%"></i><b style="--v:48%">81 с</b></span></div>
+</div>
+<figcaption>Середній час прогону агента (n = 3). Різницю майже цілком пояснює набір тестів «ворожої» версії: 21–24 с на кожен запуск проти 0,4 с.</figcaption>
+</figure>
+<h3>Що показали прогони</h3>
+<ol class="steps">
+<li><b>Правильність не відрізнилась: 24 з 24.</b> На сервісі в 300–500 рядків обидві моделі знаходять і виправляють помилку навіть крізь <code>globals()["rule_" + CFG["late"]]</code> і дубль формули: усі шість «ворожих» виправлень полагодили обидва місця і при цьому самі винесли формулу в спільну функцію <code>late_days()</code>.</li>
+<li><b>Повільні тести коштують часу, а не грошей.</b> Час зріс у 1,07–3,3 раза, а вартість виправлення — лише на 0,004–0,009 $: агент чекає на тести, а очікування не тарифікується токенами. Haiku частіше перезапускав повільний набір (4,7 і 5,7 запуску на прогін проти 3), тож час ріс ще й від кількості перевірок.</li>
+<li><b>Модульність здорожчала фічу.</b> У «дружній» версії продовження дедлайну торкається моделей, збереження, оцінювання, команд і тестів: 6–8 файлів проти 2–3. Sonnet прочитав <code>app.py</code> одним викликом, вніс правку одним скриптом і закінчив за 7–8 ходів. Ціна модулів на такому розмірі — додаткові читання, а виграш (локальність, межі) з'являється, коли файл перестає влазити в одне читання.</li>
+<li><b>Flaky-тест — головний шум.</b> Після прогону набір «ворожої» версії лишився червоним у 5 з 12 випадків, хоча агенти тест не чіпали. Рецензент чи CI не відрізнить це від регресії. Двічі агент натрапив на падіння під час роботи: обидва рази правильно визнав його чужим, але sonnet ще п'ять разів прогнав вихідний код через <code>git stash</code>, щоб це довести, — 21 хід і 126 с проти 7–8 ходів і 55–61 с у двох інших повторах.</li>
+<li><b>Агенти обходять слабке середовище, поки воно маленьке.</b> Haiku в усіх шести «ворожих» прогонах почав з <code>git ls-files</code> і <code>cat</code> цілих <code>app.py</code> і <code>test_app.py</code>; sonnet — з Grep за «late|deadline|penalt» і читання файлу цілком. Відсутня команда тестів і загадкові коди помилок на 317 рядках нічого не коштують: усе видно за одне читання.</li>
+</ol>
+<div class="key"><h4>Висновок експерименту</h4>
+<p>На малому коді «ворожість» б'є не по правильності й не по токенах, а по <b>часу</b> (повільні тести) і по <b>довірі до сигналу</b> (flaky). Модульність сама по собі не здешевлює роботу агента — вона окупається, коли код більший за одне читання і коли зміни роблять паралельно. Перш ніж рефакторити заради агента, виміряйте, на якому кроці циклу у вас справді витрачаються ходи.</p>
+</div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">04</span><h2>Що бачать інструменти<span class="sub">Ліміти читання, пошук, ігнор-файли</span></h2></div>
+<p>Властивість 10 і частина властивостей 4 і 7 залежать від того, як harness читає й шукає. Тут три інструменти розходяться:</p>
+<div class="tabs">
+<input type="radio" name="see-t" id="see-t1" checked><input type="radio" name="see-t" id="see-t2"><input type="radio" name="see-t" id="see-t3">
+<div class="tab-l"><label for="see-t1">Claude Code</label><label for="see-t2">Codex</label><label for="see-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Read</b>: до 25 000 токенів за виклик (змінюється <code>CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS</code>); цілий файл понад 256 KB — лише сторінками через <code>offset</code>/<code>limit</code>. З v2.1.296 модель може попросити <code>allow_large: true</code>, і тоді межею стає вільне місце в контексті.</li>
+<li><b>Grep</b> побудований на ripgrep і пропускає файли з <code>.gitignore</code>. <b>Glob</b> за замовчуванням їх знаходить; щоб і він ігнорував, запускайте з <code>CLAUDE_CODE_GLOB_NO_IGNORE=false</code>. Налаштування <code>respectGitignore</code> стосується лише меню <code>@</code>.</li>
+<li><b>Згенероване, що лежить у git</b>: правила <code>Read(./**/*.generated.*)</code> у <code>permissions.deny</code>; для Grep і Glob документація називає це «best-effort».</li>
+<li><b>Документація поруч з кодом</b>: <code>CLAUDE.md</code> у підкаталозі підвантажується, щойно агент читає, пише чи редагує файл у цьому підкаталозі. З v2.1.277 Claude Code читає <code>AGENTS.md</code> напряму, якщо <code>CLAUDE.md</code> немає.</li>
+<li><b>Devcontainer</b>: команди агента виконуються в контейнері, а правки з'являються в локальному репозиторії — відтворюване середовище і межа для shell одночасно.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>AGENTS.md</b> збирається від кореня git до поточного каталогу; у кожному каталозі спершу шукається <code>AGENTS.override.md</code>. Сумарний обсяг обмежує <code>project_doc_max_bytes</code> (32 KiB за замовчуванням), тож довгий кореневий файл витісняє пакетні.</li>
+<li>Наслідок для структури: <code>AGENTS.md</code> у каталозі пакета — це та сама «документація поруч з кодом», що й вкладений <code>CLAUDE.md</code>, але з жорстким спільним бюджетом. Кореневий файл — карта, деталі — у пакетах.</li>
+<li><code>linguist-generated</code> у документації Codex не згадується.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Пошук</b>: Instant Grep без налаштування; за документацією Cursor не зберігає embeddings кодової бази для пошуку (зміна до семантичного індексу з уроку 3.1). Отже, greppable-імена для Cursor тепер так само важливі, як для Claude Code.</li>
+<li><b><code>.cursorignore</code></b> закриває файли від Agent, Tab та Inline Edit; <code>.gitignore</code> враховується автоматично. Застереження з документації: термінал і MCP-інструменти агента цей файл не блокує.</li>
+<li><b>AGENTS.md</b> підтримується в корені й у підкаталогах.</li>
+<li><code>linguist-generated</code> згадано лише для перевірки розміру PR у Bugbot.</li>
+</ul>
+</div>
+</div>
+<div class="note arch"><span class="lbl">Пастка</span>
+<p><code>linguist-generated=true</code> у <code>.gitattributes</code> ховає файл у diff на GitHub і виключає зі статистики мов, але <b>жоден із трьох агентів його не читає</b>. Позначка для рецензента і позначка для агента — різні файли: <code>.gitattributes</code> проти <code>.gitignore</code>, <code>permissions.deny</code>, <code>.cursorignore</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="audit">
+<div class="sec-h"><span class="num">05</span><h2>Аудит<span class="sub">Чекліст і agent_audit.py</span></h2></div>
+<p>Більшість властивостей перевіряється без моделі. Чекліст — від найдешевшої перевірки до найдорожчої:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Властивість</th><th>Автоматична перевірка</th><th>Виправлення</th></tr></thead>
+<tbody>
+<tr><td data-th="Властивість">Команда тестів</td><td data-th="Автоматична перевірка"><code>[tool.pytest]</code>, <code>Makefile</code>, <code>scripts/test.sh</code>, згадка в README</td><td data-th="Виправлення">Одна команда в README і в інструкційному файлі</td></tr>
+<tr><td data-th="Властивість">Швидкість і стабільність тестів</td><td data-th="Автоматична перевірка">Прогнати набір N разів: час, коди виходу</td><td data-th="Виправлення">Повільне — за маркер; flaky — seed, <code>tmp_path</code>, карантин</td></tr>
+<tr><td data-th="Властивість">Середовище</td><td data-th="Автоматична перевірка">Тести у <b>свіжому</b> venv лише за документацією; lockfile; devcontainer</td><td data-th="Виправлення">Описати крок або прибрати залежність від нього</td></tr>
+<tr><td data-th="Властивість">String dispatch</td><td data-th="Автоматична перевірка">AST: <code>getattr</code>/<code>setattr</code> з не-константою, <code>globals()[…]</code>, <code>import_module(змінна)</code>, <code>eval</code></td><td data-th="Виправлення">Явна таблиця ім'я → функція + тест на повноту</td></tr>
+<tr><td data-th="Властивість">Глобальний стан</td><td data-th="Автоматична перевірка">AST: <code>global</code>, запис у модульні dict/list з функцій</td><td data-th="Виправлення">Стан аргументом, I/O в одному модулі</td></tr>
+<tr><td data-th="Властивість">Типи</td><td data-th="Автоматична перевірка">Частка функцій з повними анотаціями; mypy/pyright у CI</td><td data-th="Виправлення">Почати з меж: вхід, вихід, моделі даних</td></tr>
+<tr><td data-th="Властивість">Розмір файлів</td><td data-th="Автоматична перевірка">Рядки й оцінка токенів проти 25 000; файли з рядками &gt; 300 символів</td><td data-th="Виправлення">Ділити за відповідальністю, не за довжиною</td></tr>
+<tr><td data-th="Властивість">Помилки</td><td data-th="Автоматична перевірка">Текст у <code>raise Клас(…)</code> і <code>print(…, file=stderr)</code> коротший за 3 слова</td><td data-th="Виправлення">Що не так + допустимі значення + наступний крок</td></tr>
+<tr><td data-th="Властивість">Карта модулів</td><td data-th="Автоматична перевірка">Пакет без README, і кореневий README не називає половину його модулів</td><td data-th="Виправлення">Таблиця «модуль → відповідальність» + тест, що вона повна</td></tr>
+</tbody></table></div>
+<p><code>console/agent_audit.py</code> (лише стандартна бібліотека, ~240 рядків) збирає ці сигнали для Python-репозиторію. Прогін на двох версіях gradebook і канонічному Lectern, скорочено:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — agent_audit.py</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 agent_audit.py hostile --run-tests 3</span>
+== hostile: 1 source files, 317 lines
+test command  <span class="er">NOT FOUND</span>
+test runs     [23.2, 24.5, 23.7] s, exit [1, 0, 0]  <span class="er">FLAKY</span>
+typed funcs   0/28 (0%)
+string_dispatch 3
+    app.py:86 globals()[&lt;computed&gt;]
+    app.py:111 globals().get(&lt;computed&gt;)
+    app.py:303 globals().get(&lt;computed&gt;)
+global_state_writes 7
+terse_errors  1
+    app.py:14 'ERR %d'
+<span class="ps">$ </span><span class="c">python3 agent_audit.py friendly --run-tests 3</span>
+test runs     [0.4, 0.4, 0.4] s, exit [0, 0, 0]
+typed funcs   34/35 (97%)
+string_dispatch 0
+global_state_writes 0
+terse_errors  0
+<span class="ps">$ </span><span class="c">python3 agent_audit.py lectern --run-tests 3</span>
+== lectern: 22 source files, 2531 lines
+test command  pyproject [tool.pytest], scripts/test.sh, README.md mentions it
+test runs     [9.0, 10.1, 7.0] s, exit <span class="er">[1, 1, 1]</span>
+typed funcs   101/126 (80%)
+string_dispatch 1
+    src/lectern/tools.py:232 getattr(…, &lt;computed&gt;)
+readme        root: yes; packages without a module map: <span class="y">src/lectern</span>
+environment   lockfile: none; devcontainer: no; linguist-generated: 0</pre>
+<div class="cap">реальний вивід · 15.10.2026 · Python 3.12 · свіжий venv без <code>pip install -e .</code> · рядки зі «здоровими» значеннями частково прибрано, повний вивід — <code>console/audit.txt</code></div></div>
+<div class="note warn"><span class="lbl">Хибні спрацювання — частина роботи</span>
+<p>Перша версія скрипта знаходила в «дружній» версії 1 string dispatch і 8 «загадкових помилок». Насправді це <code>vars(args)[a]</code> (диспетчер argparse) і фабрика <code>raise unknown("student", …)</code>, що будує повне повідомлення. Обидва правила довелося звузити: <code>vars()</code> лише без аргументів, текст — лише в конструкторі класу винятку. Аудит, який ніхто не перевіряв на «добрій» кодовій базі, генерує задачі, а не знахідки.</p>
+</div>
+</section>
+
+<section class="sec" id="refactor">
+<div class="sec-h"><span class="num">06</span><h2>Рефакторинг під агента<span class="sub">Що окуповується, а що ні</span></h2></div>
+<div class="cols">
+<div class="cmp good"><h4>окуповується одразу</h4><ul>
+<li>зробити тести швидкими й стабільними: множиться на кожну ітерацію кожного агента;</li>
+<li>перевірити setup у свіжому середовищі: ловить те, чого не видно жодному учасникові з робочим venv;</li>
+<li>замінити string dispatch явною таблицею з тестом на повноту: 10 рядків, без зміни поведінки;</li>
+<li>дописати в повідомлення помилок допустимі значення;</li>
+<li>прибрати дублі формул і правил: агент виправляє одне місце з двох.</li>
+</ul></div>
+<div class="cmp bad"><h4>не робіть заради агента</h4><ul>
+<li>різати 300-рядковий файл на десять модулів: у прогоні це додало читань і ходів;</li>
+<li>вводити інтерфейси, фабрики й DI «щоб агентові було зрозуміліше»: кожен шар — ще один файл на шляху від виклику до логіки;</li>
+<li>переписувати стабільний модуль, якого агент не торкається;</li>
+<li>писати карту модулів у <code>CLAUDE.md</code> як заміну пошуку: на малому коді grep дешевший (3.1);</li>
+<li>рефакторити без вимірювання «до» — тоді неможливо сказати, що змінилося.</li>
+</ul></div>
+</div>
+<p><b>Правило рішення:</b> рефакторинг заради агента виправданий, якщо можна назвати <b>крок циклу</b>, який він здешевлює, і <b>сигнал</b>, яким це видно: час перевірки, кількість запусків тестів, частка червоних прогонів, ходи на однотипну задачу. Межу модуля визначає відповідальність і частота спільних змін, а не кількість рядків. Ліміт Read (25 000 токенів) — верхня межа, а не ціль.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Наскрізний проєкт<span class="sub">Lectern: аудит і три виправлення</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 9.4 · <code>src/lectern/</code></div><div class="pb">
+<p>Аудит канонічного Lectern (стан після уроків 9.3 і 9.5: 22 файли, 2 531 рядок) дав три знахідки. Найважливішу знайшла не AST-перевірка, а <code>--run-tests</code> у venv, де пакет не встановлено:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — lectern, свіжий venv</span></div>
+<pre><span class="ps">$ </span><span class="c">python -m pytest -q</span>
+<span class="er">FAILED</span> tests/test_mcp_server.py::test_stdio_entry_point - pydantic_core._pyda...
+<span class="er">FAILED</span> tests/test_service.py::test_job_runs_through_the_gate - AssertionError...
+<span class="d">… ще 9 тестів test_service.py</span>
+<span class="er">11 failed, 167 passed, 1 warning in 8.81s</span>
+<span class="ps">$ </span><span class="c">python -m pytest -q tests/test_service.py::test_job_runs_through_the_gate</span>
+E       AssertionError: assert ('failed' == 'done'</pre>
+<div class="cap">реальний вивід · 15.10.2026 · Python 3.12, усі залежності з pyproject, але без <code>pip install -e .</code> · скорочено</div></div>
+<ol class="steps">
+<li><b>Прихований зв'язок з установленим пакетом.</b> <code>pyproject</code> має <code>pythonpath = ["src"]</code>, а <code>scripts/test.sh</code> прямо каже, що lectern в інтерпретаторі не встановлено. Але гейт сервісу запускає <code>python -m lectern.cli check</code> окремим процесом, і той <code>pythonpath</code> не успадковує: без установки — <code>No module named lectern</code>, з установкою з іншого worktree — перевірка <b>чужою</b> версією правил. Тест stdio шукав консольний скрипт через <code>shutil.which</code>. Виправлення: <code>lectern.checkout_env()</code> додає <code>src/</code> цього checkout у <code>PYTHONPATH</code> підпроцесу; тест запускає <code>python -m lectern.cli mcp</code>.</li>
+<li><b>Проковтнута причина.</b> Гейт робив <code>json.loads(stdout)</code>, і порожній stdout ставав <code>JSONDecodeError</code> у полі <code>error</code> задачі, а тест бачив лише <code>'failed' == 'done'</code>. Тепер: <code>lectern check exited 1 without a JSON report: … No module named 'lectern'</code>.</li>
+<li><b>String dispatch.</b> <code>Session.call</code> викликав <code>getattr(self, name)</code> — той самий зв'язок, що сховав <code>check_quote</code> від grep в уроці 3.1. Тепер явна таблиця:</li>
+</ol>
+<pre class="code" data-lang="python"><span class="k">def</span> tools(self) -&gt; dict[str, Callable[..., object]]:
+    <span class="s">"""Інструменти моделі: ім'я з SCHEMAS -&gt; метод. Явна таблиця замість getattr(self, name)."""</span>
+    <span class="k">return</span> {<span class="s">"read_lecture"</span>: self.read_lecture, <span class="s">"check_quote"</span>: self.check_quote,
+            <span class="s">"save_quiz"</span>: self.save_quiz}</pre>
+<p>Плюс <code>src/lectern/README.md</code> — карта 11 модулів із напрямком залежностей, і <code>tests/test_layout.py</code> (3 тести): кожен модуль є в карті, <code>Session.tools()</code> збігається з <code>SCHEMAS</code>, невідомий інструмент називає доступні. Результат: <b>181 passed</b> у тому самому свіжому venv, <code>ruff</code> і <code>check_context.py</code> — 0 проблем; повторний аудит — 0 string dispatch, 0 пакетів без карти. Diff на 6 файлів (+82/−10) — <code>console/lectern.diff</code>.</p>
+<p><b>Чого виправлення не дало — виміряно.</b> Питання з уроку 3.1 («де <code>check_quote</code> і через які файли до нього доходить виклик моделі»), haiku, по 3 прогони: до — 6 ходів, 165 тис. токенів, $0,007 щоразу; після — 6–7 ходів, 118–215 тис., $0,006–0,008. Різниці немає: агент і так знаходив <code>Session.call</code> другим пошуком. Таблиця виправдана тим, що перейменування методу тепер ламає тест, а не мовчки ламає інструмент, і тим, що моделі недоступний жоден метод поза таблицею.</p>
+<p><b>У беклог</b> (пропозиції): lockfile (<code>uv.lock</code>) — зараз залежності лише діапазонами; типи у <code>cli.py</code> і замиканнях <code>service.py</code> (80% функцій анотовано).</p>
+<p><b>Ваш крок:</b> застосуйте <code>console/lectern.diff</code> у своїй копії, видаліть lectern із venv (<code>pip uninstall lectern</code>) і переконайтеся, що <code>pytest -q</code> зелений без установки.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">08</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Агент «полагодив» тест, який падав і до його правки</td><td data-th="Причина">Flaky-тест: випадкові дані без seed, спільний файл, час</td><td data-th="Що зробити">Прогнати набір N разів до задачі; seed, <code>tmp_path</code>, карантин</td></tr>
+<tr><td data-th="Симптом">Агент рідко запускає тести і здає неперевірену зміну</td><td data-th="Причина">Набір триває хвилини</td><td data-th="Що зробити">Швидкий набір за замовчуванням, повільне — за маркером</td></tr>
+<tr><td data-th="Симптом">Тести зелені в автора і червоні в агента чи CI</td><td data-th="Причина">Неписаний крок setup (<code>pip install -e .</code>, змінна, сервіс)</td><td data-th="Що зробити">Перевірка у свіжому середовищі; devcontainer або <code>init.sh</code></td></tr>
+<tr><td data-th="Симптом">Після перейменування методу інструмент мовчки зник</td><td data-th="Причина"><code>getattr(self, name)</code> замість явного зв'язку</td><td data-th="Що зробити">Таблиця ім'я → функція + тест на збіг зі схемами</td></tr>
+<tr><td data-th="Симптом">Агент виправив формулу в одному місці з двох</td><td data-th="Причина">Дубль правила в різних функціях</td><td data-th="Що зробити">Одне джерело правди; аудит дублів перед задачею</td></tr>
+<tr><td data-th="Симптом">Після «рефакторингу для агента» задачі стали дорожчими</td><td data-th="Причина">Розбиття за рядками, а не за відповідальністю; нові шари абстракцій</td><td data-th="Що зробити">Міряти «до» і «після» на тих самих задачах</td></tr>
+<tr><td data-th="Симптом">Агент читає згенерований клієнт API на 40 тис. рядків</td><td data-th="Причина">Файл позначено лише <code>linguist-generated</code></td><td data-th="Що зробити"><code>.gitignore</code>, якщо файл не потрібен у git; інакше <code>Read</code> deny / <code>.cursorignore</code></td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">09</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">повільні тести</span><span class="h">що дорожчає?</span></span><span class="b"><span class="t">Час, не токени</span><span class="d">у прогоні: час ×1,07–3,3, вартість +$0,004–0,009</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">flaky-тест</span><span class="h">ціна для агента</span></span><span class="b"><span class="t">Хибне спостереження</span><span class="d">5 з 12 прогонів лишили набір червоним; один — +13 ходів на доведення</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">getattr(self, name)</span><span class="h">чим замінити?</span></span><span class="b"><span class="t">Явною таблицею</span><span class="d">ім'я → функція + тест, що таблиця збігається зі схемами</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">300-рядковий файл</span><span class="h">різати для агента?</span></span><span class="b"><span class="t">Ні, якщо він цілісний</span><span class="d">читається одним Read; модулі додали читань</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">linguist-generated</span><span class="h">хто його читає?</span></span><span class="b"><span class="t">GitHub, не агенти</span><span class="d">для агента — .gitignore, Read deny, .cursorignore</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">свіжий venv</span><span class="h">навіщо в аудиті?</span></span><span class="b"><span class="t">Неписаний setup</span><span class="d">Lectern: 11 тестів падали без pip install -e .</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">10</span><h2>Квіз<span class="sub">11 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Набір тестів триває 25 с замість 0,4 с, агент виправляє невелику помилку. Що, за експериментом уроку, зросте найпомітніше?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Частка невдалих виправлень: агент пропускатиме перевірку і здаватиме зміну наосліп</span></label><label class="opt ok"><input type="radio" name="q1"><span>Тривалість прогону в рази, а вартість — ледь помітно: очікування не тарифікується</span></label><label class="opt"><input type="radio" name="q1"><span>Вартість у токенах пропорційно часу, бо контекст моделі «тримається» під час тестів</span></label></div>
+    <div class="why yes">Так. Час зріс у 1,07–3,3 раза, вартість виправлення — на $0,004–0,009, а успіх лишився 24 з 24.</div>
+    <div class="why no">Успіх не змінився (24 з 24), а токени витрачаються на запити до моделі, не на очікування. Повільні тести б'ють по часу: ×1,07–3,3 при +$0,004–0,009.</div></div>
+  <div class="q"><div class="qt">2. Тест падає приблизно в 15% запусків незалежно від коду. Чим він найбільше шкодить роботі агента?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Дає хибне спостереження: агент пов'язує падіння з правкою або витрачає ходи на доведення протилежного</span></label><label class="opt"><input type="radio" name="q2"><span>Збільшує вартість кожного прогону, бо агент мусить запускати весь набір тестів щонайменше двічі поспіль</span></label><label class="opt"><input type="radio" name="q2"><span>Нічим суттєвим: моделі розпізнають нестабільні тести за назвою і не згадують їх у підсумковому звіті</span></label></div>
+    <div class="why yes">Так. У прогоні набір лишився червоним у 5 з 12 випадків, а один агент витратив +13 ходів, доводячи, що падіння чуже.</div>
+    <div class="why no">Агенти не запускають набір двічі «про всяк випадок» і не впізнають flaky за назвою. Шкода — у сигналі: червоний результат після правки виглядає як регресія для агента, рецензента і CI.</div></div>
+  <div class="q"><div class="qt">3. Модуль на 300 рядків з однією цілісною відповідальністю. Як здешевити агентові роботу з ним?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Розбити на 5–6 модулів по 50–60 рядків, щоб агент читав лише потрібну частину коду</span></label><label class="opt"><input type="radio" name="q3"><span>Додати інтерфейс і фабрику, щоб точки розширення були видні без читання реалізації</span></label><label class="opt ok"><input type="radio" name="q3"><span>Не розбивати: файл читається одним Read; спершу виміряти, де справді йдуть ходи</span></label></div>
+    <div class="why yes">Так. У прогоні монолітний файл на 317 рядків був для фічі навіть дешевшим: одне читання, одна правка.</div>
+    <div class="why no">Розбиття за рядками й нові шари додають файлів на шляху від виклику до логіки: «дружня» версія з 12 модулями коштувала на фічі з sonnet $0,267 проти $0,148. Межа — відповідальність, а ліміт Read — 25 000 токенів.</div></div>
+  <div class="q"><div class="qt">4. Диспетчер інструментів робить <code>getattr(self, name)(**args)</code>. Що змінити і чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Дописати в CLAUDE.md, що виклики йдуть через getattr, щоб агент знав, куди дивитися</span></label><label class="opt ok"><input type="radio" name="q4"><span>Явна таблиця ім'я → метод і тест на збіг зі схемами: зв'язок видно, перейменування ловить тест</span></label><label class="opt"><input type="radio" name="q4"><span>Увімкнути семантичний індекс, бо текстовий пошук принципово не бачить динамічних викликів</span></label></div>
+    <div class="why yes">Так. Зв'язок стає текстом у коді, метод поза таблицею моделі недоступний, а розбіжність зі схемами падає в тесті.</div>
+    <div class="why no">Рядок у CLAUDE.md пояснює проблему, але не прибирає її і може застаріти. Семантичного індексу Cursor більше не тримає, а Claude Code шукає Grep-ом — виправляти треба код.</div></div>
+  <div class="q"><div class="qt">5. У автора тести зелені, а в свіжому venv 11 зі 178 падають з <code>'failed' == 'done'</code>. Яка властивість порушена насамперед?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Типи: модель задачі не перевіряє, що поле status має лише допустимі значення зі списку</span></label><label class="opt"><input type="radio" name="q5"><span>Розмір файлів: service.py завеликий, щоб агент прочитав гейт за один виклик</span></label><label class="opt ok"><input type="radio" name="q5"><span>Відтворюване середовище: підпроцес гейта залежить від неписаного pip install -e .</span></label></div>
+    <div class="why yes">Так. Тести Lectern імпортують <code>src/</code> через <code>pythonpath</code>, а підпроцес гейта — ні; без установки він падає з <code>No module named lectern</code>.</div>
+    <div class="why no">Статус «failed» — коректне значення, і service.py (~300 рядків) читається одним викликом. Причина — неписаний крок установки, від якого залежить підпроцес <code>python -m lectern.cli check</code>.</div></div>
+  <div class="q"><div class="qt">6. Згенерований клієнт API на 40 тис. рядків позначено <code>linguist-generated=true</code>. Що це змінить для Claude Code?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Нічого: атрибут читає GitHub; агентові потрібні .gitignore або правило Read у deny</span></label><label class="opt"><input type="radio" name="q6"><span>Grep і Glob пропускатимуть файл, бо .gitattributes враховується так само, як .gitignore</span></label><label class="opt"><input type="radio" name="q6"><span>Агент читатиме файл, але не редагуватиме його, як із правилом ask у settings.json</span></label></div>
+    <div class="why yes">Так. Атрибут ховає файл у diff і виключає зі статистики мов на GitHub; документація Claude Code його не згадує.</div>
+    <div class="why no">Grep у Claude Code поважає <code>.gitignore</code>, Glob — лише з <code>CLAUDE_CODE_GLOB_NO_IGNORE=false</code>, а <code>.gitattributes</code> не читає жоден з них. Для закомічених згенерованих файлів — <code>Read(...)</code> у <code>permissions.deny</code>.</div></div>
+  <div class="q"><div class="qt">7. Власний лінтер архітектури падає з текстом <code>layer violation</code>. Як переписати повідомлення?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Скоротити до коду помилки, а пояснення винести в документацію, щоб не засмічувати контекст</span></label><label class="opt ok"><input type="radio" name="q7"><span>Назвати порушене правило і спосіб його дотриматися: вивід лінту — наступне спостереження агента</span></label><label class="opt"><input type="radio" name="q7"><span>Прибрати лінтер, а правило шарів записати в AGENTS.md, який агент читає на початку сесії</span></label></div>
+    <div class="why yes">Так. Так роблять в OpenAI: повідомлення власних лінтів вносять у контекст агента інструкцію виправлення.</div>
+    <div class="why no">Код без пояснення змушує агента шукати документацію, а правило лише в AGENTS.md ніхто не перевіряє. Механічна перевірка плюс повідомлення з інструкцією виправлення — і правило виконується, і агент знає як.</div></div>
+  <div class="q"><div class="qt">8. Чому в експерименті «дружня» версія на фічі з sonnet коштувала $0,267 проти $0,148 у «ворожої»?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Агент запускав mypy після кожної правки типізованого коду, і кожна перевірка була окремим ходом</span></label><label class="opt"><input type="radio" name="q8"><span>Швидкі тести агент запускав частіше, і їхній вивід накопичувався в контексті кожного запиту</span></label><label class="opt ok"><input type="radio" name="q8"><span>Фіча зачіпає 5–6 модулів: більше читань і правок; монолітний файл — одне читання й одна правка</span></label></div>
+    <div class="why yes">Так. 6–8 змінених файлів проти 2–3, 26 ходів проти 12 у середньому.</div>
+    <div class="why no">mypy у прогонах не запускався, а тести в обох версіях запускали в середньому 2–3 рази. Різниця — у кількості файлів, які фіча зачіпає: модульність додає читань, поки код вміщується в одне.</div></div>
+  <div class="q"><div class="qt">9. Яке правило найкраще вирішує, чи робити рефакторинг «для агента»?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Назвати крок циклу, який він здешевлює, і сигнал, яким це видно, і виміряти до й після</span></label><label class="opt"><input type="radio" name="q9"><span>Робити щоразу, коли файл перевищує 300 рядків або функція — 50 рядків коду</span></label><label class="opt"><input type="radio" name="q9"><span>Робити лише тоді, коли агент провалює задачу, бо ходи й час на результат взагалі не впливають</span></label></div>
+    <div class="why yes">Так. Без кроку і сигналу немає способу відрізнити покращення від перестановки.</div>
+    <div class="why no">Пороги в рядках не враховують відповідальностей (300-рядковий файл у прогоні був дешевшим). А час і довіра до сигналу — реальні втрати навіть при 100% успіху.</div></div>
+  <div class="q"><div class="qt">10. Codex збирає AGENTS.md від кореня до поточного каталогу, поки сума не досягне 32 KiB. Що з цього випливає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Документацію пакетів варто переносити в кореневий файл, бо вкладені Codex не читає</span></label><label class="opt ok"><input type="radio" name="q10"><span>Кореневий файл — коротка карта: довгий корінь витісняє пакетні файли зі спільного бюджету</span></label><label class="opt"><input type="radio" name="q10"><span>Ліміт діє на кожен файл окремо, тож пакетні AGENTS.md можуть бути будь-якої довжини</span></label></div>
+    <div class="why yes">Так. Файли додаються від кореня вглиб, і після ліміту наступні вже не потрапляють у контекст.</div>
+    <div class="why no">Codex читає вкладені AGENTS.md, а <code>project_doc_max_bytes</code> обмежує їхню <b>суму</b>. Тому корінь — карта на ~100 рядків, як у OpenAI, а деталі — в пакетах.</div></div>
+  <div class="q"><div class="qt">11. Cursor шукає код через Instant Grep і не зберігає embeddings кодової бази. Що від цього стало важливішим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Файл .cursorindexingignore, щоб виключити тести й фікстури із семантичного індексу</span></label><label class="opt"><input type="radio" name="q11"><span>Довгі docstring у функціях, бо пошук Cursor ранжує результати за описами</span></label><label class="opt ok"><input type="radio" name="q11"><span>Унікальні імена й явні виклики без складання імен з рядків — як для Claude Code</span></label></div>
+    <div class="why yes">Так. Текстовий пошук знаходить лише те, що записано в коді, тож властивість 2 тепер однаково важлива для всіх трьох інструментів.</div>
+    <div class="why no"><code>.cursorindexingignore</code> зник з документації разом із семантичним індексом, а ранжування за docstring документацією не описано. Для grep важливо, щоб ім'я було записане повністю в кожному місці використання.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">11</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>тести як зворотний зв'язок агента</td><td>Одна швидка детермінована команда, якою агент перевіряє себе після кожної правки.</td></tr>
+<tr><td>greppable name</td><td>Унікальне ім'я, записане повністю в кожному місці визначення й виклику.</td></tr>
+<tr><td>string dispatch</td><td>Виклик функції за ім'ям, складеним із рядків під час виконання (<code>getattr</code>, <code>globals()[…]</code>).</td></tr>
+<tr><td>типи як машинна специфікація</td><td>Анотації, dataclass, Pydantic: форма даних, яку перевіряє інструмент, а не рев'ю.</td></tr>
+<tr><td>one-command setup</td><td>Одна задокументована команда від чистого checkout до зелених тестів.</td></tr>
+<tr><td>remediation error</td><td>Повідомлення лінтера, тесту чи CLI, що каже, як виправити, а не лише що зламано.</td></tr>
+<tr><td>мегафайл</td><td>Модуль із кількома незалежними відповідальностями; шкодить, коли перевищує одне читання або дублює логіку.</td></tr>
+<tr><td>прихований глобальний стан</td><td>Дані, які функція читає чи змінює поза аргументами: модульні змінні, <code>global</code>, спільні файли.</td></tr>
+<tr><td>flaky test</td><td>Тест, що на тому самому коді то проходить, то падає.</td></tr>
+<tr><td>agent-friendliness audit</td><td>Автоматичний збір сигналів кодової бази, що впливають на агента, з ручним відсіюванням хибних спрацювань.</td></tr>
+<tr><td>linguist-generated</td><td>Атрибут <code>.gitattributes</code> для GitHub (diff, статистика мов); агенти його не враховують.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">12</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Аудит вашого репозиторію</h3>
+<p>Запустіть <code>agent_audit.py</code> з <code>--run-tests 3</code> у свіжому середовищі, встановленому лише за документацією. Відсійте хибні спрацювання, оберіть дві знахідки з механізмом «крок циклу → ціна», одну свідомо залиште і опишіть вимірювання до й після.</p>
+<h3>2. Свій експеримент</h3>
+<p>Дві версії модуля, що відрізняються однією властивістю, приховані тести, щонайменше 3 прогони агента на версію. Таблиця метрик, аналіз розкиду і правило для команди — навіть якщо ефекту немає.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">13</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Claude Code — Best practices</a><span>«Give Claude a way to verify its work»: тести, збірка, скріншот як перевірка, яку агент запускає сам</span></li>
+<li><a href="https://code.claude.com/docs/en/large-codebases" target="_blank" rel="noopener">Claude Code — Set up Claude Code in a monorepo or large codebase</a><span>вкладені CLAUDE.md на вимогу, Read deny для згенерованого й vendored коду</span></li>
+<li><a href="https://claude.com/blog/how-claude-code-works-in-large-codebases-best-practices-and-where-to-start" target="_blank" rel="noopener">Claude — How Claude Code works in large codebases</a><span>14.05.2026 · кореневий файл — лише вказівники й критичні пастки</span></li>
+<li><a href="https://code.claude.com/docs/en/tools-reference" target="_blank" rel="noopener">Claude Code — Tools reference</a><span>Read: 25 000 токенів і 256 KB; Grep на ripgrep поважає .gitignore, Glob — ні</span></li>
+<li><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code — Memory</a><span>CLAUDE.md у підкаталогах, читання AGENTS.md з v2.1.277</span></li>
+<li><a href="https://code.claude.com/docs/en/devcontainer" target="_blank" rel="noopener">Claude Code — Development containers</a><span>команди агента в контейнері, правки в локальному репозиторії</span></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md" target="_blank" rel="noopener">Codex — Custom instructions with AGENTS.md</a><span>порядок від кореня до каталогу, AGENTS.override.md, project_doc_max_bytes = 32 KiB</span></li>
+<li><a href="https://cursor.com/docs/agent/tools/search" target="_blank" rel="noopener">Cursor — Search</a><span>Instant Grep, без embeddings кодової бази</span></li>
+<li><a href="https://cursor.com/docs/reference/ignore-file" target="_blank" rel="noopener">Cursor — Ignore files</a><span>.cursorignore і його межі (термінал, MCP)</span></li>
+<li><a href="https://cursor.com/docs/rules" target="_blank" rel="noopener">Cursor — Rules</a><span>AGENTS.md у корені й підкаталогах</span></li>
+<li><a href="https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md" target="_blank" rel="noopener">ripgrep — User guide</a><span>автоматична фільтрація: .gitignore, приховані й бінарні файли</span></li>
+<li><a href="https://docs.github.com/en/repositories/working-with-files/managing-files/customizing-how-changed-files-appear-on-github" target="_blank" rel="noopener">GitHub — Customizing how changed files appear</a><span>linguist-generated: прихований diff, виключення зі статистики</span></li>
+<li><a href="https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents" target="_blank" rel="noopener">Stripe — Minions, частина 1</a><span>09.02.2026 · devbox за 10 с, лінти &lt; 5 с, щонайбільше два раунди CI; <a href="https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents-part-2" target="_blank" rel="noopener">частина 2</a>, 19.02.2026 — понад 1 300 PR на тиждень</span></li>
+<li><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents" target="_blank" rel="noopener">Anthropic — Effective harnesses for long-running agents</a><span>26.11.2025 · init.sh, файл прогресу, список фіч у JSON</span></li>
+<li><a href="https://factory.com/news/agent-readiness" target="_blank" rel="noopener">Factory — Introducing Agent Readiness</a><span>20.01.2026; актуальні 9 стовпів і 5 рівнів — у <a href="https://docs.factory.com/agent-readiness/overview" target="_blank" rel="noopener">документації</a></span></li>
+<li><a href="https://arxiv.org/abs/2307.12488" target="_blank" rel="noopener">Wang et al. — How Does Naming Affect LLMs on Code Analysis Tasks?</a><span>2023 · анонімізація імен: MRR пошуку коду 70,36% → 17,03% (Java)</span></li>
+<li><a href="https://arxiv.org/abs/2504.09246" target="_blank" rel="noopener">Mündler et al. — Type-Constrained Code Generation with Language Models</a><span>PLDI 2025 · 94% помилок компіляції — помилки перевірки типів; переказ у <a href="https://github.blog/news-insights/octoverse/octoverse-a-new-developer-joins-github-every-second-as-ai-leads-typescript-to-1/" target="_blank" rel="noopener">Octoverse 2025</a></span></li>
+<li><span>OpenAI — «Harness engineering: leveraging Codex in an agent-first world», 11.02.2026, openai.com/index/harness-engineering · сайт відповідає 403 автоматичним клієнтам, тому посилання не додано</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 9.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 9.4 · Senomi<br><br><a href="lesson-45.html">← Урок 9.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-47.html">Урок 9.5 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

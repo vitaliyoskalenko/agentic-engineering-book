@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 4.4. Паралельна робота: git worktrees, фонові задачі, headless-режим</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="20" width="96" height="80" rx="10"/><path d="M12 36h96"/><circle cx="22" cy="28" r="1.5"/><circle cx="30" cy="28" r="1.5"/><circle cx="38" cy="28" r="1.5"/><path d="M26 52l12 10-12 10M46 74h22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 4.4 · Модуль 4</div>
+<h1>Паралельна робота: git worktrees, фонові задачі, headless-режим</h1>
+<p class="lead">Паралельність скорочує час до результату, але не вартість і не рев'ю. Розбираємо механіку Claude Code: worktree, які він створює сам, фонові команди й сесії, що переживають закриття терміналу, і headless-запуски як цеглини скриптів — з реальними замірами на Lectern.</p>
+<div class="hero-meta"><span class="chip">Claude Code: встановлення, налаштування, робоче середовище</span><span class="chip t">≈ 55 хв</span><span class="chip a">11 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#map"><b>01</b>Чотири механізми</a><a href="#worktrees"><b>02</b>Worktree у Claude Code</a><a href="#run"><b>03</b>Справжній прогін</a><a href="#background"><b>04</b>Фонова робота</a><a href="#headless"><b>05</b>Headless як цеглина</a><a href="#limits"><b>06</b>Ліміти й конкуренція</a><a href="#tools"><b>07</b>Три інструменти</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>обирати між worktree, фоновою роботою в сесії, фоновою сесією і fan-out headless-запусків за тим, що саме треба розпаралелити;</li>
+    <li>запускати агентів у worktree, які створює Claude Code (<code>-w</code>), готувати в них середовище через <code>.worktreeinclude</code> і хук <code>WorktreeCreate</code>, зливати результат і прибирати за собою;</li>
+    <li>передбачати, що з фонової роботи переживе закриття терміналу, а що ні;</li>
+    <li>писати скрипти над <code>claude -p</code>: ліміт паралельності, розбір JSON через <code>jq</code>, ланцюжки <code>--resume</code>, коди виходу, ліміт витрат;</li>
+    <li>заздалегідь бачити, де паралельні агенти впруться в ліміти, порти, базу даних або конфлікт злиття.</li>
+  </ul>
+</div>
+
+<section class="sec" id="map">
+<div class="sec-h"><span class="num">01</span><h2>Чотири механізми<span class="sub">Що саме ми розпаралелюємо</span></h2></div>
+<p>Заміри цього уроку на Lectern: дві незалежні задачі агентам Haiku — <b>40,4 с послідовно і 21,2 с паралельно</b>; квізи для трьох лекцій — <b>88,1 с в один потік і 30,8 с у три</b>. Витрати при цьому не впали: ~$0,004 за задачу в обох режимах. Паралельність купує час до результату, а не токени, і не скорочує ваше рев'ю (урок 3.5).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Механізм</th><th>Що розпаралелює</th><th>Ізоляція файлів</th><th>Після закриття терміналу</th></tr></thead>
+<tbody>
+<tr><td data-th="Механізм">git worktree (<code>claude -w</code>)</td><td data-th="Що розпаралелює">сесії, що редагують код</td><td data-th="Ізоляція файлів">свої файли й гілка, спільний <code>.git</code></td><td data-th="Після закриття терміналу">каталог лишається; сесія — ні, якщо її не відправили у фон</td></tr>
+<tr><td data-th="Механізм">фонова команда, монітор, фоновий субагент</td><td data-th="Що розпаралелює">роботу всередині однієї сесії</td><td data-th="Ізоляція файлів">немає: той самий checkout</td><td data-th="Після закриття терміналу">зупиняються разом із сесією</td></tr>
+<tr><td data-th="Механізм">фонова сесія (<code>claude --bg</code>, <code>/bg</code>, agent view)</td><td data-th="Що розпаралелює">цілі розмови</td><td data-th="Ізоляція файлів">власний worktree перед першою правкою</td><td data-th="Після закриття терміналу">працює під supervisor; зупиняється з вимкненням машини</td></tr>
+<tr><td data-th="Механізм">fan-out <code>claude -p</code> зі скрипта</td><td data-th="Що розпаралелює">однотипні задачі</td><td data-th="Ізоляція файлів">лише та, яку забезпечите ви: окремі вихідні файли або <code>-w</code></td><td data-th="Після закриття терміналу">звичайні процеси вашого скрипта</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Правило вибору</span>
+<p>Три питання по черзі. Задачі <b>редагують ті самі файли</b>? Потрібні окремі worktree або послідовність. Задачі потрібна <b>розмова</b> з вами по ходу? Це фонова сесія. Задачі <b>однотипні й перевіряються кодом</b>? Тоді fan-out headless-запусків, без розмови і часто без worktree.</p>
+</div>
+</section>
+
+<section class="sec" id="worktrees">
+<div class="sec-h"><span class="num">02</span><h2>Worktree у Claude Code<span class="sub">-w, ізоляція і спільний .git</span></h2></div>
+<p><code>claude -w feature-auth</code> (довга форма <code>--worktree</code>) створює <code>.claude/worktrees/feature-auth/</code> у корені репозиторію на новій гілці <code>worktree-feature-auth</code> і запускає сесію там. Без імені Claude Code згенерує його сам, наприклад <code>bright-running-fox</code>. Додайте <code>.claude/worktrees/</code> у <code>.gitignore</code>, інакше головний checkout бачитиме їх як untracked.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 400" role="img" aria-label="Головний checkout і два worktree спільно використовують один каталог .git">
+  <defs>
+    <marker id="wt1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="80" y="10" width="200" height="74" rx="10" class="bx a"/>
+  <text x="180" y="34" text-anchor="middle" class="tx b a">.git (спільний)</text>
+  <text x="180" y="53" text-anchor="middle" class="tx s">коміти, гілки, refs, config</text>
+  <text x="180" y="70" text-anchor="middle" class="tx s">worktrees/&lt;name&gt;/locked</text>
+  <path d="M180 84 V 118" class="ln a" marker-end="url(#wt1)"/>
+  <path d="M120 84 C 70 100, 62 220, 62 262" class="ln a" marker-end="url(#wt1)"/>
+  <path d="M240 84 C 290 100, 298 220, 298 262" class="ln a" marker-end="url(#wt1)"/>
+  <rect x="96" y="122" width="168" height="78" rx="10" class="bx m"/>
+  <text x="180" y="146" text-anchor="middle" class="tx b">~/lectern</text>
+  <text x="180" y="165" text-anchor="middle" class="tx s">головний checkout · main</text>
+  <text x="180" y="183" text-anchor="middle" class="tx s">.env, .venv, out/ — лише тут</text>
+  <rect x="6" y="266" width="164" height="92" rx="10" class="bx t"/>
+  <text x="88" y="290" text-anchor="middle" class="tx b">worktrees/p1-version</text>
+  <text x="88" y="309" text-anchor="middle" class="tx s">гілка worktree-p1-version</text>
+  <text x="88" y="327" text-anchor="middle" class="tx s">свої файли й index</text>
+  <text x="88" y="345" text-anchor="middle" class="tx s">.env — з .worktreeinclude</text>
+  <rect x="190" y="266" width="164" height="92" rx="10" class="bx t"/>
+  <text x="272" y="290" text-anchor="middle" class="tx b">worktrees/p2-empty-q</text>
+  <text x="272" y="309" text-anchor="middle" class="tx s">гілка worktree-p2-empty-q</text>
+  <text x="272" y="327" text-anchor="middle" class="tx s">свої файли й index</text>
+  <text x="272" y="345" text-anchor="middle" class="tx s">.env — з .worktreeinclude</text>
+  <text x="180" y="386" text-anchor="middle" class="tx s">коміт у будь-якому worktree одразу видно в усіх</text>
+</svg>
+<figcaption>Worktree — окремий робочий каталог з власною гілкою і index, але одним сховищем об'єктів. Gitignored-файли в нього не потрапляють: їх треба копіювати або створювати.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Поведінка</th><th>Як працює</th><th>Наслідок</th></tr></thead>
+<tbody>
+<tr><td data-th="Поведінка">База гілки</td><td data-th="Як працює"><code>worktree.baseRef</code>: <code>"fresh"</code> (типово) — гілка за замовчуванням з <code>origin</code>; якщо fetch був понад 24 год тому, Claude Code робить його, максимум 5 с. Без remote — локальний <code>HEAD</code>. <code>"head"</code> — ваш поточний <code>HEAD</code></td><td data-th="Наслідок">з <code>"fresh"</code> агент <b>не бачить ваших незапушених комітів</b>; конкретну гілку задати не можна — тоді <code>git worktree add</code> вручну</td></tr>
+<tr><td data-th="Поведінка">PR як база</td><td data-th="Як працює"><code>claude -w "#1234"</code> або URL PR/MR → <code>.claude/worktrees/pr-1234</code></td><td data-th="Наслідок">рев'ю чужого PR не чіпає ваш checkout; лапки обов'язкові, бо <code>#</code> у shell — коментар</td></tr>
+<tr><td data-th="Поведінка">Повторне ім'я</td><td data-th="Як працює">відкриває наявний worktree; чистий і без власних комітів з <code>"fresh"</code> скидається на гілку за замовчуванням</td><td data-th="Наслідок">ім'я — ключ задачі: однакове ім'я для двох задач = одна папка</td></tr>
+<tr><td data-th="Поведінка">Субагенти</td><td data-th="Як працює"><code>isolation: worktree</code> у frontmatter; тимчасовий worktree видаляється, якщо змін немає</td><td data-th="Наслідок">база — та сама, що для <code>-w</code>, тобто <b>не</b> поточний стан батьківської сесії</td></tr>
+</tbody></table></div>
+<p>Ізоляцію Claude Code примушує сам: блокує <code>Edit</code>/<code>Write</code> у шляхи головного checkout, Bash-команди з робочим каталогом там, перенаправлення git (<code>git -C</code>, <code>GIT_DIR</code>, <code>cd</code> перед <code>git</code>) і команди, з тексту яких не видно, куди піде git. Але ці перевірки читають текст команди, а не відстежують записи: <code>cp</code> або <code>&gt;</code> у головний checkout вони не зупинять. Тому це захист від помилки агента, а не sandbox — для sandbox є урок 3.4.</p>
+<p>Що worktree <b>ділять</b> з головним checkout, важливіше за те, що вони ізолюють:</p>
+<ul>
+<li><b><code>.git</code></b>: коміт агента одразу видно з головного checkout, а одну гілку не можна мати відкритою у двох worktree одночасно;</li>
+<li><b>дозволи</b>: «Yes, and don't ask again» у worktree записується в <code>.claude/settings.local.json</code> головного checkout і діє в усіх worktree репозиторію (з v2.1.211);</li>
+<li><b>плагіни project scope</b> і gitignored <code>.claude/skills</code>, <code>agents</code>, <code>commands</code> підтягуються з головного checkout;</li>
+<li><b>хуки</b>: <code>${CLAUDE_PROJECT_DIR}</code> лишається коренем головного checkout, шлях worktree хук отримує в полі <code>cwd</code> вхідного JSON.</li>
+</ul>
+
+<h3>Середовище в кожному worktree</h3>
+<p>Worktree — свіжий checkout лише відстежуваних файлів: немає <code>.env</code>, <code>.venv</code>, <code>node_modules</code>, кешів збірки. Окремий venv для Lectern з закешованими wheel-ами — 11,1 с на кожен worktree.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Чого бракує</th><th>Механізм Claude Code</th><th>Пастка</th></tr></thead>
+<tbody>
+<tr><td data-th="Чого бракує">gitignored-конфіги (<code>.env</code>)</td><td data-th="Механізм Claude Code"><code>.worktreeinclude</code> у корені, синтаксис <code>.gitignore</code>: копіюється файл, який і збігся з шаблоном, і є gitignored</td><td data-th="Пастка">секрети множаться на диску з кожним worktree</td></tr>
+<tr><td data-th="Чого бракує">залежності</td><td data-th="Механізм Claude Code">ставить агент або ви; або спільне незмінне оточення <b>без</b> самого пакета</td><td data-th="Пастка">editable-встановлення вказує на один checkout: тести інших worktree перевірять чужий код</td></tr>
+<tr><td data-th="Чого бракує">порти, БД, кеші поза репозиторієм</td><td data-th="Механізм Claude Code">хук <code>WorktreeCreate</code></td><td data-th="Пастка">два dev-сервери на одному порту: один падає, або тести одного б'ють у сервер іншого</td></tr>
+</tbody></table></div>
+<p>Ми зробили оточення спільним, але без пастки: один venv лише з залежностями (anthropic, claude-agent-sdk, pytest, ruff), сам Lectern у ньому не встановлено, а <code>pythonpath = ["src"]</code> у <code>pyproject.toml</code> змушує pytest імпортувати код саме того worktree, у якому він запущений.</p>
+<p>Хук <code>WorktreeCreate</code> <b>повністю замінює</b> git-логіку створення: він сам робить checkout, а останній непорожній рядок його stdout — шлях, у якому стартує сесія; усе інше — у stderr. З хуком <code>.worktreeinclude</code> не обробляється, а гілку, яку створив хук, Claude Code ніколи не видаляє: це робота парного хука <code>WorktreeRemove</code>. Наш хук дає кожному worktree власний порт:</p>
+<pre class="code" data-lang="bash"><span class="cm"># .claude/hooks/worktree-create.sh — у .claude/settings.json як хук WorktreeCreate</span>
+name=$(jq -r .name)
+root=$(git rev-parse --show-toplevel)
+dir=<span class="s">"$root/.claude/worktrees/$name"</span>
+git -C <span class="s">"$root"</span> worktree add -q -b <span class="s">"worktree-$name"</span> <span class="s">"$dir"</span> HEAD &gt;&amp;2
+cp <span class="s">"$root/.env"</span> <span class="s">"$dir/.env"</span>               <span class="cm"># .worktreeinclude з хуком не працює</span>
+n=$(git -C <span class="s">"$root"</span> worktree list | wc -l | tr -d <span class="s">' '</span>)
+sed -i <span class="s">''</span> <span class="s">"s/^LECTERN_PORT=.*/LECTERN_PORT=$((8400 + n))/"</span> <span class="s">"$dir/.env"</span>
+echo <span class="s">"$dir"</span>                              <span class="cm"># останній рядок stdout = шлях</span></pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p -w h1 --model haiku --setting-sources project --strict-mcp-config --tools Bash --allowedTools "Bash(cat .env)" "Bash(pwd)" --permission-mode dontAsk --max-budget-usd 0.05 --output-format json "Run pwd and cat .env, then reply with the two outputs only." | jq -r .result</span>
+~/lectern/.claude/worktrees/h1
+LECTERN_MODEL=haiku
+LECTERN_PORT=8402
+<span class="ps">$ </span><span class="c">claude -p -w h2 …</span>   <span class="d"># та сама команда</span>
+~/lectern/.claude/worktrees/h2
+LECTERN_MODEL=haiku
+LECTERN_PORT=8403</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · claude-haiku · 15.10.2026 · $0,0013 і $0,0008 · шляхи скорочено</div></div>
+</section>
+
+<section class="sec" id="run">
+<div class="sec-h"><span class="num">03</span><h2>Справжній прогін<span class="sub">Два агенти, два worktree, одне злиття</span></h2></div>
+<p>Lectern у стані після модуля 3, scratch-репозиторій без remote. Дві задачі з різною власністю файлів: <b>T1</b> — <code>lectern --version</code> (<code>cli.py</code>, <code>test_smoke.py</code>), <b>T2</b> — квіз відхиляє порожнє питання (<code>tools.py</code>, <code>test_tools.py</code>). Worktree створює сам Claude Code; агент працює, комітить і звітує.</p>
+<pre class="code" data-lang="bash"><span class="cm"># dispatch.sh NAME SPEC — один агент, один worktree</span>
+cd $root/lectern
+export LECTERN_PY=$root/deps/bin/python      <span class="cm"># спільні залежності, без самого lectern</span>
+claude -p -w $name --model haiku \
+  --setting-sources project --strict-mcp-config \
+  --tools <span class="s">"Read,Edit,Write,Glob,Grep,Bash"</span> \
+  --allowedTools <span class="s">"Read"</span> <span class="s">"Edit"</span> <span class="s">"Write"</span> <span class="s">"Glob"</span> <span class="s">"Grep"</span> \
+     <span class="s">"Bash(scripts/test.sh*)"</span> <span class="s">"Bash(git add *)"</span> <span class="s">"Bash(git commit *)"</span> \
+  --permission-mode dontAsk --max-turns <span class="n">25</span> --max-budget-usd <span class="n">0.30</span> \
+  --output-format json <span class="s">"…промпт зі списком дозволених команд… $(cat $root/specs/$spec.md)"</span> \
+  &gt; $root/runs/$name.json &lt; /dev/null</pre>
+<p><code>-p</code> пропускає діалог довіри до каталогу, тому <code>-w</code> працює і в щойно створеному репозиторії.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Прогін</th><th>T1 · duration_ms · ходи · $</th><th>T2 · duration_ms · ходи · $</th><th>Загальний час</th></tr></thead>
+<tbody>
+<tr><td data-th="Прогін">послідовно</td><td data-th="T1 · duration_ms · ходи · $">16,1 с · 10 · 0,0034</td><td data-th="T2 · duration_ms · ходи · $">21,3 с · 11 · 0,0046</td><td data-th="Загальний час"><b>40,4 с</b></td></tr>
+<tr><td data-th="Прогін">паралельно</td><td data-th="T1 · duration_ms · ходи · $">19,8 с · 10 · 0,0039</td><td data-th="T2 · duration_ms · ходи · $">18,6 с · 8 · 0,0041</td><td data-th="Загальний час"><b>21,2 с</b></td></tr>
+<tr><td data-th="Прогін">паралельно, перша спроба</td><td data-th="T1 · duration_ms · ходи · $">19,9 с · 11 · 0,0046</td><td data-th="T2 · duration_ms · ходи · $">28,8 с · 10 · 0,0056</td><td data-th="Загальний час">≈ 30 с</td></tr>
+</tbody></table></div>
+<p>Паралельний час = найдовший агент, а не сума, тож розкид між прогонами (18,6–28,8 с на ту саму задачу) переходить у загальний час напряму. Усі шість агентів закінчили з <code>success</code> і зеленими тестами.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git worktree list</span>
+~/lectern                               aae539f [main]
+~/lectern/.claude/worktrees/p1-version  83dc67c [worktree-p1-version] <span class="y">locked</span>
+~/lectern/.claude/worktrees/p2-empty-q  ad5ef37 [worktree-p2-empty-q] <span class="y">locked</span>
+<span class="d">… ще 4 worktree з двох інших прогонів, теж locked</span>
+<span class="ps">$ </span><span class="c">ls .claude/worktrees/p1-version/.env</span>
+.claude/worktrees/p1-version/.env
+<span class="ps">$ </span><span class="c">git merge --no-edit worktree-p1-version worktree-p2-empty-q</span>
+Fast-forwarding to: worktree-p1-version
+Trying simple merge with worktree-p2-empty-q
+<span class="ps">$ </span><span class="c">scripts/test.sh</span>
+31 passed in 1.25s
+<span class="ok">All checks passed!</span></pre>
+<div class="cap">реальний вивід · git 2.50.1, Claude Code 2.1.299 · 15.10.2026 · шляхи скорочено до ~</div></div>
+<p>База — <code>aae539f</code>, тобто локальний <code>HEAD</code>: remote немає, і <code>"fresh"</code> відступив на нього. <code>.env</code> з'явився через <code>.worktreeinclude</code>. Злиття двох гілок одним <code>merge</code> пройшло без конфліктів, бо задачі не мали спільних файлів.</p>
+<p>Тепер злиймо третю гілку — ту саму задачу T1 з першого прогону:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git merge --no-edit worktree-t1-version</span>
+<span class="er">CONFLICT (content): Merge conflict in src/lectern/cli.py</span>
+<span class="er">CONFLICT (content): Merge conflict in tests/test_smoke.py</span>
+<span class="ps">$ </span><span class="c">git diff</span>   <span class="d"># фрагмент</span>
+++&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+ +    sub = p.add_subparsers(dest="cmd", required=True)
+++=======
++     sub =p.add_subparsers(dest="cmd", required=True)
+++&gt;&gt;&gt;&gt;&gt;&gt;&gt; worktree-t1-version</pre>
+<div class="cap">реальний вивід · 15.10.2026 · після цього git merge --abort</div></div>
+<p>Та сама специфікація, два агенти — два різні diff-и, і назви тестів теж різні. Дубль задачі в черзі завжди закінчується конфліктом, навіть коли обидва результати правильні. Бонус: <code>sub =p</code> пройшов <code>ruff check</code>, бо типовий набір правил ruff не перевіряє пробіли навколо операторів.</p>
+<h3>Прибирання</h3>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git worktree remove .claude/worktrees/p1-version</span>
+<span class="er">fatal: cannot remove a locked working tree, lock reason: claude session p1-version (pid 37644 start Thu Oct 15 00:20:55 2026)</span>
+use 'remove -f -f' to override or unlock first
+<span class="ps">$ </span><span class="c">git worktree unlock .claude/worktrees/p1-version &amp;&amp; git worktree remove .claude/worktrees/p1-version</span>
+<span class="ps">$ </span><span class="c">git branch -d worktree-p1-version</span>
+Deleted branch worktree-p1-version (was 83dc67c).</pre>
+<div class="cap">реальний вивід · 15.10.2026 · процес 37644 на цей момент уже завершився</div></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Звідки worktree</th><th>Що відбувається з ним</th></tr></thead>
+<tbody>
+<tr><td>інтерактивна сесія <code>-w</code>, вихід</td><td>чистий і сесія без імені — видаляється разом з гілкою; іменована — питає; є зміни чи нові коміти — питає «залишити чи видалити» і друкує команду <code>claude --worktree &lt;name&gt; --resume</code></td></tr>
+<tr><td><code>claude -p -w</code></td><td>діалогу виходу немає: worktree і гілка лишаються, lock — до stale-lock sweep наступної сесії</td></tr>
+<tr><td>субагент з <code>isolation: worktree</code></td><td>без змін — видаляється одразу; зі змінами — sweep після <code>cleanupPeriodDays</code> (типово 30 днів), якщо там уже немає незбереженої роботи</td></tr>
+<tr><td>фонова сесія, видалена в agent view</td><td>worktree видаляється <b>разом з незакоміченими змінами</b>; <code>claude rm</code> такий залишає; незапушені коміти — відмова з командою <code>--discard-unpushed</code></td></tr>
+<tr><td>ваш <code>git worktree add</code></td><td>sweep ніколи не чіпає: Claude Code прибирає лише worktree зі своєю міткою в git-метаданих</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="background">
+<div class="sec-h"><span class="num">04</span><h2>Фонова робота<span class="sub">Команди, монітори, субагенти, фонові сесії</span></h2></div>
+<h3>Усередині сесії</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що</th><th>Як запустити</th><th>Межі</th></tr></thead>
+<tbody>
+<tr><td data-th="Що">фонова Bash-команда</td><td data-th="Як запустити">попросити «у фоні» (Claude ставить <code>run_in_background: true</code>) або <code>Ctrl+B</code> на команді, що вже йде (у tmux — двічі); список і зупинка — <code>/tasks</code></td><td data-th="Межі">вивід пишеться у файл, Claude читає його через Read; команда, що не вклалась у таймаут (типово 2 хв), сама йде у фон, якщо не починається з <code>sleep</code>; понад 5 ГБ виводу — примусова зупинка</td></tr>
+<tr><td data-th="Що">Monitor</td><td data-th="Як запустити">«стеж за логом / PR / CI і скажи, коли…»</td><td data-th="Межі">кожен рядок виводу — подія для Claude; дедлайн 5 хв типово, максимум 30 хв, у <code>-p</code> — 10 хв</td></tr>
+<tr><td data-th="Що">фоновий субагент</td><td data-th="Як запустити">в інтерактивній сесії типово увімкнено fork mode, і субагенти йдуть у фон самі; <code>background: true</code> у frontmatter тримає субагента у фоні завжди</td><td data-th="Межі">менший набір інструментів, ніж у foreground; його запити дозволів з'являються у вашій сесії з ім'ям субагента</td></tr>
+</tbody></table></div>
+<p>Час життя фонових команд залежить від того, чи є людина поруч. У локальній сесії в терміналі, desktop чи VS Code ліміту немає. У сесії без нагляду — <code>-p</code>, Agent SDK, CI, хмара — 30 хв типово і до 2 год, якщо Claude передасть <code>timeout</code>. У <code>-p</code> з текстовим промптом обидва значення — 10 хв. Команда, яку запустив <b>foreground</b>-субагент, зупиняється разом з ним; команда головної розмови переживає її фінальну відповідь.</p>
+<p>Останнє правило змінює поведінку скрипта. <code>claude -p</code> не завершується, доки не закінчиться фонова команда головної розмови, і після неї робить ще один хід. Перевіримо на збірці, що йде 12 с:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>bg-run.jsonl — події, відфільтровані jq</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p --model haiku --setting-sources project --strict-mcp-config --tools "Bash,Read" --allowedTools "Bash(python3 build.py*)" "Read" --permission-mode dontAsk --max-budget-usd 0.10 --output-format stream-json --verbose "Запусти python3 build.py у фоні (run_in_background), одразу відповідай одним реченням «збірку запущено», а коли вона завершиться — одним реченням результат." &gt; bg.jsonl</span>
+<span class="y">● Bash</span>  python3 build.py   <span class="d">run_in_background: true</span>
+<span class="d">  ⎿ Command running in background with ID: b32d2z23f. Output is being written to: …/tasks/b32d2z23f.output</span>
+<span class="c">Збірку запущено.</span>
+<span class="ok">result</span>  <span class="d">success · 2 ходи · 3,3 с · $0,0012</span>
+<span class="d">system/task_notification  Background command "Run build.py in background" completed (exit code 0)</span>
+<span class="y">● Read</span>  …/tasks/b32d2z23f.output
+<span class="c">Збірка завершилася успішно: build.py виконав три кроки, вивів «build ok» і вийшов з кодом 0.</span>
+<span class="ok">result</span>  <span class="d">success · 2 ходи · 2,7 с · $0,0016 (наростаючим підсумком)</span>
+<span class="d">процес завершився через 18,4 с · код виходу 0</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · claude-haiku · 15.10.2026 · подію init прибрано, шляхи скорочено</div></div>
+<div class="note warn"><span class="lbl">Два result в одному потоці</span>
+<p>Парсер, який читає <code>stream-json</code> до першого <code>result</code>, тут отримає «Збірку запущено.» і пропустить справжню відповідь. Беріть останній: <code>jq -s 'map(select(.type=="result")) | last'</code>. З <code>--output-format json</code> друкується результат останнього ходу. Скільки скрипт чекатиме: на фонову команду головної розмови — до її ліміту часу (тут 10 хв); на іншу фонову роботу — до 10 хв простою, після чого Claude Code зупиняє її й відкидає частковий результат. Стелю змінює <code>CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS</code>, а <code>--max-budget-usd</code> при досягненні ліміту зупиняє фонову роботу замість очікування.</p>
+</div>
+
+<h3>Що переживає закриття терміналу</h3>
+<p>Звичайна сесія <code>claude</code> прив'язана до терміналу: при виході фонові команди прибираються. Якщо щось ще працює (субагенти, команди, монітори), замість виходу з'явиться діалог <code>Background work is running</code> з варіантом <code>Move to background and exit</code>. Він робить те саме, що <code>/bg</code> (або <code>←</code> на порожньому промпті): сесія стає <b>фоновою</b> і переходить під <b>supervisor</b> — окремий процес, який тримає фонові сесії без терміналу. Нову фонову сесію запускає <code>claude --bg "задача"</code>, а дивитися на всі одразу можна в agent view (<code>claude agents</code>, research preview).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Подія</th><th>Фонова сесія</th><th>Що втрачається</th></tr></thead>
+<tbody>
+<tr><td data-th="Подія">закрили термінал або agent view</td><td data-th="Фонова сесія">працює далі</td><td data-th="Що втрачається">нічого</td></tr>
+<tr><td data-th="Подія"><code>/bg</code> посеред роботи</td><td data-th="Фонова сесія">новий процес продовжує з транскрипту; фонові команди, субагенти, <code>/loop</code> переїжджають</td><td data-th="Що втрачається">монітори зупиняються (Claude Code попередить діалогом)</td></tr>
+<tr><td data-th="Подія">сесія закінчила й ~1 год без attach</td><td data-th="Фонова сесія">supervisor зупиняє процес; attach або відповідь — продовження з місця зупинки</td><td data-th="Що втрачається">нічого, але перший відгук повільніший; <code>Ctrl+T</code> закріплює сесію</td></tr>
+<tr><td data-th="Подія">ноутбук заснув</td><td data-th="Фонова сесія">процеси відновлюються після пробудження</td><td data-th="Що втрачається">відповідь, що йшла в момент сну, може зависнути — supervisor перезапустить</td></tr>
+<tr><td data-th="Подія">вимкнули машину</td><td data-th="Фонова сесія">зупиняються</td><td data-th="Що втрачається">незавершений хід; розмову можна продовжити</td></tr>
+</tbody></table></div>
+<p>Фонова сесія перед першою правкою сама переходить у worktree під <code>.claude/worktrees/</code>, а коли закінчує — комітить, пушить свою гілку, якщо є remote, і за потреби відкриває draft PR. Ніколи не пушить у <code>main</code>/<code>master</code>, не робить force-push і не зливає; якщо <code>CLAUDE.md</code> каже, що git ваш, — не чіпає його.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern (scratch, не позначений як довірений)</span></div>
+<pre><span class="ps">$ </span><span class="c">claude --bg -p "hi"</span>
+<span class="er">--bg and --print conflict: --print never starts the interactive session that `claude agents` attaches to, so the job would be unattachable. The prompt is the positional — drop --print: `claude --bg '&lt;task&gt;'`.</span>
+<span class="ps">$ </span><span class="c">claude --bg --exec 'python3 -c "print(42)"'</span>
+<span class="er">Workspace not trusted. Run `claude` in ~/lectern once and accept the trust prompt, then retry.</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · 15.10.2026 · обидва з кодом 1; довіру ми свідомо не приймали</div></div>
+<p>На відміну від <code>-p</code>, фонова сесія вимагає довіри до каталогу: зі скрипта в недовіреному репозиторії вона не стартує. <code>--exec</code> запускає shell-команду як рядок agent view без моделі; її вивід живе лише в пам'яті й зникає приблизно через 5 хв після завершення. Стан для скриптів — <code>claude agents --json --all</code>: <code>working</code>, <code>blocked</code> (чекає на вас), <code>done</code>, <code>failed</code>, <code>stopped</code>. Файли в <code>~/.claude/jobs/</code> документація прямо називає нестабільним інтерфейсом.</p>
+</section>
+
+<section class="sec" id="headless">
+<div class="sec-h"><span class="num">05</span><h2>Headless як цеглина<span class="sub">Fan-out, jq, --resume, коди виходу</span></h2></div>
+<p>Флаги <code>claude -p</code> знайомі з модуля 2; тут — як складати з них скрипти.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Патерн</th><th>Як</th><th>На чому ламається</th></tr></thead>
+<tbody>
+<tr><td data-th="Патерн">fan-out з лімітом</td><td data-th="Як"><code>printf '%s\0' *.txt | xargs -0 -n 1 -P 3 bash -c 'one "$1"' _</code> — <code>-P</code> і є ліміт паралельності</td><td data-th="На чому ламається">спільний вихідний файл: кожна задача має писати лише своє, тоді worktree не потрібні</td></tr>
+<tr><td data-th="Патерн">розбір JSON</td><td data-th="Як"><code>jq '.structured_output'</code>, <code>.session_id</code>, <code>.subtype</code>, <code>.total_cost_usd</code></td><td data-th="На чому ламається">у <code>stream-json</code> може бути кілька <code>result</code> — беріть останній</td></tr>
+<tr><td data-th="Патерн">ланцюжок сесії</td><td data-th="Як"><code>sid=$(… | jq -r .session_id)</code>, далі <code>claude -p "…" --resume "$sid"</code></td><td data-th="На чому ламається"><code>--continue</code> бере найсвіжішу сесію каталогу; при паралельних запусках це чужа сесія</td></tr>
+<tr><td data-th="Патерн">ліміт витрат</td><td data-th="Як"><code>--max-budget-usd</code> на кожен процес</td><td data-th="На чому ламається">найгірший випадок = процеси × ліміт × спроби; ліміт перевіряється після відповіді, тож його можна перейти</td></tr>
+<tr><td data-th="Патерн">відтворюваність</td><td data-th="Як"><code>--bare</code>: без хуків, skills, плагінів, MCP, auto memory і <code>CLAUDE.md</code> — лише те, що передано флагами</td><td data-th="На чому ламається">потрібен <code>ANTHROPIC_API_KEY</code> (OAuth і keychain не читаються); фонових задач у bare немає</td></tr>
+</tbody></table></div>
+<h3>Контракт кодів виходу</h3>
+<p>Документація обіцяє 0 при успіху і ненульовий код при збої, а збій усередині запуску друкує як результат у stdout. На практиці ненульовий код ще не каже, що саме сталося:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "x" --max-turns abc --output-format json; echo "rc=$?"</span>
+<span class="er">error: option '--max-turns &lt;turns&gt;' argument 'abc' is invalid. must be a number</span>
+rc=1
+<span class="ps">$ </span><span class="c">claude -p "Read samples/batch/lru-cache.txt and summarize it in one line." --model haiku --tools Read --allowedTools Read --max-budget-usd 0.001 --output-format json &gt; budget.json; echo "rc=$?"</span>
+rc=1
+<span class="ps">$ </span><span class="c">jq -c '{subtype,is_error,num_turns,total_cost_usd,errors}' budget.json</span>
+{"subtype":"error_max_budget_usd","is_error":true,"num_turns":2,"total_cost_usd":0.0012385500000000002,"errors":["Reached maximum budget ($0.001)"]}
+<span class="ps">$ </span><span class="c">claude -p "…той самий промпт…" --model haiku --tools Read --allowedTools Read --max-turns 1 --output-format json &gt; turns.json; echo "rc=$?"</span>
+rc=1
+<span class="ps">$ </span><span class="c">jq -c '{subtype,num_turns,errors}' turns.json</span>
+{"subtype":"error_max_turns","num_turns":2,"errors":["Reached maximum number of turns (1)"]}</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · claude-haiku · 15.10.2026 · обидва модельні запуски — з --setting-sources project --strict-mcp-config</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ситуація</th><th>Код</th><th>stdout</th><th>Що робить скрипт</th></tr></thead>
+<tbody>
+<tr><td data-th="Ситуація">успіх</td><td data-th="Код">0</td><td data-th="stdout">JSON, <code>subtype: success</code></td><td data-th="Що робить скрипт">перевіряє <b>результат кодом</b>: успіх агента ≠ правильний квіз</td></tr>
+<tr><td data-th="Ситуація">неправильний виклик</td><td data-th="Код">1</td><td data-th="stdout">порожньо, текст у stderr</td><td data-th="Що робить скрипт">помилка скрипта, повтор не допоможе</td></tr>
+<tr><td data-th="Ситуація">ліміт ходів чи бюджету</td><td data-th="Код">1</td><td data-th="stdout">JSON, <code>error_max_turns</code> / <code>error_max_budget_usd</code>, <code>result: null</code></td><td data-th="Що робить скрипт">повтор з більшим лімітом або задача в ручну чергу</td></tr>
+<tr><td data-th="Ситуація"><code>SIGTERM</code></td><td data-th="Код">143</td><td data-th="stdout">результату ходу немає</td><td data-th="Що робить скрипт">щоб хід завершився коректно, спершу <code>SIGINT</code></td></tr>
+</tbody></table></div>
+<p>Бюджет $0,001 закінчився на $0,00124: ліміт перевіряється, коли відповідь уже прийшла. Cursor CLI поводиться інакше: при збої JSON взагалі не друкується, лише stderr і ненульовий код, тож спільна обгортка для двох інструментів мусить вміти обидва варіанти.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — CI</span></div>
+<pre><span class="ps">$ </span><span class="c">claude --bare -p "Summarize README.md" --allowedTools "Read"</span></pre>
+<div class="cap">команда з офіційної документації Claude Code · не запускалась у цьому уроці (потрібен ANTHROPIC_API_KEY)</div></div>
+<div class="note warn"><span class="lbl">Без --bare чужий репозиторій виконується</span>
+<p><code>-p</code> не показує діалог довіри: у будь-якому каталозі він запускає хуки з <code>.claude/settings.json</code> і підключає сервери з <code>.mcp.json</code>. Fan-out по чужих репозиторіях без <code>--bare</code> — це виконання їхнього коду на вашій машині (урок 3.4). Документація називає <code>--bare</code> рекомендованим для скриптів і обіцяє зробити його типовим для <code>-p</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="limits">
+<div class="sec-h"><span class="num">06</span><h2>Ліміти й конкуренція<span class="sub">Де паралельність перестає працювати</span></h2></div>
+<p><b>Підписка.</b> Pro і Max мають п'ятигодинний ліміт сесії і тижневий ліміт, спільні для Claude і Claude Code, включно з IDE. Кожна фонова сесія витрачає квоту окремо: документація agent view прямо каже, що десять агентів вичерпують її приблизно вдесятеро швидше за одного.</p>
+<p><b>API.</b> Ліміти рахуються за запитами (RPM), вхідними (ITPM) і вихідними токенами (OTPM) окремо для кожного класу моделей і поповнюються безперервно (token bucket). Тому 60 RPM можуть застосовуватися як 1 запит на секунду, і десять агентів, стартованих в одну мить, — це сплеск. Різке зростання навантаження впирається ще й в acceleration limits: нарощуйте поступово. Перевищення дає 429, часто з <code>retry-after</code>. Claude Code повторює сам і в <code>stream-json</code> повідомляє про це подією <code>system/api_retry</code> з <code>error: "rate_limit"</code> — за нею видно, що паралельність уже впирається в стелю.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Спільний ресурс</th><th>Як конфліктують агенти</th><th>Захист</th></tr></thead>
+<tbody>
+<tr><td data-th="Спільний ресурс"><code>.git</code></td><td data-th="Як конфліктують агенти">гілку можна мати відкритою лише в одному worktree; той самий файл у двох гілках — конфлікт злиття</td><td data-th="Захист">своя гілка на задачу, задачі не перетинаються файлами, зливає людина</td></tr>
+<tr><td data-th="Спільний ресурс">порти</td><td data-th="Як конфліктують агенти">другий dev-сервер не стартує або тести одного агента б'ють у сервер іншого</td><td data-th="Захист">порт з <code>.env</code>, який пише хук <code>WorktreeCreate</code></td></tr>
+<tr><td data-th="Спільний ресурс">локальна БД, Docker</td><td data-th="Як конфліктують агенти">міграції й фікстури одного агента ламають тести іншого; worktree тут не ізолює нічого</td><td data-th="Захист">окрема БД чи схема на worktree — або такі задачі послідовно</td></tr>
+<tr><td data-th="Спільний ресурс">квота і rate limit</td><td data-th="Як конфліктують агенти">агенти гальмують один одного повторами</td><td data-th="Захист">ліміт паралельності (<code>-P</code>), поступовий старт</td></tr>
+<tr><td data-th="Спільний ресурс">ваше рев'ю</td><td data-th="Як конфліктують агенти">черга росте швидше, ніж ви читаєте</td><td data-th="Захист">WIP-ліміт за швидкістю рев'ю (урок 3.5)</td></tr>
+</tbody></table></div>
+<div class="cols">
+<div class="cmp good"><h4>Паралельте, коли</h4><ul>
+<li>задачі не ділять файлів, портів і даних;</li>
+<li>кожну перевіряє команда, яку агент чи скрипт запускає сам;</li>
+<li>задачі однотипні: N лекцій, N модулів, N репозиторіїв;</li>
+<li>wall time важливіший за квоту: демо, реліз, нічний прогін.</li>
+</ul></div>
+<div class="cmp bad"><h4>Не паралельте, коли</h4><ul>
+<li>друга задача залежить від результату першої;</li>
+<li>обидві чіпають ту саму міграцію, схему чи <code>pyproject.toml</code>;</li>
+<li>перевірка ручна і рев'ю вже вузьке місце;</li>
+<li>квота підписки на межі, а задачі не термінові.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Три інструменти<span class="sub">Ті самі прийоми в Codex і Cursor</span></h2></div>
+<div class="tabs">
+<input type="radio" name="par-t" id="par-t1" checked><input type="radio" name="par-t" id="par-t2"><input type="radio" name="par-t" id="par-t3">
+<div class="tab-l"><label for="par-t1">Claude Code</label><label for="par-t2">Codex</label><label for="par-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Worktree:</b> <code>claude -w NAME</code> → <code>.claude/worktrees/NAME</code>, гілка <code>worktree-NAME</code>, база — гілка за замовчуванням з <code>origin</code> (<code>worktree.baseRef</code>); у desktop-застосунку — опція worktree при старті сесії.</li>
+<li><b>Середовище:</b> <code>.worktreeinclude</code> або хук <code>WorktreeCreate</code>/<code>WorktreeRemove</code>.</li>
+<li><b>Фон:</b> <code>Ctrl+B</code>, <code>/tasks</code>, Monitor, фонові субагенти; фонові сесії — <code>/bg</code>, <code>claude --bg</code>, <code>claude agents</code>.</li>
+<li><b>Headless:</b> <code>claude -p</code>, <code>--output-format json|stream-json</code>, <code>--resume SESSION_ID</code>, <code>--max-budget-usd</code>, <code>--bare</code>; у JSON є <code>total_cost_usd</code> (оцінка на клієнті).</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Worktree з CLI:</b> <code>codex exec --worktree "…"</code> створює керований worktree; <code>codex exec fork SESSION_ID --worktree "…"</code> пробує альтернативу з тієї самої сесії. Не поєднується з <code>resume</code> і <code>--ephemeral</code>.</li>
+<li><b>Worktree у застосунку:</b> у <code>$CODEX_HOME/worktrees</code>, у стані detached HEAD; типово зберігаються 15 останніх керованих worktree, перед видаленням Codex робить знімок роботи. Handoff переносить чат між Local і Worktree. <code>.worktreeinclude</code> — той самий формат, що в Claude Code.</li>
+<li><b>Headless:</b> <code>codex exec --json</code> — події <code>thread.started</code>, <code>turn.completed</code> (з <code>usage</code> у токенах, не в доларах), <code>turn.failed</code>, <code>item.*</code>; <code>-o FILE</code> зберігає останнє повідомлення; <code>--output-schema FILE</code> — структурований результат.</li>
+<li><b>Ланцюжок:</b> <code>codex exec resume SESSION_ID "…"</code>; <code>--last</code> бере найсвіжішу сесію каталогу — та сама пастка, що <code>--continue</code>.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec "Extract project metadata" --output-schema ./schema.json -o ./project-metadata.json</span>
+<span class="ps">$ </span><span class="c">codex exec --worktree "implement the next step"</span></pre>
+<div class="cap">команди з офіційної документації Codex · не запускались у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Worktree з CLI:</b> <code>agent -w NAME</code> → <code>~/.cursor/worktrees/&lt;repo&gt;/NAME</code>; <code>--worktree-base</code> типово <b>поточний HEAD</b> — протилежно до типового <code>"fresh"</code> у Claude Code.</li>
+<li><b>Середовище:</b> <code>.cursor/worktrees.json</code> з <code>setup-worktree-unix</code> / <code>setup-worktree-windows</code> / <code>setup-worktree</code>; змінна <code>$ROOT_WORKTREE_PATH</code> вказує на головний checkout; <code>--skip-worktree-setup</code> пропускає. Ліміт — 25 worktree на машину для всіх проєктів, старіші прибираються за інтервалом.</li>
+<li><b>Headless:</b> <code>agent -p --output-format json|stream-json</code>; при збої JSON не друкується — лише stderr і ненульовий код, а <code>stream-json</code> може обірватися без фінальної події.</li>
+<li><b>Хмара:</b> <code>&amp;</code> на початку повідомлення відправляє задачу Cloud Agent, яка працює, поки ви офлайн.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">agent --worktree "upgrade the test runner and fix any broken snapshots"</span></pre>
+<div class="cap">команда з офіційної документації Cursor · не запускалась у цьому уроці</div></div>
+</div>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: квізи для N лекцій паралельно</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок модуля 4</div><div class="pb">
+<p>Новий <code>scripts/batch_generate.sh</code> запускає по одному headless-агенту на лекцію з лімітом паралельності, приймає квіз лише після <code>lectern check --json</code>, при відмові дає одну спробу виправлення в тій самій сесії і друкує підсумок вартості. Кожен агент пише тільки свої файли в <code>out/batch/</code>, тому worktree тут не потрібні.</p>
+<pre class="code" data-lang="bash"><span class="k">one</span>() {  <span class="cm"># одна лекція → out/&lt;stem&gt;.{run1,run2,quiz,check,row}.json</span>
+  ask <span class="s">"$prompt"</span> &gt; <span class="s">"$OUT/$stem.run1.json"</span>; rc=$?
+  <span class="k">while</span> :; <span class="k">do</span>
+    jq <span class="s">'.structured_output // {items: []}'</span> <span class="s">"$run"</span> &gt; <span class="s">"$OUT/$stem.quiz.json"</span>
+    lectern check <span class="s">"$lec"</span> <span class="s">"$OUT/$stem.quiz.json"</span> --json &gt; <span class="s">"$OUT/$stem.check.json"</span>; ok=$?
+    sid=$(jq -r <span class="s">'.session_id // empty'</span> <span class="s">"$run"</span>)
+    [ $ok -eq <span class="n">0</span> ] || [ $attempt -ge <span class="n">2</span> ] || [ -z <span class="s">"$sid"</span> ] &amp;&amp; <span class="k">break</span>
+    attempt=<span class="n">2</span>   <span class="cm"># модель уже прочитала лекцію — виправляємо в тій самій сесії</span>
+    ask <span class="s">"lectern check rejected the quiz: $(jq -r '.errors | join("; ")' …). Fix only these items…"</span> \
+      --resume <span class="s">"$sid"</span> &gt; <span class="s">"$OUT/$stem.run2.json"</span>; rc=$?
+  <span class="k">done</span>
+  <span class="cm"># після --resume total_cost_usd уже містить перший запуск — не підсумовуйте їх</span>
+}
+printf <span class="s">'%s\0'</span> <span class="s">"$@"</span> | xargs -0 -n <span class="n">1</span> -P <span class="s">"$JOBS"</span> bash -c <span class="s">'one "$1"'</span> _
+jq -s -e <span class="s">'all(.ok)'</span> <span class="s">"${rows[@]}"</span> &gt; /dev/null   <span class="cm"># код виходу скрипта: 0 лише якщо всі квізи пройшли</span></pre>
+<p><code>ask</code> — це виклик <code>claude -p</code> з промптом Lectern (<code>prompt.txt</code>), інструментами <code>Read</code> і <code>Bash(lectern check *)</code>, <code>--json-schema quiz.schema.json</code>, <code>--max-turns 12</code> і <code>--max-budget-usd</code> на лекцію. Три короткі лекції (109–127 слів: бінарний пошук, стек і черга, кеш LRU), Haiku, три прогони:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/batch_generate.sh -j 2 -o out/j2 samples/batch/*.txt</span>
+lru-cache        ok   -0.0→ 20.1 s
+binary-search    ok   -0.0→ 20.3 s
+stack-queue      ok   20.1→ 39.8 s
+<span class="d">… рядок на кожну лекцію: items 5 · errors 0 · attempts 1 · $0.0037 / $0.0043 / $0.0026</span>
+total	3 lectures · jobs 2 · wall 39.8 s · sum of runs 60 s · $0.0107 (client-side estimate)
+<span class="ps">$ </span><span class="c">echo $?</span>
+0</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · claude-haiku · 15.10.2026 · рядки по лекціях скорочено · «-0.0» — похибка округлення старту, виправлена в збереженій версії скрипта</div></div>
+<figure class="fig">
+<svg viewBox="0 0 360 150" role="img" aria-label="Часова шкала прогону з лімітом 2: дві лекції стартують одразу, третя чекає на вільне місце">
+  <text x="4" y="20" class="tx s">слот 1</text>
+  <text x="4" y="58" class="tx s">слот 2</text>
+  <rect x="58" y="6" width="148" height="22" rx="4" class="bx t"/>
+  <text x="132" y="22" text-anchor="middle" class="tx s">lru-cache 20,1 с</text>
+  <rect x="210" y="6" width="145" height="22" rx="4" class="bx m"/>
+  <text x="282" y="22" text-anchor="middle" class="tx s">stack-queue 19,7 с</text>
+  <rect x="58" y="44" width="150" height="22" rx="4" class="bx t"/>
+  <text x="133" y="60" text-anchor="middle" class="tx s">binary-search 20,3 с</text>
+  <path d="M58 86 H 355" class="ln d"/>
+  <text x="58" y="102" text-anchor="middle" class="tx s">0</text>
+  <text x="206" y="102" text-anchor="middle" class="tx s">20 с</text>
+  <text x="352" y="102" text-anchor="end" class="tx s">39,8 с</text>
+  <text x="180" y="132" text-anchor="middle" class="tx s">третя лекція стартує, щойно звільняється слот (-P 2)</text>
+</svg>
+<figcaption>Прогін <code>-j 2</code>: ліміт паралельності в дії. Час старту й завершення кожної лекції — з виводу скрипта.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ліміт <code>-j</code></th><th>Загальний час</th><th>Сума часу агентів</th><th>Повтори через <code>--resume</code></th><th>Вартість</th></tr></thead>
+<tbody>
+<tr><td data-th="Ліміт -j"><code>-j 1</code></td><td data-th="Загальний час">88,1 с</td><td data-th="Сума часу агентів">88,0 с</td><td data-th="Повтори через --resume">2 з 3</td><td data-th="Вартість">$0,0131</td></tr>
+<tr><td data-th="Ліміт -j"><code>-j 2</code></td><td data-th="Загальний час">39,8 с</td><td data-th="Сума часу агентів">60,0 с</td><td data-th="Повтори через --resume">0</td><td data-th="Вартість">$0,0107</td></tr>
+<tr><td data-th="Ліміт -j"><code>-j 3</code></td><td data-th="Загальний час">30,8 с</td><td data-th="Сума часу агентів">87,7 с</td><td data-th="Повтори через --resume">1</td><td data-th="Вартість">$0,0116</td></tr>
+</tbody></table></div>
+<p>Усі дев'ять квізів зрештою пройшли перевірку. Три з дев'яти перших спроб — ні, і щоразу з тієї самої причини: <code>item N: quote shorter than 5 words</code> (в одному квізі — у двох пунктах). Агент перевіряв цитати через <code>lectern check --quote</code>, а цей режим дивиться лише, чи є цитата в лекції; мінімум у 5 слів знає тільки <code>validate</code>. Звіт агента казав «усе перевірено», і це було правдою щодо інструмента, який йому дали. Гейт у скрипті відкинув квіз, один <code>--resume</code> з переліком помилок виправив його за 2–3 ходи. Скільки коштував повтор: <code>total_cost_usd</code> зріс з $0,0024 до $0,0046 — і це вже сума обох запусків.</p>
+<p><b>Ваш крок:</b> додайте <code>scripts/batch_generate.sh</code> у свій Lectern, згенеруйте квізи для 3–5 власних лекцій з <code>-j 1</code> і <code>-j 3</code> і порівняйте загальний час, суму часу агентів і вартість. Потім виправте розбіжність, яку знайшов прогін: <code>check_quote</code> має відхиляти цитати, коротші за <code>MIN_QUOTE_WORDS</code>, тоді агент побачить помилку ще до збереження.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що ламається в паралельній роботі</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Що відбувається</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">«Паралельно — значить дешевше»</td><td data-th="Що відбувається">токени ті самі, повтори додають своє; найдорожчим вийшов послідовний прогін <code>-j 1</code> — з двома повторами</td><td data-th="Як правильно">міряйте окремо загальний час, суму часу агентів і <code>total_cost_usd</code></td></tr>
+<tr><td data-th="Помилка">Дві задачі на один файл або дубль задачі</td><td data-th="Що відбувається">конфлікт злиття, навіть коли обидва diff-и правильні (T1 двічі → <code>CONFLICT</code> у двох файлах)</td><td data-th="Як правильно">власність файлів у специфікації; дубль — лише як свідомий best-of-N</td></tr>
+<tr><td data-th="Помилка">Editable-встановлення з головного checkout</td><td data-th="Що відбувається">тести в worktree зелені, бо перевіряють код <code>main</code></td><td data-th="Як правильно">окремий venv або спільні залежності без пакета + <code>pythonpath</code></td></tr>
+<tr><td data-th="Помилка"><code>claude -p -w</code> без прибирання</td><td data-th="Що відбувається">locked worktree і гілки <code>worktree-*</code> накопичуються: діалогу виходу в <code>-p</code> немає</td><td data-th="Як правильно">злити → <code>git worktree unlock</code> → <code>remove</code> → <code>git branch -d</code> у тому ж скрипті</td></tr>
+<tr><td data-th="Помилка"><code>--continue</code> у паралельному скрипті</td><td data-th="Що відбувається">продовжує найсвіжішу сесію каталогу — можливо, сусідню</td><td data-th="Як правильно"><code>--resume "$session_id"</code> з JSON власного запуску</td></tr>
+<tr><td data-th="Помилка">Читати <code>stream-json</code> до першого <code>result</code></td><td data-th="Що відбувається">фонова робота дає другий хід; відповідь у другому <code>result</code></td><td data-th="Як правильно">брати останній <code>result</code>, а не перший</td></tr>
+<tr><td data-th="Помилка">Додавати <code>total_cost_usd</code> після <code>--resume</code></td><td data-th="Що відбувається">подвійний облік: значення вже містить попередні запуски</td><td data-th="Як правильно">брати останнє значення сесії</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте механіку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">claude -p -w t1</span><span class="h">де і на якій гілці?</span></span><span class="b"><span class="t">.claude/worktrees/t1</span><span class="d">гілка worktree-t1; після -p лишається з lock</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">.worktreeinclude</span><span class="h">що копіює?</span></span><span class="b"><span class="t">Лише gitignored-файли</span><span class="d">які збігаються з шаблоном; з хуком WorktreeCreate не працює</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Ctrl+B</span><span class="h">у сесії Claude Code</span></span><span class="b"><span class="t">У фон</span><span class="d">поточну Bash-команду чи агента; список — /tasks</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">/bg</span><span class="h">і що з моніторами?</span></span><span class="b"><span class="t">Сесія під supervisor</span><span class="d">команди й субагенти переїжджають, монітори зупиняються</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">xargs -P 3</span><span class="h">у fan-out</span></span><span class="b"><span class="t">Ліміт паралельності</span><span class="d">не більше трьох claude -p одночасно</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">rc = 1</span><span class="h">що далі?</span></span><span class="b"><span class="t">Читати subtype</span><span class="d">помилка виклику, ліміт ходів і бюджету дають той самий код</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Дві задачі: перша додає таблицю й міграцію, друга змінює запит до тієї ж таблиці. Обидві — в окремих worktree. Що з цього вийде?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Нічого поганого: кожен worktree має власну гілку й index, а отже й дані</span></label><label class="opt"><input type="radio" name="q1"><span>Конфлікт буде лише при злитті міграції, а тести обох агентів пройдуть незалежно</span></label><label class="opt ok"><input type="radio" name="q1"><span>Ризик: локальна БД спільна, і міграції одного агента ламають тести іншого</span></label></div>
+    <div class="why yes">Так. Worktree ізолює лише файли репозиторію. БД, порти й Docker спільні, а друга задача ще й залежить від першої: краще послідовно або окрема БД на worktree.</div>
+    <div class="why no">Worktree дає окремі файли й гілку, але не окрему базу даних, тож тести заважатимуть один одному ще до злиття. Залежні задачі зі спільною БД ведуть послідовно або дають кожному worktree власну БД через хук.</div></div>
+  <div class="q"><div class="qt">2. Нічний скрипт запускає <code>claude -p -w task-$N</code>. Через тиждень <code>git worktree remove</code> падає з «cannot remove a locked working tree». Чому?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>У <code>-p</code> немає діалогу виходу: worktree лишається під lock; спершу <code>git worktree unlock</code></span></label><label class="opt"><input type="radio" name="q2"><span>Агент досі працює в цьому worktree: lock знімається, лише коли його процес завершиться</span></label><label class="opt"><input type="radio" name="q2"><span>Git блокує видалення worktree, поки його гілку <code>worktree-task-N</code> не злито</span></label></div>
+    <div class="why yes">Так. Lock ставиться при створенні, щоб паралельне прибирання не знесло робочий каталог, і в <code>-p</code> лишається після завершення процесу — до stale-lock sweep наступної сесії.</div>
+    <div class="why no">Процес давно завершився — у причині lock видно його pid. Незлита гілка видаленню worktree не заважає; заважає lock. Claude Code не прибирає worktree неінтерактивних запусків: unlock → remove → <code>git branch -d</code> у самому скрипті.</div></div>
+  <div class="q"><div class="qt">3. Ви закомітили фікс локально і запустили <code>claude -w review</code>. Агент каже, що фіксу в коді немає. Найімовірніша причина?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Типова база — ваш HEAD, але коміти молодші за 24 години туди потрапляють лише після fetch</span></label><label class="opt ok"><input type="radio" name="q3"><span>Типова база <code>"fresh"</code> — гілка за замовчуванням з <code>origin</code>, а незапушеного коміту там немає</span></label><label class="opt"><input type="radio" name="q3"><span>Агент читає <code>.git</code> головного checkout, а нові коміти там видно лише після <code>git gc</code></span></label></div>
+    <div class="why yes">Так. Допоможе <code>worktree.baseRef: "head"</code> або push перед запуском. У Cursor типова база навпаки поточний HEAD — пастка при зміні інструмента.</div>
+    <div class="why no">Коміт у спільному <code>.git</code> видно одразу, а 24 години стосуються лише того, коли Claude Code сам робить fetch. Типово база — гілка за замовчуванням з <code>origin</code>, тому локальних комітів агент не бачить.</div></div>
+  <div class="q"><div class="qt">4. Скрипт читає <code>stream-json</code> і зупиняється на першому <code>result</code>. Агент запустив збірку у фоні. Що отримає скрипт?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span>Проміжне «збірку запущено»; справжній результат прийде в другому <code>result</code></span></label><label class="opt"><input type="radio" name="q4"><span>Фінальну відповідь: <code>-p</code> не друкує <code>result</code>, доки фонова збірка не закінчиться</span></label><label class="opt"><input type="radio" name="q4"><span>Нічого корисного: <code>-p</code> вийде після першого ходу й обірве збірку</span></label></div>
+    <div class="why yes">Так, саме це показав прогін уроку: два <code>result</code> в одному потоці. Беріть останній.</div>
+    <div class="why no"><code>-p</code> дозволяє фонові команди і чекає на команду головної розмови, але перший <code>result</code> друкує одразу, а <b>після</b> збірки робить ще один хід з окремим <code>result</code>.</div></div>
+  <div class="q"><div class="qt">5. Паралельний fan-out при невдалій перевірці робить <code>claude -p "виправ" --continue</code>. Чим це загрожує?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Нічим: <code>-p --continue</code> бере сесію, яку запустив той самий процес скрипта</span></label><label class="opt"><input type="radio" name="q5"><span><code>--continue</code> у <code>-p</code> пропускає сесії <code>-p</code>, тож стартує нова сесія, у якій немає контексту лекції</span></label><label class="opt ok"><input type="radio" name="q5"><span><code>--continue</code> бере найсвіжішу сесію каталогу, і це може бути сесія сусідньої лекції</span></label></div>
+    <div class="why yes">Так. Зберігайте <code>session_id</code> з JSON кожного запуску і передавайте <code>--resume "$sid"</code>. У Codex <code>exec resume --last</code> має ту саму пастку.</div>
+    <div class="why no">Саме спільний каталог і створює проблему: «найсвіжіша» сесія залежить від того, хто фінішував останнім, а не від процесу. Сесії <code>-p</code> пропускає лише інтерактивний <code>-c</code>; <code>claude -p --continue</code> їх бере.</div></div>
+  <div class="q"><div class="qt">6. Для однієї лекції <code>claude -p</code> повернув код 1. Що зробити першим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Перезапустити з тим самим промптом: код 1 — тимчасовий збій на кшталт 429 від API</span></label><label class="opt ok"><input type="radio" name="q6"><span>Подивитися stdout: немає JSON — помилка виклику; є JSON — прочитати <code>subtype</code></span></label><label class="opt"><input type="radio" name="q6"><span>Збільшити <code>--max-budget-usd</code>: ліміт бюджету — єдиний збій, що дає код 1</span></label></div>
+    <div class="why yes">Так. У прогоні уроку неправильний флаг, ліміт бюджету і ліміт ходів дали той самий код 1. Розрізняє їх лише вміст stdout: <code>error_max_turns</code>, <code>error_max_budget_usd</code>.</div>
+    <div class="why no">Код 1 спільний для неправильного флага, ліміту ходів і ліміту бюджету, а 429 Claude Code повторює сам. Повтор допомагає лише при лімітах, і то зі зміненим лімітом.</div></div>
+  <div class="q"><div class="qt">7. Перший запуск повернув <code>total_cost_usd: 0.0024</code>, повтор через <code>--resume</code> — <code>0.0046</code>. Скільки коштувала лекція?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>$0,0070: кожен запуск <code>-p</code> друкує лише власні витрати, тож їх додають</span></label><label class="opt"><input type="radio" name="q7"><span>$0,0022: різниця і є ціною лекції, бо перший запуск лише прочитав її</span></label><label class="opt ok"><input type="radio" name="q7"><span>Близько $0,0046: після <code>--resume</code> поле вже містить і попередні запуски</span></label></div>
+    <div class="why yes">Так. Це оцінка на клієнті, і вона наростаюча для сесії. Сума двох значень рахує перший запуск двічі.</div>
+    <div class="why no">Документація: при продовженні розмови запуск повідомляє загальну суму, включно з попередніми запусками. $0,0022 — ціна лише повтору.</div></div>
+  <div class="q"><div class="qt">8. В інтерактивній сесії працюють dev-сервер у фоні, фоновий субагент і монітор логу. Ви закриваєте сесію. Що станеться, якщо обрати <code>Move to background and exit</code>?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Сесія стане фоновою: сервер і субагент переїдуть, монітор зупиниться</span></label><label class="opt"><input type="radio" name="q8"><span>Усе зупиниться: фонові задачі прибираються при виході з будь-якої сесії</span></label><label class="opt"><input type="radio" name="q8"><span>Усі три працюватимуть далі: supervisor переносить і команди, і монітори</span></label></div>
+    <div class="why yes">Так. Монітори при переході у фон не переносяться, і Claude Code попереджає про це діалогом.</div>
+    <div class="why no">Звичайний вихід справді все прибирає, але цей варіант робить те саме, що <code>/bg</code>: команди й субагенти переїжджають у новий процес, монітори — ні.</div></div>
+  <div class="q"><div class="qt">9. На Max ви запустили 8 фонових сесій і через годину отримали «You've hit your session limit». Допоможе перейти на Haiku через <code>/model</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Так: у кожної моделі власне п'ятигодинне вікно, і в Haiku ще є запас</span></label><label class="opt ok"><input type="radio" name="q9"><span>Ні: п'ятигодинне вікно спільне для моделей, а 8 сесій витрачали його ~8× швидше</span></label><label class="opt"><input type="radio" name="q9"><span>Так, але лише для нових сесій: уже запущені фонові сесії лишаться на старій моделі</span></label></div>
+    <div class="why yes">Так. Допоможе лише очікування скидання вікна, usage credits або менше паралельних сесій наперед.</div>
+    <div class="why no">Session limit — спільне вікно підписки для Claude і Claude Code, і кожна фонова сесія витрачає його окремо. Перемикання моделі допомагає лише при модельних лімітах на кшталт «Opus limit».</div></div>
+  <div class="q"><div class="qt">10. Ви додали хук <code>WorktreeCreate</code>, щоб виділяти порти. Тепер у нових worktree немає <code>.env</code>, хоча <code>.worktreeinclude</code> на місці. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span><code>.worktreeinclude</code> копіює лише відстежувані файли, тож <code>.env</code> треба прибрати з <code>.gitignore</code></span></label><label class="opt"><input type="radio" name="q10"><span>Хук має друкувати останнім рядком stdout шлях до <code>.env</code>, а не до worktree</span></label><label class="opt ok"><input type="radio" name="q10"><span>Хук замінює створення worktree, і <code>.worktreeinclude</code> тоді не обробляється</span></label></div>
+    <div class="why yes">Так. Копіюйте файл у самому хуку. Заодно хук має сам видаляти свою гілку в парному <code>WorktreeRemove</code>: Claude Code гілки хука не чіпає.</div>
+    <div class="why no">Останнім рядком хук друкує шлях до worktree, а <code>.worktreeinclude</code> копіює якраз gitignored-файли — але лише з git-логікою Claude Code, яку хук вимикає.</div></div>
+  <div class="q"><div class="qt">11. Треба прогнати <code>claude -p</code> по 40 стороннім репозиторіям з GitHub. Що обов'язково?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q11"><span><code>--bare</code>: без нього <code>-p</code> виконає їхні хуки і підключить сервери з їхнього <code>.mcp.json</code></span></label><label class="opt"><input type="radio" name="q11"><span><code>-w</code> для кожного: worktree не дасть чужим хукам вийти за межі репозиторію</span></label><label class="opt"><input type="radio" name="q11"><span><code>--permission-mode dontAsk</code>: без allow-правил чужі хуки не запустяться</span></label></div>
+    <div class="why yes">Так. <code>-p</code> не питає про довіру, тож чужа конфігурація виконується на вашій машині. <code>--bare</code> бере лише те, що передано флагами.</div>
+    <div class="why no">Worktree і режим дозволів не зупиняють чужих хуків: вони відпрацьовують ще до першої відповіді моделі, а ізоляція worktree — захист від помилки агента, не sandbox. Від цього захищає <code>--bare</code> (або <code>--setting-sources user</code>, урок 3.4).</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>git worktree</td><td>Додатковий робочий каталог репозиторію з власною гілкою й index і спільним <code>.git</code>.</td></tr>
+<tr><td>claude<br>--worktree (-w)</td><td>Запуск сесії в worktree, який створює Claude Code: <code>.claude/worktrees/NAME</code>, гілка <code>worktree-NAME</code>.</td></tr>
+<tr><td>worktree<br>cleanup</td><td>Правила прибирання: інтерактивний вихід питає або видаляє чистий; <code>-p</code> лишає worktree з lock; субагентські й фонові — sweep.</td></tr>
+<tr><td>background<br>bash command</td><td>Shell-команда, що йде у фоні сесії (<code>run_in_background</code>, <code>Ctrl+B</code>); вивід у файл, керування — <code>/tasks</code>.</td></tr>
+<tr><td>background<br>subagent</td><td>Субагент, що працює паралельно з розмовою; результат приходить сповіщенням у наступному ході.</td></tr>
+<tr><td>agent view</td><td>Екран <code>claude agents</code> для фонових сесій під supervisor: стан, peek, attach; research preview.</td></tr>
+<tr><td>fan-out<br>(headless)</td><td>Запуск однотипних задач окремими <code>claude -p</code> процесами зі скрипта.</td></tr>
+<tr><td>concurrency<br>cap</td><td>Скільки агентів працюють одночасно (<code>xargs -P N</code>); решта чекає на вільний слот.</td></tr>
+<tr><td>jq over<br>stream-json</td><td>Фільтрація подій NDJSON-потоку: інструменти, помилки, останній <code>result</code>.</td></tr>
+<tr><td>exit code<br>contract<br>(headless)</td><td>Що означає код виходу і де шукати причину: 0/1/143, далі <code>subtype</code> у JSON або stderr.</td></tr>
+<tr><td>rate limits<br>(паралельні<br>агенти)</td><td>Спільні стелі для всіх агентів: 5-годинне й тижневе вікна підписки, RPM/ITPM/OTPM в API.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Два агенти у двох worktree на вашому репозиторії</h3>
+<p>Оберіть дві незалежні задачі, проженіть їх паралельно і послідовно (Claude Code <code>-w</code>, <code>codex exec --worktree</code> або <code>agent -w</code>), підготуйте середовище worktree, злийте результат і приберіть. Звіт — заміри, команди, проблеми середовища, злиття і прибирання.</p>
+<h3>2. Fan-out-скрипт з чесним підсумком</h3>
+<p>Напишіть скрипт над headless-агентом для N однотипних входів: ліміт паралельності, перевірка результату кодом, повтор через <code>--resume</code>, розрізнення причин збою, ліміт витрат. Здайте код, вивід реального прогону і розрахунок найгіршої вартості.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/worktrees" target="_blank" rel="noopener">Claude Code — Run parallel sessions with worktrees</a><span><code>--worktree</code>, <code>baseRef</code>, перевірки ізоляції, <code>.worktreeinclude</code>, прибирання</span></li>
+<li><a href="https://code.claude.com/docs/en/agents" target="_blank" rel="noopener">Claude Code — Run agents in parallel</a><span>субагенти, agent view, agent teams, workflows, projects: що обрати</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-view" target="_blank" rel="noopener">Claude Code — Manage multiple agents with agent view</a><span>research preview: <code>--bg</code>, <code>/bg</code>, <code>/fork</code>, supervisor, <code>claude agents --json</code>, ліміти</span></li>
+<li><a href="https://code.claude.com/docs/en/interactive-mode" target="_blank" rel="noopener">Claude Code — Interactive mode</a><span>фонові Bash-команди, <code>Ctrl+B</code>, обмеження</span></li>
+<li><a href="https://code.claude.com/docs/en/tools-reference" target="_blank" rel="noopener">Claude Code — Tools reference</a><span>ліміти часу фонових команд, Monitor</span></li>
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Subagents</a><span>foreground і background, <code>background</code>, <code>isolation: worktree</code></span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run Claude Code programmatically</a><span><code>-p</code>, <code>--bare</code>, фонові задачі при виході, <code>--resume</code>, SIGTERM</span></li>
+<li><a href="https://code.claude.com/docs/en/hooks" target="_blank" rel="noopener">Claude Code — Hooks reference</a><span><code>WorktreeCreate</code>, <code>WorktreeRemove</code></span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/agent-loop" target="_blank" rel="noopener">Agent SDK — How the agent loop works</a><span>підтипи результату: <code>error_max_turns</code>, <code>error_max_budget_usd</code>, запас бюджету</span></li>
+<li><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code — Manage costs effectively</a><span>ліміти на користувача, повідомлення про ліміти</span></li>
+<li><a href="https://support.claude.com/en/articles/11145838-using-claude-code-with-your-pro-or-max-plan" target="_blank" rel="noopener">Use Claude Code with your Pro or Max plan</a><span>п'ятигодинний і тижневий ліміти, спільні з Claude</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/rate-limits" target="_blank" rel="noopener">Claude API — Rate limits</a><span>RPM/ITPM/OTPM, token bucket, acceleration limits, 429 і <code>retry-after</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">Codex — Non-interactive mode</a><span><code>codex exec --json</code>, <code>-o</code>, <code>--output-schema</code>, <code>resume</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/developer-commands" target="_blank" rel="noopener">Codex — CLI commands</a><span><code>codex exec --worktree</code>, <code>exec fork</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/environments/git-worktrees" target="_blank" rel="noopener">Codex — Worktrees</a><span>керовані й постійні worktree, Handoff, ліміт 15, <code>.worktreeinclude</code></span></li>
+<li><a href="https://cursor.com/docs/cli/reference/parameters" target="_blank" rel="noopener">Cursor CLI — Parameters</a><span><code>-w</code>, <code>--worktree-base</code>, <code>--skip-worktree-setup</code>, формати виводу</span></li>
+<li><a href="https://cursor.com/docs/configuration/worktrees" target="_blank" rel="noopener">Cursor — Worktrees</a><span><code>.cursor/worktrees.json</code>, ліміт 25 на машину</span></li>
+<li><a href="https://cursor.com/docs/cli/reference/output-format" target="_blank" rel="noopener">Cursor CLI — Output format</a><span>JSON і stream-json, поведінка при збої</span></li>
+<li><a href="https://git-scm.com/docs/git-worktree" target="_blank" rel="noopener">git-worktree</a><span>довідка git: <code>add</code>, <code>list</code>, <code>lock</code>, <code>remove</code></span></li>
+<li><a href="https://jqlang.org/manual/" target="_blank" rel="noopener">jq Manual</a><span>фільтри для JSON і NDJSON</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 4.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 4.4 · Senomi<br><br><a href="lesson-21.html">← Урок 4.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-23.html">Урок 4.5 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

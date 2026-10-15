@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 2.4. Workflows проти агентів: chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 2.4 · Модуль 2</div>
+<h1>Workflows проти агентів: chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer</h1>
+<p class="lead">П'ять патернів із «Building effective agents» — це п'ять способів розподілити задачу між кодом і моделлю, і кожен має свою ціну у викликах, секундах і доларах. Реалізуємо кожен у 20–25 рядках Python поверх headless Claude Code, проганяємо на лекції Lectern, міряємо і порівнюємо з одним викликом та з агентом.</p>
+<div class="hero-meta"><span class="chip">Від моделі до агента</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 14.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Успіх у світі LLM — не в тому, щоб збудувати найвитонченішу систему, а в тому, щоб збудувати ту, яка потрібна саме вам.</p><cite>Anthropic, «Building effective agents», 19 грудня 2024 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#block"><b>01</b>Augmented LLM</a><a href="#chain"><b>02</b>Prompt chaining</a><a href="#routing"><b>03</b>Routing</a><a href="#parallel"><b>04</b>Parallelization</a><a href="#orchestrator"><b>05</b>Orchestrator-workers</a><a href="#evaluator"><b>06</b>Evaluator-optimizer</a><a href="#choose"><b>07</b>Як обирати</a><a href="#tools"><b>08</b>Патерни всередині інструментів</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розкласти AI-фічу на augmented LLM і п'ять патернів та пояснити, хто в кожному вирішує, що буде далі;</li>
+    <li>реалізувати prompt chaining, routing, parallelization, orchestrator-workers і evaluator-optimizer у 20–25 рядках коду;</li>
+    <li>передбачити для кожного патерну ціну (виклики, секунди, долари) і типовий збій ще до запуску;</li>
+    <li>обрати між одним викликом, workflow і агентом за властивостями задачі, а не за модою;</li>
+    <li>розподілити патерни між етапами Lectern і запустити його генератор квізів v0.</li>
+  </ul>
+</div>
+
+<section class="sec" id="block">
+<div class="sec-h"><span class="num">01</span><h2>Augmented LLM<span class="sub">Будівельний блок і п'ять способів його скласти</span></h2></div>
+<p>Одиниця всіх патернів — <b>augmented LLM</b>: модель, якій дали пошук (retrieval), інструменти (tools) і пам'ять (memory). Сучасні моделі користуються ними самі: формують пошукові запити, обирають інструмент, вирішують, що зберегти. Anthropic радить дві речі: підганяти ці можливості під свою задачу і давати моделі <b>простий, задокументований інтерфейс</b> до них.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 172" role="img" aria-label="Augmented LLM: модель з пошуком, інструментами і пам'яттю">
+  <defs>
+    <marker id="m12a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="m12b1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="108" height="50" rx="10" class="bx t"/>
+  <text x="62" y="29" text-anchor="middle" class="tx b">Retrieval</text>
+  <text x="62" y="46" text-anchor="middle" class="tx s">шматки лекцій</text>
+  <rect x="126" y="8" width="108" height="50" rx="10" class="bx t"/>
+  <text x="180" y="29" text-anchor="middle" class="tx b">Tools</text>
+  <text x="180" y="46" text-anchor="middle" class="tx s">функції, схеми</text>
+  <rect x="244" y="8" width="108" height="50" rx="10" class="bx t"/>
+  <text x="298" y="29" text-anchor="middle" class="tx b">Memory</text>
+  <text x="298" y="46" text-anchor="middle" class="tx s">що зберегти</text>
+  <path d="M70 60 L118 100" class="ln d" marker-start="url(#m12b1)" marker-end="url(#m12b1)"/>
+  <path d="M180 60 V100" class="ln d" marker-start="url(#m12b1)" marker-end="url(#m12b1)"/>
+  <path d="M290 60 L242 100" class="ln d" marker-start="url(#m12b1)" marker-end="url(#m12b1)"/>
+  <rect x="80" y="104" width="200" height="56" rx="12" class="bx a"/>
+  <text x="180" y="127" text-anchor="middle" class="tx b a">LLM</text>
+  <text x="180" y="146" text-anchor="middle" class="tx s">сама обирає, що взяти й зберегти</text>
+  <text x="40" y="124" text-anchor="middle" class="tx s">вхід</text>
+  <path d="M10 132 H76" class="ln a" marker-end="url(#m12a1)"/>
+  <text x="318" y="124" text-anchor="middle" class="tx s">вихід</text>
+  <path d="M284 132 H350" class="ln a" marker-end="url(#m12a1)"/>
+</svg>
+<figcaption>Augmented LLM. У коді уроку його найменша форма — функція <code>llm()</code>: один виклик моделі, лекція як retrieval, JSON Schema як інструмент структурованого виводу, історія раундів як пам'ять.</figcaption>
+</figure>
+<p>Усі приклади уроку стоять на одній функції. API-ключа тут немає, тож виклик моделі — це процес <code>claude -p</code> з порожнім набором інструментів і власним системним промптом. Модель за замовчуванням — Haiku: патерни не залежать від моделі, а вимірювати дешевше.</p>
+<pre class="code" data-lang="python"><span class="s">"""One LLM call = one `claude -p` process. Logs model, seconds and cost of every call."""</span>
+<span class="k">import</span> json, subprocess, time
+
+SYSTEM = <span class="s">"Ти — генератор навчальних матеріалів Lectern. Пиши українською, лише за наданим текстом."</span>
+LEDGER: list[dict] = []          <span class="cm"># one row per call: model, seconds, usd (client estimate)</span>
+
+
+<span class="k">def</span> llm(prompt: str, schema: dict | <span class="k">None</span> = <span class="k">None</span>, model: str = <span class="s">"haiku"</span>, system: str = SYSTEM):
+    cmd = [<span class="s">"claude"</span>, <span class="s">"-p"</span>, prompt, <span class="s">"--model"</span>, model, <span class="s">"--output-format"</span>, <span class="s">"json"</span>, <span class="s">"--tools"</span>, <span class="s">""</span>,
+           <span class="s">"--strict-mcp-config"</span>, <span class="s">"--no-session-persistence"</span>, <span class="s">"--system-prompt"</span>, system]
+    <span class="k">if</span> schema:
+        cmd += [<span class="s">"--json-schema"</span>, json.dumps(schema, ensure_ascii=<span class="k">False</span>)]
+    t = time.perf_counter()
+    run = subprocess.run(cmd, capture_output=<span class="k">True</span>, text=<span class="k">True</span>, stdin=subprocess.DEVNULL)
+    out = json.loads(run.stdout)
+    LEDGER.append({<span class="s">"model"</span>: model, <span class="s">"s"</span>: round(time.perf_counter() - t, <span class="n">2</span>), <span class="s">"usd"</span>: out[<span class="s">"total_cost_usd"</span>]})
+    <span class="k">if</span> out.get(<span class="s">"is_error"</span>):
+        <span class="k">raise</span> RuntimeError(out.get(<span class="s">"result"</span>))
+    <span class="k">return</span> out[<span class="s">"structured_output"</span>] <span class="k">if</span> schema <span class="k">else</span> out[<span class="s">"result"</span>]
+
+
+<span class="k">def</span> xml(tag: str, text) -&gt; str:
+    <span class="s">"""Wraps a piece of data in a tag, on its own lines, so the prompt separates data from orders."""</span>
+    <span class="k">return</span> <span class="s">f"""
+&lt;{tag}&gt;
+{text}
+&lt;/{tag}&gt;"""</span></pre>
+<div class="note fact"><span class="lbl">Виміряно · 14.10.2026</span>
+<p>Тривіальний виклик зі схемою: 3,1 с від запуску процесу, з них 1,8 с — запити до API (<code>duration_api_ms</code>). Решта — старт CLI, тож у прямому API кожен патерн буде швидшим на ~1–2 с на виклик. Зі <code>--json-schema</code> CLI робить <b>два ходи</b> (<code>num_turns: 2</code>): відповідь приходить окремим кроком структурованого виводу. Ціни нижче — <code>total_cost_usd</code>, оцінка клієнта за прайсом, а не рахунок. Усі прогони, показані в уроці, — 99 викликів і 3 агентні сесії — коштували разом $0,24.</p>
+</div>
+<p>Усі п'ять патернів Anthropic відносить до <b>workflows</b>: етапи і їхній порядок тримає код. Найближче до агента orchestrator-workers — там модель уже вирішує, <i>які</i> підзадачі будуть, але не те, що станеться після них. Агент тримає цикл сам.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Патерн</th><th>Хто вирішує, що далі</th><th>Що він купує</th></tr></thead>
+<tbody>
+<tr><td data-th="Патерн">Prompt chaining</td><td data-th="Хто вирішує, що далі">код: фіксований ланцюжок, між кроками — gate</td><td data-th="Що він купує">точність ціною затримки: кожен виклик простіший</td></tr>
+<tr><td data-th="Патерн">Routing</td><td data-th="Хто вирішує, що далі">класифікатор обирає гілку, гілки фіксовані</td><td data-th="Що він купує">спеціалізовані промпти й дешеві моделі для легких запитів</td></tr>
+<tr><td data-th="Патерн">Parallelization</td><td data-th="Хто вирішує, що далі">код ділить задачу або повторює її N разів</td><td data-th="Що він купує">швидкість (sectioning) або впевненість (voting)</td></tr>
+<tr><td data-th="Патерн">Orchestrator-workers</td><td data-th="Хто вирішує, що далі">модель ділить задачу, код запускає і зводить</td><td data-th="Що він купує">розбиття, яке неможливо передбачити заздалегідь</td></tr>
+<tr><td data-th="Патерн">Evaluator-optimizer</td><td data-th="Хто вирішує, що далі">код крутить цикл «згенерувати → оцінити» до межі</td><td data-th="Що він купує">якість за чіткими критеріями</td></tr>
+<tr><td data-th="Патерн">Агент</td><td data-th="Хто вирішує, що далі">модель на кожному кроці</td><td data-th="Що він купує">задачі, де кількість кроків невідома</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="chain">
+<div class="sec-h"><span class="num">02</span><h2>Prompt chaining<span class="sub">Ланцюжок із gate між кроками</span></h2></div>
+<p>Задача розкладається на фіксовані кроки, кожен виклик обробляє вихід попереднього. Між кроками стоїть <b>gate</b> — програмна перевірка, що процес не з'їхав. За Anthropic, ланцюжок <b>міняє затримку на точність</b>: кожен виклик розв'язує простішу задачу. Доречний, коли задача чисто ділиться на кроки, які відомі заздалегідь.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 252" role="img" aria-label="Prompt chaining: план, gate, квіз; при провалі gate — стоп">
+  <defs>
+    <marker id="m12a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <text x="130" y="15" text-anchor="middle" class="tx s">лекція · 577 слів</text>
+  <path d="M130 21 V36" class="ln a" marker-end="url(#m12a2)"/>
+  <rect x="20" y="38" width="220" height="46" rx="10" class="bx a"/>
+  <text x="130" y="57" text-anchor="middle" class="tx b">LLM 1 · план</text>
+  <text x="130" y="75" text-anchor="middle" class="tx s">розділи, тези, цитати</text>
+  <path d="M130 84 V100" class="ln a" marker-end="url(#m12a2)"/>
+  <rect x="20" y="102" width="220" height="46" rx="10" class="bx m"/>
+  <text x="130" y="121" text-anchor="middle" class="tx b">gate · код</text>
+  <text x="130" y="139" text-anchor="middle" class="tx s">3–6 розділів, цитати дослівні</text>
+  <path d="M130 148 V164" class="ln a" marker-end="url(#m12a2)"/>
+  <text x="140" y="160" class="tx s">pass</text>
+  <rect x="20" y="166" width="220" height="46" rx="10" class="bx a"/>
+  <text x="130" y="185" text-anchor="middle" class="tx b">LLM 2 · квіз</text>
+  <text x="130" y="203" text-anchor="middle" class="tx s">бачить лише план</text>
+  <path d="M130 212 V230" class="ln a" marker-end="url(#m12a2)"/>
+  <text x="130" y="246" text-anchor="middle" class="tx s">квіз</text>
+  <path d="M240 125 H268" class="ln" marker-end="url(#m12a2)"/>
+  <text x="254" y="117" text-anchor="middle" class="tx s">fail</text>
+  <rect x="272" y="102" width="80" height="46" rx="10" class="bx p"/>
+  <text x="312" y="121" text-anchor="middle" class="tx b">стоп</text>
+  <text x="312" y="139" text-anchor="middle" class="tx s">$0 на квіз</text>
+</svg>
+<figcaption>Gate — це код, а не модель: він дешевий, детермінований і зупиняє ланцюжок до того, як ви заплатите за наступний крок.</figcaption>
+</figure>
+<pre class="code" data-lang="python"><span class="s">"""1. Prompt chaining with a gate: lecture -&gt; outline -&gt; gate (code) -&gt; quiz."""</span>
+<span class="k">from</span> llm <span class="k">import</span> llm, obj, xml
+S, A = {<span class="s">"type"</span>: <span class="s">"string"</span>}, <span class="k">lambda</span> item: {<span class="s">"type"</span>: <span class="s">"array"</span>, <span class="s">"items"</span>: item}
+OUTLINE = obj(sections=A(obj(title=S, points=A(S), quote=S)))
+QUIZ = obj(questions=A(obj(q=S, options=A(S), answer={<span class="s">"type"</span>: <span class="s">"integer"</span>}, quote=S)))
+
+
+<span class="k">def</span> gate(outline: dict, lecture: str) -&gt; list[str]:
+    <span class="s">"""Code, not a model: returns the list of problems (empty = pass)."""</span>
+    secs = outline[<span class="s">"sections"</span>]
+    errs = [] <span class="k">if</span> <span class="n">3</span> &lt;= len(secs) &lt;= <span class="n">6</span> <span class="k">else</span> [<span class="s">f"{len(secs)} розділів, треба 3–6"</span>]
+    errs += [<span class="s">f"«{s['title']}»: цитати немає в лекції"</span> <span class="k">for</span> s <span class="k">in</span> secs <span class="k">if</span> s[<span class="s">"quote"</span>] <span class="k">not</span> <span class="k">in</span> lecture]
+    <span class="k">return</span> errs + [<span class="s">f"«{s['title']}»: &lt; 2 тез"</span> <span class="k">for</span> s <span class="k">in</span> secs <span class="k">if</span> len(s[<span class="s">"points"</span>]) &lt; <span class="n">2</span>]
+
+
+<span class="k">def</span> chain(lecture: str) -&gt; dict:
+    outline = llm(<span class="s">"Склади план лекції: 3–6 розділів, у кожному 2–4 тези і одна ДОСЛІВНА "</span>
+                  <span class="s">"цитата-речення з тексту."</span> + xml(<span class="s">"lecture"</span>, lecture), OUTLINE)
+    <span class="k">if</span> errs := gate(outline, lecture):
+        <span class="k">raise</span> ValueError(<span class="s">f"gate: {errs}"</span>)            <span class="cm"># stop before paying for the quiz</span>
+    <span class="k">return</span> llm(<span class="s">"За планом склади по одному питанню з 3 варіантами на розділ. Питання — на "</span>
+               <span class="s">"застосування, а не на пригадування; answer — індекс правильного варіанта; "</span>
+               <span class="s">"quote — цитата розділу."</span> + xml(<span class="s">"outline"</span>, outline), QUIZ)</pre>
+<p>Той самий квіз ми зробили й одним викликом (план і gate не потрібні) — по три прогони кожного варіанта, Haiku, лекція «Класичне означення ймовірності» на 577 слів:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Варіант</th><th>Викликів</th><th>Час, с</th><th>Ціна, $</th><th>Цитати дослівні</th></tr></thead>
+<tbody>
+<tr><td data-th="Варіант">Один виклик</td><td data-th="Викликів">1</td><td data-th="Час, с">10,2–14,4</td><td data-th="Ціна, $">0,0015–0,0020</td><td data-th="Цитати дослівні">12 з 12</td></tr>
+<tr><td data-th="Варіант">Chain + gate</td><td data-th="Викликів">2</td><td data-th="Час, с">24,0–24,4</td><td data-th="Ціна, $">0,0036–0,0038</td><td data-th="Цитати дослівні">16 з 16; gate пройдено 3 з 3</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Що показав вимір</span>
+<p>На короткій лекції ланцюжок <b>подвоїв ціну й час і нічого не додав</b>: один виклик уже дав усі цитати дослівно, gate не спрацював жодного разу (разом із пробними прогонами — 7 з 7). Ланцюжок окуповується, коли gate справді щось ловить (довгий PDF, слабша модель) або коли проміжний результат читає людина: у Lectern автор затверджує план до генерації. Документація Claude формулює так само: явний ланцюжок корисний, коли треба <b>бачити проміжні виходи</b> або <b>гарантувати структуру конвеєра</b>.</p>
+</div>
+<p><b>Збій:</b> gate перевіряє форму, а не зміст. У пробному прогоні питання про підмножини простору подій отримало дослівну цитату про те, що елементарні події взаємно виключні: підрядок знайдено, gate пропустив. Друга пастка — втрата контексту: крок 2 бачить лише план, тож усього, що план не зберіг, для квізу не існує.</p>
+</section>
+
+<section class="sec" id="routing">
+<div class="sec-h"><span class="num">03</span><h2>Routing<span class="sub">Класифікувати й розвести по гілках</span></h2></div>
+<p>Routing класифікує вхід і передає його спеціалізованому продовженню: окремий промпт, інструменти або модель. Без нього оптимізація під один тип запитів псує інші. Працює, коли категорії справді різні і класифікувати їх можна точно — моделлю або звичайним класифікатором.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 236" role="img" aria-label="Routing: класифікатор розводить питання на Haiku, Sonnet або шаблон">
+  <defs>
+    <marker id="m12a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <text x="180" y="15" text-anchor="middle" class="tx s">питання студента</text>
+  <path d="M180 21 V36" class="ln a" marker-end="url(#m12a3)"/>
+  <rect x="70" y="38" width="220" height="48" rx="10" class="bx m"/>
+  <text x="180" y="58" text-anchor="middle" class="tx b">router · Haiku</text>
+  <text x="180" y="76" text-anchor="middle" class="tx s">factual / conceptual / off_topic</text>
+  <path d="M150 86 L66 128" class="ln a" marker-end="url(#m12a3)"/>
+  <path d="M180 86 V128" class="ln a" marker-end="url(#m12a3)"/>
+  <path d="M210 86 L294 128" class="ln a" marker-end="url(#m12a3)"/>
+  <rect x="8" y="132" width="108" height="64" rx="10" class="bx t"/>
+  <text x="62" y="150" text-anchor="middle" class="tx s">factual</text>
+  <text x="62" y="168" text-anchor="middle" class="tx b">Haiku</text>
+  <text x="62" y="185" text-anchor="middle" class="tx s">1–2 речення</text>
+  <rect x="126" y="132" width="108" height="64" rx="10" class="bx a"/>
+  <text x="180" y="150" text-anchor="middle" class="tx s">conceptual</text>
+  <text x="180" y="168" text-anchor="middle" class="tx b">Sonnet</text>
+  <text x="180" y="185" text-anchor="middle" class="tx s">пояснення</text>
+  <rect x="244" y="132" width="108" height="64" rx="10" class="bx"/>
+  <text x="298" y="150" text-anchor="middle" class="tx s">off_topic</text>
+  <text x="298" y="168" text-anchor="middle" class="tx b">шаблон</text>
+  <text x="298" y="185" text-anchor="middle" class="tx s">без моделі</text>
+  <text x="62" y="218" text-anchor="middle" class="tx s">$0,0012–0,0015</text>
+  <text x="180" y="218" text-anchor="middle" class="tx s">$0,0154–0,0155</text>
+  <text x="298" y="218" text-anchor="middle" class="tx s">$0,0008</text>
+</svg>
+<figcaption>Під гілками — виміряна ціна одного питання разом із класифікатором.</figcaption>
+</figure>
+<pre class="code" data-lang="python"><span class="s">"""2. Routing: classify a learner's question, then send it to a different model / prompt."""</span>
+<span class="k">from</span> llm <span class="k">import</span> llm, obj, xml
+KIND = obj(kind={<span class="s">"type"</span>: <span class="s">"string"</span>, <span class="s">"enum"</span>: [<span class="s">"factual"</span>, <span class="s">"conceptual"</span>, <span class="s">"off_topic"</span>]})
+ROUTES = {  <span class="cm"># route -&gt; (model, prompt); off_topic never reaches a model</span>
+    <span class="s">"factual"</span>: (<span class="s">"haiku"</span>, <span class="s">"Відповідай одним-двома реченнями лише за лекцією."</span>),
+    <span class="s">"conceptual"</span>: (<span class="s">"sonnet"</span>, <span class="s">"Поясни ідею за лекцією: інтуїція, приклад, типова помилка. "</span>
+                             <span class="s">"До 120 слів."</span>),
+}
+
+
+<span class="k">def</span> route(question: str, lecture: str) -&gt; tuple[str, str]:
+    kind = llm(<span class="s">"Класифікуй питання студента до лекції. factual — відповідь є в тексті "</span>
+               <span class="s">"прямо; conceptual — треба пояснити «чому» або застосувати; off_topic — "</span>
+               <span class="s">"не про лекцію."</span> + xml(<span class="s">"question"</span>, question), KIND)[<span class="s">"kind"</span>]
+    <span class="k">if</span> kind == <span class="s">"off_topic"</span>:
+        <span class="k">return</span> kind, <span class="s">"Це питання поза темою лекції — поставте його викладачеві."</span>
+    model, prompt = ROUTES[kind]
+    <span class="k">return</span> kind, llm(prompt + xml(<span class="s">"lecture"</span>, lecture) + xml(<span class="s">"question"</span>, question), model=model)</pre>
+<p>П'ять питань до лекції, порівняння з варіантом без router — усе одразу на Sonnet з «пояснювальним» промптом:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Питання</th><th>Клас → модель</th><th>Час, с</th><th>Ціна, $</th></tr></thead>
+<tbody>
+<tr><td data-th="Питання">Як позначають простір елементарних подій?</td><td data-th="Клас → модель">factual → Haiku</td><td data-th="Час, с">8,1</td><td data-th="Ціна, $">0,0015</td></tr>
+<tr><td data-th="Питання">Чому для двох монет 1/2, а не 1/3?</td><td data-th="Клас → модель">conceptual → Sonnet</td><td data-th="Час, с">8,8</td><td data-th="Ціна, $">0,0154</td></tr>
+<tr><td data-th="Питання">Скільки коштує сертифікат?</td><td data-th="Клас → модель">off_topic → шаблон</td><td data-th="Час, с">5,9</td><td data-th="Ціна, $">0,0008</td></tr>
+<tr><td data-th="Питання">Чому m/n не працює для точки на відрізку?</td><td data-th="Клас → модель">conceptual → Sonnet</td><td data-th="Час, с">10,1</td><td data-th="Ціна, $">0,0155</td></tr>
+<tr><td data-th="Питання">Чому дорівнює ймовірність неможливої події?</td><td data-th="Клас → модель">factual → Haiku</td><td data-th="Час, с">11,7</td><td data-th="Ціна, $">0,0012</td></tr>
+<tr><td data-th="Питання"><b>Разом з routing</b></td><td data-th="Клас → модель">9 викликів</td><td data-th="Час, с">44,6</td><td data-th="Ціна, $">0,0344</td></tr>
+<tr><td data-th="Питання"><b>Усе на Sonnet</b></td><td data-th="Клас → модель">5 викликів</td><td data-th="Час, с">25,1</td><td data-th="Ціна, $">0,0587</td></tr>
+</tbody></table></div>
+<p>Routing зекономив <b>41%</b> грошей і коштував <b>+78%</b> часу: класифікатор — окремий виклик на кожне питання (3,7–8,4 с). Без нього Sonnet на питання «як позначають Ω?» відповів за шаблоном «інтуїція → приклад → типова помилка» — 101 слово там, де Haiku дав одне речення. Routing вибирає не лише модель, а й промпт під тип запиту.</p>
+<p><b>Збій:</b> помилка класифікатора <b>мовчазна</b> — складне питання тихо отримує дешеву модель і поверхову відповідь, і ніхто цього не бачить. Логуйте клас кожного запиту і ганяйте класифікатор на розміченому наборі (модуль 12). Затримку знімає дешевший класифікатор: регулярний вираз для очевидного off_topic, невелика модель або кеш класів. Про кеш промптів: у кожної моделі він свій (урок 1.5).</p>
+</section>
+
+<section class="sec" id="parallel">
+<div class="sec-h"><span class="num">04</span><h2>Parallelization<span class="sub">Sectioning і voting</span></h2></div>
+<p>Кілька викликів працюють одночасно, а результати зводить код. Два різновиди: <b>sectioning</b> — незалежні частини задачі паралельно; <b>voting</b> — та сама задача кілька разів, щоб отримати різні відповіді й обрати за правилом. Anthropic додає: у задачі з кількома аспектами модель працює краще, коли кожен аспект — окремий виклик.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 256" role="img" aria-label="Sectioning: код ділить лекцію на 4 частини; voting: три судді, більшість">
+  <defs>
+    <marker id="m12a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <text x="90" y="15" text-anchor="middle" class="tx b a">Sectioning</text>
+  <text x="270" y="15" text-anchor="middle" class="tx b a">Voting</text>
+  <rect x="8" y="26" width="164" height="40" rx="10" class="bx m"/>
+  <text x="90" y="51" text-anchor="middle" class="tx b">код ділить лекцію</text>
+  <path d="M60 66 L28 98" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M80 66 L70 98" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M100 66 L112 98" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M120 66 L154 98" class="ln a" marker-end="url(#m12a4)"/>
+  <rect x="10" y="100" width="36" height="36" rx="8" class="bx a"/><text x="28" y="123" text-anchor="middle" class="tx b">§1</text>
+  <rect x="52" y="100" width="36" height="36" rx="8" class="bx a"/><text x="70" y="123" text-anchor="middle" class="tx b">§2</text>
+  <rect x="94" y="100" width="36" height="36" rx="8" class="bx a"/><text x="112" y="123" text-anchor="middle" class="tx b">§3</text>
+  <rect x="136" y="100" width="36" height="36" rx="8" class="bx a"/><text x="154" y="123" text-anchor="middle" class="tx b">§4</text>
+  <path d="M28 136 L60 166" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M70 136 L80 166" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M112 136 L100 166" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M154 136 L120 166" class="ln a" marker-end="url(#m12a4)"/>
+  <rect x="8" y="168" width="164" height="40" rx="10" class="bx m"/>
+  <text x="90" y="193" text-anchor="middle" class="tx b">склеїти · код</text>
+  <text x="90" y="228" text-anchor="middle" class="tx s">4 виклики · 5,1 с</text>
+  <text x="90" y="244" text-anchor="middle" class="tx s">замість 19,6 с підряд</text>
+  <rect x="188" y="26" width="164" height="40" rx="10" class="bx"/>
+  <text x="270" y="51" text-anchor="middle" class="tx b">одне питання квізу</text>
+  <path d="M240 66 L214 98" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M270 66 V98" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M300 66 L326 98" class="ln a" marker-end="url(#m12a4)"/>
+  <rect x="190" y="100" width="48" height="36" rx="8" class="bx t"/><text x="214" y="123" text-anchor="middle" class="tx b">1</text>
+  <rect x="246" y="100" width="48" height="36" rx="8" class="bx t"/><text x="270" y="123" text-anchor="middle" class="tx b">2</text>
+  <rect x="302" y="100" width="48" height="36" rx="8" class="bx t"/><text x="326" y="123" text-anchor="middle" class="tx b">3</text>
+  <path d="M214 136 L246 166" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M270 136 V166" class="ln a" marker-end="url(#m12a4)"/>
+  <path d="M326 136 L294 166" class="ln a" marker-end="url(#m12a4)"/>
+  <rect x="188" y="168" width="164" height="40" rx="10" class="bx m"/>
+  <text x="270" y="193" text-anchor="middle" class="tx b">≥ 2 з 3 · код</text>
+  <text x="270" y="228" text-anchor="middle" class="tx s">×3 ціна, ≈1× час,</text>
+  <text x="270" y="244" text-anchor="middle" class="tx s">якщо паралельно</text>
+</svg>
+<figcaption>Судді 1–3 — та сама модель з трьома різними промптами. В обох різновидах межі задачі визначає код: де різати і як рахувати голоси.</figcaption>
+</figure>
+<pre class="code" data-lang="python"><span class="s">"""3. Parallelization: sectioning (code splits the input) and voting (same check, 3 graders)."""</span>
+<span class="k">import</span> re
+<span class="k">from</span> concurrent.futures <span class="k">import</span> ThreadPoolExecutor
+<span class="k">from</span> llm <span class="k">import</span> llm, obj, xml
+S = {<span class="s">"type"</span>: <span class="s">"string"</span>}
+CARDS = obj(cards={<span class="s">"type"</span>: <span class="s">"array"</span>, <span class="s">"items"</span>: obj(front=S, back=S)})
+VOTE = obj(correct={<span class="s">"type"</span>: <span class="s">"boolean"</span>}, reason=S)
+GRADERS = [<span class="s">"Розв'яжи задачу сам і порівняй з позначеною відповіддю."</span>,
+           <span class="s">"Знайди в лекції правило, яке перевіряє це питання, і застосуй його."</span>,
+           <span class="s">"Спробуй довести, що позначена відповідь хибна; якщо не вдається — вона правильна."</span>]
+
+
+<span class="k">def</span> sectioning(lecture: str) -&gt; list[dict]:
+    parts = re.split(<span class="s">r"(?m)^(?=\d+\. )"</span>, lecture)[<span class="n">1</span>:]       <span class="cm"># split by headings — in code</span>
+    <span class="k">with</span> ThreadPoolExecutor(len(parts)) <span class="k">as</span> ex:
+        <span class="k">return</span> list(ex.map(<span class="k">lambda</span> p: llm(<span class="s">"Дві картки (термін → визначення) за цим "</span>
+                                         <span class="s">"фрагментом."</span> + xml(<span class="s">"fragment"</span>, p), CARDS), parts))
+
+
+<span class="k">def</span> vote(item: str, lecture: str, parallel: bool = <span class="k">True</span>) -&gt; tuple[bool, list[dict]]:
+    ask = <span class="k">lambda</span> g: llm(g + xml(<span class="s">"lecture"</span>, lecture) + xml(<span class="s">"quiz_item"</span>, item), VOTE)
+    <span class="k">with</span> ThreadPoolExecutor(<span class="n">3</span> <span class="k">if</span> parallel <span class="k">else</span> <span class="n">1</span>) <span class="k">as</span> ex:
+        votes = list(ex.map(ask, GRADERS))
+    <span class="k">return</span> sum(v[<span class="s">"correct"</span>] <span class="k">for</span> v <span class="k">in</span> votes) &gt;= <span class="n">2</span>, votes          <span class="cm"># majority of 3</span></pre>
+<p><b>Sectioning:</b> лекцію розрізав регулярний вираз за заголовками, чотири виклики по 4,8–5,1 с пішли одночасно — 5,1 с замість 19,6 с послідовно, 8 карток за $0,0031. <b>Voting:</b> три судді з різними промптами перевіряють ключ питання. Ті самі три виклики послідовно і паралельно:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Питання</th><th>Голоси</th><th>Підряд, с</th><th>Паралельно, с</th></tr></thead>
+<tbody>
+<tr><td data-th="Питання">Ключ хибний (дві монети, позначено 1/3)</td><td data-th="Голоси">0 з 3 «правильно» → ключ відхилено</td><td data-th="Підряд, с">15,1</td><td data-th="Паралельно, с">6,7</td></tr>
+<tr><td data-th="Питання">Ключ правильний (C(25,3) = 2300)</td><td data-th="Голоси">3 з 3 → ключ прийнято</td><td data-th="Підряд, с">17,3</td><td data-th="Паралельно, с">7,6</td></tr>
+</tbody></table></div>
+<p>У шести парах прогонів паралельний варіант був швидшим у 2,3–3,2 раза при тій самій кількості викликів. Різниця в ціні між парами — кеш промптів, не паралельність.</p>
+<div class="note warn"><span class="lbl">Судді проголосували за дефектне питання</span>
+<p>Питання «ймовірність числа, більшого за 4» з варіантами <b>A) 1/3, B) 2/6</b>, C) 1/2 і ключем A має дві правильні відповіді. Три прогони голосування: <b>8 з 9 голосів «ключ правильний»</b>, більшість щоразу «так». Найцікавіше — у першому прогоні <b>всі три судді написали в поясненні, що 2/6 = 1/3</b>, але двоє поставили <code>correct: true</code>: ключ A справді правильний, а про те, чи він єдиний, їх не питали. Вузьке питання «які з варіантів правильні?» дало <code>["A", "B"]</code> у 3 з 3 прогонів.</p>
+</div>
+<p><b>Збій:</b> voting гасить випадкові помилки, але не систематичні. Судді з тієї самої моделі помиляються разом, а більшість ховає єдиний правильний голос меншості. Тому питайте вузько, по критерію на виклик, і обирайте поріг під ціну помилки: для квізу, який побачать тисячі студентів, — «будь-яке «ні» → людина». Sectioning ламається інакше: частини не бачать одна одну, тож дві картки можуть визначити одне поняття по-різному.</p>
+</section>
+
+<section class="sec" id="orchestrator">
+<div class="sec-h"><span class="num">05</span><h2>Orchestrator-workers<span class="sub">Модель сама ділить задачу</span></h2></div>
+<p>Центральна модель (orchestrator) динамічно розбиває задачу, роздає частини моделям-виконавцям (workers) і зводить результат. Зовні схоже на sectioning, але <b>підзадачі не задані наперед</b> — їх визначає orchestrator для конкретного входу. Канонічний приклад Anthropic — зміни в коді, де кількість файлів і характер правок залежать від задачі. Зведення робить <b>synthesizer</b>: окремий виклик, що об'єднує результати workers.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 290" role="img" aria-label="Orchestrator-workers: orchestrator планує N частин, workers роблять картки, synthesizer зводить">
+  <defs>
+    <marker id="m12a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <text x="180" y="15" text-anchor="middle" class="tx s">лекція</text>
+  <path d="M180 21 V36" class="ln a" marker-end="url(#m12a5)"/>
+  <rect x="50" y="38" width="260" height="48" rx="10" class="bx a"/>
+  <text x="180" y="58" text-anchor="middle" class="tx b">orchestrator · LLM</text>
+  <text x="180" y="76" text-anchor="middle" class="tx s">вирішує: скільки частин і що в кожній</text>
+  <path d="M120 86 L48 124" class="ln a" marker-end="url(#m12a5)"/>
+  <path d="M160 86 L136 124" class="ln a" marker-end="url(#m12a5)"/>
+  <path d="M200 86 L224 124" class="ln a" marker-end="url(#m12a5)"/>
+  <path d="M240 86 L312 124" class="ln a" marker-end="url(#m12a5)"/>
+  <rect x="8" y="128" width="80" height="44" rx="8" class="bx t"/><text x="48" y="147" text-anchor="middle" class="tx b">worker 1</text><text x="48" y="164" text-anchor="middle" class="tx s">своя частина</text>
+  <rect x="96" y="128" width="80" height="44" rx="8" class="bx t"/><text x="136" y="147" text-anchor="middle" class="tx b">worker 2</text><text x="136" y="164" text-anchor="middle" class="tx s">своя частина</text>
+  <rect x="184" y="128" width="80" height="44" rx="8" class="bx t"/><text x="224" y="147" text-anchor="middle" class="tx b">worker 3</text><text x="224" y="164" text-anchor="middle" class="tx s">своя частина</text>
+  <rect x="272" y="128" width="80" height="44" rx="8" class="bx t"/><text x="312" y="147" text-anchor="middle" class="tx b">… N</text><text x="312" y="164" text-anchor="middle" class="tx s">N = 6–15</text>
+  <path d="M48 172 L120 206" class="ln a" marker-end="url(#m12a5)"/>
+  <path d="M136 172 L160 206" class="ln a" marker-end="url(#m12a5)"/>
+  <path d="M224 172 L200 206" class="ln a" marker-end="url(#m12a5)"/>
+  <path d="M312 172 L240 206" class="ln a" marker-end="url(#m12a5)"/>
+  <rect x="50" y="208" width="260" height="48" rx="10" class="bx m"/>
+  <text x="180" y="228" text-anchor="middle" class="tx b">synthesizer · LLM</text>
+  <text x="180" y="246" text-anchor="middle" class="tx s">дублікати, стиль, порядок тем</text>
+  <path d="M180 256 V272" class="ln a" marker-end="url(#m12a5)"/>
+  <text x="180" y="286" text-anchor="middle" class="tx s">колода карток</text>
+</svg>
+<figcaption>Критичний шлях — план + найповільніший worker + synthesizer. Workers паралельні, а orchestrator і synthesizer завжди послідовні.</figcaption>
+</figure>
+<pre class="code" data-lang="python"><span class="s">"""4. Orchestrator-workers: the model decides the subtasks; workers run them; a synthesizer merges."""</span>
+<span class="k">from</span> concurrent.futures <span class="k">import</span> ThreadPoolExecutor
+<span class="k">from</span> llm <span class="k">import</span> llm, obj, xml
+S, I = {<span class="s">"type"</span>: <span class="s">"string"</span>}, {<span class="s">"type"</span>: <span class="s">"integer"</span>}
+PLAN = obj(subtasks={<span class="s">"type"</span>: <span class="s">"array"</span>, <span class="s">"items"</span>: obj(topic=S, start=S, n_cards=I, focus=S)})
+CARDS = obj(cards={<span class="s">"type"</span>: <span class="s">"array"</span>, <span class="s">"items"</span>: obj(front=S, back=S)})
+
+
+<span class="k">def</span> orchestrate(lecture: str, max_parts: int | <span class="k">None</span> = <span class="n">6</span>) -&gt; tuple[dict, list, dict]:
+    cap = <span class="s">f"не більше {max_parts} "</span> <span class="k">if</span> max_parts <span class="k">else</span> <span class="s">""</span>
+    plan = llm(<span class="s">f"Розбий лекцію на {cap}смислові частини для карток. Для кожної: topic; start — "</span>
+               <span class="s">"перші 5–8 слів частини ДОСЛІВНО; n_cards 1–4 за щільністю; focus — що "</span>
+               <span class="s">"перевірити."</span> + xml(<span class="s">"lecture"</span>, lecture), PLAN)
+    starts = [lecture.find(t[<span class="s">"start"</span>]) <span class="k">for</span> t <span class="k">in</span> plan[<span class="s">"subtasks"</span>]]     <span class="cm"># -1 = not verbatim</span>
+    <span class="k">def</span> work(i: int) -&gt; dict:                                  <span class="cm"># a worker sees only its slice</span>
+        t, a = plan[<span class="s">"subtasks"</span>][i], starts[i]
+        part = lecture[a:min([s <span class="k">for</span> s <span class="k">in</span> starts <span class="k">if</span> s &gt; a], default=<span class="k">None</span>)] <span class="k">if</span> a &gt;= <span class="n">0</span> <span class="k">else</span> lecture
+        <span class="k">return</span> llm(<span class="s">f"{t['n_cards']} карток про «{t['topic']}». Фокус: {t['focus']}."</span>
+                   + xml(<span class="s">"part"</span>, part), CARDS)
+    <span class="k">with</span> ThreadPoolExecutor(<span class="n">8</span>) <span class="k">as</span> ex:
+        drafts = list(ex.map(work, range(len(plan[<span class="s">"subtasks"</span>]))))
+    deck = llm(<span class="s">"Ти — synthesizer. Об'єднай картки в одну колоду: прибери дублікати й "</span>
+               <span class="s">"перекриття, вирівняй стиль, збережи порядок тем."</span> + xml(<span class="s">"drafts"</span>, drafts), CARDS)
+    <span class="k">return</span> plan, drafts, deck</pre>
+<p>Задача та сама, що в sectioning, — картки з лекції, — але межі частин тепер обирає модель. Перевірка в коді: <code>start</code> має бути дослівним початком частини, інакше worker отримує всю лекцію.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Прогін</th><th>Частин</th><th>Викликів</th><th>Час, с</th><th>Ціна, $</th><th>Карток: workers → колода</th></tr></thead>
+<tbody>
+<tr><td data-th="Прогін">Sectioning (межі — код)</td><td data-th="Частин">4</td><td data-th="Викликів">4</td><td data-th="Час, с">5,1</td><td data-th="Ціна, $">0,0031</td><td data-th="Карток: workers → колода">8</td></tr>
+<tr><td data-th="Прогін">Без обмеження, прогін 1</td><td data-th="Частин">15</td><td data-th="Викликів">17</td><td data-th="Час, с">70,0</td><td data-th="Ціна, $">0,0230</td><td data-th="Карток: workers → колода">25 → 21</td></tr>
+<tr><td data-th="Прогін">Без обмеження, прогін 2</td><td data-th="Частин">9</td><td data-th="Викликів">11</td><td data-th="Час, с">55,2</td><td data-th="Ціна, $">0,0155</td><td data-th="Карток: workers → колода">21 → 18</td></tr>
+<tr><td data-th="Прогін">Без обмеження, прогін 3</td><td data-th="Частин">10</td><td data-th="Викликів">12</td><td data-th="Час, с">85,5</td><td data-th="Ціна, $">0,0194</td><td data-th="Карток: workers → колода">22 → 21</td></tr>
+<tr><td data-th="Прогін"><code>max_parts=6</code></td><td data-th="Частин">6</td><td data-th="Викликів">8</td><td data-th="Час, с">39,0</td><td data-th="Ціна, $">0,0099</td><td data-th="Карток: workers → колода">11 → 11</td></tr>
+</tbody></table></div>
+<p>Той самий вхід дав 9, 10 і 15 частин: orchestrator дробить 577 слів аж до окремих «запитань для самоперевірки». З обмеженням у промпті — рівно 6 частин в обох прогонах. Synthesizer виявився <b>найповільнішим кроком</b>: 17,5 с і 46,0 с — близько половини часу прогону і третина ціни, — а прибрав 0–1 картку. Дублікати карток дешевше знімати кодом (нормалізувати <code>front</code>), а synthesizer лишити для конфліктів, які код не бачить.</p>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Правило вибору: якщо межі частин можна обчислити кодом (заголовки, файли, сторінки), беріть sectioning — у нашому вимірі він у 3–7 разів дешевший і в 8–17 разів швидший. Orchestrator-workers потрібен, коли розбиття залежить від змісту і його неможливо передбачити. У продакшн-системі Research з Anthropic (червень 2025) orchestrator — Opus 4, workers — Sonnet 4; вона випередила одиночного агента Opus 4 на <b>90,2%</b> на внутрішньому eval, але <b>мультиагентні системи витрачають приблизно у 15 разів більше токенів, ніж чат</b>. Команди агентів детально — у модулі 14.</p>
+</div>
+</section>
+
+<section class="sec" id="evaluator">
+<div class="sec-h"><span class="num">06</span><h2>Evaluator-optimizer<span class="sub">Генерувати, оцінити, переробити</span></h2></div>
+<p>Один виклик генерує, інший оцінює й дає зворотний зв'язок, і так по колу. Anthropic називає дві ознаки, що патерн доречний: відповідь <b>помітно кращає</b>, коли людина формулює зауваження, і модель <b>здатна сформулювати такі зауваження сама</b>. Без чітких критеріїв цикл перетворюється на дороге перефразування.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 224" role="img" aria-label="Evaluator-optimizer: generator і evaluator у циклі до трьох раундів">
+  <defs>
+    <marker id="m12a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="m12b6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <text x="83" y="15" text-anchor="middle" class="tx s">тема + лекція</text>
+  <path d="M83 21 V36" class="ln a" marker-end="url(#m12a6)"/>
+  <rect x="8" y="38" width="150" height="52" rx="10" class="bx a"/>
+  <text x="83" y="60" text-anchor="middle" class="tx b">generator</text>
+  <text x="83" y="78" text-anchor="middle" class="tx s">питання квізу</text>
+  <rect x="202" y="38" width="150" height="52" rx="10" class="bx m"/>
+  <text x="277" y="60" text-anchor="middle" class="tx b">evaluator</text>
+  <text x="277" y="78" text-anchor="middle" class="tx s">c1–c4 + перевірки кодом</text>
+  <path d="M158 64 H198" class="ln a" marker-end="url(#m12a6)"/>
+  <path d="M250 90 C 250 132, 110 132, 110 94" class="ln d" marker-end="url(#m12b6)"/>
+  <text x="180" y="146" text-anchor="middle" class="tx s">issues → новий раунд, ≤ 3</text>
+  <path d="M320 90 V164" class="ln a" marker-end="url(#m12a6)"/>
+  <rect x="262" y="166" width="90" height="46" rx="10" class="bx t"/>
+  <text x="307" y="186" text-anchor="middle" class="tx b">pass</text>
+  <text x="307" y="203" text-anchor="middle" class="tx s">у курс</text>
+  <path d="M40 90 V164" class="ln" marker-end="url(#m12b6)"/>
+  <rect x="8" y="166" width="150" height="46" rx="10" class="bx p"/>
+  <text x="83" y="186" text-anchor="middle" class="tx b">3 раунди без pass</text>
+  <text x="83" y="203" text-anchor="middle" class="tx s">→ людині</text>
+</svg>
+<figcaption>Межа раундів і вихід «до людини» — частина патерну, а не прикраса: генератор, який не може задовольнити рецензента, інакше крутиться до вичерпання бюджету.</figcaption>
+</figure>
+<p>Це генератор квізів Lectern v0. Він пройшов три версії, і кожна виправляла збій, виміряний на попередній:</p>
+<pre class="code" data-lang="python"><span class="k">from</span> llm <span class="k">import</span> llm, obj, xml
+S, B = {<span class="s">"type"</span>: <span class="s">"string"</span>}, {<span class="s">"type"</span>: <span class="s">"boolean"</span>}
+ITEM = obj(q=S, options={<span class="s">"type"</span>: <span class="s">"array"</span>, <span class="s">"items"</span>: S, <span class="s">"minItems"</span>: <span class="n">3</span>, <span class="s">"maxItems"</span>: <span class="n">3</span>},
+           answer={<span class="s">"type"</span>: <span class="s">"integer"</span>, <span class="s">"minimum"</span>: <span class="n">0</span>, <span class="s">"maximum"</span>: <span class="n">2</span>}, quote=S)
+VERDICT = obj(c1=B, c2=B, c3=B, c4=B, issues={<span class="s">"type"</span>: <span class="s">"array"</span>, <span class="s">"items"</span>: S})  <span class="cm"># one bool per criterion</span>
+CRITERIA = <span class="s">"""1) рівно один правильний варіант — перевір КОЖЕН окремо;
+2) дистрактори — типові помилки студентів, а не випадкові значення;
+3) питання на застосування в новій ситуації, а не на пригадування тексту;
+4) quote — дослівне речення лекції, яке обґрунтовує відповідь."""</span>
+
+<span class="k">def</span> generate_quiz_item(topic: str, lecture: str, max_rounds: int = <span class="n">3</span>) -&gt; tuple[dict | <span class="k">None</span>, list]:
+    history, feedback = [], <span class="s">""</span>
+    <span class="k">for</span> rnd <span class="k">in</span> range(<span class="n">1</span>, max_rounds + <span class="n">1</span>):
+        item = llm(<span class="s">f"Одне питання квізу на тему «{topic}» за критеріями:"</span> + xml(<span class="s">"criteria"</span>, CRITERIA)
+                   + xml(<span class="s">"lecture"</span>, lecture) + feedback, ITEM)
+        v = llm(<span class="s">"Ти — суворий рецензент, не виправляй сам. c1–c4: true, лише якщо критерій виконано "</span>
+                <span class="s">"ПОВНІСТЮ; issues — тільки недоліки."</span> + xml(<span class="s">"criteria"</span>, CRITERIA)
+                + xml(<span class="s">"lecture"</span>, lecture) + xml(<span class="s">"quiz_item"</span>, item), VERDICT)
+        v[<span class="s">"c4"</span>] = v[<span class="s">"c4"</span>] <span class="k">and</span> item[<span class="s">"quote"</span>] <span class="k">in</span> lecture              <span class="cm"># code check beats a model's word</span>
+        unchanged = bool(history) <span class="k">and</span> item == history[-<span class="n">1</span>][<span class="s">"item"</span>]   <span class="cm"># a re-roll of the judge is not a fix</span>
+        passed = all(v[c] <span class="k">for</span> c <span class="k">in</span> (<span class="s">"c1"</span>, <span class="s">"c2"</span>, <span class="s">"c3"</span>, <span class="s">"c4"</span>)) <span class="k">and</span> <span class="k">not</span> unchanged
+        history.append(dict(v, round=rnd, item=item, passed=passed, unchanged=unchanged))
+        <span class="k">if</span> passed: <span class="k">return</span> item, history
+        feedback = xml(<span class="s">"previous_attempt"</span>, item) + xml(<span class="s">"reviewer_issues"</span>, v[<span class="s">"issues"</span>])
+    <span class="k">return</span> <span class="k">None</span>, history                        <span class="cm"># 3 rounds failed: to a human, never to students</span></pre>
+<ol class="steps">
+<li><b>Один boolean <code>passed</code> від рецензента.</b> 2 з 2 тем пройшли в першому раунді, хоча в тих самих відповідях рецензент написав «критерій 4 виконано частково» і «індексація відповіді неоднозначна». Цілісна оцінка поблажлива: модель знаходить недолік і все одно ставить «так».</li>
+<li><b>Boolean на кожен критерій, вердикт рахує код.</b> 2 з 3 тем пішли на другий раунд, але в одній генератор повернув <b>те саме питання байт у байт</b>, і рецензент цього разу його пропустив. Цикл «зійшовся» на шумі судді, а не на виправленні. Ще один прохід прийняв питання з 4 варіантами, хоча просили 3.</li>
+<li><b>v0:</b> повтор без змін не зараховується, кількість варіантів і діапазон <code>answer</code> задає схема, дослівність цитати перевіряє код.</li>
+</ol>
+<p>v0 на дев'яти темах лекції — усі 28 викликів збережено в <code>console/</code>. Один прогін повністю:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>evaluator.json — «достовірна і неможлива подія»</span></div>
+<pre><span class="y">раунд 1</span>  c1 <span class="ok">✓</span>  c2 <span class="er">✗</span>  c3 <span class="ok">✓</span>  c4 <span class="ok">✓</span>
+  Кубик кидають один раз. Яка з наведених подій є достовірною?
+  [випаде число, більше за чотири] [<span class="ok">випаде число, менше за сім</span>] [випаде число, більше за шість]
+<span class="d">  issues: «Дистрактори не побудовані на типових помилках студентів. […] «випаде число,
+  більше за шість» — очевидно неможлива подія; студент її обрав би лише через неуважність,
+  а не через поширене хибне уявлення.»</span>
+<span class="y">раунд 2</span>  c1 <span class="ok">✓</span>  c2 <span class="ok">✓</span>  c3 <span class="ok">✓</span>  c4 <span class="ok">✓</span>  <span class="ok">→ pass</span>
+  Гральний кубик кидають один раз. Яка з наведених подій є достовірною?
+  [випаде число, більше за два] [<span class="ok">випаде число, менше за сім</span>] [випаде число, яке ділиться на два або на три]
+
+<span class="d">2 раунди · 4 виклики · 51,8 с · $0,0084</span></pre>
+<div class="cap">реальний вивід · Haiku 5.5 через claude -p 2.1.299 · 14.10.2026 · відформатовано з JSON</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Результат</th><th>Тем</th><th>Викликів на тему</th><th>Час, с</th><th>Ціна, $</th></tr></thead>
+<tbody>
+<tr><td data-th="Результат">pass у 1-му раунді</td><td data-th="Тем">5</td><td data-th="Викликів на тему">2</td><td data-th="Час, с">15,7–22,5</td><td data-th="Ціна, $">0,0034–0,0040</td></tr>
+<tr><td data-th="Результат">pass у 2-му раунді</td><td data-th="Тем">3</td><td data-th="Викликів на тему">4</td><td data-th="Час, с">41,7–51,8</td><td data-th="Ціна, $">0,0074–0,0087</td></tr>
+<tr><td data-th="Результат">3 раунди без pass → людині</td><td data-th="Тем">1</td><td data-th="Викликів на тему">6</td><td data-th="Час, с">68,3</td><td data-th="Ціна, $">0,0124</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Pass ≠ добре питання</span>
+<p>З восьми прийнятих питань <b>чотири мають дефект поза критеріями</b>. У трьох варіанти несуть пояснення міркування, а в одному прямо написано «1 — правильно: усі шість елементарних подій сприятливі» поруч із «1/6 — помилка: …». У двох випадках рецензент сам назвав підказки в <code>issues</code>, але поставив c1–c4 <code>true</code>: такого критерію не було. У четвертому генератор на темі «статистичне і геометричне означення» після зауваження до цитати <b>змінив тему</b> на кубик — і пройшов. Optimizer задовольняє критерії будь-яким шляхом, зокрема підміною задачі. Що не записано в критеріях і не перевірено кодом, того рецензент не гарантує.</p>
+</div>
+<p>У прикладі з cookbook Anthropic цикл — <code>while True</code> до <code>PASS</code>, без межі раундів; для демонстрації це нормально, у продукті — ні. <b>Збої патерну:</b> поблажливий або шумний рецензент; генератор обходить критерії; рецензент і генератор з однієї моделі мають спільні сліпі плями (як судді у voting); ціна росте лінійно з кількістю раундів.</p>
+</section>
+
+<section class="sec" id="choose">
+<div class="sec-h"><span class="num">07</span><h2>Як обирати<span class="sub">Таблиця рішень і правило «start simple»</span></h2></div>
+<p>Множники нижче — з наших прогонів, відносно одного виклику Haiku, який робить квіз з лекції за 12,4 с і $0,0018 (середнє з трьох). Абсолютні секунди включають старт CLI; відношення переносяться на API.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Властивість задачі</th><th>Патерн</th><th>Ціна і затримка (виміряно)</th><th>Головний ризик</th></tr></thead>
+<tbody>
+<tr><td data-th="Властивість задачі">Кроки відомі, проміжний результат варто перевірити або показати людині</td><td data-th="Патерн">Prompt chaining + gate</td><td data-th="Ціна і затримка (виміряно)">2 виклики: ×2,1 ціни, ×2,0 часу</td><td data-th="Головний ризик">gate перевіряє форму, а не зміст</td></tr>
+<tr><td data-th="Властивість задачі">Запити діляться на класи різної складності</td><td data-th="Патерн">Routing</td><td data-th="Ціна і затримка (виміряно)">+1 виклик на запит; −41% ціни проти «все на Sonnet», +78% часу</td><td data-th="Головний ризик">помилка класифікатора непомітна</td></tr>
+<tr><td data-th="Властивість задачі">Незалежні частини, межі обчислює код</td><td data-th="Патерн">Sectioning</td><td data-th="Ціна і затримка (виміряно)">N викликів; час ≈ найдовшої частини (5,1 с замість 19,6)</td><td data-th="Головний ризик">частини не бачать одна одну</td></tr>
+<tr><td data-th="Властивість задачі">Бінарне рішення, якому треба довіряти</td><td data-th="Патерн">Voting</td><td data-th="Ціна і затримка (виміряно)">×3 ціни; паралельно ≈1× часу, у 2,3–3,2 раза швидше, ніж підряд</td><td data-th="Головний ризик">корельовані судді помиляються разом</td></tr>
+<tr><td data-th="Властивість задачі">Розбиття залежить від змісту і непередбачуване</td><td data-th="Патерн">Orchestrator-workers</td><td data-th="Ціна і затримка (виміряно)">8–17 викликів; ×3–7 ціни і ×8–17 часу проти sectioning</td><td data-th="Головний ризик">роздроблення; synthesizer — вузьке місце</td></tr>
+<tr><td data-th="Властивість задачі">Є чіткі критерії, ітерація дає виміряний приріст</td><td data-th="Патерн">Evaluator-optimizer</td><td data-th="Ціна і затримка (виміряно)">2–6 викликів на елемент; ×2–7 ціни одного</td><td data-th="Головний ризик">поблажливий рецензент, обхід критеріїв</td></tr>
+<tr><td data-th="Властивість задачі">Кількість кроків невідома, потрібні інструменти в циклі</td><td data-th="Патерн">Агент</td><td data-th="Ціна і затримка (виміряно)">6–9 ходів; ×2,9 ціни, ×2,3 часу на цій задачі</td><td data-th="Головний ризик">непередбачуваний шлях і побічні дії</td></tr>
+</tbody></table></div>
+<h3>Та сама задача — агентові</h3>
+<p>Щоб порівняти чесно, ту саму роботу — квіз з дослівними цитатами — віддали агентові: Haiku, той самий системний промпт, інструменти <code>Read</code>, <code>Write</code>, <code>Grep</code>, кроки він обирає сам.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — agent/1</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "У lecture.txt — лекція. Склади квіз у quiz.json […] quote — ДОСЛІВНЕ речення з лекції. Перед завершенням перевір, що кожна quote є в lecture.txt дослівно, і виправ, якщо ні." --model haiku --tools "Read,Write,Grep" --allowedTools "Read,Write,Grep" --permission-mode acceptEdits --strict-mcp-config --no-session-persistence --system-prompt "Ти — генератор навчальних матеріалів Lectern. Пиши українською, лише за наданим текстом." --output-format stream-json --verbose &lt; /dev/null &gt; run.jsonl</span></pre>
+<div class="cap">реальна команда · 14.10.2026 · промпт скорочено, повний — у console/agent_task.sh</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run.jsonl — кроки агента, прогін 1</span></div>
+<pre><span class="y">● Read</span>  lecture.txt
+<span class="y">● Write</span> quiz.json
+<span class="y">● Write</span> <span class="er">../../../verify_quotes.py</span>
+<span class="d">  # поза робочою папкою</span>
+<span class="y">● Grep</span>  "quiz" <span class="d">⎿ run.jsonl</span>
+<span class="c">  Виконати скрипт не можу, тому перевірю кожну цитату пошуком по файлу лекції.</span>
+<span class="y">● Grep</span>  "Для кубика — із шести: …"
+<span class="d">  ⎿ 1 збіг</span>
+<span class="y">● Grep</span>  "Для парного числа на кубику …"
+<span class="d">  ⎿ 1 збіг</span>
+<span class="y">● Grep</span>  "Правильний простір складається …"
+<span class="d">  ⎿ 1 збіг</span>
+<span class="y">● Grep</span>  "Загальна кількість способів …"
+<span class="d">  ⎿ 1 збіг</span>
+
+<span class="d">result · num_turns 9 · duration 25,9 с · total_cost_usd 0,0050</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299 · шляхи скорочено</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Варіант (по 3 прогони)</th><th>Викликів / ходів</th><th>Час, с</th><th>Ціна, $</th><th>Цитати дослівні</th></tr></thead>
+<tbody>
+<tr><td data-th="Варіант (по 3 прогони)">Один виклик</td><td data-th="Викликів / ходів">1</td><td data-th="Час, с">10,2–14,4</td><td data-th="Ціна, $">0,0015–0,0020</td><td data-th="Цитати дослівні">12 з 12</td></tr>
+<tr><td data-th="Варіант (по 3 прогони)">Chain + gate</td><td data-th="Викликів / ходів">2</td><td data-th="Час, с">24,0–24,4</td><td data-th="Ціна, $">0,0036–0,0038</td><td data-th="Цитати дослівні">16 з 16</td></tr>
+<tr><td data-th="Варіант (по 3 прогони)">Агент</td><td data-th="Викликів / ходів">6–9</td><td data-th="Час, с">25,9–30,8</td><td data-th="Ціна, $">0,0050–0,0054</td><td data-th="Цитати дослівні">12 з 12</td></tr>
+</tbody></table></div>
+<p>Агент упорався, але кожен прогін ішов своїм шляхом: в одному він записав допоміжний скрипт <b>за межами своєї папки</b>, у двох пробував викликати <code>Bash</code>, якого йому не давали. Документація Claude прямо попереджає, що нові моделі створюють тимчасові файли як «чернетку». Це і є ціна агента: не долари, а передбачуваність і побічні дії. Межі дозволів — урок 2.3.</p>
+<div class="key"><h4>Правило вибору</h4>
+<p><b>Блок-схему можна намалювати до запуску → workflow.</b> Lectern: «лекція → план → квіз», «питання → клас → відповідь». <b>Наступний крок залежить від знайденого, і кроків може бути 2 або 20 → агент.</b> Lectern: цитата не знайшлася дослівно — треба шукати сторінку, інше видання, слід OCR. <b>Start simple:</b> почніть з одного виклику з retrieval і прикладами, міряйте на eval-наборі й додавайте крок лише тоді, коли він <i>доведено</i> покращує результат. На нашій лекції один виклик уже виконав критерій якості, а chain і агент коштували у 2–3 рази більше.</p>
+</div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">08</span><h2>Патерни всередині інструментів<span class="sub">Claude Code, Codex, Cursor</span></h2></div>
+<p>Ті самі п'ять патернів вбудовані в coding-асистентів. Знаючи, який саме працює, ви передбачаєте його ціну.</p>
+<div class="tabs">
+<input type="radio" name="pat-t" id="pat-t1" checked><input type="radio" name="pat-t" id="pat-t2"><input type="radio" name="pat-t" id="pat-t3">
+<div class="tab-l"><label for="pat-t1">Claude Code</label><label for="pat-t2">Codex</label><label for="pat-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Subagents → orchestrator-workers.</b> Кожен субагент працює у власному контекстному вікні, «досліджує свою ділянку незалежно, потім Claude синтезує результати». Orchestrator і synthesizer тут — сама сесія, і вирішує вона хід за ходом. Типово до 20 субагентів одночасно і до трьох рівнів вкладеності.</li>
+<li><b>Поле <code>model</code> субагента → routing.</b> Дешеву роботу можна віддати <code>haiku</code>, складну — <code>opus</code>.</li>
+<li><b>Hooks → gate й evaluator.</b> <code>PreToolUse</code> з кодом виходу 2 блокує виклик інструмента — це gate. <code>Stop</code> з <code>"decision": "block"</code> і <code>reason</code> не дає Claude зупинитися, і він продовжує з цим зворотним зв'язком — evaluator-optimizer, де рецензент — ваш скрипт. Hook типу <code>prompt</code> — одноразова оцінка моделлю, що повертає рішення в JSON.</li>
+<li><b>Dynamic workflows → workflow у прямому сенсі.</b> Claude пише JavaScript-скрипт, який оркеструє десятки субагентів; документація формулює різницю так само, як цей урок: у субагентів наступний крок вирішує Claude, у workflow — <b>скрипт</b>. Вбудований <code>/deep-research</code> розсилає пошук за кількома напрямками, звіряє джерела, <b>голосує за кожне твердження</b> і синтезує звіт — sectioning, voting і synthesizer разом.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Subagent workflows → orchestrator-workers за вашою вказівкою.</b> Codex запускає субагентів, лише коли ви прямо попросите (або цього вимагають <code>AGENTS.md</code> чи skill), і збирає їхні результати в одну відповідь. Приклад з документації — sectioning за аспектами з синтезом: «один субагент на ризики безпеки, один на прогалини в тестах, один на підтримуваність; дочекайся всіх трьох і підсумуй».</li>
+<li><b>Модель на агента → routing.</b> Субагент успадковує модель і reasoning effort батька, якщо їх не задати в <code>[agents]</code> у <code>config.toml</code> або у файлі власного агента.</li>
+<li>Документація попереджає про ціну: кожен субагент робить власну роботу з моделлю й інструментами, тож витрачає <b>більше токенів</b>, ніж один агент. <code>/subagents</code> показує потоки агентів під час роботи.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Subagents → orchestrator-workers.</b> Агент Cursor делегує задачі субагентам, кожен з власним контекстним вікном. Вбудований Explore за замовчуванням працює на швидшій моделі — це routing. Власні субагенти — markdown з YAML у <code>.cursor/agents/</code>, поле <code>model</code> типово <code>inherit</code>.</li>
+<li><b><code>/best-of-n</code> → parallelization: voting.</b> Та сама задача на кількох моделях одночасно, кожна у своєму git worktree. Порівнює і обирає переможця <b>людина</b>: команда сама нічого не зливає.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: патерн для кожного етапу</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Етап Lectern</th><th>Патерн</th><th>Чому саме він</th><th>Перевірка кодом</th></tr></thead>
+<tbody>
+<tr><td data-th="Етап Lectern">Ingest: PDF → текст, розділи</td><td data-th="Патерн">без LLM; sectioning для резюме розділів</td><td data-th="Чому саме він">межі — заголовки і сторінки, їх знаходить парсер</td><td data-th="Перевірка кодом">кожен розділ непорожній, сума довжин = довжина тексту</td></tr>
+<tr><td data-th="Етап Lectern">Outline</td><td data-th="Патерн">prompt chaining + gate + затвердження автором</td><td data-th="Чому саме він">кроки відомі; план — артефакт, який читає людина</td><td data-th="Перевірка кодом">3–6 розділів, цитати дослівні</td></tr>
+<tr><td data-th="Етап Lectern">Lesson: текст уроку</td><td data-th="Патерн">sectioning за розділами плану</td><td data-th="Чому саме він">після плану межі відомі, частини незалежні</td><td data-th="Перевірка кодом">кожен розділ плану має урок</td></tr>
+<tr><td data-th="Етап Lectern">Quiz</td><td data-th="Патерн">evaluator-optimizer (v0 з цього уроку), питання — паралельно</td><td data-th="Чому саме він">критерії чіткі, раунд виправлення виміряно корисний</td><td data-th="Перевірка кодом">3 варіанти, діапазон <code>answer</code>, цитата дослівна, повтор не зараховується</td></tr>
+<tr><td data-th="Етап Lectern">Citation check</td><td data-th="Патерн">код; для спірних — voting з порогом «будь-яке ні → людина»; пошук у PDF без збігу — агент</td><td data-th="Чому саме він">дослівний збіг вирішує код (урок 1.4); кількість кроків пошуку джерела невідома</td><td data-th="Перевірка кодом">підрядок у тексті джерела</td></tr>
+<tr><td data-th="Етап Lectern">Питання студентів</td><td data-th="Патерн">routing</td><td data-th="Чому саме він">класи різні за складністю і ціною</td><td data-th="Перевірка кодом">клас логується, класифікатор — на розміченому наборі</td></tr>
+</tbody></table></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 2.4 · генератор квізів v0</div><div class="pb">
+<p>Покладіть <code>llm.py</code> і <code>evaluator.py</code> з уроку в <code>src/lectern/</code> (як <code>llm.py</code> і <code>quizgen.py</code>, імпорт — <code>from .llm import …</code>). Проженіть <code>generate_quiz_item</code> на власній лекції з 3–5 темами і збережіть історію раундів у JSON — це перший eval-набір генератора. Потім закрийте дві виміряні дірки: додайте критерій 5 «питання на задану тему, варіанти без пояснень і без слів «правильно»/«помилка»» і кодову перевірку, що жоден варіант не містить двокрапки чи тире з поясненням. Повторіть прогін і порівняйте частку pass і ціну на питання.</p>
+</div></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Задача → патерн</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">200 уроків → англійська</span><span class="h">кожен урок — окремий файл</span></span><span class="b"><span class="t">Sectioning</span><span class="d">межі задає файлова система; orchestrator тут — зайві виклики</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Чат курсу</span><span class="h">70% питань — про дедлайни</span></span><span class="b"><span class="t">Routing</span><span class="d">дедлайни — шаблон або Haiku, пояснення теми — сильніша модель</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Рев'ю безпеки PR</span><span class="h">пропуск коштує дорого</span></span><span class="b"><span class="t">Voting з порогом</span><span class="d">вузькі перевірки паралельно; будь-яке «ні» → людина</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">План → текст</span><span class="h">план затверджує редактор</span></span><span class="b"><span class="t">Prompt chaining + gate</span><span class="d">проміжний результат читає людина — ланцюжок окуповується</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Переклад віршів</span><span class="h">є критерії ритму й рими</span></span><span class="b"><span class="t">Evaluator-optimizer</span><span class="d">критерії чіткі, зауваження реально покращують текст</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Звіт з 40 джерел</span><span class="h">які джерела — невідомо</span></span><span class="b"><span class="t">Orchestrator-workers</span><span class="d">розбиття залежить від змісту; синтез — окремий крок</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Lectern має зробити короткий підсумок кожного з 30 уроків курсу; кожен урок — окремий файл. Який патерн?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Orchestrator-workers: модель краще знає, як поділити курс</span></label><label class="opt ok"><input type="radio" name="q1"><span>Sectioning: межі частин обчислює код, виклики паралельні</span></label><label class="opt"><input type="radio" name="q1"><span>Агент з Read і Grep, який сам обходить файли й складає підсумки</span></label></div>
+    <div class="why yes">Так. Межі відомі заздалегідь, тож розбиття моделлю — зайвий виклик і розкид. У нашому вимірі orchestrator був у 3–7 разів дорожчим і у 8–17 разів повільнішим за sectioning.</div>
+    <div class="why no">Orchestrator-workers потрібен, коли розбиття залежить від змісту і непередбачуване, а агент — коли невідома кількість кроків. Тут межі — файли, їх перелічує код, отже sectioning.</div></div>
+  <div class="q"><div class="qt">2. Три судді на Haiku відповідають на питання «чи правильна позначена відповідь?» і пропускають питання з двома правильними варіантами. Що допоможе найбільше?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Додати ще двох суддів на тій самій моделі, щоб більшість стала надійнішою</span></label><label class="opt"><input type="radio" name="q2"><span>Перейти з більшості на одностайність: одне «ні» відправить питання людині</span></label><label class="opt ok"><input type="radio" name="q2"><span>Поставити вузьке питання «які з варіантів правильні?» і рахувати їх кодом</span></label></div>
+    <div class="why yes">Так. Судді бачили проблему (усі троє написали, що 2/6 = 1/3), але відповідали на інше питання. Вузьке питання дало <code>["A", "B"]</code> у 3 з 3 прогонів.</div>
+    <div class="why no">Судді з однієї моделі помиляються корельовано: голосували за правильну відповідь на неправильне питання. Ще два такі голоси нічого не додадуть, а одностайність спіймала б дефект лише в одному прогоні з трьох — там, де один суддя сказав «ні».</div></div>
+  <div class="q"><div class="qt">3. Рецензент повертає <code>passed: true</code>, а в його ж <code>issues</code> написано «критерій 4 виконано частково». Що змінити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span>Просити boolean на кожен критерій окремо, а вердикт рахувати в коді</span></label><label class="opt"><input type="radio" name="q3"><span>Підняти temperature рецензента, щоб оцінки були менш шаблонними</span></label><label class="opt"><input type="radio" name="q3"><span>Прибрати <code>issues</code> зі схеми, щоб рецензент не відволікався на дрібниці</span></label></div>
+    <div class="why yes">Так. Цілісна оцінка поблажлива; окремий boolean на критерій з вимогою «true лише якщо повністю» і <code>all()</code> у коді робить вердикт перевірюваним.</div>
+    <div class="why no">Проблема в тому, що один boolean змішує всі критерії, і модель ставить «так» попри знайдені недоліки. Вердикт має рахувати код з окремих критеріїв.</div></div>
+  <div class="q"><div class="qt">4. Routing зекономив 41% грошей, але додав 78% затримки. Фіча — живий чат із жорстким SLA на відповідь. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Перевести класифікатор на Sonnet: сильніша модель класифікує швидше</span></label><label class="opt ok"><input type="radio" name="q4"><span>Здешевити класифікатор: регулярний вираз, мала модель чи кеш класів — і переміряти</span></label><label class="opt"><input type="radio" name="q4"><span>Додати другий класифікатор, щоб помилки класу не з'їдали економію</span></label></div>
+    <div class="why yes">Так. Затримку додає окремий виклик класифікатора на кожен запит, а Anthropic прямо допускає звичайний класифікатор замість LLM.</div>
+    <div class="why no">Економія справжня, проблема — у ціні класифікатора за часом. Більша модель генерує повільніше, а другий класифікатор додав би ще один послідовний виклик.</div></div>
+  <div class="q"><div class="qt">5. На короткій лекції один виклик дав усі цитати дослівно, а gate ланцюжка не спрацював у 7 прогонах з 7. Що каже правило «start simple»?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Лишити один виклик; ланцюжок вмикати, коли eval покаже, що gate щось ловить</span></label><label class="opt"><input type="radio" name="q5"><span>Лишити ланцюжок: gate не спрацював, але на довшій лекції обов'язково спрацює</span></label><label class="opt"><input type="radio" name="q5"><span>Перейти на агента: він сам вирішуватиме, коли ділити лекцію на кроки</span></label></div>
+    <div class="why yes">Так. Складність додають, коли вона доведено покращує результат. Тут ланцюжок подвоїв ціну і час без виміряного виграшу.</div>
+    <div class="why no">Ланцюжок коштував ×2,1 ціни і ×2,0 часу, а його gate нічого не зловив; агент — ще дорожчий і менш передбачуваний. Без виміряної користі це зайва складність.</div></div>
+  <div class="q"><div class="qt">6. Orchestrator розбив лекцію на 577 слів на 15 частин. Що з цього випливає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Нічого страшного: більше частин — детальніші картки за ту саму ціну</span></label><label class="opt"><input type="radio" name="q6"><span>Orchestrator на Haiku слабкий: заміна на Opus дасть стабільне розбиття</span></label><label class="opt ok"><input type="radio" name="q6"><span>Більше викликів і довший критичний шлях: обмежити частини або перейти на sectioning</span></label></div>
+    <div class="why yes">Так. 15 частин — це 17 викликів і 70 с проти 8 викликів і 39 с з <code>max_parts=6</code>; розкид 9–15 частин на тому самому вході теж ризик.</div>
+    <div class="why no">Кожна частина — окремий виклик worker, а synthesizer отримує більше чернеток, тож ціна і час ростуть. Розбиття обмежують явно: з <code>max_parts=6</code> — рівно 6 частин, 8 викликів і 39 с.</div></div>
+  <div class="q"><div class="qt">7. У циклі evaluator-optimizer другий раунд повернув питання, ідентичне першому, і цього разу воно пройшло. Що сталося?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Генератор виправив дрібну помилку, на яку вказав рецензент</span></label><label class="opt ok"><input type="radio" name="q7"><span>Рецензент шумний: прийняв те, що відхилив; повтор без змін не зараховують</span></label><label class="opt"><input type="radio" name="q7"><span>Цикл зійшовся: другий раунд бачить зауваження і тому м'якший</span></label></div>
+    <div class="why yes">Так. Цикл «зійшовся» на випадковості судді. У v0 рядок <code>unchanged</code> відкидає такий pass.</div>
+    <div class="why no">Питання було те саме байт у байт — виправлення не було. Змінився лише вердикт, отже це шум рецензента.</div></div>
+  <div class="q"><div class="qt">8. Що з цього — workflow за визначенням Anthropic?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Dynamic workflow Claude Code: наступний крок визначає скрипт</span></label><label class="opt"><input type="radio" name="q8"><span>Сесія Claude Code, що хід за ходом обирає субагента</span></label><label class="opt"><input type="radio" name="q8"><span>Агент, який виправляє тести й сам обирає наступну дію, доки вони не пройдуть</span></label></div>
+    <div class="why yes">Так. Workflow — шляхи задані в коді. Документація Claude Code так і розрізняє: у субагентів вирішує Claude, у workflow — скрипт.</div>
+    <div class="why no">У двох інших варіантах наступний крок обирає модель — це агентна поведінка. У workflow шлях тримає код.</div></div>
+  <div class="q"><div class="qt">9. Після зауваження до цитати генератор замінив питання про геометричну ймовірність питанням про кубик — і пройшов. Як це закрити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Збільшити кількість раундів до 10, щоб генератор устиг повернутися до теми</span></label><label class="opt"><input type="radio" name="q9"><span>Заборонити рецензентові зауваження, щоб генератор на них не реагував</span></label><label class="opt ok"><input type="radio" name="q9"><span>Додати критерій «питання на задану тему» і перевіряти його окремо</span></label></div>
+    <div class="why yes">Так. Optimizer задовольняє лише записані критерії, будь-яким шляхом, зокрема підміною задачі. Тема має стати критерієм.</div>
+    <div class="why no">Більше раундів дадуть генератору більше спроб обійти критерії. Закривати треба сам критерій.</div></div>
+  <div class="q"><div class="qt">10. Цитату не знайдено в PDF дослівно: треба перевірити сусідні сторінки, інше видання, сліди OCR — заздалегідь невідомо, скільки кроків. Що будувати?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q10"><span>Агента з інструментами пошуку в PDF і явними критеріями зупинки</span></label><label class="opt"><input type="radio" name="q10"><span>Prompt chaining з трьох фіксованих кроків: сторінки, видання, OCR</span></label><label class="opt"><input type="radio" name="q10"><span>Voting: три моделі незалежно вирішують, чи правильна цитата</span></label></div>
+    <div class="why yes">Так. Кількість кроків залежить від знайденого — класичний випадок для агента. Межі циклу і критерії зупинки — урок 2.2.</div>
+    <div class="why no">Фіксований ланцюжок не знає, скільки сторінок перебрати, а голосування без доступу до джерела лише вгадує.</div></div>
+  <div class="q"><div class="qt">11. Synthesizer займає близько половини часу orchestrator-workers і прибирає 0–1 картку. Що зробити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Запускати synthesizer паралельно з workers, щоб зняти його з критичного шляху</span></label><label class="opt ok"><input type="radio" name="q11"><span>Дублікати знімати кодом, LLM-синтез лишити для конфліктів, які код не бачить</span></label><label class="opt"><input type="radio" name="q11"><span>Нічого: synthesizer — обов'язкова частина патерну orchestrator-workers</span></label></div>
+    <div class="why yes">Так. Нормалізація <code>front</code> і порівняння рядків коштують нуль викликів; синтез моделлю виправданий там, де потрібне судження.</div>
+    <div class="why no">Synthesizer за визначенням чекає на всіх workers, тож паралельно його не запустити. А «обов'язковий» він лише тоді, коли робить те, чого не зробить код.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>augmented<br>LLM</td><td>Модель з retrieval, інструментами і пам'яттю — будівельний блок усіх патернів.</td></tr>
+<tr><td>prompt<br>chaining</td><td>Фіксована послідовність викликів: кожен обробляє вихід попереднього.</td></tr>
+<tr><td>gate</td><td>Програмна перевірка між кроками ланцюжка; при провалі — зупинка до наступного виклику.</td></tr>
+<tr><td>routing</td><td>Класифікація входу і передача його спеціалізованій гілці: промпту, інструментам або моделі.</td></tr>
+<tr><td>parallelization:<br>sectioning</td><td>Незалежні частини задачі паралельно; межі визначає код.</td></tr>
+<tr><td>parallelization:<br>voting</td><td>Та сама задача кілька разів; результат — за правилом голосування.</td></tr>
+<tr><td>orchestrator-<br>workers</td><td>Модель динамічно ділить задачу, workers виконують частини, результат зводиться.</td></tr>
+<tr><td>synthesizer</td><td>Крок, що зводить результати workers в один; чекає на всіх, тож лежить на критичному шляху.</td></tr>
+<tr><td>evaluator-<br>optimizer</td><td>Цикл «згенерувати → оцінити за критеріями → переробити» з межею раундів.</td></tr>
+<tr><td>start simple</td><td>Починати з одного виклику і додавати крок лише тоді, коли він доведено покращує результат.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Розкладіть AI-фічу на патерни</h3>
+<p>Візьміть фічу зі своєї роботи (або підтримку магазину чи рев'ю PR), розбийте на 3–6 етапів, оберіть для кожного патерн за властивістю задачі, порахуйте виклики й множники ціни за вимірами уроку і назвіть два найімовірніші збої з кодовими контрзаходами.</p>
+<h3>2. Зламайте evaluator-optimizer</h3>
+<p>Напишіть три питання квізу з одиничними дефектами (два рівнозначні правильні варіанти, відповідь поза лекцією, дослівна, але не та цитата), проженіть їх через рецензента v0 по 3 рази, запишіть вердикти і запропонуйте для кожного пропуску перевірку кодом, вузьким питанням або людиною.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 14.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a><span>19.12.2024 · augmented LLM, п'ять патернів workflows, агенти, принцип простоти</span></li>
+<li><a href="https://github.com/anthropics/claude-cookbooks/tree/main/patterns/agents" target="_blank" rel="noopener">Claude Cookbooks — patterns/agents</a><span>офіційні приклади: <a href="https://github.com/anthropics/claude-cookbooks/blob/main/patterns/agents/basic_workflows.ipynb" target="_blank" rel="noopener">basic_workflows</a> (chain, parallel, route), <a href="https://github.com/anthropics/claude-cookbooks/blob/main/patterns/agents/orchestrator_workers.ipynb" target="_blank" rel="noopener">orchestrator_workers</a>, <a href="https://github.com/anthropics/claude-cookbooks/blob/main/patterns/agents/evaluator_optimizer.ipynb" target="_blank" rel="noopener">evaluator_optimizer</a></span></li>
+<li><a href="https://platform.claude.com/cookbook/patterns-agents-basic-workflows" target="_blank" rel="noopener">Claude Cookbook — Basic workflows</a><span>той самий ноутбук на platform.claude.com</span></li>
+<li><a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank" rel="noopener">Anthropic — How we built our multi-agent research system</a><span>13.06.2025 · orchestrator-worker у продакшні: +90,2% на eval, ≈15× токенів проти чату</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices" target="_blank" rel="noopener">Claude — Prompting best practices</a><span>розділи «Chain complex prompts» і «Reduce file creation in agentic coding»</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run Claude Code programmatically</a><span><code>claude -p</code>, <code>--json-schema</code>, поле <code>structured_output</code></span></li>
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Subagents</a><span>власний контекст, синтез результатів, поле <code>model</code>, ліміти</span></li>
+<li><a href="https://code.claude.com/docs/en/workflows" target="_blank" rel="noopener">Claude Code — Dynamic workflows</a><span>скрипт як orchestrator, <code>/deep-research</code>, порівняння з субагентами й agent teams</span></li>
+<li><a href="https://code.claude.com/docs/en/hooks" target="_blank" rel="noopener">Claude Code — Hooks</a><span><code>PreToolUse</code> exit 2, <code>Stop</code> + <code>decision: "block"</code>, hooks типу <code>prompt</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-configuration/subagents" target="_blank" rel="noopener">Codex — Subagents</a><span>subagent workflows, <code>[agents]</code> у config.toml, <code>/subagents</code></span></li>
+<li><a href="https://cursor.com/docs/subagents" target="_blank" rel="noopener">Cursor — Subagents</a><span>Explore, власні агенти в <code>.cursor/agents/</code></span></li>
+<li><a href="https://cursor.com/docs/configuration/worktrees" target="_blank" rel="noopener">Cursor — Worktrees</a><span><code>/best-of-n</code>: та сама задача на кількох моделях в ізольованих worktree</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 2.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 2.4 · Senomi<br><br><a href="lesson-11.html">← Урок 2.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-13.html">Урок 2.5 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

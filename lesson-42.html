@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 8.5. Практика: специфікація фічі Lectern «генерація модуля з PDF»</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 8.5 · Модуль 8</div>
+<h1>Практика: специфікація фічі Lectern «генерація модуля з PDF»</h1>
+<p class="lead">Повний цикл SDD на справжній фічі: discovery з фактами про PDF і ліцензії, spec з 25 EARS-вимогами, два раунди рев'ю агентом, план, граф з 13 задач і перші дві задачі, реалізовані через claude -p за $0,078. Окремо — шість помилок, яких специфікація не дала зробити, і дві, які зловило лише трасування.</p>
+<div class="hero-meta"><span class="chip">Spec-Driven Development</span><span class="chip t">≈ 75 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#route"><b>01</b>Фіча і маршрут</a><a href="#discovery"><b>02</b>Discovery</a><a href="#license"><b>03</b>Бібліотека PDF</a><a href="#spec"><b>04</b>Специфікація</a><a href="#review"><b>05</b>Рев&#x27;ю агентом</a><a href="#plan"><b>06</b>План і задачі</a><a href="#slice"><b>07</b>Перший зріз</a><a href="#tools"><b>08</b>Той самий потік у трьох інструментах</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>провести discovery фічі: розкласти припущення на підтверджені документами, рішення й відкриті питання;</li>
+    <li>написати spec з EARS-вимогами, id, гейтами CI і критеріями-гіпотезами, включно з бюджетом фічі;</li>
+    <li>отримати рев'ю spec від агента, відсіяти шум і вчасно зупинити раунди;</li>
+    <li>перетворити spec на план і граф задач та обрати перший вертикальний зріз;</li>
+    <li>реалізувати зріз через <code>claude -p</code> з бюджетом і перевірити трасування вимога → тест → коміт;</li>
+    <li>оцінити ліцензію залежності (AGPL) як вимогу до архітектури.</li>
+  </ul>
+</div>
+
+<section class="sec" id="route">
+<div class="sec-h"><span class="num">01</span><h2>Фіча і маршрут<span class="sub">Від папки PDF до двох закритих задач</span></h2></div>
+<p>Фіча: <code>lectern module &lt;dir&gt;</code> бере папку PDF-лекцій з текстовим шаром і повертає модуль — план уроків, квіз (наявним генератором), картки й чернетку домашнього завдання до кожної лекції. Кожна цитата має номер сторінки, і цей номер перевірено кодом, а не моделлю (ADR 0004). Нижче — весь шлях SDD, пройдений по-справжньому на копії канонічного <code>lectern/</code>. Код написано лише для двох перших задач з тринадцяти; решту ведуть модулі 9–11.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Етап</th><th>Артефакт</th><th>Хто і скільки</th></tr></thead>
+<tbody>
+<tr><td data-th="Етап">Discovery</td><td data-th="Артефакт"><code>discovery.md</code>: 7 припущень, 10 питань → рішення D1–D8</td><td data-th="Хто і скільки">людина + документація; $0</td></tr>
+<tr><td data-th="Етап">Spec v1 → v3.1</td><td data-th="Артефакт"><code>spec.md</code>: 25 вимог, 9 критеріїв, з них 4 гіпотези</td><td data-th="Хто і скільки">людина</td></tr>
+<tr><td data-th="Етап">Рев'ю spec</td><td data-th="Артефакт"><code>review.md</code>: 2 раунди × 10 знахідок</td><td data-th="Хто і скільки">Haiku 5.5, 15 + 15 ходів, $0,020 + $0,026</td></tr>
+<tr><td data-th="Етап">План і задачі</td><td data-th="Артефакт"><code>plan.md</code>, <code>tasks.md</code>: 13 задач, ADR 0008</td><td data-th="Хто і скільки">людина</td></tr>
+<tr><td data-th="Етап">Зріз T1</td><td data-th="Артефакт">посторінковий витяг PDF, 3 фікстури, 16 тестів</td><td data-th="Хто і скільки">Haiku 5.5, 29 ходів, 222 с, $0,047</td></tr>
+<tr><td data-th="Етап">Зріз T2</td><td data-th="Артефакт">сторінки в перевірці цитат, 8 тестів</td><td data-th="Хто і скільки">Haiku 5.5, 18 ходів, 137 с, $0,031</td></tr>
+</tbody></table></div>
+<p>Разом $0,124 на моделі. Головне, що купили ці гроші, — не код, а шість помилок, яких не сталося (розділ «Перший зріз»).</p>
+</section>
+
+<section class="sec" id="discovery">
+<div class="sec-h"><span class="num">02</span><h2>Discovery<span class="sub">Припущення, питання і факти про PDF</span></h2></div>
+<p>Discovery закінчується, коли кожне припущення має одне з трьох джерел: документ репозиторію, перевірений зовнішній факт або явне рішення з номером. Усі сім припущень Lectern закрито його власними документами (п'ять — у таблиці) — віддача від ADR, написаних у модулі 5. Нові знання дали питання, а не припущення.</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Припущення</th><th>Чим закрите</th></tr></thead>
+<tbody>
+<tr><td>Скани без тексту — поза MVP</td><td>PRD 0.2, non-goals: «OCR — пізніше»</td></tr>
+<tr><td>Квіз робить наявний агент з трьома інструментами</td><td>ADR 0003</td></tr>
+<tr><td>Вердикт про цитату дає код, нормалізація не змінюється</td><td>ADR 0004, <code>docs/spec/quotes.md</code></td></tr>
+<tr><td>Лекції авторів приватні, агенти розробки бачать лише синтетику</td><td>ADR 0005</td></tr>
+<tr><td>Лекція k потрапляє в промпт цілком, без RAG</td><td>ADR 0007; бюджет етапу квізу ≤ 35 тис. токенів (<code>context_plan.md</code>)</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 15.10.2026</span>
+<p>Документація Claude, PDF support: запит до 32 МБ і до 600 сторінок (100, якщо контекстне вікно запиту менше 1 млн токенів). Кожна сторінка йде моделі <b>і текстом, і зображенням</b>: текст — 1 500–3 000 токенів на сторінку, плюс токени зображення за правилами vision. Для Amazon Bedrock (Converse API) там само наведено ≈ 1 000 токенів на 3-сторінковий PDF у режимі лише тексту і ≈ 7 000 — з візуальним аналізом. Citations для PDF повертають <code>page_location</code>: сторінки з 1, кінцева — <b>виключна</b>; скани без тексту цитувати неможливо.</p>
+</div>
+<p>Звідси перше рішення. <b>D1: моделі йде наш витягнутий текст, а не PDF як <code>document</code>.</b> Причин три, і жодна не про якість: (1) зображення сторінок — переважно оплачені токени, які квізу не потрібні; (2) сторінки Citations рахує витяг Anthropic, а <code>check_quote</code> звіряє з нашим — два джерела правди для однієї цитати; (3) ADR 0004 вимагає детермінованої перевірки без моделі, і вона мусить бачити той самий текст, що й генератор. Citations лишаються кандидатом для іншої задачі — перевірки, чи цитата <i>підтверджує</i> тезу (OQ3).</p>
+<p>Решта питань стали рішеннями D2–D8: номер сторінки фізичний з 1 (як «N з M» у переглядачі), цитата через межу сторінок — діапазон <code>[перша, остання]</code> <b>включно</b> (при інтеграції з Citations — <code>end_page_number − 1</code>), повтор — перше входження з <code>ambiguous</code>, адреса — <code>hash-tables#p12</code>, порядок лекцій — за іменем файлу. Поріг «сторінка без тексту» — менше 20 непробільних символів, і це <b>гіпотеза H5</b>: документація pypdf лише попереджає, що зі сторінки-зображення текст буде «мінімальним або візуально порожнім», числа не дає.</p>
+</section>
+
+<section class="sec" id="license">
+<div class="sec-h"><span class="num">03</span><h2>Бібліотека PDF<span class="sub">Ліцензія — вимога до архітектури</span></h2></div>
+<p>Витяг тексту — перша залежність Lectern, яку несе кожна інсталяція. Кандидати за метаданими PyPI на 15.10.2026:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Бібліотека</th><th>Ліцензія</th><th>Що тягне</th></tr></thead>
+<tbody>
+<tr><td data-th="Бібліотека">pypdf 6.20.1</td><td data-th="Ліцензія">BSD-3-Clause</td><td data-th="Що тягне">нічого в Python ≥ 3.11; чистий Python</td></tr>
+<tr><td data-th="Бібліотека">pdfplumber 0.11.10</td><td data-th="Ліцензія">MIT</td><td data-th="Що тягне">pdfminer.six (MIT), pypdfium2 (BSD-3/Apache-2.0, бінарний PDFium), Pillow</td></tr>
+<tr><td data-th="Бібліотека">PyMuPDF 1.28.2</td><td data-th="Ліцензія">AGPL-3.0 або комерційна Artifex</td><td data-th="Що тягне">бінарний MuPDF</td></tr>
+</tbody></table></div>
+<p>PyMuPDF має найбагатший API (зокрема OCR через Tesseract), але Lectern має <code>lectern serve</code> і <code>lectern mcp --http</code> — мережеві сервіси. Для них AGPL додає умову, якої немає в GPL:</p>
+<blockquote class="q-src">
+<p>Якщо ви змінили Програму, ваша змінена версія мусить помітно пропонувати всім користувачам, які взаємодіють з нею віддалено через комп'ютерну мережу, можливість отримати Відповідний вихідний код вашої версії.</p>
+<p class="orig">“if you modify the Program, your modified version must prominently offer all users interacting with it remotely through a computer network (if your version supports such interaction) an opportunity to receive the Corresponding Source of your version”</p>
+<cite>GNU Affero General Public License v3, §13 · файл COPYING репозиторію PyMuPDF</cite>
+</blockquote>
+<p>Сам сайт PyMuPDF формулює вибір прямо: AGPL або комерційна ліцензія Artifex. Чи стає Lectern «зміненою версією», вирішує юрист, а не PR агента — і саме тому рішення оформлено як ADR 0008 і продубльовано в non-goals spec. Агент, якому дали задачу «витягни текст з PDF», без цього рядка обирає найпопулярніший пакет, а популярність і ліцензія між собою не пов'язані.</p>
+<pre class="code" data-lang="markdown"><span class="k"># 8. Текст з PDF витягує pypdf;
+#    PyMuPDF відхилено через AGPL</span>
+<span class="k">## Рішення</span>
+pypdf — обов'язкова залежність
+(pypdf&gt;=6,&lt;7); reportlab (BSD) —
+лише dev, для синтетичних фікстур.
+PyMuPDF не додаємо ні як залежність,
+ні як extra: AGPL-пакет у сервісі —
+рішення власника і юриста, не PR.
+<span class="k">## Наслідки</span>
+- pypdf не відновлює порядок колонок
+  і не розпізнає скани: колонки
+  дадуть missing, скани — scanned.
+- &gt; 5% missing через порядок слів →
+  наступний кандидат pdfplumber (MIT),
+  а не PyMuPDF.</pre>
+<div class="note warn"><span class="lbl">Пастка «винесемо в extra»</span>
+<p>Опційна залежність не змінює ліцензію: розгорнутий сервіс, що встановив extra, працює з AGPL-кодом так само. Тому ADR забороняє і extra, а не лише основну залежність.</p>
+</div>
+</section>
+<section class="sec" id="spec">
+<div class="sec-h"><span class="num">04</span><h2>Специфікація<span class="sub">25 вимог, 5 гейтів, 4 гіпотези</span></h2></div>
+<p>Spec лежить у <code>docs/specs/module-from-pdf/spec.md</code> за шаблоном уроку 8.1, а вимоги — таблицею з id і статусом, яку читає <code>scripts/trace.py</code> з уроку 8.3. Шість областей: ING (ingest), CIT (цитати), GEN (генерація), MOD (модуль), CLI, BUD (бюджет). Фрагмент v3.1:</p>
+<pre class="code" data-lang="markdown">LEC-ING-002 · implemented
+  IF сторінка має &lt; 20 непробільних
+  символів (гіпотеза H5), THEN THE
+  Lectern SHALL позначити її no_text
+LEC-ING-007 · approved
+  IF оцінка лекції &gt; 35 тис. токенів,
+  THEN THE Lectern SHALL дати їй
+  статус too_long без виклику моделі
+LEC-CIT-001 · implemented
+  WHEN цитату знайдено в PDF-лекції,
+  THE Lectern SHALL повертати
+  pages: [перша, остання] (включно)
+LEC-CIT-005 · approved
+  THE Lectern SHALL зараховувати
+  цитату лише лекції, якій належить
+  елемент (D10)
+LEC-BUD-002 · approved
+  WHEN починається наступна лекція,
+  THE Lectern SHALL порівняти
+  витрачене з --max-budget-usd;
+  IF ліміт вичерпано, THEN решта
+  лекцій отримує skipped_budget</pre>
+<p class="d">Таблицю переформатовано для телефона; повний текст — у <code>console/spec/spec.md</code>.</p>
+<p>Найважливіше рішення spec не є вимогою, а знімає цілий клас вимог. <b>D9: модель ніколи не пише номер сторінки.</b> Сторінку виводить той самий пошук, що перевіряє цитату: <code>check_quote</code> уже знаходить рядки, а рядок однозначно лежить на одній сторінці. Помилка «правильна цитата, вигадана сторінка» за такого дизайну неможлива, і перевіряти її не треба.</p>
+<h3>Гейт чи гіпотеза</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Критерій</th><th>Тип</th><th>Що буде, якщо не виконано</th></tr></thead>
+<tbody>
+<tr><td data-th="Критерій">AC4: перенос слова на межі сторінок → <code>normalized</code>, <code>pages: [1, 2]</code></td><td data-th="Тип">гейт CI</td><td data-th="Що буде, якщо не виконано">PR не зливається</td></tr>
+<tr><td data-th="Критерій">AC2: скан → <code>scanned</code>, 0 викликів моделі</td><td data-th="Тип">гейт CI</td><td data-th="Що буде, якщо не виконано">PR не зливається</td></tr>
+<tr><td data-th="Критерій">AC7: модуль з 3 PDF по ≤ 10 сторінок ≤ $0,25 на Haiku 5.5</td><td data-th="Тип">гіпотеза H1</td><td data-th="Що буде, якщо не виконано">число в <code>report.json</code>, ціль переглядають</td></tr>
+<tr><td data-th="Критерій">AC6: оцінка <code>--dry-run</code> ±15% від фактичних токенів</td><td data-th="Тип">гіпотеза H4</td><td data-th="Що буде, якщо не виконано">калібрують коефіцієнт</td></tr>
+</tbody></table></div>
+<p>Гейт перевіряється на синтетичних фікстурах і дає однаковий результат на кожному запуску. Гіпотеза потребує реальних даних і моделі, тому блокувати нею CI — означає отримати тест, що падає залежно від ціни токена. Позначка «гіпотеза» в spec — не слабкість, а інструкція агентові: не підганяти код під число, якого ще ніхто не вимірював.</p>
+<h3>Бюджет фічі до першого прогону</h3>
+<p>Виміряних даних для PDF ще немає, тож бюджет складено з двох вимірів курсу і явних припущень:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Величина</th><th>Значення</th><th>Звідки</th></tr></thead>
+<tbody>
+<tr><td data-th="Величина">Лекція на 10 сторінок</td><td data-th="Значення">≈ 25 тис. символів ≈ 10 тис. токенів</td><td data-th="Звідки">символи / 2,5 — вимір уроку 1.1</td></tr>
+<tr><td data-th="Величина">Квіз з лекції на 3,9 тис. символів</td><td data-th="Значення">$0,0017–0,0034</td><td data-th="Звідки">виміри уроку 6.5, Haiku</td></tr>
+<tr><td data-th="Величина">Квіз з 10-сторінкової лекції</td><td data-th="Значення">≈ $0,01–0,02</td><td data-th="Звідки">× 6 за обсягом — припущення</td></tr>
+<tr><td data-th="Величина">4 артефакти × 3 лекції</td><td data-th="Значення">≈ $0,12–0,24</td><td data-th="Звідки">артефакт ≈ квіз — припущення</td></tr>
+</tbody></table></div>
+<p>Верхня межа впритул до $0,25, тому H1 записано як гіпотезу, а в план додано важіль на випадок провалу: один прогін агента на лекцію з чотирма інструментами збереження замість чотирьох прогонів, щоб лекція читалася раз. Ліміт у CLI — $0,30: <code>--max-budget-usd</code> перевіряє клієнтську оцінку, і лекція, що стартувала під лімітом, може його перевищити (LEC-BUD-002 це фіксує).</p>
+</section>
+
+<section class="sec" id="review">
+<div class="sec-h"><span class="num">05</span><h2>Рев'ю агентом<span class="sub">Два раунди, 20 знахідок, $0,046</span></h2></div>
+<p>Рецензент — Haiku з інструментами лише для читання. Промпт задає п'ять класів проблем (неперевірювана вимога, суперечність з ADR/кодом/схемою/контрактом, бракує IF/THEN, критерій без виміру, вимога без критерію) і жорсткий формат рядка — так знахідки легко порахувати й закрити.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat review-spec.txt)" --model haiku --setting-sources project --strict-mcp-config --allowedTools Read Glob Grep --disallowedTools Edit Write Bash --max-budget-usd 0.40 --output-format json &gt; review1.json</span></pre>
+<div class="cap">реальний запуск · Claude Code 2.1.300 · 15.10.2026</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>review1.json — result, раунд 1</span></div>
+<pre><span class="er">F2 [high]</span> LEC-CIT-004 / LEC-MOD-002 — validate() перевіряє цитату проти всіх лекцій сесії (self.lectures.values()), не проти лекції питання, тож цитата з іншої лекції пройде → вимагати збігу лише в лекції &lt;lecture_id&gt; і додати тест
+
+<span class="er">F3 [high]</span> LEC-GEN-002, LEC-GEN-003 — картки quote і цитати домашнього завдання не мають ні правила перевірки, ні схеми, ні критерію …
+
+<span class="y">F5 [medium]</span> LEC-ING-001, LEC-ING-002 — … поріг «20 непробільних символів» названо вимогою, хоча discovery Q6 позначає його як гіпотезу …
+
+<span class="y">F8 [medium]</span> LEC-CIT-004 — … адреса &lt;lecture_id&gt;#p&lt;N&gt; містить #, що в URI lecture://{lecture_id} є роздільником фрагмента …
+
+<span class="y">F10 [medium]</span> Посилання на ADR — spec (ризики, D2 в discovery) посилається на ADR 0008 для ліцензії pypdf і AGPL, але docs/adr/ містить лише 0001–0007 …
+
+<span class="d">num_turns 15 · 93,7 с · $0,0200 · claude-haiku-5-5</span></pre>
+<div class="cap">реальний вивід · 5 з 10 знахідок, «…» — скорочено</div></div>
+<p>F2 знайдено в коді, а не в тексті spec: рецензент прочитав <code>tools.py</code> і побачив, що <code>check_quote</code> шукає в одній лекції, а <code>validate()</code> — у всіх лекціях сесії. Для однієї лекції це байдуже, для модуля з десятьох — тихий пропуск чужої цитати. Відповідь — рішення D10 «одна сесія перевірки на лекцію» і вимога LEC-CIT-005, записані до першого рядка коду модуля.</p>
+<p>Другий раунд на spec v2 знову дав рівно 10 знахідок: модель заповнює квоту, яку їй назвали. Змінився їхній характер — з «суперечить коду» на «уточніть деталь». Дві знахідки ще були справжніми суперечностями:</p>
+<ul>
+<li><b>F4:</b> поле <code>source</code> з адресою в елементі квізу порушило б <code>quiz.schema.json</code> (<code>additionalProperties: false</code>) — адреси переїхали в <code>module.json</code>;</li>
+<li><b>F5:</b> правило <code>lecture_id</code> «<code>[a-z0-9-]+</code> зі stem» дає порожній рядок для файлу «Лекція 3.pdf».</li>
+</ul>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Раунд</th><th>Прийнято у spec</th><th>Перенесено в план/задачі</th><th>Відхилено</th></tr></thead>
+<tbody>
+<tr><td data-th="Раунд">1 (spec v1)</td><td data-th="Прийнято у spec">10</td><td data-th="Перенесено в план/задачі">0</td><td data-th="Відхилено">0</td></tr>
+<tr><td data-th="Раунд">2 (spec v2)</td><td data-th="Прийнято у spec">5</td><td data-th="Перенесено в план/задачі">5</td><td data-th="Відхилено">0</td></tr>
+</tbody></table></div>
+<div class="note tip"><span class="lbl">Правило зупинки</span>
+<p>Новий раунд рев'ю запускайте, лише поки серед знахідок є клас «spec суперечить коду, схемі, контракту чи ADR». Знахідки «уточніть деталь» — це питання для плану: як назвати поле в <code>Session</code>, які імена файлів у артефактів. Тому третього раунду на v3 не було: знахідок першого класу в другому раунді лишилося дві, і обидві закрито.</p>
+</div>
+</section>
+<section class="sec" id="plan">
+<div class="sec-h"><span class="num">06</span><h2>План і задачі<span class="sub">Компоненти, дані, граф залежностей</span></h2></div>
+<p>План відповідає на «як» і тому може містити імена функцій, яких у spec бути не повинно. Конвеєр фічі — п'ять компонентів; два з них уже реалізовано в цьому уроці.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 590" role="img" aria-label="Конвеєр фічі: PDF, витяг посторінково, сесія перевірки, агент, асемблер модуля, перевірка">
+  <defs>
+    <marker id="l42a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="l42b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="16" y="10" width="224" height="48" rx="10" class="bx m"/>
+  <text x="128" y="31" text-anchor="middle" class="tx b">lectures/*.pdf</text>
+  <text x="128" y="48" text-anchor="middle" class="tx s">порядок за іменем файлу</text>
+  <path d="M128 58 V 80" class="ln a" marker-end="url(#l42a)"/>
+  <rect x="16" y="84" width="224" height="58" rx="10" class="bx t"/>
+  <text x="128" y="106" text-anchor="middle" class="tx b">pdf.py · read_pdf()  ✓T1</text>
+  <text x="128" y="126" text-anchor="middle" class="tx s">pages[] · no_text[] · lecture_id</text>
+  <path d="M240 113 H 250" class="ln d" marker-end="url(#l42b)"/>
+  <rect x="254" y="84" width="96" height="58" rx="10" class="bx p"/>
+  <text x="302" y="104" text-anchor="middle" class="tx s">scanned</text>
+  <text x="302" y="118" text-anchor="middle" class="tx s">unreadable</text>
+  <text x="302" y="132" text-anchor="middle" class="tx s">too_long · $0</text>
+  <path d="M128 142 V 164" class="ln a" marker-end="url(#l42a)"/>
+  <rect x="16" y="168" width="224" height="58" rx="10" class="bx a"/>
+  <text x="128" y="190" text-anchor="middle" class="tx b">Session на лекцію  ✓T2</text>
+  <text x="128" y="210" text-anchor="middle" class="tx s">check_quote → рядки → pages</text>
+  <path d="M128 226 V 248" class="ln a" marker-end="url(#l42a)"/>
+  <rect x="16" y="252" width="224" height="118" rx="10" class="bx t"/>
+  <text x="128" y="274" text-anchor="middle" class="tx b">Агент ADR 0003</text>
+  <text x="128" y="290" text-anchor="middle" class="tx s">лекція в кешованому префіксі</text>
+  <rect x="28" y="302" width="96" height="26" rx="6" class="bx"/>
+  <text x="76" y="319" text-anchor="middle" class="tx s">outline</text>
+  <rect x="132" y="302" width="96" height="26" rx="6" class="bx"/>
+  <text x="180" y="319" text-anchor="middle" class="tx s">quiz</text>
+  <rect x="28" y="334" width="96" height="26" rx="6" class="bx"/>
+  <text x="76" y="351" text-anchor="middle" class="tx s">cards</text>
+  <rect x="132" y="334" width="96" height="26" rx="6" class="bx"/>
+  <text x="180" y="351" text-anchor="middle" class="tx s">homework</text>
+  <rect x="254" y="252" width="96" height="118" rx="10" class="bx p"/>
+  <text x="302" y="274" text-anchor="middle" class="tx b">бюджет</text>
+  <text x="302" y="296" text-anchor="middle" class="tx s">перед лекцією:</text>
+  <text x="302" y="312" text-anchor="middle" class="tx s">якщо ліміт</text>
+  <text x="302" y="328" text-anchor="middle" class="tx s">вичерпано →</text>
+  <text x="302" y="344" text-anchor="middle" class="tx s">skipped_budget</text>
+  <path d="M250 311 H 244" class="ln d" marker-end="url(#l42b)"/>
+  <path d="M128 370 V 392" class="ln a" marker-end="url(#l42a)"/>
+  <rect x="16" y="396" width="224" height="58" rx="10" class="bx a"/>
+  <text x="128" y="418" text-anchor="middle" class="tx b">Асемблер модуля</text>
+  <text x="128" y="438" text-anchor="middle" class="tx s">module.json · report.json</text>
+  <path d="M128 454 V 476" class="ln a" marker-end="url(#l42a)"/>
+  <rect x="16" y="480" width="224" height="58" rx="10" class="bx m"/>
+  <text x="128" y="502" text-anchor="middle" class="tx b">check-module</text>
+  <text x="128" y="522" text-anchor="middle" class="tx s">AC1: кожна цитата має pages</text>
+  <text x="16" y="572" class="tx s">✓ — реалізовано в уроці; решта — модулі 9–11</text>
+</svg>
+<figcaption>Відхилені лекції виходять з конвеєра до першого виклику моделі, тому скан коштує $0. Сторінку цитати обчислює сесія перевірки (D9), а не агент.</figcaption>
+</figure>
+<p>Ключові інтерфейси з <code>plan.md</code>: <code>read_pdf(path, position) → PdfLecture(lecture_id, pages, no_text)</code>; <code>join_pages(pages) → (text, page_starts)</code>; <code>Session.page_starts</code> і <code>page_of(lecture_id, line)</code> через <code>bisect</code>; три нові інструменти збереження з тими самими правилами цитат, що й <code>save_quiz</code>; <code>build_module(..., agent=...)</code> з тією самою сигнатурою агента, що в <code>runner.run_agent</code>, — тому всі тести модуля обходяться фейковим агентом. MCP-сервер отримує лише нові необов'язкові поля: сумісна зміна, версія 0.4.0.</p>
+<h3>Тринадцять задач і критичний шлях</h3>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 530" role="img" aria-label="Граф залежностей задач T1–T13 з критичним шляхом">
+  <defs>
+    <marker id="l42c" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="l42d" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <path d="M180 45 L 104 82" class="ln a" marker-end="url(#l42c)"/>
+  <path d="M180 45 L 256 82" class="ln" marker-end="url(#l42d)"/>
+  <path d="M100 115 L 46 152" class="ln" marker-end="url(#l42d)"/>
+  <path d="M100 115 L 118 152" class="ln" marker-end="url(#l42d)"/>
+  <path d="M100 115 L 194 152" class="ln a" marker-end="url(#l42c)"/>
+  <path d="M260 115 L 260 222" class="ln" marker-end="url(#l42d)"/>
+  <path d="M200 185 L 254 223" class="ln a" marker-end="url(#l42c)"/>
+  <path d="M200 185 L 136 223" class="ln" marker-end="url(#l42d)"/>
+  <path d="M260 255 L 260 292" class="ln a" marker-end="url(#l42c)"/>
+  <path d="M260 325 L 196 363" class="ln a" marker-end="url(#l42c)"/>
+  <path d="M260 325 L 306 363" class="ln" marker-end="url(#l42d)"/>
+  <path d="M190 395 L 190 432" class="ln a" marker-end="url(#l42c)"/>
+  <path d="M300 395 L 200 434" class="ln" marker-end="url(#l42d)"/>
+  <path d="M310 395 L 310 432" class="ln" marker-end="url(#l42d)"/>
+  <path d="M120 255 C 92 330, 110 420, 160 446" class="ln" marker-end="url(#l42d)"/>
+  <rect x="151" y="15" width="58" height="30" rx="7" class="bx t"/><text x="180" y="35" text-anchor="middle" class="tx b">T1 ✓</text>
+  <rect x="71" y="85" width="58" height="30" rx="7" class="bx t"/><text x="100" y="105" text-anchor="middle" class="tx b">T2 ✓</text>
+  <rect x="231" y="85" width="58" height="30" rx="7" class="bx"/><text x="260" y="105" text-anchor="middle" class="tx">T5</text>
+  <rect x="11" y="155" width="58" height="30" rx="7" class="bx m"/><text x="40" y="175" text-anchor="middle" class="tx">T3</text>
+  <rect x="91" y="155" width="58" height="30" rx="7" class="bx"/><text x="120" y="175" text-anchor="middle" class="tx">T4</text>
+  <rect x="171" y="155" width="58" height="30" rx="7" class="bx"/><text x="200" y="175" text-anchor="middle" class="tx">T6</text>
+  <rect x="91" y="225" width="58" height="30" rx="7" class="bx"/><text x="120" y="245" text-anchor="middle" class="tx">T11</text>
+  <rect x="231" y="225" width="58" height="30" rx="7" class="bx"/><text x="260" y="245" text-anchor="middle" class="tx">T7</text>
+  <rect x="231" y="295" width="58" height="30" rx="7" class="bx"/><text x="260" y="315" text-anchor="middle" class="tx">T8</text>
+  <rect x="161" y="365" width="58" height="30" rx="7" class="bx"/><text x="190" y="385" text-anchor="middle" class="tx">T9</text>
+  <rect x="281" y="365" width="58" height="30" rx="7" class="bx"/><text x="310" y="385" text-anchor="middle" class="tx">T10</text>
+  <rect x="161" y="435" width="58" height="30" rx="7" class="bx"/><text x="190" y="455" text-anchor="middle" class="tx">T12</text>
+  <rect x="281" y="435" width="58" height="30" rx="7" class="bx"/><text x="310" y="455" text-anchor="middle" class="tx">T13</text>
+  <rect x="11" y="490" width="14" height="14" rx="3" class="bx t"/><text x="30" y="502" class="tx s">урок 8.5</text>
+  <rect x="100" y="490" width="14" height="14" rx="3" class="bx m"/><text x="119" y="502" class="tx s">ДЗ</text>
+  <rect x="150" y="490" width="14" height="14" rx="3" class="bx"/><text x="169" y="502" class="tx s">модулі 10–11</text>
+  <path d="M262 497 H 290" class="ln a"/><text x="296" y="502" class="tx s">крит. шлях</text>
+</svg>
+<figcaption>Транзитивні ребра прибрано (T1 → T3 уже є через T2). Критичний шлях T1 → T2 → T6 → T7 → T8 → T9 → T12 — сім задач; T3, T4, T5 і T11 з нього не залежать і можуть іти паралельно, наприклад у сусідніх worktree.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>ID</th><th>Задача</th><th>Вимоги</th><th>Приймання (скорочено)</th></tr></thead>
+<tbody>
+<tr><td data-th="ID">T1</td><td data-th="Задача"><code>pdf.py</code>, 3 фікстури</td><td data-th="Вимоги">ING-001, 002, 005</td><td data-th="Приймання (скорочено)">скан → <code>no_text == [1]</code>; «Лекція» → <code>lecture-03</code></td></tr>
+<tr><td data-th="ID">T2</td><td data-th="Задача">сторінки в перевірці цитат</td><td data-th="Вимоги">CIT-001…003</td><td data-th="Приймання (скорочено)">цитата через межу → <code>pages: [1, 2]</code></td></tr>
+<tr><td data-th="ID">T3</td><td data-th="Задача"><code>lectern check &lt;lecture.pdf&gt;</code></td><td data-th="Вимоги">CIT-001, ING-003</td><td data-th="Приймання (скорочено)">скан → код 1 і <code>scanned</code></td></tr>
+<tr><td data-th="ID">T5</td><td data-th="Задача"><code>lectern module --dry-run</code></td><td data-th="Вимоги">ING-003…008, BUD-001</td><td data-th="Приймання (скорочено)">0 викликів моделі, статуси й оцінка у звіті</td></tr>
+<tr><td data-th="ID">T6</td><td data-th="Задача">інструменти збереження карток, ДЗ, плану</td><td data-th="Вимоги">GEN-002…004, CIT-005</td><td data-th="Приймання (скорочено)">цитата лекції B у картках лекції A відхилена</td></tr>
+<tr><td data-th="ID">T9</td><td data-th="Задача">бюджет і повторний запуск</td><td data-th="Вимоги">BUD-002, BUD-003</td><td data-th="Приймання (скорочено)">третя лекція <code>skipped_budget</code>; повтор — 0 викликів</td></tr>
+<tr><td data-th="ID">T12</td><td data-th="Задача">перший реальний прогін</td><td data-th="Вимоги">AC6–AC8</td><td data-th="Приймання (скорочено)">H1, H2, H4 виміряно, рішення щодо H1 записано</td></tr>
+</tbody></table></div>
+<p class="d">7 з 13 рядків; повна таблиця з залежностями — <code>console/spec/tasks.md</code>.</p>
+</section>
+<section class="sec" id="slice">
+<div class="sec-h"><span class="num">07</span><h2>Перший зріз<span class="sub">T1 і T2 через claude -p</span></h2></div>
+<p>Перший вертикальний зріз — найтонша послідовність задач, що проходить усі шари від входу до перевіреного результату й перевіряє найризикованіше припущення. Тут воно одне: чи можна прив'язати цитату з реального PDF до сторінки, не послабивши правил ADR 0004. T1 + T2 відповідають на нього від файлу до вердикту; CLI, асемблер і генерація без цієї відповіді не мають сенсу.</p>
+<p>Кожна задача — окремий запуск з тим самим промптом (<code>console/prompts/implement.txt</code>): прочитати spec, plan, tasks і два ADR; покрити тестом кожен пункт приймання; на неоднозначність не вгадувати мовчки, а записати її; не чіпати <code>norm()</code>, <code>MIN_QUOTE_WORDS</code> і <code>validate()</code>; не комітити.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(sed 's/{TASK}/T1/g' implement.txt)" --model haiku --setting-sources project --strict-mcp-config --permission-mode acceptEdits --allowedTools Read Edit Write Glob Grep "Bash(.venv/bin/python *)" "Bash(.venv/bin/ruff *)" "Bash(git status)" "Bash(git diff *)" "Bash(ls *)" --disallowedTools WebFetch WebSearch --max-budget-usd 1.00 --max-turns 60 --output-format stream-json --verbose &gt; impl-T1.jsonl</span>
+<span class="d">Ignoring 16 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. …</span></pre>
+<div class="cap">реальний запуск · 15.10.2026 · stderr скорочено. Попередження — відомий B16: у режимі -p правила з налаштувань недовіреної теки не діють, тому дозволи передано прапорцями</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Задача</th><th>Ходи · час · вартість</th><th>Що з'явилося</th><th>pytest</th></tr></thead>
+<tbody>
+<tr><td data-th="Задача">T1</td><td data-th="Ходи · час · вартість">29 · 222 с · $0,047</td><td data-th="Що з&#x27;явилося"><code>pdf.py</code> (60 рядків), генератор фікстур, <code>two-pages.pdf</code>, <code>repeated.pdf</code>, <code>scan.pdf</code> (11–41 КБ), 16 тестів</td><td data-th="pytest">112 → 128 passed</td></tr>
+<tr><td data-th="Задача">T2</td><td data-th="Ходи · час · вартість">18 · 137 с · $0,031</td><td data-th="Що з&#x27;явилося"><code>join_pages()</code>, <code>page_of()</code>, <code>pages</code>/<code>ambiguous</code> у двох функціях (≈ 40 рядків у <code>tools.py</code>), 8 тестів</td><td data-th="pytest">128 → 136 passed</td></tr>
+</tbody></table></div>
+<p>Фікстури синтетичні (ADR 0005): reportlab малює дві текстові сторінки кирилицею з переносом «розв’язу-» на межі сторінок, а «скан» — це сторінка-растр без текстового шару. Тест, що доводить AC4:</p>
+<pre class="code" data-lang="python"><span class="k">@pytest.mark.req</span>(<span class="s">"LEC-CIT-001"</span>,
+                 <span class="s">"LEC-CIT-002"</span>)
+<span class="k">def</span> test_lec_cit_002_hyphen_break_…(
+        pdf_session):
+    s = pdf_session(<span class="s">"two-pages.pdf"</span>)
+    r = s.check_quote(<span class="s">"two-pages"</span>,
+        <span class="s">"розв’язують ланцюжками або "</span>
+        <span class="s">"відкритою адресацією"</span>)
+    <span class="k">assert</span> r[<span class="s">"match"</span>] == <span class="s">"normalized"</span>
+    <span class="k">assert</span> r[<span class="s">"pages"</span>] == [<span class="n">1</span>, <span class="n">2</span>]</pre>
+<p class="d">З <code>tests/test_quote_pages.py</code>, переформатовано для телефона.</p>
+<h3>Питання, які підняв агент</h3>
+<p>Обидва запуски закінчились розділом «Spec questions»: 7 пунктів після T1 і 4 після T2. Найцінніші — ті, де spec була неточною, а не агент:</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Питання агента</th><th>Рішення</th></tr></thead>
+<tbody>
+<tr><td>pypdf закінчує сторінку <code>\n</code>; якщо з'єднати сторінки через <code>"\n"</code>, між ними з'являється порожній рядок, і перенос через межу не склеюється</td><td>Прийнято: <code>join_pages()</code> прибирає кінцеві пробіли сторінки; <code>norm()</code> не змінено. Розділ «Дані» в plan уточнено</td></tr>
+<tr><td>«Кожен символ поза <code>[a-z0-9]</code> → <code>-</code>» дає <code>lecture--final-</code></td><td>Прийнято: послідовність → один <code>-</code>; LEC-ING-005 уточнено</td></tr>
+<tr><td><code>read_pdf</code> не знає позиції лекції для <code>lecture-NN</code></td><td>Прийнято: параметр <code>position</code>, справжній передасть T5</td></tr>
+<tr><td>PDF з порожнім паролем користувача теж <code>unreadable</code></td><td>Відкрите питання OQ4</td></tr>
+<tr><td>«План посилається на ADR 0005 для синтетики, а ADR 0005 — про маршрутизацію»</td><td>Відхилено: «Наслідки» ADR 0005 — «агенти розробки працюють лише на синтетичних даних»</td></tr>
+</tbody></table></div>
+<p>Останній рядок — нагадування, що питання агента теж треба перевіряти: Haiku прочитав <code>head -12</code> ADR і не дійшов до розділу «Наслідки».</p>
+<h3>Трасування показало те, чого не показали тести</h3>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/trace.py | tail -3</span>
+<span class="er">ERROR untested requirement LEC-CIT-002 (implemented)</span>
+<span class="er">ERROR untested requirement LEC-CIT-003 (implemented)</span>
+25 requirements, 0 tests: 8 error(s), 0 warning(s)
+<span class="d"># id перенесено з docstring у @pytest.mark.req, коміти T1/T2 отримали трейлер Refs:</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/trace.py | tail -1</span>
+<span class="ok">25 requirements, 20 tests: 0 error(s), 0 warning(s)</span></pre>
+<div class="cap">реальний вивід · trace.py з уроку 8.3 у скретч-копії</div></div>
+<p>Дві помилки процесу, обидві наші. Перша: промпт казав «id у назві або docstring», а трасування уроку 8.3 читає лише маркер — 136 зелених тестів і нуль доказів. Друга, помітна тільки в матриці: LEC-ING-003 («скан → статус <code>scanned</code>, модель не викликається») стояв як <code>implemented</code>, хоча T1 дає лише <code>no_text</code>; статус і «без моделі» з'являться в T5. Повернули <code>approved</code>, у <code>tasks.md</code> T5 тепер закриває ING-003…008.</p>
+<div class="key"><h4>Що специфікація запобігла — на цих прогонах</h4>
+<ul>
+<li><b>Чужа цитата в модулі.</b> <code>validate()</code> шукає цитату в усіх лекціях сесії; рев'ю F2 знайшло це в коді до того, як з'явився модуль з кількома лекціями. Рішення D10 вже в spec.</li>
+<li><b>Зламаний контракт квізу.</b> Адреса <code>source</code> в елементі квізу порушила б <code>additionalProperties: false</code> у схемі й MCP-контракті (рев'ю F4).</li>
+<li><b>Порожній <code>lecture_id</code></b> для «Лекція 3.pdf» (F5): тепер це тест <code>slug_id("Лекція", 3) == "lecture-03"</code>.</li>
+<li><b>Послаблена перевірка цитат.</b> Коли межа сторінок зламала склеювання переносу, агент виправив з'єднання сторінок і поставив питання, а не розширив regex у <code>norm()</code>: ADR 0004 був у промпті.</li>
+<li><b>AGPL у сервісі.</b> Диф залежностей — один рядок <code>pypdf&gt;=6,&lt;7</code> і reportlab у dev-групі.</li>
+<li><b>Вигадані сторінки</b> — як клас помилок, завдяки D9.</li>
+</ul>
+<p>Чого spec не запобігла: конвенції трасування і завчасного <code>implemented</code>. Процесні артефакти потребують власної автоматичної перевірки — і <code>trace.py</code> її дав.</p>
+</div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 8.5 · специфікація «модуль з PDF» і перший зріз</div><div class="pb">
+<p><b>На злиття в <code>lectern/</code></b> (повний диф і файли — <code>console/</code>): <code>docs/specs/module-from-pdf/</code> (discovery, spec, review, plan, tasks), <code>docs/adr/0008-pdf-text-extraction-pypdf.md</code> + оновлений індекс ADR, <code>src/lectern/pdf.py</code>, <code>join_pages()</code>/<code>page_of()</code> і поля <code>pages</code>/<code>ambiguous</code> у <code>tools.py</code>, <code>scripts/make_pdf_fixtures.py</code>, три фікстури, <code>tests/test_pdf.py</code>, <code>tests/test_quote_pages.py</code>, залежності в <code>pyproject.toml</code>. Тести позначено <code>@pytest.mark.req</code> — диф передбачає, що <code>scripts/trace.py</code> і маркер з уроку 8.3 злито раніше. Гейт: 136 passed, ruff чистий, <code>check_context.py</code> 0 problems, MCP-контракт без змін (0.3.0), <code>trace.py</code> 0 errors.</p>
+<p><b>Що далі.</b> T3 — ваше домашнє завдання. Лекції понад бюджет етапу (LEC-ING-007) отримають RAG над PDF в уроці 9.2. T4–T13 — фіча від spec до злитого PR у модулях 10–11; там же перший реальний прогін виміряє H1, H2 і H4.</p>
+</div></div>
+</section>
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">08</span><h2>Той самий потік у трьох інструментах<span class="sub">spec → рев'ю → задачі → зріз</span></h2></div>
+<p>Відмінність між інструментами не в «якості плану», а в тому, <b>де живе план</b> і <b>як заборонити запис</b> на етапах, що мають лише читати.</p>
+<div class="tabs">
+<input type="radio" name="flow-t" id="flow-t1" checked><input type="radio" name="flow-t" id="flow-t2"><input type="radio" name="flow-t" id="flow-t3">
+<div class="tab-l"><label for="flow-t1">Claude Code</label><label for="flow-t2">Codex CLI</label><label for="flow-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Рев'ю і задачі — <code>-p</code> лише з <code>Read Glob Grep</code> і явною забороною <code>Edit Write Bash</code>; реалізація — окремий <code>-p</code> на кожну задачу з <code>acceptEdits</code>, вузьким <code>Bash(...)</code>, <code>--max-budget-usd</code> і <code>--max-turns</code> (команди вище, обидві запускались). Інтерактивно той самий етап — plan mode:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude --permission-mode plan</span>
+<span class="d">&gt; Прочитай docs/specs/module-from-pdf/spec.md і plan.md, склади tasks.md: 8–15 задач з id, залежностями, вимогами й прийманням</span></pre>
+<div class="cap">команда з документації Claude Code · інтерактивна сесія в уроці не записувалась</div></div>
+<p>У plan mode агент читає і пропонує, але не редагує до схвалення; статус-рядок показує <code>⏸ plan mode on</code>, перемикання — Shift+Tab. Схвалений план Lectern лягає в <code>docs/plans/</code> (налаштування <code>plansDirectory</code> з уроку 4.3).</p>
+</div>
+<div class="tab-p">
+<p><code>codex exec</code> типово працює в пісочниці <b>лише для читання</b> — природний режим для рев'ю і складання задач. Результат забирає <code>-o</code>: останнє повідомлення пишеться у файл, хоча агент нічого не записує сам:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec -o tasks-draft.md "Прочитай docs/specs/module-from-pdf/spec.md і plan.md. Склади tasks.md: 8–15 задач з id, залежностями, вимогами й прийманням."</span>
+<span class="ps">$ </span><span class="c">codex exec --sandbox workspace-write "$(sed 's/{TASK}/T1/g' implement.txt)"</span></pre>
+<div class="cap">команди з офіційної документації Codex · не запускались у цьому уроці</div></div>
+<p>Для машинного розбору знахідок рев'ю є <code>--output-schema</code> (фінальна відповідь за JSON Schema). Інтерактивний аналог plan mode — <code>/plan</code>.</p>
+</div>
+<div class="tab-p">
+<p>У Cursor CLI режим плану вмикає <code>--mode=plan</code> (або <code>--plan</code>, <code>/plan</code>, Shift+Tab): агент ставить уточнювальні питання, досліджує код і пише план у Markdown. У редакторі план типово лежить у домашній теці, а в репозиторій його переносить кнопка «Save to workspace» — для SDD це обов'язковий крок, інакше план не потрапить у PR.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">agent --mode=plan "Склади tasks.md за docs/specs/module-from-pdf/spec.md і plan.md"</span>
+<span class="ps">$ </span><span class="c">agent -p --force "$(sed 's/{TASK}/T1/g' implement.txt)"</span></pre>
+<div class="cap">команди з офіційної документації Cursor · не запускались у цьому уроці</div></div>
+<p>У режимі друку <code>-p</code> без <code>--force</code> агент лише пропонує зміни, тож рев'ю spec безпечно запускати без цього прапорця.</p>
+</div>
+</div>
+<p>Spec Kit проводить ті самі етапи командами-skills <code>/speckit-specify</code> → <code>/speckit-plan</code> → <code>/speckit-tasks</code> → <code>/speckit-implement</code> (README, перевірено 15.10.2026); порівняння інструментів SDD — урок 8.2.</p>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що ламає практику SDD</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Наслідок</th><th>Як уникнути</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">Бюджет як гейт CI</td><td data-th="Наслідок">Тест падає від ціни токена або моделі, а не від коду; його вимикають</td><td data-th="Як уникнути">Гіпотеза з дією при провалі; гейт — лише детерміновані фікстури</td></tr>
+<tr><td data-th="Помилка">Рев'ю до нуля знахідок</td><td data-th="Наслідок">Рецензент заповнює будь-яку квоту; раунди не закінчуються</td><td data-th="Як уникнути">Зупинка, коли зникли суперечності з кодом і ADR</td></tr>
+<tr><td data-th="Помилка">Реалізувати всі задачі одним запуском</td><td data-th="Наслідок">Питання агента губляться в довгому звіті, вартість і обсяг диффа не контрольовані</td><td data-th="Як уникнути">Один запуск = одна задача з власним прийманням і бюджетом</td></tr>
+<tr><td data-th="Помилка">Номер сторінки від моделі</td><td data-th="Наслідок">Правильна цитата з вигаданою сторінкою проходить перевірку тексту</td><td data-th="Як уникнути">Сторінку виводить код з місця збігу (D9)</td></tr>
+<tr><td data-th="Помилка">«Найпопулярніша бібліотека»</td><td data-th="Наслідок">AGPL-залежність у мережевому сервісі через PR агента</td><td data-th="Як уникнути">Ліцензія — у non-goals і ADR до першої задачі</td></tr>
+<tr><td data-th="Помилка"><code>implemented</code> за фактом злиття задачі</td><td data-th="Наслідок">Матриця трасування бреше; часткове закриття вимоги губиться</td><td data-th="Як уникнути"><code>implemented</code> — лише з тестом на саму поведінку з вимоги; матриця <code>trace.py</code> показує, які тести її доводять</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">hash-tables#p12</span><span class="h">що це?</span></span><span class="b"><span class="t">Адреса цитати</span><span class="d">lecture_id + фізична сторінка з 1; лише в JSON, не в URI</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">no_text</span><span class="h">коли?</span></span><span class="b"><span class="t">Сторінка без тексту</span><span class="d">менше 20 непробільних символів — гіпотеза H5</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">D9</span><span class="h">яке рішення?</span></span><span class="b"><span class="t">Сторінку пише код</span><span class="d">модель дає цитату, сторінку виводить пошук, що її перевіряє</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">AGPL §13</span><span class="h">чим відрізняється від GPL?</span></span><span class="b"><span class="t">Мережа = поширення</span><span class="d">змінена версія мусить пропонувати код користувачам через мережу</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">mark.req</span><span class="h">навіщо в тестах?</span></span><span class="b"><span class="t">Доказ для trace.py</span><span class="d">docstring з id трасування не бачить</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">критичний шлях</span><span class="h">у цій фічі</span></span><span class="b"><span class="t">7 задач</span><span class="d">T1 → T2 → T6 → T7 → T8 → T9 → T12</span></span></span></label>
+</div>
+</section>
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій з цією spec</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. У лекції на 12 сторінок 4-та й 9-та — скановані таблиці без тексту. Що має зробити Lectern за spec?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Дати всій лекції статус <code>scanned</code>: частковий скан теж не дає гарантувати сторінки цитат</span></label><label class="opt ok"><input type="radio" name="q1"><span>Обробити лекцію, записати сторінки 4 і 9 у <code>no_text</code> звіту; цитат з них не буде</span></label><label class="opt"><input type="radio" name="q1"><span>Надіслати лише ці дві сторінки моделі як <code>document</code>-блок, щоб вона прочитала таблиці</span></label></div>
+    <div class="why yes">Так. LEC-ING-006: частковий скан обробляють з попередженням. <code>scanned</code> — лише коли всі сторінки <code>no_text</code> (ING-003).</div>
+    <div class="why no">Статус <code>scanned</code> вимагає, щоб без тексту були всі сторінки (ING-003), а <code>document</code>-блок і OCR — non-goals (D1). Частковий скан обробляють, номери сторінок ідуть у звіт (ING-006).</div></div>
+  <div class="q"><div class="qt">2. Чому рішення «модель ніколи не пише номер сторінки» (D9) сильніше за перевірку сторінки, яку назвала модель?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Сторінку виводить той самий пошук, що перевіряє цитату, тож помилка «не та сторінка» неможлива</span></label><label class="opt"><input type="radio" name="q2"><span>Перевірка сторінки, яку назвала модель, вимагала б окремого виклику Haiku на кожну цитату квізу й карток</span></label><label class="opt"><input type="radio" name="q2"><span>Citations API однаково повертає сторінки, тож номери від моделі лише дублювали б його</span></label></div>
+    <div class="why yes">Так. Клас помилок прибрано дизайном: перевіряти нема чого, бо номер — похідна від місця збігу.</div>
+    <div class="why no">Звірити номер можна кодом безкоштовно, а Citations у фічі не використовуються (D1). Перевага D9 — у тому, що помилки «правильна цитата, вигадана сторінка» не існує.</div></div>
+  <div class="q"><div class="qt">3. Другий раунд рев'ю spec знову повернув рівно 10 знахідок. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Робити раунди, доки рецензент не поверне нуль знахідок: інакше spec не можна віддавати в план і задачі</span></label><label class="opt"><input type="radio" name="q3"><span>Замінити Haiku на Opus: стабільні 10 знахідок означають, що рецензент не розрізняє важливе</span></label><label class="opt ok"><input type="radio" name="q3"><span>Закрити суперечності з кодом, схемою й ADR, решту перенести в план і задачі, раунди зупинити</span></label></div>
+    <div class="why yes">Так. 10 — це квота з промпту. Наступний раунд виправданий, лише поки трапляються суперечності з кодом чи контрактами.</div>
+    <div class="why no">Рецензент заповнює будь-яку названу квоту, тому до нуля він не дійде. Сильніша модель тут ні до чого: рахувати треба клас знахідок, а не їхню кількість.</div></div>
+  <div class="q"><div class="qt">4. Колега пропонує PyMuPDF. Lectern має <code>lectern serve</code> і <code>lectern mcp --http</code>. Що вирішальне?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Нічого: AGPL стосується лише поширення бінарників, а сервіс користувачам не передається</span></label><label class="opt ok"><input type="radio" name="q4"><span>AGPL §13: змінена версія, доступна через мережу, мусить пропонувати користувачам свій код</span></label><label class="opt"><input type="radio" name="q4"><span>Досить винести PyMuPDF в optional extra: тоді ліцензія не поширюється на основний пакет</span></label></div>
+    <div class="why yes">Так. Саме мережева умова відрізняє AGPL від GPL, тому вибір — рішення власника і ADR, а не PR агента.</div>
+    <div class="why no">§13 AGPL прямо поширює вимогу на взаємодію через мережу. Extra не змінює ліцензію: розгорнутий сервіс з extra однаково працює з AGPL-кодом.</div></div>
+  <div class="q"><div class="qt">5. Перший реальний прогін (T12) показав $0,31 за модуль при AC7 «≤ $0,25, гіпотеза H1». Що далі?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Заблокувати реліз: AC7 записано в критеріях приймання, отже це така сама умова злиття, як AC4</span></label><label class="opt"><input type="radio" name="q5"><span>Підняти <code>--max-budget-usd</code> до 0,31 і тихо переписати AC7 на «≤ $0,31», бо число вже виміряне</span></label><label class="opt ok"><input type="radio" name="q5"><span>Записати $0,31 у звіт, увімкнути важіль з плану (один прогін на лекцію) і переглянути ціль</span></label></div>
+    <div class="why yes">Так. Гіпотеза не блокує реліз, але її результат фіксують і вирішують, що з ним робити; важіль заздалегідь записано в план.</div>
+    <div class="why no">AC7 позначено як гіпотезу саме для того, щоб не робити його гейтом CI. А тихе переписування цілі знищує сенс виміру: потрібні запис і рішення.</div></div>
+  <div class="q"><div class="qt">6. Після T1–T2 у репозиторії 136 зелених тестів, а <code>trace.py</code> пише «0 tests: 8 error(s)». Причина?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Id вимог стояли в docstring тестів, а трасування читає лише маркер <code>@pytest.mark.req</code></span></label><label class="opt"><input type="radio" name="q6"><span>Pytest пропустив нові тести, бо <code>--strict-markers</code> відхиляє незареєстрований маркер</span></label><label class="opt"><input type="radio" name="q6"><span>Вимоги мали статус <code>approved</code>, а <code>trace.py</code> зараховує тести лише вимогам <code>implemented</code></span></label></div>
+    <div class="why yes">Так. Тести були, доказів для трасування — ні. Конвенцію з уроку 8.3 треба писати в промпт реалізації, а не сподіватися на неї.</div>
+    <div class="why no">Тести пройшли (136 passed), маркерів у них не було взагалі, а вимоги стояли як <code>implemented</code>, тож саме тому з'явилися помилки «untested requirement».</div></div>
+  <div class="q"><div class="qt">7. Агент T2 виявив: pypdf закінчує сторінку <code>\n</code>, з'єднання через <code>"\n"</code> дає порожній рядок, і перенос через межу не склеюється. Правильна реакція?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Розширити regex у <code>norm()</code>, щоб він склеював перенос і через порожній рядок між сторінками</span></label><label class="opt ok"><input type="radio" name="q7"><span>Прибрати кінцеві пробіли сторінки при з'єднанні, записати питання, <code>norm()</code> не чіпати</span></label><label class="opt"><input type="radio" name="q7"><span>Позначати такі цитати <code>ambiguous</code> і прибрати AC4 з гейтів, доки не вирішить власник</span></label></div>
+    <div class="why yes">Так. Причина — у способі з'єднання сторінок, а не в правилах нормалізації; ADR 0004 забороняє послаблювати перевірку, щоб пройшов тест.</div>
+    <div class="why no">Правка <code>norm()</code> змінила б поведінку перевірки для всіх лекцій, і ADR 0004 це забороняє. <code>ambiguous</code> означає повтор цитати, а не проблему витягу.</div></div>
+  <div class="q"><div class="qt">8. Чому першим зрізом обрано T1 + T2, а не T5 (<code>lectern module --dry-run</code>)?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>T5 залежить від T11 з промптами, тож його не можна почати до генерації артефактів</span></label><label class="opt"><input type="radio" name="q8"><span>T1 і T2 найдешевші, а з дешевих задач починають, щоб розігріти кеш промпту агента перед дорогими</span></label><label class="opt ok"><input type="radio" name="q8"><span>Вони від файлу до вердикту перевіряють найризикованіше: чи прив'язується цитата з PDF до сторінки</span></label></div>
+    <div class="why yes">Так. Якби відповідь була «ні», решта плану змінилася б; <code>--dry-run</code> — обгортка, яка цього не перевіряє.</div>
+    <div class="why no">T5 залежить лише від T1 (граф задач), а ціна не критерій першого зрізу. Зріз обирають за ризиком: перевірити найсумнівніше припущення якомога раніше.</div></div>
+  <div class="q"><div class="qt">9. У спільній <code>Session</code> з двома лекціями квіз лекції A містить цитату з лекції B. Що буде в чинному коді?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span><code>validate()</code> прийме її: шукає в усіх лекціях сесії; тому spec вимагає сесію на лекцію (D10)</span></label><label class="opt"><input type="radio" name="q9"><span><code>validate()</code> відхилить її, бо кожен елемент квізу несе <code>lecture_id</code> і звіряється лише з ним</span></label><label class="opt"><input type="radio" name="q9"><span>Нічого поганого: <code>check_quote</code> уже відхилив би таку цитату під час генерації, ще до <code>save_quiz</code></span></label></div>
+    <div class="why yes">Так. Це знахідка F2 рев'ю: <code>validate()</code> перебирає <code>self.lectures.values()</code>, а елемент квізу <code>lecture_id</code> не має.</div>
+    <div class="why no">Елемент квізу — <code>{question, options, answer, quote}</code>, без <code>lecture_id</code>. А <code>check_quote</code> модель може не викликати; останнє слово за <code>validate()</code>, і він шукає по всій сесії.</div></div>
+  <div class="q"><div class="qt">10. Як у Codex отримати чернетку <code>tasks.md</code> зі spec, не даючи агентові права записувати файли?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span><code>codex exec --sandbox workspace-write</code>: без запису на диск <code>tasks.md</code> не з'явиться</span></label><label class="opt ok"><input type="radio" name="q10"><span><code>codex exec -o tasks-draft.md "…"</code> у типовій пісочниці лише для читання</span></label><label class="opt"><input type="radio" name="q10"><span><code>/plan</code> у Codex, бо план автоматично зберігається в <code>docs/plans</code> репозиторію</span></label></div>
+    <div class="why yes">Так. <code>-o</code> пише останнє повідомлення у файл, а сам агент лишається в read-only пісочниці.</div>
+    <div class="why no">Пісочниця з записом — зайве право для етапу планування. <code>docs/plans</code> — налаштування <code>plansDirectory</code> у Claude Code, а не поведінка Codex.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>посторінковий<br>текст</td><td>Текст PDF, де кожна сторінка збережена окремо з номером, щоб будь-який рядок мав сторінку.</td></tr>
+<tr><td>текстовий<br>шар PDF</td><td>Символи, які можна витягти без OCR; у скані його немає, і цитувати нема що.</td></tr>
+<tr><td>цитата<br>з номером<br>сторінки</td><td>Дослівна цитата плюс діапазон сторінок, обчислений кодом з місця збігу.</td></tr>
+<tr><td>асемблер<br>модуля</td><td>Код, що збирає артефакти лекцій, адреси цитат і статуси в <code>module.json</code> і <code>report.json</code>.</td></tr>
+<tr><td>граф<br>залежностей<br>задач</td><td>Задачі як вузли, «потребує результату» як ребра; дає порядок, паралельність і критичний шлях.</td></tr>
+<tr><td>перший<br>вертикальний<br>зріз</td><td>Найтонший набір задач від входу до перевіреного результату, що перевіряє найризикованіше припущення.</td></tr>
+<tr><td>знахідки<br>рев'ю<br>специфікації</td><td>Зауваження рецензента до spec до коду; цінні ті, що показують суперечність з кодом, схемою чи ADR.</td></tr>
+<tr><td>критерій-<br>гіпотеза</td><td>Критерій приймання з ціллю, яку ще не міряли; фіксується і переглядається, але не блокує CI.</td></tr>
+<tr><td>AGPL-ризик<br>залежності</td><td>Copyleft-ліцензія, що поширює вимогу відкрити код на сервіси, доступні через мережу.</td></tr>
+<tr><td>бюджет<br>фічі</td><td>Гранична вартість одиниці результату фічі (тут — модуля), з методом оцінки і лімітом у коді.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Spec фічі «картки з лекції»</h3>
+<p>Discovery і специфікація фічі «10–15 карток з однієї лекції з цитатою й сторінкою» за шаблоном уроку 8.1: вимоги з id і EARS, гейти й гіпотези окремо, бюджет фічі, non-goals, рев'ю агентом (до двох раундів) і рішення за кожною знахідкою.</p>
+<h3>2. Реалізувати T3 з трасуванням</h3>
+<p>Задача T3 з <code>tasks.md</code> (<code>lectern check &lt;lecture.pdf&gt;</code>) через агента з бюджетом: тести з <code>@pytest.mark.req</code>, коміт з <code>Refs:</code>, вивід <code>trace.py</code>, питання агента і ваші рішення.</p>
+</div>
+</section>
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/pdf-support" target="_blank" rel="noopener">Claude API — PDF support</a><span>32 МБ і 600/100 сторінок на запит; сторінка = текст + зображення; 1 500–3 000 токенів тексту на сторінку</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/citations" target="_blank" rel="noopener">Claude API — Citations</a><span><code>page_location</code>: сторінки з 1, кінцева виключна; скани без тексту не цитуються</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude — Pricing</a><span>ціни Haiku 5.5 для бюджету фічі</span></li>
+<li><a href="https://pypdf.readthedocs.io/en/stable/user/extract-text.html" target="_blank" rel="noopener">pypdf — Extract Text from a PDF</a><span>посторінковий витяг, режим layout, попередження про сторінки-зображення</span></li>
+<li><a href="https://pypi.org/project/pypdf/" target="_blank" rel="noopener">pypdf на PyPI</a><span>6.20.1, BSD-3-Clause</span></li>
+<li><a href="https://pypi.org/project/pdfplumber/" target="_blank" rel="noopener">pdfplumber на PyPI</a><span>0.11.10, MIT; залежності pdfminer.six і pypdfium2</span></li>
+<li><a href="https://pymupdf.readthedocs.io/en/latest/about.html" target="_blank" rel="noopener">PyMuPDF — About · License and Copyright</a><span>AGPL або комерційна ліцензія Artifex</span></li>
+<li><a href="https://github.com/pymupdf/PyMuPDF/blob/main/COPYING" target="_blank" rel="noopener">PyMuPDF — COPYING (GNU AGPL v3)</a><span>§13 Remote Network Interaction</span></li>
+<li><a href="https://pypi.org/project/reportlab/" target="_blank" rel="noopener">reportlab на PyPI</a><span>5.0.1, BSD; генерація синтетичних PDF-фікстур</span></li>
+<li><a href="https://alistairmavin.com/ears/" target="_blank" rel="noopener">EARS — Easy Approach to Requirements Syntax</a><span>шаблони вимог; детально — урок 8.1</span></li>
+<li><a href="https://github.com/github/spec-kit" target="_blank" rel="noopener">GitHub Spec Kit</a><span><code>/speckit-specify</code>, <code>/speckit-plan</code>, <code>/speckit-tasks</code>, <code>/speckit-implement</code></span></li>
+<li><a href="https://code.claude.com/docs/en/common-workflows" target="_blank" rel="noopener">Claude Code — Common workflows</a><span>plan mode: <code>--permission-mode plan</code>, Shift+Tab</span></li>
+<li><a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">Claude Code — CLI reference</a><span><code>--max-budget-usd</code>, <code>--max-turns</code>, <code>--setting-sources</code>, <code>--strict-mcp-config</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">Codex — Non-interactive mode</a><span><code>codex exec</code>: read-only за замовчуванням, <code>-o</code>, <code>--output-schema</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/developer-commands" target="_blank" rel="noopener">Codex — Developer commands</a><span><code>/plan</code></span></li>
+<li><a href="https://cursor.com/docs/agent/plan-mode" target="_blank" rel="noopener">Cursor — Plan Mode</a><span>уточнювальні питання, план у Markdown, «Save to workspace»</span></li>
+<li><a href="https://cursor.com/docs/cli/overview" target="_blank" rel="noopener">Cursor CLI — Overview</a><span><code>--mode=plan</code>, <code>/plan</code>; <code>-p</code> і <code>--force</code></span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 8.5 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 8.5 · Senomi<br><br><a href="lesson-41.html">← Урок 8.4</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-43.html">Урок 9.1 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

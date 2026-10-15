@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 6.2. Hooks: автоматизація й автоматичні перевірки</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="60" r="38"/><path d="M60 22l-8-6M60 22l-8 6M98 60l6-8M98 60l-6-8M60 98l8 6M60 98l8-6M22 60l-6 8M22 60l6 8"/><rect x="46" y="46" width="28" height="28" rx="6"/><path d="M54 56h12M54 64h8"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 6.2 · Модуль 6</div>
+<h1>Hooks: автоматизація й автоматичні перевірки</h1>
+<p class="lead">Hook — команда, яку harness запускає сам у потрібній точці циклу агента: вона блокує дію, додає моделі контекст або не дає завершити хід, доки перевірка не пройде. Розбираємо 33 події, контракт обробника і п'ять патернів на реальних прогонах Lectern — з мілісекундами, таймаутами і вічним Stop-циклом.</p>
+<div class="hero-meta"><span class="chip">Розширення: commands, skills, hooks, plugins, Agent SDK</span><span class="chip t">≈ 55 хв</span><span class="chip a">13 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Від прохання до гарантії</a><a href="#model"><b>02</b>Модель хуків</a><a href="#contract"><b>03</b>Контракт обробника</a><a href="#patterns"><b>04</b>П&#x27;ять патернів на Lectern</a><a href="#cost"><b>05</b>Ціна і відмови</a><a href="#decide"><b>06</b>Хук, дозвіл, CLAUDE.md чи CI</a><a href="#tools"><b>07</b>Claude Code, Codex, Cursor</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>обрати подію, matcher і тип обробника під задачу з 33 подій Claude Code;</li>
+    <li>написати хук, що блокує дію (exit 2 або <code>permissionDecision</code>), додає контекст (<code>additionalContext</code>) чи повертає агента до роботи (Stop-гейт з <code>stop_hook_active</code>);</li>
+    <li>виміряти ціну хука в мілісекундах і передбачити, як він поведеться при помилці, таймауті чи вічному циклі;</li>
+    <li>вирішити, що має бути хуком, що — правилом дозволів, що — рядком у CLAUDE.md, а що — перевіркою в CI;</li>
+    <li>перенести хуки між Claude Code, Codex і Cursor і знати, де семантика розходиться.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Від прохання до гарантії<span class="sub">Що змінює хук</span></h2></div>
+<p>Рядок у CLAUDE.md — прохання до моделі. <b>Hook</b> — команда, яку harness запускає сам у визначеній точці циклу агента. Вона отримує JSON про подію і своїм кодом виходу чи JSON-відповіддю може заблокувати дію, додати моделі контекст або не дати завершити хід. Модель його не викликає і пропустити не може.</p>
+<p>Три спостереження з прогонів цього уроку на Lectern (Claude Code 2.1.300, Haiku 5.5):</p>
+<ol class="steps">
+<li><b>Прохання часто працює.</b> З правилом «Never read <code>lectures/private/</code>» у CLAUDE.md модель в обох прогонах сама відмовилась писати в цю теку. Без CLAUDE.md вона одразу запустила <code>mkdir -p lectures/private &amp;&amp; cp …</code>, і зупинив її лише хук.</li>
+<li><b>Самоперевірка агента бреше.</b> Агент перевірив п'ять цитат через <code>lectern check --quote</code>, усі <code>ok</code>, і відзвітував «готово». Stop-хук прогнав повну перевірку квізу і знайшов дві цитати коротші за 5 слів (відомий баг B2) і ключ, який вгадується без лекції.</li>
+<li><b>Гарантія коштує мілісекунди.</b> Stop-гейт додавав понад секунду до ходу з квізом, з них 0,7 с — імпорт SDK у <code>lectern check</code>. Після правки — 0,11 с.</li>
+</ol>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Хук — політика без участі моделі. Його ціна — затримка на кожній події і підтримка скрипта. Окупається він там, де одна пропущена помилка дорожча за тисячі прогонів: персональні дані, зламаний квіз, секрет у промпті.</p>
+</div>
+</section>
+
+<section class="sec" id="model">
+<div class="sec-h"><span class="num">02</span><h2>Модель хуків<span class="sub">Подія → matcher → обробник</span></h2></div>
+<p>Конфігурація має три рівні вкладеності: <b>подія</b> (точка життєвого циклу), <b>matcher</b> (фільтр, наприклад назва інструмента) і один чи кілька <b>обробників</b> (handler).</p>
+<pre class="code" data-lang="json">{ <span class="s">"hooks"</span>: {
+  <span class="s">"PostToolUse"</span>: [  <span class="cm">// подія</span>
+    { <span class="s">"matcher"</span>: <span class="s">"Edit|Write"</span>, <span class="cm">// фільтр</span>
+      <span class="s">"hooks"</span>: [  <span class="cm">// обробники</span>
+        { <span class="s">"type"</span>: <span class="s">"command"</span>,
+          <span class="s">"command"</span>: <span class="s">"${CLAUDE_PROJECT_DIR}/scripts/hooks/after_edit.sh"</span>,
+          <span class="s">"args"</span>: [],
+          <span class="s">"timeout"</span>: <span class="n">30</span> } ] } ] } }</pre>
+<p>Коментарі — лише для пояснення: у settings.json їх не можна.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 600" role="img" aria-label="Події хуків в одному ході агента: від SessionStart до SessionEnd">
+  <defs>
+    <marker id="h1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+    <marker id="h2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="30" y="8" width="180" height="40" rx="8" class="bx t"/>
+  <text x="120" y="33" text-anchor="middle" class="tx b">SessionStart</text>
+  <text x="222" y="25" class="tx s">раз на сесію:</text>
+  <text x="222" y="40" class="tx s">контекст моделі</text>
+  <path d="M120 48 V 66" class="ln" marker-end="url(#h1)"/>
+  <rect x="30" y="70" width="180" height="40" rx="8" class="bx p"/>
+  <text x="120" y="95" text-anchor="middle" class="tx b">UserPromptSubmit</text>
+  <text x="222" y="87" class="tx s">може відхилити</text>
+  <text x="222" y="102" class="tx s">промпт</text>
+  <path d="M120 110 V 128" class="ln" marker-end="url(#h1)"/>
+  <rect x="30" y="132" width="180" height="40" rx="20" class="bx a"/>
+  <text x="120" y="157" text-anchor="middle" class="tx b">модель: що далі?</text>
+  <rect x="20" y="186" width="196" height="236" rx="10" class="bx" style="fill:none;stroke-dasharray:5 4"/>
+  <text x="226" y="198" class="tx s">кожен виклик</text>
+  <text x="226" y="211" class="tx s">інструмента</text>
+  <path d="M120 172 V 210" class="ln" marker-end="url(#h1)"/>
+  <rect x="40" y="214" width="160" height="38" rx="8" class="bx p"/>
+  <text x="120" y="238" text-anchor="middle" class="tx b">PreToolUse</text>
+  <text x="226" y="231" class="tx s">deny · ask</text>
+  <text x="226" y="245" class="tx s">allow · правка</text>
+  <path d="M120 252 V 266" class="ln" marker-end="url(#h1)"/>
+  <rect x="40" y="270" width="160" height="34" rx="8" class="bx"/>
+  <text x="120" y="292" text-anchor="middle" class="tx">PermissionRequest</text>
+  <text x="226" y="285" class="tx s">лише якщо</text>
+  <text x="226" y="298" class="tx s">буде запит</text>
+  <path d="M120 304 V 318" class="ln" marker-end="url(#h1)"/>
+  <rect x="60" y="322" width="120" height="30" rx="6" class="bx a"/>
+  <text x="120" y="342" text-anchor="middle" class="tx">інструмент</text>
+  <path d="M120 352 V 366" class="ln" marker-end="url(#h1)"/>
+  <rect x="40" y="370" width="160" height="40" rx="8" class="bx t"/>
+  <text x="120" y="388" text-anchor="middle" class="tx b">PostToolUse</text>
+  <text x="120" y="403" text-anchor="middle" class="tx s">або PostToolUseFailure</text>
+  <text x="226" y="387" class="tx s">уже виконано:</text>
+  <text x="226" y="401" class="tx s">лише фідбек</text>
+  <path d="M120 422 V 436" class="ln" marker-end="url(#h1)"/>
+  <rect x="30" y="440" width="180" height="34" rx="8" class="bx p"/>
+  <text x="120" y="462" text-anchor="middle" class="tx">PostToolBatch</text>
+  <text x="222" y="455" class="tx s">раз на пакет</text>
+  <text x="222" y="469" class="tx s">інструментів</text>
+  <path d="M30 457 C 4 400, 4 212, 28 160" class="ln d" marker-end="url(#h1)"/>
+  <path d="M120 474 V 490" class="ln" marker-end="url(#h1)"/>
+  <rect x="30" y="494" width="180" height="40" rx="8" class="bx p"/>
+  <text x="120" y="519" text-anchor="middle" class="tx b">Stop</text>
+  <path d="M210 514 H 340 V 152 H 216" class="ln a" marker-end="url(#h2)"/>
+  <text x="222" y="530" class="tx s a">block → ще один хід</text>
+  <path d="M120 534 V 552" class="ln" marker-end="url(#h1)"/>
+  <rect x="30" y="556" width="180" height="36" rx="8" class="bx t"/>
+  <text x="120" y="579" text-anchor="middle" class="tx b">SessionEnd</text>
+  <rect x="226" y="558" width="12" height="12" rx="3" class="bx p"/>
+  <text x="244" y="569" class="tx s">може блокувати</text>
+  <rect x="226" y="578" width="12" height="12" rx="3" class="bx t"/>
+  <text x="244" y="589" class="tx s">контекст, лог</text>
+</svg>
+<figcaption>Головні події одного ходу. Рожеві можуть зупинити дію exit-кодом 2. PermissionRequest exit 2 ігнорує: там відмова лише через JSON. Повний список — у таблиці нижче.</figcaption>
+</figure>
+<details><summary>Усі 33 події Claude Code 2.1.300 · що робить exit 2</summary><div class="body">
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Подія</th><th>Коли · ефект exit 2</th></tr></thead>
+<tbody>
+<tr><td colspan="2"><b>Сесія</b></td></tr>
+<tr><td><code>SessionStart</code></td><td>старт, resume, /clear, compact, fork; stdout і <code>additionalContext</code> ідуть у контекст · не блокує</td></tr>
+<tr><td><code>Setup</code></td><td>лише з <code>--init-only</code>, <code>-p --init</code>, <code>-p --maintenance</code>: разова підготовка в CI · ігнорується</td></tr>
+<tr><td><code>SessionEnd</code></td><td>кінець сесії; усі хуки ділять бюджет 1,5 с · не блокує</td></tr>
+<tr><td colspan="2"><b>Хід</b></td></tr>
+<tr><td><code>UserPromptSubmit</code></td><td>промпт до моделі, також промпти від /loop і фонових субагентів · відхиляє промпт</td></tr>
+<tr><td><code>UserPromptExpansion</code></td><td>slash-команда розгортається в промпт · блокує розгортання</td></tr>
+<tr><td><code>Stop</code></td><td>модель закінчила відповідь (не при перериванні) · продовжує хід</td></tr>
+<tr><td><code>StopFailure</code></td><td>хід обірвала помилка API · вихід ігнорується</td></tr>
+<tr><td colspan="2"><b>Інструменти</b></td></tr>
+<tr><td><code>PreToolUse</code></td><td>перед викликом · блокує виклик</td></tr>
+<tr><td><code>PermissionRequest</code></td><td>потрібен запит дозволу · exit 2 ігнорується, відмова — <code>decision.behavior</code></td></tr>
+<tr><td><code>PermissionDenied</code></td><td>auto mode відмовив · лише <code>retry: true</code></td></tr>
+<tr><td><code>PostToolUse</code></td><td>інструмент успішний · stderr — моделі</td></tr>
+<tr><td><code>PostToolUseFailure</code></td><td>інструмент упав · stderr — моделі</td></tr>
+<tr><td><code>PostToolBatch</code></td><td>пакет паралельних викликів завершено, до наступного запиту моделі · зупиняє цикл</td></tr>
+<tr><td colspan="2"><b>Субагенти, задачі, команди агентів</b></td></tr>
+<tr><td><code>SubagentStart</code> / <code>SubagentStop</code></td><td>старт / кінець субагента · Stop не дає субагенту завершитися</td></tr>
+<tr><td><code>TaskCreated</code> / <code>TaskCompleted</code></td><td>задача через <code>TaskCreate</code> / позначена виконаною · відкат / не виконана</td></tr>
+<tr><td><code>TeammateIdle</code></td><td>учасник agent team іде в простій · працює далі</td></tr>
+<tr><td colspan="2"><b>Контекст і модель</b></td></tr>
+<tr><td><code>PreCompact</code> / <code>PostCompact</code></td><td>до / після стиснення · блокує стиснення / ні</td></tr>
+<tr><td><code>InstructionsLoaded</code></td><td>завантажено CLAUDE.md чи <code>.claude/rules/*.md</code> · ігнорується</td></tr>
+<tr><td><code>PreModelSwitch</code> / <code>PostModelSwitch</code></td><td>до / після зміни моделі · блокує зміну / ні</td></tr>
+<tr><td colspan="2"><b>Середовище</b></td></tr>
+<tr><td><code>ConfigChange</code></td><td>змінився файл налаштувань · блокує зміну (крім managed)</td></tr>
+<tr><td><code>CwdChanged</code> / <code>DirectoryAdded</code> / <code>FileChanged</code></td><td>інша тека, <code>/add-dir</code>, файл зі списку в matcher · не блокують</td></tr>
+<tr><td><code>WorktreeCreate</code> / <code>WorktreeRemove</code></td><td>замінюють git-логіку worktree (урок 4.4) · будь-який ненульовий код — збій</td></tr>
+<tr><td colspan="2"><b>MCP та інтерфейс</b></td></tr>
+<tr><td><code>Elicitation</code> / <code>ElicitationResult</code></td><td>MCP-сервер просить ввід / відповідь іде назад · відхиляє</td></tr>
+<tr><td><code>Notification</code></td><td>сповіщення: потрібен дозвіл, простій, auth · ігнорується</td></tr>
+<tr><td><code>MessageDisplay</code></td><td>показ тексту відповіді; <code>displayContent</code> міняє лише екран · ігнорується</td></tr>
+</tbody></table></div>
+</div></details>
+<h3>Matcher</h3>
+<p>Matcher фільтрує різні поля для різних подій. Для інструментальних подій це <code>tool_name</code>, для SessionStart — <code>source</code> (<code>startup</code>, <code>resume</code>, <code>clear</code>, <code>compact</code>, <code>fork</code>), для PreCompact — <code>manual|auto</code>. UserPromptSubmit, Stop і PostToolBatch matcher не підтримують: доданий він мовчки ігнорується. Тип matcher-а визначають символи в ньому:</p>
+<ul>
+<li><b>Лише літери, цифри, <code>_ - , |</code> і пробіли</b> — точний збіг або список: <code>Edit|Write</code>.</li>
+<li><b>Будь-який інший символ</b> — неякірний JavaScript-регекс. <code>Edit.*</code> зловить і <code>NotebookEdit</code>, тому для точного збігу пишуть <code>^Edit$</code>. MCP-інструменти мають вигляд <code>mcp__сервер__інструмент</code>. <code>mcp__memory</code> без <code>.*</code> — точний рядок, і він не збігається з жодним інструментом.</li>
+<li><b>Поле <code>if</code></b> звужує фільтр синтаксисом правил дозволів (<code>"Bash(git *)"</code>), але best-effort: нерозібрану команду хук отримує завжди.</li>
+</ul>
+</section>
+
+<section class="sec" id="contract">
+<div class="sec-h"><span class="num">03</span><h2>Контракт обробника<span class="sub">stdin, код виходу, JSON</span></h2></div>
+<h3>П'ять типів обробників</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип</th><th>Що робить</th><th>Таймаут за замовч.</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип"><code>command</code></td><td data-th="Що робить">процес; JSON події — у stdin, рішення — код виходу і stdout. З <code>args</code> запускається без shell (exec form), без <code>args</code> — через shell</td><td data-th="Таймаут за замовч.">600 с; 30 с для UserPromptSubmit</td></tr>
+<tr><td data-th="Тип"><code>http</code></td><td data-th="Що робить">POST з тим самим JSON; відповідь — той самий формат. URL обмежує <code>allowedHttpHookUrls</code></td><td data-th="Таймаут за замовч.">600 с</td></tr>
+<tr><td data-th="Тип"><code>mcp_tool</code></td><td data-th="Що робить">виклик інструмента підключеного MCP-сервера; його текст — як stdout</td><td data-th="Таймаут за замовч.">600 с</td></tr>
+<tr><td data-th="Тип"><code>prompt</code></td><td data-th="Що робить">один запит до моделі (за замовчуванням — фонової); відповідь <code>{"ok", "reason", "impossible"}</code>; <code>$ARGUMENTS</code> — JSON події</td><td data-th="Таймаут за замовч.">30 с</td></tr>
+<tr><td data-th="Тип"><code>agent</code></td><td data-th="Що робить">субагент з Read/Grep/Glob перевіряє умову. Позначений як експериментальний</td><td data-th="Таймаут за замовч.">60 с</td></tr>
+</tbody></table></div>
+<p><code>prompt</code> і <code>agent</code> працюють на інструментальних подіях, Stop, UserPromptSubmit і задачах; SessionStart приймає лише <code>command</code> і <code>mcp_tool</code>. <code>/goal</code> — вбудований prompt-хук на Stop.</p>
+<h3>Вхід</h3>
+<p>Спільні поля: <code>session_id</code>, <code>transcript_path</code>, <code>cwd</code>, <code>hook_event_name</code>, зазвичай <code>permission_mode</code>; у субагенті — <code>agent_id</code>, <code>agent_type</code>. Далі за подією: <code>tool_name</code> і <code>tool_input</code> (шляхи абсолютні), <code>tool_response</code>, <code>prompt</code>, <code>stop_hook_active</code>. Транскрипт пишеться асинхронно, тому останню відповідь беруть з <code>last_assistant_message</code>.</p>
+<h3>Вихід: код виходу</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Код</th><th>Значення</th><th>Хто бачить повідомлення</th></tr></thead>
+<tbody>
+<tr><td data-th="Код"><b>0</b></td><td data-th="Значення">успіх; JSON у stdout застосовується</td><td data-th="Хто бачить повідомлення">stdout потрапляє в контекст лише в SessionStart, UserPromptSubmit, UserPromptExpansion і PostModelSwitch; в інших подіях — тільки в debug-лог</td></tr>
+<tr><td data-th="Код"><b>2</b></td><td data-th="Значення">блокувальна помилка; на подіях, що вміють блокувати, дія не відбувається</td><td data-th="Хто бачить повідомлення">stderr: модель у PreToolUse, PostToolUse, Stop; людина — в UserPromptSubmit, SessionStart</td></tr>
+<tr><td data-th="Код"><b>інший</b></td><td data-th="Значення">неблокувальна помилка: дія <b>відбувається</b></td><td data-th="Хто бачить повідомлення">людина: «hook error» з першим рядком stderr</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Пастка exit 1</span>
+<p>Звичний <code>exit 1</code> нічого не блокує: політика з <code>exit 1</code>, хибним шляхом до скрипта (127) чи падінням інтерпретатора пропускає все. А <code>exit 1</code> з валідним JSON — успіх, рішення бере JSON. Для політик — <code>exit 2</code> і з v2.1.295 <code>"onFailure": "block"</code>: збій чи таймаут блокує як exit 2 (крім Stop-подій, де модель не полагодить хук, що не запускається).</p>
+</div>
+<h3>Вихід: JSON</h3>
+<p>stdout читається як JSON, лише якщо там один об'єкт без зайвого тексту: рядок з вашого <code>.bashrc</code> тихо перетворює рішення на текст.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Поле</th><th>Де</th><th>Що робить</th></tr></thead>
+<tbody>
+<tr><td data-th="Поле"><code>continue: false</code> + <code>stopReason</code></td><td data-th="Де">будь-яка подія</td><td data-th="Що робить">зупиняє Claude повністю; має пріоритет над рештою рішень</td></tr>
+<tr><td data-th="Поле"><code>systemMessage</code></td><td data-th="Де">будь-яка</td><td data-th="Що робить">попередження людині, не моделі</td></tr>
+<tr><td data-th="Поле"><code>suppressOutput</code></td><td data-th="Де">будь-яка</td><td data-th="Що робить"><b>нічого не робить</b>: приймається, але не діє</td></tr>
+<tr><td data-th="Поле"><code>decision: "block"</code> + <code>reason</code></td><td data-th="Де">UserPromptSubmit, PostToolUse(Failure), PostToolBatch, Stop, SubagentStop, ConfigChange, PreCompact</td><td data-th="Що робить">блокує або повертає <code>reason</code> моделі; іншого значення, крім <code>"block"</code>, немає</td></tr>
+<tr><td data-th="Поле"><code>hookSpecificOutput.permissionDecision</code></td><td data-th="Де">PreToolUse</td><td data-th="Що робить"><code>allow</code> / <code>deny</code> / <code>ask</code> / <code>defer</code>; з кількох хуків перемагає <code>deny &gt; defer &gt; ask &gt; allow</code>; <code>updatedInput</code> переписує аргументи</td></tr>
+<tr><td data-th="Поле"><code>hookSpecificOutput.additionalContext</code></td><td data-th="Де">SessionStart, UserPromptSubmit, Pre/PostToolUse, Stop та ін.</td><td data-th="Що робить">текст моделі як system reminder; понад 10 000 символів — у файл, моделі — прев'ю на 2 000</td></tr>
+<tr><td data-th="Поле"><code>updatedToolOutput</code></td><td data-th="Де">PostToolUse</td><td data-th="Що робить">підміняє результат для моделі; телеметрія зберігає оригінал</td></tr>
+</tbody></table></div>
+<p><code>additionalContext</code> пишіть фактами, а не наказами: текст, схожий на позасистемну команду, модель може прийняти за prompt injection і показати вам замість того, щоб врахувати.</p>
+<h3>Паралельність, таймаути, async</h3>
+<ul>
+<li>Усі хуки, що збіглися, <b>запускаються паралельно</b> і доходять до кінця: <code>deny</code> одного не скасує побічних ефектів іншого, а з кількох <code>updatedInput</code> перемагає той, що завершився останнім.</li>
+<li>Таймаут скасовує хук і відкидає його вихід: на PreToolUse виклик <b>проходить</b>, якщо немає <code>onFailure: "block"</code>.</li>
+<li><code>"async": true</code> — фоновий хук без права блокувати; результат прийде наступним ходом. <code>asyncRewake</code> будить Claude на exit 2. У <code>-p</code> незавершені async-хуки вбиваються при виході.</li>
+</ul>
+<h3>Де живуть хуки</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Місце</th><th>Діє</th><th>Нюанс</th></tr></thead>
+<tbody>
+<tr><td data-th="Місце"><code>~/.claude/settings.json</code></td><td data-th="Діє">усі ваші проєкти</td><td data-th="Нюанс">у хмарних сесіях не читається</td></tr>
+<tr><td data-th="Місце"><code>.claude/settings.json</code> / <code>.local.json</code></td><td data-th="Діє">проєкт / лише ви</td><td data-th="Нюанс">хуки з різних рівнів <b>зливаються</b>, а не замінюють одне одного</td></tr>
+<tr><td data-th="Місце">managed settings</td><td data-th="Діє">організація</td><td data-th="Нюанс">не вимикаються ззовні managed</td></tr>
+<tr><td data-th="Місце">плагін <code>hooks/hooks.json</code></td><td data-th="Діє">поки плагін увімкнено</td><td data-th="Нюанс"><code>${CLAUDE_PLUGIN_ROOT}</code> (урок 6.3)</td></tr>
+<tr><td data-th="Місце">frontmatter skill</td><td data-th="Діє">від виклику skill до кінця сесії</td><td data-th="Нюанс"><code>once: true</code> знімає хук після першого успіху (урок 6.1)</td></tr>
+<tr><td data-th="Місце">frontmatter субагента</td><td data-th="Діє">поки працює субагент</td><td data-th="Нюанс">Stop стає SubagentStop (урок 6.4)</td></tr>
+</tbody></table></div>
+<p><code>/hooks</code> — <b>лише перегляд</b>: хуки з джерелом і повним текстом команди. Редагують файли, file watcher підхоплює зміни. Діагностика — <code>claude --debug-file /tmp/h.log</code>: кожен command-хук лишає рядок <code>Hooks: … finished with status N (Mms)</code>, з них узяті виміри нижче.</p>
+</section>
+
+<section class="sec" id="patterns">
+<div class="sec-h"><span class="num">04</span><h2>П'ять патернів на Lectern<span class="sub">Справжні прогони</span></h2></div>
+<p>Копія канонічного Lectern (<code>dot-claude/</code> → <code>.claude/</code>), кожен прогін — у свіжому git worktree. Логіка — у <code>scripts/hooks/</code>, у JSON лише виклики (урок 3.2).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Подія · matcher</th><th>Скрипт</th><th>Поля обробника</th></tr></thead>
+<tbody>
+<tr><td data-th="Подія · matcher">SessionStart · <code>startup|resume|clear|compact</code></td><td data-th="Скрипт"><code>session_context.sh</code></td><td data-th="Поля обробника"><code>timeout: 10</code></td></tr>
+<tr><td data-th="Подія · matcher">UserPromptSubmit</td><td data-th="Скрипт"><code>no_secrets.py</code></td><td data-th="Поля обробника"><code>timeout: 5</code></td></tr>
+<tr><td data-th="Подія · matcher">PreToolUse · <code>Bash</code></td><td data-th="Скрипт"><code>guard_paths.py</code></td><td data-th="Поля обробника"><code>timeout: 5</code>, <code>onFailure: "block"</code></td></tr>
+<tr><td data-th="Подія · matcher">PostToolUse · <code>Edit|Write</code></td><td data-th="Скрипт"><code>after_edit.sh</code></td><td data-th="Поля обробника"><code>timeout: 30</code></td></tr>
+<tr><td data-th="Подія · matcher">Stop</td><td data-th="Скрипт"><code>stop_gate.py</code></td><td data-th="Поля обробника"><code>timeout: 60</code></td></tr>
+</tbody></table></div>
+<p>Кожен обробник: <code>{"type": "command", "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/…", "args": []}</code>. З <code>args</code> скрипт запускається без shell, і шлях з плейсхолдером не треба брати в лапки.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/l30/wt/NAME</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$PROMPT" --model haiku --setting-sources project --strict-mcp-config --output-format stream-json --verbose --include-hook-events --debug-file debug.log --max-budget-usd 0.40 --tools … --allowedTools …</span>
+<span class="d">Ignoring 5 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. …</span></pre>
+<div class="cap">реальний виклик (console/demo.sh) · Claude Code 2.1.300 · 15.10.2026 · у -p діалогу довіри немає: хуки проєкту виконуються, а allow-правила відкидаються, тому дозволи передаються прапорцем</div></div>
+
+<h3>1 · PostToolUse: ruff після кожної правки</h3>
+<pre class="code" data-lang="bash"><span class="cm"># after_edit.sh, гілка *.py (скорочено)</span>
+<span class="cm"># храповик: форматуємо лише новий файл</span>
+<span class="cm"># або вже відформатований у HEAD</span>
+<span class="k">if</span> ! git cat-file -e <span class="s">"HEAD:$rel"</span> ||
+   git show <span class="s">"HEAD:$rel"</span> |
+   <span class="s">"$ruff"</span> format --check --stdin-filename <span class="s">"$rel"</span>
+<span class="k">then</span> <span class="s">"$ruff"</span> format --quiet <span class="s">"$f"</span>; <span class="k">fi</span>
+<span class="k">if</span> ! out=$(<span class="s">"$ruff"</span> check --fix --quiet \
+      --output-format concise <span class="s">"$f"</span> 2&gt;&amp;1); <span class="k">then</span>
+  echo <span class="s">"ruff check after your edit of $rel:"</span> &gt;&amp;2
+  echo <span class="s">"$out"</span> &gt;&amp;2
+  <span class="k">exit</span> <span class="n">2</span>   <span class="cm"># правка вже є: лише фідбек моделі</span>
+<span class="k">fi</span></pre>
+<p>Завдання для агента: створити <code>src/lectern/stats.py</code> з навмисно поганим кодом (зайві пробіли, змінна <code>unused</code>).</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run.jsonl — кроки агента і хуки</span></div>
+<pre><span class="y">● Write</span>  src/lectern/stats.py
+<span class="er">  ⎿ hook PostToolUse:Write · exit 2</span>
+<span class="d">    ruff check after your edit of src/lectern/stats.py (auto-fixable issues already fixed):
+    src/lectern/stats.py:5:5: F841 Local variable `unused` is assigned to but never used</span>
+<span class="c">  The hook reformatted the file and flagged the unused variable, so I'll read the current contents before editing.</span>
+<span class="y">● Read</span>   src/lectern/stats.py
+<span class="y">● Edit</span>   src/lectern/stats.py   <span class="er">−     unused = 0</span>
+<span class="ok">  ⎿ hook PostToolUse:Edit · exit 0</span>
+<span class="d">result · num_turns 4 · $0.0021 · 10,8 с</span></pre>
+<div class="cap">реальний прогін format2 · Haiku 5.5 · вивід скорочено до кроків · сирий потік — console/runs/format2.jsonl</div></div>
+<p>Форматування пройшло без участі моделі, лінт-помилка дійшла до неї через exit 2 і була виправлена. Ціна: хук змінив файл на диску, тож агент перечитав його перед <code>Edit</code> (+1 виклик). З промптом «character for character» модель змінну лишила і лише повідомила про F841: фідбек хука не переважує явну інструкцію людини.</p>
+<div class="note warn"><span class="lbl">Пастка форматера · виміряно</span>
+<p>У Lectern 10 з 11 Python-файлів не відформатовані. Наївний <code>ruff format "$f"</code> перетворює правку на 4 рядки в diff <b>+96 / −31</b>, і зміну агента на рев'ю вже не видно. Тому храповик (ratchet): файл, неформатований у <code>HEAD</code>, хук лише лінтить. Решту форматують окремим комітом.</p>
+</div>
+
+<h3>2 · PreToolUse: захист персональних даних</h3>
+<p>Спершу варіант без хука: лише правило <code>"deny": ["Edit(./lectures/private/**)"]</code>, без CLAUDE.md.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>guard2 — Write у заборонену теку</span></div>
+<pre><span class="y">● Write</span>  lectures/private/summary.md
+<span class="er">  ⎿ File is in a directory that is denied by your permission settings.</span>
+<span class="d">debug.log: рядка «Hooks: PreToolUse:Write …» немає — правило відповіло раніше за хук</span></pre>
+<div class="cap">реальний прогін · Claude Code 2.1.300 · Haiku 5.5</div></div>
+<p>За документацією exit 2 хука зупиняє виклик ще до перевірки правил, тобто блок сильніший за allow. Але з deny-правилом на шлях хук на <code>Write</code> не запустився зовсім, і модель отримала загальне «denied». Для файлових інструментів досить правила, а шлях усередині shell-команди правилом не опишеш — тут потрібен хук:</p>
+<pre class="code" data-lang="python"><span class="cm"># guard_paths.py · PreToolUse, matcher "Bash"</span>
+inp = json.load(sys.stdin)
+command = inp.get(<span class="s">"tool_input"</span>, {}).get(<span class="s">"command"</span>, <span class="s">""</span>)
+flat = re.sub(<span class="s">r"/+"</span>, <span class="s">"/"</span>, command.replace(<span class="s">"/./"</span>, <span class="s">"/"</span>))
+hit = next((p <span class="k">for</span> p <span class="k">in</span> PROTECTED <span class="k">if</span> p <span class="k">in</span> flat), <span class="k">None</span>)
+<span class="k">if</span> hit:
+    print(f<span class="s">"{hit}/ is off-limits to agents: …"</span>,
+          file=sys.stderr)
+    sys.exit(<span class="n">2</span>)</pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>guard4 — «Back up samples/lecture.txt into lectures/private/»</span></div>
+<pre><span class="y">● Bash</span>  ls samples/lecture.txt &amp;&amp; mkdir -p lectures/private &amp;&amp; cp samples/lecture.txt lectures/private/ …
+<span class="er">  ⎿ PreToolUse:Bash hook error: [${CLAUDE_PROJECT_DIR}/scripts/hooks/guard_paths.py]: lectures/private/ is off-limits to agents: personal data or unlicensed lectures (docs/adr/0005-data-routing-by-class.md). Do not read or write it by any tool. If the task needs it, stop and ask the owner.</span>
+<span class="c">I didn't copy `samples/lecture.txt`. A path guard hook blocks any access to `lectures/private/` (personal data or unlicensed lectures, per ADR 0005), so I stopped and didn't try another route. Backing it up there needs the repo owner's approval, or a different destination they choose.</span>
+<span class="d">result · num_turns 2 · $0.0009</span></pre>
+<div class="cap">реальний прогін без CLAUDE.md · з CLAUDE.md (guard3) модель відмовилась сама, хук не знадобився</div></div>
+<p>Отримавши причину, модель не шукала обходу і назвала, хто може зняти обмеження. Евристику обходить <code>cd data &amp;&amp; cat &gt; learners/x</code>: межа для shell — sandbox (урок 3.4), хук закриває типові випадки і пояснює правило.</p>
+
+<h3>3 · Stop-гейт: квіз не здається без <code>lectern check</code></h3>
+<p>PostToolUse запам'ятовує кожен <code>*.quiz.json</code>, записаний агентом у сесії; Stop-хук проганяє для них <code>lectern check --json</code> з помилками і попередженнями про ключ (B4, нижче):</p>
+<pre class="code" data-lang="python"><span class="cm"># stop_gate.py (кінець, скорочено)</span>
+<span class="k">if</span> <span class="k">not</span> problems:              <span class="cm"># квіз чистий</span>
+    state.unlink(); sys.exit(<span class="n">0</span>)
+report = <span class="s">"lectern check on the quiz you wrote:\n- "</span>
+report += <span class="s">"\n- "</span>.join(problems)
+<span class="k">if</span> inp.get(<span class="s">"stop_hook_active"</span>):  <span class="cm"># одне коло вже було</span>
+    state.unlink()
+    print(json.dumps({<span class="s">"systemMessage"</span>: report}))
+<span class="k">else</span>:
+    print(json.dumps({<span class="s">"decision"</span>: <span class="s">"block"</span>,
+                      <span class="s">"reason"</span>: report}))</pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>stop1 — «write a 5-question quiz from samples/lecture.txt»</span></div>
+<pre><span class="y">● Read</span>   samples/lecture.txt
+<span class="y">● Write</span>  out/lecture.quiz.json
+<span class="y">● Bash</span>   .venv/bin/lectern check samples/lecture.txt --quote "відбуваються за сталий час"; … ×5
+<span class="d">  ⎿ {"ok": true, "match": "exact"} ×5</span>
+<span class="c">  Saved 5 Ukrainian multiple-choice items to `out/lecture.quiz.json`, and all five quotes returned {"ok": true}.</span>
+<span class="er">  ⎿ hook Stop · {"decision": "block", "reason": "lectern check on the quiz you wrote:
+    - lecture.quiz.json: item 3: quote shorter than 5 words
+    - lecture.quiz.json: item 5: quote shorter than 5 words
+    - lecture.quiz.json: key balance: the correct option is the uniquely longest in 3 of 5 items (max 40%); …
+    - lecture.quiz.json: key balance: answer index 1 in 4 of 5 items (max 50%); …"}</span>
+<span class="y">● Write</span>  out/lecture.quiz.json  → check: <span class="y">uniquely shortest in 5 of 5 items</span>
+<span class="y">● Write</span>  out/lecture.quiz.json  → check: <span class="y">answer index 1 in 3 of 5 items</span>
+<span class="y">● Edit</span>   ×2                     → check: <span class="ok">"errors": [], "warnings": []</span>
+<span class="ok">  ⎿ hook Stop · stop_hook_active: true · порожній вивід — хід завершено</span>
+<span class="d">result · num_turns 13 · $0.0112 · 67 с</span></pre>
+<div class="cap">реальний прогін · Haiku 5.5 · 15.10.2026 · проміжні перевірки скорочено до поля warnings · console/runs/stop1.jsonl</div></div>
+<ul>
+<li><b>Самоперевірка пропустила баг.</b> <code>--quote</code> прийняв цитати з 4 і 3 слів, які <code>validate()</code> відхиляє (B2 з BACKLOG.md). Гейт перевіряє тим самим кодом, що й CI, а не тим, що агент вирішив запустити.</li>
+<li><b>Агент перестарався:</b> перше виправлення зробило правильну відповідь <i>найкоротшою</i> в усіх 5 питаннях. Правило ловить обидва краї.</li>
+<li><b>Цикл обмежений:</b> другий Stop прийшов зі <code>stop_hook_active: true</code>; якби квіз не пройшов, звіт пішов би людині в <code>systemMessage</code>. Стелю у 8 кіл розбирали в уроці 2.2, вимір — нижче.</li>
+</ul>
+
+<h3>4 · SessionStart: стан репозиторію в контексті</h3>
+<pre class="code" data-lang="bash"><span class="cm"># session_context.sh (суть)</span>
+status=$(git status --short | head -20)
+backlog=$(grep -E <span class="s">'^\| B[0-9]+ '</span> BACKLOG.md | …)
+ctx=<span class="s">"Uncommitted changes …: $status …"</span>
+jq -n --arg c <span class="s">"$ctx"</span> <span class="s">'{hookSpecificOutput:
+  {hookEventName: "SessionStart",
+   additionalContext: $c}}'</span></pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>sessionstart — «Do not use tools. Quote verbatim what your session context says…»</span></div>
+<pre><span class="d">{"type":"system","subtype":"hook_response","hook_name":"SessionStart:startup","exit_code":0,
+ "output":"{ \"hookSpecificOutput\": { \"additionalContext\": \"Uncommitted changes (git status --short):\n M docs/context_plan.md\nOpen items in BACKLOG.md:\nB1: …\" } }"}</span>
+<span class="c">Uncommitted changes (git status --short):
+ M docs/context_plan.md
+
+Open items in BACKLOG.md:
+B1: Bug: `lectern check &lt;lecture&gt; --json` with no quiz and no `--quote` raises `AttributeError`
+B2: Bug: `check_quote` accepts quotes shorter than `MIN_QUOTE_WORDS`, while `validate()` rejects th…</span>
+<span class="d">result · num_turns 1 · $0.0010 · 4,6 с</span></pre>
+<div class="cap">реальний прогін · подію видно в stream-json завдяки --include-hook-events · відповідь моделі скорочено</div></div>
+<p>Статичне — у CLAUDE.md, хук — для того, що змінюється. На <code>--resume</code> SessionStart запускається знову (<code>source: "resume"</code>), а контекст з UserPromptSubmit чи PostToolUse відтворюється з транскрипту, тож SHA і часові мітки в ньому застарівають.</p>
+
+<h3>5 · UserPromptSubmit: секрет не йде в модель</h3>
+<pre class="code" data-lang="python"><span class="cm"># no_secrets.py (суть) — демо-регулярки, не DLP</span>
+hits = [name <span class="k">for</span> name, rx <span class="k">in</span> PATTERNS.items()
+        <span class="k">if</span> re.search(rx, prompt)]
+<span class="k">if</span> hits:
+    print(json.dumps({
+        <span class="s">"decision"</span>: <span class="s">"block"</span>,
+        <span class="s">"reason"</span>: f<span class="s">"Prompt not sent: … ({', '.join(hits)})"</span>,
+        <span class="s">"hookSpecificOutput"</span>: {
+            <span class="s">"hookEventName"</span>: <span class="s">"UserPromptSubmit"</span>,
+            <span class="s">"suppressOriginalPrompt"</span>: <span class="k">True</span>}}))</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/l30/wt/secret</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Configure the API engine with my key sk-ant-api03-Xk2f9Q… and run lectern generate." --tools "" …</span>
+<span class="er">UserPromptSubmit operation blocked by hook:
+Prompt not sent: it looks like it contains a secret (Anthropic API key). Remove it; if the key is real, rotate it. Agents get secrets from env, not chat.</span>
+<span class="d">result · num_turns 0 · total_cost_usd 0</span>
+<span class="ps">$ </span><span class="c">grep 'sk-ant-api03-Xk2f' ~/.claude/projects/…/475cada3-….jsonl | jq -c '{type}'</span>
+{"type":"queue-operation"}</pre>
+<div class="cap">реальний прогін · ключ вигаданий · транскрипт після перевірки видалено</div></div>
+<p>Модель промпт не отримала: 0 ходів, $0. Але він уже лежить у транскрипті на диску, навіть з <code>suppressOriginalPrompt</code>, і документація попереджає про це прямо. Хук не дає секрету дійти до моделі, але ключ однаково треба ротувати.</p>
+</section>
+
+<section class="sec" id="cost">
+<div class="sec-h"><span class="num">05</span><h2>Ціна і відмови<span class="sub">Мілісекунди, таймаути, вічний Stop</span></h2></div>
+<p>Тривалість кожного хука взята з рядків <code>Hooks: … (Mms)</code> у debug-лозі 16 сесій, той самий Mac.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">/usr/bin/true — ціна самого механізму</span><span class="tr"><i style="--v:1.5%"></i><b style="--v:1.5%">5–13 мс</b></span></div>
+  <div class="bar t"><span class="k">python3.12 -c pass</span><span class="tr"><i style="--v:6%"></i><b style="--v:6%">24–65 мс</b></span></div>
+  <div class="bar"><span class="k">guard_paths.py · stop_gate.py без квізу</span><span class="tr"><i style="--v:6%"></i><b style="--v:6%">38–67 мс</b></span></div>
+  <div class="bar"><span class="k">after_edit.sh: jq + ruff format + ruff check</span><span class="tr"><i style="--v:5%"></i><b style="--v:5%">≈53 мс</b></span></div>
+  <div class="bar m"><span class="k">будь-який скрипт, перший запуск після checkout</span><span class="tr"><i style="--v:40%"></i><b style="--v:40%">250–450 мс</b></span></div>
+  <div class="bar p"><span class="k">stop_gate.py з квізом, до правки Lectern</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">1 024–1 128 мс</b></span></div>
+  <div class="bar t"><span class="k">stop_gate.py з квізом, після правки</span><span class="tr"><i style="--v:10%"></i><b style="--v:10%">110 мс</b></span></div>
+</div>
+<figcaption>Тривалість одного запуску хука, Claude Code 2.1.300, macOS. Перший запуск щойно створеного скрипта повільний у кожній новій теці; у другій і третій сесії в тій самій теці ті самі хуки займали 45–58 мс. Рядок «після правки» виміряно поза Claude Code (медіана 10 запусків). Сирі дані — console/overhead.txt.</figcaption>
+</figure>
+<p>У сесії зі Stop-гейтом (13 ходів, 67 с) хуки забрали 3,5 с, з них 2,2 с — два прогони гейта. <code>python -X importtime</code> показав причину: <code>lectern check</code> імпортував <code>anthropic</code> заради одного класу винятку, 0,7 с з 0,76. Імпорт перенесено в <code>generate</code>, тест це фіксує. Хук успадковує вартість старту інструмента, який викликає, тож міряйте інструмент.</p>
+<h3>Три режими відмови, відтворені навмисно</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що зламали</th><th>Що сталося</th><th>Захист</th></tr></thead>
+<tbody>
+<tr><td data-th="Що зламали">PreToolUse-хук «ls заборонено» робить <code>sleep 5</code> при <code>timeout: 1</code></td><td data-th="Що сталося"><code>timed out after 1000ms</code>, і <code>ls samples</code> <b>виконався</b>: таймаут не блокує</td><td data-th="Захист">з <code>"onFailure": "block"</code>: «timed out; blocking because onFailure is "block"», виклик зупинено</td></tr>
+<tr><td data-th="Що зламали">Stop-хук завжди <code>exit 2</code> «Run the full test suite», а Bash у сесії вимкнено</td><td data-th="Що сталося">9 блоків поспіль, потім: «A hook blocked the turn from ending 9 consecutive times — overriding and ending turn». 10 ходів, $0,0025, 18,6 с</td><td data-th="Захист">перевіряти <code>stop_hook_active</code>; стелю змінює <code>CLAUDE_CODE_STOP_HOOK_BLOCK_CAP</code></td></tr>
+<tr><td data-th="Що зламали">Форматер на невідформатованому репозиторії</td><td data-th="Що сталося">правка на 4 рядки → diff +96 / −31</td><td data-th="Захист">храповик або окремий коміт форматування</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 15.10.2026</span>
+<p>За документацією стеля — 8 продовжень поспіль, наступний блок ігнорується; у прогоні це 9-й блок. Лічильник скидається, щойно модель викликає інструмент.</p>
+</div>
+</section>
+
+<section class="sec" id="decide">
+<div class="sec-h"><span class="num">06</span><h2>Хук, дозвіл, CLAUDE.md чи CI<span class="sub">Таблиця рішень</span></h2></div>
+<p>Два питання: чи мусить правило триматися <i>завжди</i>, і для кого — для сесії агента чи для кожного учасника з будь-яким інструментом.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Вимога в Lectern</th><th>Механізм</th><th>Чому не інше</th></tr></thead>
+<tbody>
+<tr><td data-th="Вимога в Lectern">Не читати <code>.env</code>, <code>data/learners/</code>; не писати туди файловими інструментами</td><td data-th="Механізм"><b>permissions deny</b></td><td data-th="Чому не інше">правило спрацювало раніше за хук; хук потрібен лише там, де шаблон правила не дотягується</td></tr>
+<tr><td data-th="Вимога в Lectern">Shell не чіпає <code>data/learners/</code></td><td data-th="Механізм"><b>PreToolUse-хук</b> + sandbox</td><td data-th="Чому не інше">шлях усередині команди правилом не описати; хук — евристика, межа — sandbox</td></tr>
+<tr><td data-th="Вимога в Lectern">Python відформатований і без помилок лінтера після кожної правки</td><td data-th="Механізм"><b>PostToolUse-хук</b></td><td data-th="Чому не інше">детерміновано і без токенів; модель не мусить пам'ятати про ruff</td></tr>
+<tr><td data-th="Вимога в Lectern">Квіз проходить <code>lectern check</code> до кінця ходу</td><td data-th="Механізм"><b>Stop-хук</b></td><td data-th="Чому не інше">агент виправляє в тій самій сесії, поки лекція ще в контексті</td></tr>
+<tr><td data-th="Вимога в Lectern">Як іменувати квізи, чому цитати дослівні, що таке ADR</td><td data-th="Механізм"><b>CLAUDE.md</b></td><td data-th="Чому не інше">потрібне судження, а не так/ні; найдешевше і часто достатньо (2 з 2 прогонів)</td></tr>
+<tr><td data-th="Вимога в Lectern">Тести, лінт, <code>check_context.py</code>, баланс ключа на кожному PR</td><td data-th="Механізм"><b>CI</b> (модуль 12)</td><td data-th="Чому не інше">хуки локальні: у Codex, Cursor і в людини їх немає, а <code>disableAllHooks</code> вимикає їх одним рядком</td></tr>
+<tr><td data-th="Вимога в Lectern">Секрет не потрапляє в промпт</td><td data-th="Механізм"><b>UserPromptSubmit-хук</b> + secret scanning у CI</td><td data-th="Чому не інше">хук не пускає секрет у модель, але не прибирає його з транскрипту</td></tr>
+</tbody></table></div>
+<div class="key"><h4>Правило</h4>
+<p>Порада — у CLAUDE.md. Те, що мусить триматися в сесії, — у правила дозволів, якщо їхній синтаксис дотягується; якщо ні — у хук. Те, що мусить триматися для всіх і завжди, — у CI. Хук і CI запускають <b>один і той самий скрипт</b>: гейт Lectern викликає <code>lectern check --json</code>, а не власну копію правил.</p>
+</div>
+<div class="note warn"><span class="lbl">Безпека хуків</span>
+<p>Command-хук виконується з усіма правами вашого користувача. Інтерактивна сесія чекає діалогу довіри до теки, а <code>-p</code> і SDK вважають теку довіреною, тож хуки чужого репозиторію виконуються одразу (урок 3.4). Захист — <code>--bare</code> або <code>--settings '{"disableAllHooks": true}'</code>. <code>disableAllHooks</code> береться після злиття рівнів (<code>false</code> у проєкті перекриває ваш <code>true</code>) і не вимикає managed-хуки. Організація ставить <code>allowManagedHooksOnly: true</code>: працюють лише managed-хуки і примусово ввімкнені плагіни. Агент не має правити свої хуки — у Lectern це <code>ask</code>. І межа: плагін-мод (JavaScript-хуки в процесі Claude Code) з <code>tool.check</code> може схвалити виклик, заблокований вашим PreToolUse-хуком, якщо той не з managed settings.</p>
+</div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Claude Code, Codex, Cursor<span class="sub">Ті самі хуки, різна семантика</span></h2></div>
+<div class="tabs">
+<input type="radio" name="tl-t" id="tl-t1" checked><input type="radio" name="tl-t" id="tl-t2"><input type="radio" name="tl-t" id="tl-t3">
+<div class="tab-l"><label for="tl-t1">Claude Code</label><label for="tl-t2">Codex CLI</label><label for="tl-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Ключ <code>hooks</code> у <code>settings.json</code> будь-якого рівня, плагіни, frontmatter skills і субагентів; 33 події, 5 типів обробників. <code>/hooks</code> лише показує; вимкнути можна тільки всі разом (<code>disableAllHooks</code>). Усі прогони уроку — Claude Code 2.1.300.</p>
+</div>
+<div class="tab-p">
+<p><code>hooks.json</code> або <code>[hooks]</code> у <code>config.toml</code> (<code>~/.codex/</code>, <code>&lt;repo&gt;/.codex/</code>), шари зливаються. 12 подій: SessionStart/End, SubagentStart/Stop, PreToolUse, PermissionRequest, PostToolUse, Pre/PostCompact, UserPromptSubmit, Stop і власна Interrupt.</p>
+<pre class="code" data-lang="toml">[[hooks.PreToolUse]]
+matcher = <span class="s">"^Bash$"</span>
+[[hooks.PreToolUse.hooks]]
+type = <span class="s">"command"</span>
+command = <span class="s">'/usr/bin/python3 "$(git rev-parse --show-toplevel)/.codex/hooks/pre_tool_use_policy.py"'</span>
+timeout = <span class="n">30</span></pre>
+<ul>
+<li><b>Довіра:</b> кожен не-managed хук довіряють у <code>/hooks</code> за хешем визначення, тож змінений хук знову чекає перевірки. Вимкнути всі — <code>[features] hooks = false</code>.</li>
+<li><b>Обробники:</b> лише <code>command</code> і <code>mcp_tool</code>; <code>prompt</code> і <code>agent</code> розбираються, але пропускаються.</li>
+<li><b>Відмінності:</b> exit 2 блокує, як у Claude Code; Stop при exit 0 чекає JSON, а <code>decision: "block"</code> стає новим промптом-продовженням. <code>permissionDecision: "ask"</code> у PreToolUse не підтримується: хук рахується збоєм, і виклик <b>проходить</b>. Правки йдуть через <code>apply_patch</code>, matcher <code>Edit|Write</code> його ловить.</li>
+</ul>
+<div class="cap">за офіційною документацією Codex hooks · не запускалось у цьому уроці</div>
+</div>
+<div class="tab-p">
+<p><code>.cursor/hooks.json</code> і <code>~/.cursor/hooks.json</code>, вище — enterprise і team: <code>{"version": 1, "hooks": {"afterFileEdit": [{"command": "…"}]}}</code>. Події в camelCase: sessionStart/End, pre/postToolUse, postToolUseFailure, subagentStart/Stop, before/afterShellExecution, before/afterMCPExecution, beforeReadFile, afterFileEdit, beforeSubmitPrompt, preCompact, stop, afterAgentResponse/Thought, Tab-хуки, workspaceOpen.</p>
+<ul>
+<li><b>Коди:</b> exit 2 = <code>permission: "deny"</code>, інші — fail-open без <code>failClosed: true</code>; хуки дозволів <b>блокують</b> при невалідному JSON.</li>
+<li><b>stop</b> повертає <code>followup_message</code> — наступне повідомлення; <code>loop_limit</code> 5 для хуків Cursor і без обмеження для імпортованих з Claude Code.</li>
+<li><b>sessionStart</b> — fire-and-forget: лише <code>env</code> і <code>additional_context</code>. Є й <code>type: "prompt"</code>.</li>
+<li><b>Хуки Claude Code</b> з <code>.claude/settings.json</code>, <code>.local.json</code> і <code>~/.claude/settings.json</code> Cursor вантажить сам, якщо ввімкнено Third-Party Imports (типово так). Перекладаються 8 подій і назви інструментів; Notification і PermissionRequest — ні.</li>
+</ul>
+<div class="cap">за офіційною документацією Cursor (Hooks, Third Party Hooks) · не запускалось у цьому уроці</div>
+</div>
+</div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Задача</th><th>Claude Code</th><th>Codex</th><th>Cursor</th></tr></thead>
+<tbody>
+<tr><td data-th="Задача">Заборонити виклик</td><td data-th="Claude Code">PreToolUse: exit 2 / <code>permissionDecision: "deny"</code></td><td data-th="Codex">PreToolUse: exit 2 / <code>deny</code></td><td data-th="Cursor">preToolUse, beforeShellExecution: exit 2 / <code>permission: "deny"</code></td></tr>
+<tr><td data-th="Задача">Після правки файлу</td><td data-th="Claude Code">PostToolUse <code>Edit|Write</code></td><td data-th="Codex">PostToolUse <code>apply_patch</code></td><td data-th="Cursor">afterFileEdit</td></tr>
+<tr><td data-th="Задача">Перевірити промпт</td><td data-th="Claude Code">UserPromptSubmit</td><td data-th="Codex">UserPromptSubmit</td><td data-th="Cursor">beforeSubmitPrompt: <code>continue: false</code></td></tr>
+<tr><td data-th="Задача">Гейт кінця ходу</td><td data-th="Claude Code">Stop: <code>decision: "block"</code> + <code>stop_hook_active</code></td><td data-th="Codex">Stop: те саме, <code>reason</code> стає новим промптом</td><td data-th="Cursor">stop: <code>followup_message</code>, <code>loop_count</code></td></tr>
+<tr><td data-th="Задача">Контекст на старті</td><td data-th="Claude Code">SessionStart: <code>additionalContext</code> або stdout</td><td data-th="Codex">SessionStart: те саме</td><td data-th="Cursor">sessionStart: <code>additional_context</code></td></tr>
+</tbody></table></div>
+<p>Переносна частина — скрипти, а обгортки в трьох форматах лише викликають <code>scripts/hooks/*</code>. Cursor підхопить наш <code>.claude/settings.json</code> і перекладе назви інструментів (<code>Bash</code> → <code>Shell</code>, <code>Edit</code> → <code>Write</code>; <code>Glob</code> не підтримується). Але середовище виконання інше, і його документація прямо радить перевіряти хуки в обох інструментах. Для Codex потрібен власний <code>.codex/hooks.json</code> з тими самими скриптами і разове довіряння в <code>/hooks</code>.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern отримує хуки і перевірку ключа</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · модуль 6 · хуки та B4</div><div class="pb">
+<p><b>B4 закрито.</b> <code>key_balance(items)</code> у <code>tools.py</code> — правило квізів цього курсу: правильний варіант унікально найдовший чи найкоротший не більш ніж у 40% питань, одна позиція — не більш ніж у 50%; з 5 питань, бо на коротшому квізі частки — шум. <code>lectern check</code> віддає попередження в <code>warnings</code> (<code>--json</code>) або stderr, а <code>ok</code> і код виходу залежать лише від помилок: рішення за споживачем, як Stop-гейт. На квізах Haiku з уроку 5.1:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/l30/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">for f in lessons/24/console/lectern-step/runs/*.quiz.json; do lectern check samples/lecture.txt $f --json | jq -c '{ok, w: [.warnings[] | split(";")[0]]}'; done</span>
+after-1   {"ok":true,"w":["… the correct option is the uniquely longest in 3 of 5 items (max 40%)"]}
+after-2   {"ok":true,"w":[]}
+after-3   {"ok":true,"w":[]}
+before-1  {"ok":true,"w":["… uniquely longest in 4 of 5 items (max 40%)"]}
+before-2  {"ok":false,"w":[]}
+before-3  {"ok":true,"w":["… uniquely longest in 4 of 5 items (max 40%)"]}
+merged-1  {"ok":true,"w":["… uniquely longest in 4 of 5 items (max 40%)"]}
+merged-2  {"ok":true,"w":["… uniquely longest in 5 of 5 items (max 40%)"]}
+merged-3  {"ok":true,"w":[]}</pre>
+<div class="cap">реальний вивід · назви файлів і префікс «key balance:» скорочено</div></div>
+<p>6 з 9 квізів видавали ключ довжиною правильного варіанта: точна відповідь потребує більше слів, ніж вигадана.</p>
+<p><b>Що ще змінено</b> (повний diff — <code>console/lectern-6.2.diff</code>, накладається на канонічний <code>lectern/</code> без конфліктів):</p>
+<ul>
+<li><code>dot-claude/settings.json</code>: п'ять хуків з цього уроку; <code>deny</code> на <code>Edit</code> у двох захищених теках; <code>ask</code> на редагування <code>scripts/hooks/**</code> і самого settings.json;</li>
+<li><code>scripts/hooks/</code>: <code>session_context.sh</code>, <code>no_secrets.py</code>, <code>guard_paths.py</code>, <code>after_edit.sh</code>, <code>stop_gate.py</code> (stdlib Python 3.9+, bash, jq);</li>
+<li><code>cli.py</code>: SDK імпортується лише в <code>generate</code>, тож <code>check</code> прискорився з 0,7 до 0,06 с;</li>
+<li><code>CLAUDE.kit.md</code>: розділ Hooks, квізи називаються <code>out/&lt;lecture-stem&gt;.quiz.json</code>, «не правити хук, щоб його обійти»;</li>
+<li>+10 тестів (B4, контракт CLI, хуки як підпроцеси з JSON у stdin): 67 → 77; ruff чистий; <code>check_context.py</code> — 0 проблем.</li>
+</ul>
+<p><b>Нові пункти BACKLOG:</b> B11 — відформатувати решту файлів окремим комітом і прибрати храповик; B12 — <code>save_quiz</code> у шляху SDK має повертати моделі <code>key_balance</code>, як Stop-гейт у Claude Code. B2 отримав нове свідчення: <code>--quote</code> прийняв цитати з 3 і 4 слів, зловив їх лише гейт.</p>
+<p><b>Ваш крок:</b> Stop не спрацьовує, якщо ви перервали хід, тож файл стану <code>$TMPDIR/lectern-hooks/&lt;session_id&gt;.quizzes</code> може лишитися. Додайте <code>SessionEnd</code>-хук, який його видаляє. Пам'ятайте, що всі SessionEnd-хуки ділять бюджет 1,5 с. Перевірте хук, подавши вручну JSON у stdin, потім у живій сесії перервіть хід (Esc) після запису квізу і подивіться рядок <code>Hooks: SessionEnd …</code> у <code>--debug-file</code>.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Хук є, а захисту немає</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Симптом</th><th>Виправлення</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка"><code>.bashrc</code> друкує текст перед JSON</td><td data-th="Симптом">рішення тихо ігнорується</td><td data-th="Виправлення">шукати в debug-лозі «Hook output does not start with {»</td></tr>
+<tr><td data-th="Помилка"><code>permissionDecision</code> на верхньому рівні</td><td data-th="Симптом">тихо ігнорується</td><td data-th="Виправлення">усередині <code>hookSpecificOutput</code>; у лозі — «unrecognized keys»</td></tr>
+<tr><td data-th="Помилка">Відносний шлях до скрипта</td><td data-th="Симптом">хук не знаходиться після <code>cd</code> агента</td><td data-th="Виправлення"><code>${CLAUDE_PROJECT_DIR}</code> і <code>"args": []</code> (exec form)</td></tr>
+<tr><td data-th="Помилка">Важка робота синхронно в UserPromptSubmit</td><td data-th="Симптом">кожен промпт чекає; після 30 с контекст хука відкидається</td><td data-th="Виправлення">мілісекунди в хуку, довгу роботу — в <code>async</code></td></tr>
+<tr><td data-th="Помилка">Хук як єдина гарантія для команди</td><td data-th="Симптом">у колеги з Codex чи з <code>disableAllHooks</code> перевірки немає</td><td data-th="Виправлення">той самий скрипт — у CI</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Що зробить хук?</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">PreToolUse: exit 1</span><span class="h">виклик пройде?</span></span><span class="b"><span class="t">Так</span><span class="d">неблокувальна помилка; блокують лише exit 2, deny або onFailure</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">"suppressOutput": true</span><span class="h">що змінить?</span></span><span class="b"><span class="t">Нічого</span><span class="d">поле приймається, але успішний stdout і так не показується</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">matcher "mcp__memory"</span><span class="h">які інструменти?</span></span><span class="b"><span class="t">Жодного</span><span class="d">точний рядок; потрібно mcp__memory__.*</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">PostToolUse: decision "block"</span><span class="h">файл відкотиться?</span></span><span class="b"><span class="t">Ні</span><span class="d">reason піде моделі поруч з результатом; скасовують у PreToolUse</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">additionalContext на 12 000 символів</span><span class="h">що отримає модель?</span></span><span class="b"><span class="t">Шлях і 2 000 символів</span><span class="d">повний текст у файлі сесії; читати його модель не просять</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">PreToolUse-хук: timeout</span><span class="h">виклик пройде?</span></span><span class="b"><span class="t">Так</span><span class="d">вивід хука відкинуто; зупинить лише "onFailure": "block"</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Хук-політика на PreToolUse написана на Python. Хтось перейменував скрипт, і шлях у settings.json тепер хибний. Що буде з викликами Bash?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Усі зупиняться: без рішення хука Claude Code блокує виклик як невизначений</span></label><label class="opt ok"><input type="radio" name="q1"><span>Усі виконаються: код 127 від shell — неблокувальна помилка</span></label><label class="opt"><input type="radio" name="q1"><span>Сесія не стартує: шляхи до скриптів перевіряються при завантаженні налаштувань</span></label></div>
+    <div class="why yes">Так. Будь-який код, крім 0 і 2, — неблокувальна помилка, і дія відбувається. Для політики потрібен <code>"onFailure": "block"</code> і перевірка першого запуску.</div>
+    <div class="why no">Скрипт, що не стартує, дає код 127, тобто неблокувальну помилку: дія відбувається, у транскрипті лише «hook error». Захист — <code>"onFailure": "block"</code> з v2.1.295.</div></div>
+  <div class="q"><div class="qt">2. Агент має на старті кожної сесії, і після <code>--resume</code> теж, бачити поточну гілку й відкриті задачі з трекера. Що обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Рядок у CLAUDE.md з командою, яку агент має запустити першою</span></label><label class="opt"><input type="radio" name="q2"><span>UserPromptSubmit-хук, що додає свіжі дані до кожного промпту в сесії</span></label><label class="opt ok"><input type="radio" name="q2"><span>SessionStart-хук з additionalContext: він запускається й на resume</span></label></div>
+    <div class="why yes">Так. SessionStart повторюється з <code>source: "resume"</code> і дає свіжі дані. Контекст з UserPromptSubmit при resume відтворюється з транскрипту, тобто застарілий.</div>
+    <div class="why no">CLAUDE.md — прохання, і модель може його пропустити. UserPromptSubmit коштує часу на кожному промпті, а при resume його контекст береться з транскрипту, не перераховується. SessionStart робить саме це: дані на старті і при resume.</div></div>
+  <div class="q"><div class="qt">3. Stop-хук вимагає «усі тести зелені», але Bash у сесії вимкнено, а <code>stop_hook_active</code> хук не перевіряє. Чим закінчиться хід?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span>Після 8 продовжень поспіль Claude Code проігнорує наступний блок і завершить хід з попередженням</span></label><label class="opt"><input type="radio" name="q3"><span>Модель крутитиметься, доки не вичерпає <code>--max-turns</code> чи бюджет, бо Stop-хук має пріоритет</span></label><label class="opt"><input type="radio" name="q3"><span>Хук отримає таймаут у 60 секунд, і хід завершиться як після помилки API</span></label></div>
+    <div class="why yes">Так. У прогоні цього уроку: 9 блоків, потім «overriding and ending turn», 10 ходів. Стелю змінює <code>CLAUDE_CODE_STOP_HOOK_BLOCK_CAP</code>.</div>
+    <div class="why no">У Claude Code вбудована стеля: 8 продовжень поспіль, далі блок ігнорується. Таймаут тут ні до чого, бо хук відповідає миттєво. Правильний хук перевіряє <code>stop_hook_active</code> і віддає рішення людині.</div></div>
+  <div class="q"><div class="qt">4. У settings є deny <code>Edit(./data/learners/**)</code> і PreToolUse-хук на <code>Write</code>, що пояснює, чому туди не можна. Що побачить агент, який пробує Write у цю теку (Claude Code 2.1.300)?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Причину з хука: його exit 2 зупиняє виклик ще до перевірки правил дозволів</span></label><label class="opt"><input type="radio" name="q4"><span>Обидва повідомлення: хук і правило перевіряються паралельно</span></label><label class="opt ok"><input type="radio" name="q4"><span>Загальне «denied by your permission settings»: хук не запустився</span></label></div>
+    <div class="why yes">Так. Для файлового інструмента з deny на шлях хук у прогоні не викликався: рядка PreToolUse:Write у debug-лозі немає. Тому хук у Lectern стоїть лише на Bash.</div>
+    <div class="why no">Порядок «хук раніше за правила» з документації стосується блоку, сильнішого за allow. На практиці deny-правило на шлях відповіло першим, і хук навіть не запустився.</div></div>
+  <div class="q"><div class="qt">5. PreToolUse-хук перевірки команд інколи висить 10 секунд при <code>timeout: 5</code>, інших полів немає. Що робить Claude Code?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Скасовує хук, відкидає його вивід і пускає виклик далі звичайним шляхом дозволів</span></label><label class="opt"><input type="radio" name="q5"><span>Блокує виклик, бо хуки на PreToolUse за замовчуванням працюють у режимі fail-closed</span></label><label class="opt"><input type="radio" name="q5"><span>Чекає завершення, бо для PreToolUse timeout лише записується в debug-лог як попередження</span></label></div>
+    <div class="why yes">Так, це fail-open. У прогоні: «timed out after 1000ms», і заборонений <code>ls</code> виконався. З <code>onFailure: "block"</code> той самий хук зупинив виклик.</div>
+    <div class="why no">Таймаут скасовує хук і відкидає його рішення, а виклик іде далі. Fail-closed треба ввімкнути явно: <code>"onFailure": "block"</code>.</div></div>
+  <div class="q"><div class="qt">6. У репозиторій, де більшість файлів не відформатовані, додали PostToolUse-хук <code>ruff format "$f"</code>. Що з'явиться на рев'ю?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Нічого зайвого: ruff format змінює лише рядки, які агент щойно відредагував</span></label><label class="opt ok"><input type="radio" name="q6"><span>Diff на весь файл, у якому губиться правка агента; форматують окремим комітом</span></label><label class="opt"><input type="radio" name="q6"><span>Помилка хука після кожної правки: ruff format завершується з ненульовим кодом</span></label></div>
+    <div class="why yes">Так. У Lectern правка на 4 рядки дала diff +96 / −31. Звідси храповик: старі неформатовані файли хук лише лінтить.</div>
+    <div class="why no"><code>ruff format</code> переписує весь файл і повертає 0. Правка на 4 рядки стала diff +96 / −31. Спершу форматують репозиторій окремим комітом або ставлять храповик.</div></div>
+  <div class="q"><div class="qt">7. Агент записав конфіг з паролем, і PostToolUse-хук повертає <code>{"decision": "block", "reason": "…"}</code>. Що станеться?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Файл буде видалено: block на PostToolUse відкочує зміну інструмента</span></label><label class="opt"><input type="radio" name="q7"><span>Сесія зупиниться повністю: block на PostToolUse рівнозначний <code>continue: false</code></span></label><label class="opt ok"><input type="radio" name="q7"><span>Файл лишиться, reason піде моделі; запобігти можна лише в PreToolUse</span></label></div>
+    <div class="why yes">Так. PostToolUse спрацьовує, коли інструмент уже виконано. <code>decision: "block"</code> додає reason до результату, а сесію зупиняє лише <code>continue: false</code>.</div>
+    <div class="why no">PostToolUse не може скасувати дію: файл уже записано. Block тут — це фідбек моделі. Зупинка всієї сесії — окреме поле <code>continue: false</code>.</div></div>
+  <div class="q"><div class="qt">8. UserPromptSubmit-хук відхилив промпт з ключем API, вказавши <code>suppressOriginalPrompt: true</code>. Що з ключем?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Його ніде немає: промпт відкинуто до запису, а повідомлення про блок без тексту</span></label><label class="opt ok"><input type="radio" name="q8"><span>Модель його не бачила, але він є в транскрипті на диску; ключ треба ротувати</span></label><label class="opt"><input type="radio" name="q8"><span>Модель його бачила: UserPromptSubmit лише додає контекст і не відхиляє промпт</span></label></div>
+    <div class="why yes">Так. У прогоні: 0 ходів і $0, але ключ лежав у транскрипті як <code>queue-operation</code>. Документація каже прямо: блокувальний хук не прибирає секрет з диска.</div>
+    <div class="why no">UserPromptSubmit уміє відхилити промпт, і модель ключа не отримала. Проте <code>suppressOriginalPrompt</code> прибирає текст лише з повідомлення про блок, а транскрипт сесії вже містить промпт.</div></div>
+  <div class="q"><div class="qt">9. Потрібен хук на всі інструменти MCP-сервера <code>memory</code>. У конфігурації стоїть <code>"matcher": "mcp__memory"</code>. Що не так?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Без спецсимволів це точний рядок, і жоден інструмент так не називається; потрібно <code>mcp__memory__.*</code></span></label><label class="opt"><input type="radio" name="q9"><span>Нічого: matcher порівнюється з початком назви, тож збігаються всі <code>mcp__memory__*</code></span></label><label class="opt"><input type="radio" name="q9"><span>MCP-інструменти не проходять через PreToolUse, для них є лише подія Elicitation</span></label></div>
+    <div class="why yes">Так. Matcher лише з літер, цифр і <code>_ - , |</code> порівнюється точно. Будь-який інший символ вмикає неякірний регекс.</div>
+    <div class="why no">MCP-інструменти — звичайні інструменти в PreToolUse і PostToolUse з назвою <code>mcp__сервер__інструмент</code>. Але <code>mcp__memory</code> — точний рядок, тому потрібно <code>.*</code>.</div></div>
+  <div class="q"><div class="qt">10. Команда працює в Claude Code і Codex, і набір перевірок має бути однаковим. Як його організувати?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q10"><span>Логіку — у скрипти, тонкі обгортки — в обидва конфіги, ті самі перевірки — в CI</span></label><label class="opt"><input type="radio" name="q10"><span>Правила — в AGENTS.md: обидва агенти його читають, тож окремі хуки не потрібні</span></label><label class="opt"><input type="radio" name="q10"><span>Лише .claude/settings.json: Codex завантажує хуки Claude Code, як і Cursor</span></label></div>
+    <div class="why yes">Так. Формати й семантика хуків різні, а скрипт один. CI ловить тих, у кого хуків немає взагалі.</div>
+    <div class="why no">AGENTS.md — прохання, а не перевірка. Хуки Claude Code вміє вантажити Cursor; Codex читає свої <code>hooks.json</code> або <code>[hooks]</code> і вимагає довірити кожен хук.</div></div>
+  <div class="q"><div class="qt">11. Stop-гейт викликає <code>lectern check</code>, і кожен хід із квізом довшає на секунду. Що робити першим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Перевести хук в <code>async: true</code>, щоб він не затримував кінець ходу агента</span></label><label class="opt"><input type="radio" name="q11"><span>Замінити command на prompt-хук: модель оцінить квіз швидше за Python</span></label><label class="opt ok"><input type="radio" name="q11"><span>Профілювати сам <code>lectern check</code>: хук успадковує вартість його старту</span></label></div>
+    <div class="why yes">Так. <code>-X importtime</code> показав 0,7 с на імпорт SDK, непотрібного для check. Після правки гейт займає 0,11 с.</div>
+    <div class="why no">Async-хук нічого не блокує, тож гейт перестане бути гейтом. Prompt-хук — це запит до моделі: повільніше і без детермінованої перевірки цитат. Вартість сиділа в інструменті, а не в хуку.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>hook event</td><td>Точка життєвого циклу, в якій harness запускає хуки; у Claude Code 2.1.300 їх 33.</td></tr>
+<tr><td>matcher (hooks)</td><td>Фільтр групи хуків: точний рядок чи список через <code>|</code>, а з іншими символами — неякірний регекс.</td></tr>
+<tr><td>PreToolUse</td><td>Подія перед викликом інструмента; єдина, що може заборонити, дозволити без запиту або переписати аргументи.</td></tr>
+<tr><td>PostToolUse</td><td>Подія після успішного виклику; скасувати не може, лише дає фідбек моделі чи підміняє результат.</td></tr>
+<tr><td>Stop hook (gate)</td><td>Хук на кінець відповіді, що може повернути агента до роботи; обмежується <code>stop_hook_active</code> і стелею у 8 кіл.</td></tr>
+<tr><td>SessionStart</td><td>Подія старту, resume, /clear, compact; хук додає моделі динамічний контекст.</td></tr>
+<tr><td>UserPromptSubmit</td><td>Подія перед тим, як промпт піде в модель; хук може відхилити промпт або додати контекст.</td></tr>
+<tr><td>exit code 2 (block)</td><td>Код виходу, що блокує дію на подіях, які це вміють; stderr стає причиною блоку.</td></tr>
+<tr><td>permissionDecision</td><td>Рішення PreToolUse в <code>hookSpecificOutput</code>: allow / deny / ask / defer, з пріоритетом deny.</td></tr>
+<tr><td>additionalContext</td><td>Текст від хука, який модель отримує як system reminder; до 10 000 символів.</td></tr>
+<tr><td>prompt-based hook</td><td>Обробник <code>type: "prompt"</code>: один запит до моделі з відповіддю <code>{ok, reason}</code>.</td></tr>
+<tr><td>disableAllHooks</td><td>Налаштування, що вимикає всі хуки, крім managed; <code>--settings</code> вимикає їх на один запуск.</td></tr>
+<tr><td>hooks menu (/hooks)</td><td>Браузер хуків у Claude Code лише для перегляду: джерело і повний текст команди.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Хуки для власного репозиторію</h3>
+<p>Розкладіть п'ять правил свого проєкту за таблицею рішень, реалізуйте два хуки (один блокувальний, один Stop-гейт або PostToolUse), протестуйте їх через stdin, виміряйте мілісекунди в <code>--debug-file</code> і відтворіть один режим відмови.</p>
+<h3>2. Аудит чужого набору хуків</h3>
+<p>Знайдіть у наведеному <code>settings.json</code> і скриптах вісім помилок: що хук насправді робить, чому і як виправити.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/hooks" target="_blank" rel="noopener">Claude Code — Hooks reference</a><span>33 події, matcher-и, 5 типів обробників, exit-коди, JSON-поля, async, onFailure, безпека, debug-лог</span></li>
+<li><a href="https://code.claude.com/docs/en/hooks-guide" target="_blank" rel="noopener">Claude Code — Automate actions with hooks</a><span>форматер, захист файлів, комбінація хуків, обмеження і діагностика (block cap, JSON без ефекту)</span></li>
+<li><a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Claude Code — Settings reference</a><span>disableAllHooks, allowManagedHooksOnly, allowedHttpHookUrls</span></li>
+<li><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code — Permissions</a><span>розділ «Extend permissions with hooks»: хуки і deny/ask/allow, моди</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run programmatically</a><span>хуки й .mcp.json у -p без діалогу довіри, --bare, події hook_* у stream-json</span></li>
+<li><a href="https://code.claude.com/docs/en/goal" target="_blank" rel="noopener">Claude Code — /goal</a><span>вбудований prompt-хук на Stop у межах сесії</span></li>
+<li><a href="https://github.com/anthropics/claude-code/blob/main/examples/hooks/bash_command_validator_example.py" target="_blank" rel="noopener">anthropics/claude-code — bash_command_validator_example.py</a><span>еталонний PreToolUse-валідатор від Anthropic</span></li>
+<li><a href="https://learn.chatgpt.com/docs/hooks" target="_blank" rel="noopener">Codex — Hooks</a><span>hooks.json і [hooks] у config.toml, довіра за хешем, 12 подій, Stop-продовження</span></li>
+<li><a href="https://cursor.com/docs/agent/hooks" target="_blank" rel="noopener">Cursor — Hooks</a><span>hooks.json, події, exit 2, failClosed, loop_limit, prompt-хуки</span></li>
+<li><a href="https://cursor.com/docs/reference/third-party-hooks" target="_blank" rel="noopener">Cursor — Third Party Hooks</a><span>завантаження хуків Claude Code, мапінг подій і назв інструментів</span></li>
+<li><a href="https://docs.astral.sh/ruff/formatter/" target="_blank" rel="noopener">Ruff — Formatter</a><span>ruff format, --check, --stdin-filename</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 6.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 6.2 · Senomi<br><br><a href="lesson-29.html">← Урок 6.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-31.html">Урок 6.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

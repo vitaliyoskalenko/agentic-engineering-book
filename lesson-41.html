@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 8.4. Підхід під розмір проєкту: прототип, продуктова команда, enterprise і legacy</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 8.4 · Модуль 8</div>
+<h1>Підхід під розмір проєкту: прототип, продуктова команда, enterprise і legacy</h1>
+<p class="lead">Скільки процесу потрібно зміні, вирішують три осі: радіус ураження, зворотність і знання коду. Та сама опція Lectern у трьох режимах і в чужому репозиторії показує, що купує кожен шар процесу: специфікація, інструкційний файл, політика організації.</p>
+<div class="hero-meta"><span class="chip">Spec-Driven Development</span><span class="chip t">≈ 70 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Скільки процесу</a><a href="#axes"><b>02</b>Три осі ризику</a><a href="#archetypes"><b>03</b>Чотири архетипи</a><a href="#evidence"><b>04</b>Що роблять ті, хто вже калібрує</a><a href="#experiment"><b>05</b>Справжній прогін</a><a href="#promotion"><b>06</b>Переходи між архетипами</a><a href="#tools"><b>07</b>Корпоративні механізми</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>оцінити зміну за трьома осями — радіус ураження, зворотність, знання коду — і вивести з них рівень процесу P0–P3;</li>
+    <li>скласти профіль процесу для прототипу, продуктової команди, enterprise і legacy: глибина специфікації, gates, автономія, перевірки, інструменти, метрики;</li>
+    <li>прочитати власний прогін «той самий фікс у трьох режимах»: що купує кожен шар процесу і скільки він коштує;</li>
+    <li>перевести прототип у продукт за перевірюваним чеклистом і знати сигнали, що процес пора полегшити;</li>
+    <li>зіставити корпоративні механізми контролю Claude Code, Codex і Cursor з рівнем процесу;</li>
+    <li>записати профіль процесу Lectern за типами змін.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Скільки процесу<span class="sub">Одна зміна, чотири ціни помилки</span></h2></div>
+<p>Зміна з прогону цього уроку: <b>«додати <code>--format csv</code> до <code>lectern check</code>»</b>. Залежно від проєкту вона коштує зовсім по-різному:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Де</th><th>Що буде, якщо CSV зламаний</th><th>Ціна</th></tr></thead>
+<tbody>
+<tr><td data-th="Де">Спайк на вечір: «чи зручно автору бачити звіт у таблиці?»</td><td data-th="Що буде, якщо CSV зламаний">Перезапуск агента</td><td data-th="Ціна">Хвилина</td></tr>
+<tr><td data-th="Де">Продукт: автори імпортують звіт у Google Sheets</td><td data-th="Що буде, якщо CSV зламаний">Кома в цитаті зсуває колонки, автор сортує не ті рядки і публікує квіз із битою цитатою</td><td data-th="Ціна">Довіра до головної обіцянки продукту</td></tr>
+<tr><td data-th="Де">Enterprise: звіт читає конвеєр комплаєнсу видавництва</td><td data-th="Що буде, якщо CSV зламаний">Падає нічний імпорт у кількох командах, а аудит питає, хто і як змінив формат</td><td data-th="Ціна">Інцидент і пояснювальна записка</td></tr>
+<tr><td data-th="Де">Legacy: та сама опція в чужому CLI</td><td data-th="Що буде, якщо CSV зламаний">У <code>tabulate</code> прапорець <code>-f/--format</code> уже означає стиль таблиці; «додати <code>--format csv</code>» зламає наявних користувачів</td><td data-th="Ціна">Регресія, якої не видно з опису задачі</td></tr>
+</tbody></table></div>
+<p>Процес — це <b>страхова премія</b>. Специфікація, тести наперед, рев'ю, хуки й політики коштують часу, токенів і тертя на <b>кожній</b> зміні, а окупаються лише тоді, коли ловлять дефект, що коштував би дорожче. Звідси робоче правило: <b>кожен елемент процесу має назвати клас дефектів, який він ловить</b>. Якщо такого класу в цьому контексті немає або його вже ловить інший шар, елемент — чисті витрати.</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Питання не «SDD чи vibe coding» (0.1), а <b>яку частку бюджету зміни віддати на страховку</b>. Відповідь різна для різних змін <b>одного й того самого</b> репозиторію: CSS-правка і зміна перевірки цитат у Lectern не мусять проходити однаковий шлях.</p>
+</div>
+</section>
+
+<section class="sec" id="axes">
+<div class="sec-h"><span class="num">02</span><h2>Три осі ризику<span class="sub">Від зміни до рівня процесу</span></h2></div>
+<p>Розмір проєкту — погана мірка: у великій компанії бувають викидні спайки, а в соло-проєкті — незворотні міграції даних. Оцінюйте <b>зміну</b> за трьома осями:</p>
+<ol class="steps">
+<li><b>Радіус ураження (blast radius)</b> — кого зачепить помилка: лише вас; одну команду чи фічу; усіх користувачів, гроші, персональні дані, безпеку чи регулятора.</li>
+<li><b>Зворотність (reversibility)</b> — чи можна відкотити за хвилини без наслідків (<code>git revert</code>, feature flag), чи наслідки лишаються: міграція даних, надісланий лист, опублікований API чи формат, на який уже підписалися клієнти, платіж, видалення.</li>
+<li><b>Знання коду</b> — чи знає хтось у команді цей код і чи є тести, які впадуть на регресії. Незнайомий код без тестів не підвищує ціну помилки, але <b>знижує шанс її помітити</b>.</li>
+</ol>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 470" role="img" aria-label="Матриця калібрування: радіус ураження проти зворотності дає рівень процесу P0–P3; незнайомий код додає рівень і крок розвідки">
+  <defs>
+    <marker id="m41a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <text x="226" y="18" text-anchor="middle" class="tx s">зворотність →</text>
+  <rect x="98" y="28" width="126" height="40" rx="8" class="bx"/>
+  <text x="161" y="45" text-anchor="middle" class="tx b">відкат легкий</text>
+  <text x="161" y="60" text-anchor="middle" class="tx s">revert, прапорець</text>
+  <rect x="230" y="28" width="126" height="40" rx="8" class="bx"/>
+  <text x="293" y="45" text-anchor="middle" class="tx b">незворотно</text>
+  <text x="293" y="60" text-anchor="middle" class="tx s">дані, API, гроші</text>
+  <text x="8" y="18" class="tx s">радіус ↓</text>
+  <rect x="4" y="76" width="88" height="78" rx="8" class="bx"/>
+  <text x="48" y="110" text-anchor="middle" class="tx b">лише я</text>
+  <text x="48" y="127" text-anchor="middle" class="tx s">спайк, скрипт</text>
+  <rect x="4" y="160" width="88" height="78" rx="8" class="bx"/>
+  <text x="48" y="194" text-anchor="middle" class="tx b">команда</text>
+  <text x="48" y="211" text-anchor="middle" class="tx s">одна фіча</text>
+  <rect x="4" y="244" width="88" height="78" rx="8" class="bx"/>
+  <text x="48" y="272" text-anchor="middle" class="tx b">усі</text>
+  <text x="48" y="289" text-anchor="middle" class="tx s">дані, гроші,</text>
+  <text x="48" y="304" text-anchor="middle" class="tx s">безпека</text>
+  <rect x="98" y="76" width="126" height="78" rx="8" class="bx t"/>
+  <text x="161" y="108" text-anchor="middle" class="tx b t">P0 · спайк</text>
+  <text x="161" y="127" text-anchor="middle" class="tx s">мета + «готово, коли»</text>
+  <rect x="230" y="76" width="126" height="78" rx="8" class="bx a"/>
+  <text x="293" y="108" text-anchor="middle" class="tx b a">P1 · легкий</text>
+  <text x="293" y="127" text-anchor="middle" class="tx s">критерії + CI</text>
+  <rect x="98" y="160" width="126" height="78" rx="8" class="bx a"/>
+  <text x="161" y="192" text-anchor="middle" class="tx b a">P1 · легкий</text>
+  <text x="161" y="211" text-anchor="middle" class="tx s">критерії + рев'ю</text>
+  <rect x="230" y="160" width="126" height="78" rx="8" class="bx m"/>
+  <text x="293" y="192" text-anchor="middle" class="tx b m">P2 · продукт</text>
+  <text x="293" y="211" text-anchor="middle" class="tx s">spec, план, gates</text>
+  <rect x="98" y="244" width="126" height="78" rx="8" class="bx m"/>
+  <text x="161" y="276" text-anchor="middle" class="tx b m">P2 · продукт</text>
+  <text x="161" y="295" text-anchor="middle" class="tx s">spec, план, gates</text>
+  <rect x="230" y="244" width="126" height="78" rx="8" class="bx p"/>
+  <text x="293" y="276" text-anchor="middle" class="tx b">P3 · політика</text>
+  <text x="293" y="295" text-anchor="middle" class="tx s">P2 + аудит, 2 людини</text>
+  <path d="M180 334 V 362" class="ln a" marker-end="url(#m41a)"/>
+  <rect x="4" y="368" width="352" height="92" rx="10" class="bx"/>
+  <text x="180" y="392" text-anchor="middle" class="tx b">Код незнайомий або без тестів?</text>
+  <text x="180" y="414" text-anchor="middle" class="tx s">+1 рівень (не вище P3) і розвідка до правки:</text>
+  <text x="180" y="431" text-anchor="middle" class="tx s">карта модуля, характеризаційні тести,</text>
+  <text x="180" y="448" text-anchor="middle" class="tx s">менші PR; знання є — модифікатор знято</text>
+</svg>
+<figcaption>Матриця калібрування. Рядок — радіус ураження, колонка — зворотність, клітинка — базовий рівень процесу. Третя вісь (знання коду) не змінює ціну помилки, тому працює як модифікатор: додає рівень і обов'язковий крок розвідки.</figcaption>
+</figure>
+<p>Рівні — це набори рішень, а не бюрократичні звання:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Специфікація і план</th><th>Автономія агента</th><th>Gates і перевірки</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень"><b>P0</b> спайк</td><td data-th="Специфікація і план">Мета, питання, на яке відповідає спайк, і дата, коли код викидають</td><td data-th="Автономія агента">L4–L5 без нагляду, але в пісочниці, worktree або гілці, яку не зливають</td><td data-th="Gates і перевірки">«Запускається і відповідає на питання». У main не потрапляє</td></tr>
+<tr><td data-th="Рівень"><b>P1</b> легкий</td><td data-th="Специфікація і план">3–5 критеріїв приймання в issue чи PR; plan mode — за бажанням</td><td data-th="Автономія агента">L4, <code>acceptEdits</code> з allowlist команд</td><td data-th="Gates і перевірки">CI (тести, лінтер), один рецензент-людина читає diff</td></tr>
+<tr><td data-th="Рівень"><b>P2</b> продукт</td><td data-th="Специфікація і план">Spec-файл у репозиторії, план схвалено до коду (8.1, 8.3)</td><td data-th="Автономія агента">L4 з вузьким allowlist; L5 — лише механічні зміни з надійною автоматичною перевіркою</td><td data-th="Gates і перевірки">Тести наперед, субагент-рецензент проти spec, хуки, обов'язкові CI-перевірки, рев'ю людини</td></tr>
+<tr><td data-th="Рівень"><b>P3</b> політика</td><td data-th="Специфікація і план">Як P2 плюс трасування вимога → задача → тест і запис рішення</td><td data-th="Автономія агента">Політика організації: allowlist без запитів, захищені шляхи; L5 лише в ізольованому CI</td><td data-th="Gates і перевірки">Як P2 плюс журнал дій агента, друга людина на чутливих шляхах</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Правило максимуму</span>
+<p>Рівень зміни визначає <b>найгірша</b> вісь, а не середня. Однорядкова правка константи <code>MIN_QUOTE_WORDS</code> мала за обсягом, але бере участь у кожній перевірці цитат: радіус «усі», зворотність погана, бо курси вже опубліковано. Тому це P2, хоч diff і на один рядок.</p>
+</div>
+</section>
+
+<section class="sec" id="archetypes">
+<div class="sec-h"><span class="num">03</span><h2>Чотири архетипи<span class="sub">Профіль процесу для кожного</span></h2></div>
+<p>Архетип задає <b>типовий рівень</b> і набір інструментів, а осі з попереднього розділу — відхилення для конкретної зміни. На телефоні кожен рядок таблиці — окрема картка.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Архетип</th><th>Профіль</th><th>Специфікація і план</th><th>Автономія і gates</th></tr></thead>
+<tbody>
+<tr><td data-th="Архетип"><b>Прототип, спайк</b></td><td data-th="Профіль">Години–дні, одна людина, код викидають. Типовий рівень P0</td><td data-th="Специфікація і план">Абзац: яке питання закриваємо і за якою ознакою — «так» чи «ні». Плану немає, є ліміт часу</td><td data-th="Автономія і gates">L4–L5 у контейнері чи worktree. Gate один: прототип не зливають у продуктову гілку</td></tr>
+<tr><td data-th="Архетип"><b>Продуктова команда</b></td><td data-th="Профіль">Тижні–роки, 3–15 людей, користувачі в продакшні. P1 за замовчуванням, P2 для ядра</td><td data-th="Специфікація і план">Критерії в issue для P1; spec-файл і схвалений план для P2 (8.1, 8.3)</td><td data-th="Автономія і gates">L4 з allowlist команд; рецензент-субагент і людина; обов'язкові CI-перевірки; L5 — механічні задачі з тестовим оракулом</td></tr>
+<tr><td data-th="Архетип"><b>Enterprise, регульоване</b></td><td data-th="Профіль">Багато команд, комплаєнс, аудит, керовані ноутбуки. P2, для регульованих шляхів P3</td><td data-th="Специфікація і план">Spec + трасування вимога → тест; рішення як ADR, бо їх читатиме аудитор</td><td data-th="Автономія і gates">Політика організації, яку проєкт не перекриє: allowlist, захищені шляхи, заборона bypass; журнал дій; друга людина</td></tr>
+<tr><td data-th="Архетип"><b>Legacy, brownfield</b></td><td data-th="Профіль">Великий чужий код, слабкі тести, авторів немає. Рівень за радіусом +1</td><td data-th="Специфікація і план">Спершу <b>розвідка</b>: карта модуля і характеризаційні тести; spec пишуть після читання коду (11.3)</td><td data-th="Автономія і gates">L2–L3 на розвідці (plan mode, Explore-субагент), L4 — малими PR; L5 — лише масові однотипні зміни з машинним оракулом</td></tr>
+</tbody></table></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Архетип</th><th>Інструкції й інструменти</th><th>Що міряти</th><th>Типовий провал</th></tr></thead>
+<tbody>
+<tr><td data-th="Архетип"><b>Прототип</b></td><td data-th="Інструкції й інструменти">Без CLAUDE.md або 5 рядків «як запустити»; пісочниця; дозволи широкі, але в ізоляції</td><td data-th="Що міряти">Час до відповіді на питання спайка</td><td data-th="Типовий провал">Демо сподобалось, і прототип «тимчасово» йде в продакшн разом із широкими дозволами й без тестів</td></tr>
+<tr><td data-th="Архетип"><b>Продукт</b></td><td data-th="Інструкції й інструменти">CLAUDE.md / AGENTS.md у репозиторії, правила за шляхами (4.2), спільний <code>.claude/settings.json</code>, командний marketplace плагінів, агент у CI</td><td data-th="Що міряти">Час до злиття, частка повернутих змін, черга рев'ю (3.5), вартість злитої зміни (5.5)</td><td data-th="Типовий провал">Один рівень на все: CSS-правка чекає рев'ю spec, а зміна оплат проходить як CSS-правка</td></tr>
+<tr><td data-th="Архетип"><b>Enterprise</b></td><td data-th="Інструкції й інструменти">Managed settings і managed CLAUDE.md поверх репозиторію; дозволені marketplace; OpenTelemetry; gateway чи хмарний провайдер (3.3)</td><td data-th="Що міряти">Відмови в дозволах на сесію, повнота журналу, ті самі метрики поставки</td><td data-th="Типовий провал">Політику писали без шляху для винятків: агенти витрачають ходи на відмови, люди йдуть у тіньові інструменти, журнал ніхто не читає</td></tr>
+<tr><td data-th="Архетип"><b>Legacy</b></td><td data-th="Інструкції й інструменти">Вкладені CLAUDE.md за модулями, які дописують після кожної розвідки; характеризаційні тести як частина задачі</td><td data-th="Що міряти">Вартість розвідки на зміну, частка змін із характеризаційними тестами, регресії після злиття</td><td data-th="Типовий провал">Spec написано для коду, яким його уявляють: агент виконує його буквально і не бачить другого місця, яке треба змінити (прогін нижче)</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Пастка соло-продукту</span>
+<p>Одна людина ще не означає прототип. Lectern пише один автор, але квізи бачать учні, а MCP-контракт читають чужі клієнти. Архетип визначають <b>користувачі й зобов'язання</b>, а не кількість розробників. Рецензента-людину соло-автору замінюють пауза між написанням і злиттям, субагент-рецензент і жорсткіші автоматичні gates.</p>
+</div>
+</section>
+
+<section class="sec" id="evidence">
+<div class="sec-h"><span class="num">04</span><h2>Що роблять ті, хто вже калібрує<span class="sub">Перевірені практики</span></h2></div>
+<p><b>Anthropic про власні команди</b> (PDF до статті «How Anthropic teams use Claude Code», 24.07.2025). Команда продуктової розробки ділить задачі не за розміром, а за тим, де вони лежать відносно ядра:</p>
+<blockquote class="q-src">
+<p>Навчіться відрізняти задачі, які добре йдуть асинхронно (периферійні фічі, прототипування), від тих, що потребують синхронного нагляду (основна бізнес-логіка, критичні виправлення). Абстрактні задачі на краях продукту можна віддати в режимі «auto-accept».</p>
+<p class="orig">“Learn to distinguish between tasks that work well asynchronously (peripheral features, prototyping) versus those needing synchronous supervision (core business logic, critical fixes). Abstract tasks on the product's edges can be handled with 'auto-accept mode,'”</p>
+<cite>Anthropic, How Anthropic teams use Claude Code (PDF), 24.07.2025</cite>
+</blockquote>
+<ul>
+<li><b>«Ігровий автомат»</b> у команді data science: зафіксувати стан комітом, дати агентові 30 хвилин автономної роботи і або прийняти результат, або почати з нуля. Повну автономію тут купує <b>зворотність</b>: коміт робить провал безкоштовним.</li>
+<li><b>Ізоляція замість дозволів.</b> Порада зі статті Anthropic про найкращі практики (квітень 2025): <code>--dangerously-skip-permissions</code> — лише в контейнері без доступу до інтернету. Контейнер зменшує радіус ураження, тому дозволяє вищу автономію.</li>
+<li><b>Автономія росте зі знанням.</b> Розділ «Best practices for organizations» в оглядовій сторінці enterprise-розгортання радить новачкам починати з Q&amp;A по кодовій базі, малих багфіксів і плану перед кодом, а згодом переходити до агентнішої роботи.</li>
+</ul>
+<p><b>DORA 2025</b> додає до тези про підсилювач (0.1) дві речі, важливі для калібрування. Перша: впровадження AI тепер <b>підвищує пропускну здатність поставки, але все ще збільшує її нестабільність</b>. Отже, швидкість ростиме сама, а gates треба ставити там, де нестабільність коштує дорого. Друга: серед семи можливостей моделі DORA AI Capabilities є <b>«робота малими партіями»</b> і <b>«сильні практики контролю версій»</b>, тобто прямі важелі зворотності, а також <b>якісні внутрішні платформи</b>. Платформну інженерію впровадили 90% організацій. На платформі живуть спільні політики, CI-агенти й шаблони процесу.</p>
+<p><b>Legacy в масштабі.</b> Опубліковані кейси працюють на рівні L5, але кожен має <b>машинний оракул</b>:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Кейс</th><th>Результат</th><th>Що давало право на автономію</th></tr></thead>
+<tbody>
+<tr><td data-th="Кейс">Google, міграція ID з int32 на int64 в Ads (звіт про досвід, 2025)</td><td data-th="Результат">80% змін у злитих CL повністю написав AI; загальний час — орієнтовно −50%</td><td data-th="Що давало право на автономію">У зміни потрапляє лише код, що проходить юніт-тести; люди рев'юять зміни LLM як будь-які інші</td></tr>
+<tr><td data-th="Кейс">Airbnb, міграція ~3,5 тис. тестових файлів з Enzyme на React Testing Library</td><td data-th="Результат">Оцінка вручну — 1,5 року, фактично — 6 тижнів; 75% файлів за перші 4 години, 97% після 4 днів доналаштування, решту — вручну</td><td data-th="Що давало право на автономію">Кожен файл проходить етапи: Jest, ESLint, tsc; невдача — повтор з лімітом спроб</td></tr>
+<tr><td data-th="Кейс">Amazon, перехід застосунків з Java 8/11 на 17 (2024)</td><td data-th="Результат">Заявлено економію понад 4 500 років розробки і $260 млн на рік</td><td data-th="Що давало право на автономію">Масова однотипна трансформація; цифри — заява вендора без опису методу</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 15.10.2026</span>
+<p>Spec Kit описує три фази: «0-to-1 (Greenfield)», «Creative Exploration» і «Iterative Enhancement (Brownfield)». У Kiro є кнопка «Generate Steering Docs», яка створює <code>product.md</code>, <code>tech.md</code> і <code>structure.md</code>; останній, за документацією, допомагає згенерованому коду вписатися в наявну кодову базу. Порівняння інструментів — в уроці 8.2.</p>
+</div>
+</section>
+
+<section class="sec" id="experiment">
+<div class="sec-h"><span class="num">05</span><h2>Справжній прогін<span class="sub">Одна зміна в трьох режимах</span></h2></div>
+<p>Задача: «додати <code>--format csv</code> до <code>lectern check</code>». Три режими на свіжих копіях канонічного Lectern, по два запуски на режим, модель Sonnet, <code>claude -p</code>, ізоляція від особистого конфігу через <code>--setting-sources project --strict-mcp-config</code>:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Режим</th><th>Що отримує агент</th><th>Дозволи</th></tr></thead>
+<tbody>
+<tr><td data-th="Режим"><b>A</b> прототип</td><td data-th="Що отримує агент">Одне речення. Без CLAUDE.md, хуків і субагентів</td><td data-th="Дозволи"><code>acceptEdits</code> + увесь <code>Bash</code></td></tr>
+<tr><td data-th="Режим"><b>B</b> продукт</td><td data-th="Що отримує агент">Spec на 25 рядків з 5 критеріями приймання; промпт «план ≤ 6 рядків → тести, що падають → код → увесь набір тестів і ruff → субагент <code>spec-reviewer</code> проти spec → виправити»; CLAUDE.md і хуки Lectern</td><td data-th="Дозволи"><code>acceptEdits</code> + 5 команд: pytest, ruff, <code>lectern check</code>, <code>git status</code>, <code>git diff</code></td></tr>
+<tr><td data-th="Режим"><b>C</b> enterprise</td><td data-th="Що отримує агент">Як B, плюс файл політики через <code>--settings</code> (аналог managed settings, яких не можна поставити без прав адміністратора)</td><td data-th="Дозволи"><code>dontAsk</code>; явний allowlist; deny на <code>tools.py</code>, <code>scripts/</code>, <code>.claude/</code>, <code>docs/</code>, <code>pyproject.toml</code>, push і commit; журнал PreToolUse/PostToolUse поза репозиторієм; Stop-хук «тести + ruff обов'язкові»</td></tr>
+</tbody></table></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — scratch/exp</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Add a \`--format csv\` option to \`lectern check\`." --model sonnet --setting-sources project --strict-mcp-config --permission-mode acceptEdits --allowedTools "Bash" --output-format stream-json --verbose</span>
+<span class="ps">$ </span><span class="c">claude -p "$PB" --model sonnet --setting-sources project --strict-mcp-config --agents "$(cat reviewer.json)" --permission-mode acceptEdits --allowedTools "Bash(.venv/bin/python -m pytest *)" "Bash(.venv/bin/ruff check *)" "Bash(.venv/bin/lectern check *)" "Bash(git status*)" "Bash(git diff*)" --output-format stream-json --verbose</span>
+<span class="ps">$ </span><span class="c">AUDIT_LOG=../audit.jsonl claude -p "$PB" --model sonnet --setting-sources project --strict-mcp-config --agents "$(cat reviewer.json)" --settings policy/c-policy.json --permission-mode dontAsk --output-format stream-json --verbose</span></pre>
+<div class="cap">реальні команди з console/scripts/run.sh · 15.10.2026 · Claude Code 2.1.300 · $PB — промпт режиму B, однаковий для B і C</div></div>
+<p>Після кожного запуску — <b>приховані</b> приймальні тести, яких агент не бачив: 5 перевірок регресій (коди виходу, рядок на питання, попередження не в stdout, <code>--json</code> і текстовий вивід байт-у-байт як до зміни, увесь набір тестів і ruff у правильному середовищі) і 8 перевірок рішень зі spec (заголовок, повна цитата, <code>--format json</code>, <code>--quote</code> + csv → код 2, битий файл, <code>--max-quotes</code>).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Режим</th><th>Час · вартість · ходи</th><th>Регресії · рішення spec</th><th>Нові тести · відмови</th></tr></thead>
+<tbody>
+<tr><td data-th="Режим"><b>A</b> прототип</td><td data-th="Час · вартість · ходи">43 і 36 с · $0,15 і $0,13 · 10 і 7</td><td data-th="Регресії · рішення spec">5/5 і 5/5 · <b>3/8 і 6/8</b></td><td data-th="Нові тести · відмови">2 і 2 · 0 і 0</td></tr>
+<tr><td data-th="Режим"><b>B</b> продукт</td><td data-th="Час · вартість · ходи">139 і 127 с · $0,40 і $0,32 · 30 і 19</td><td data-th="Регресії · рішення spec">5/5 і 5/5 · 8/8 і 8/8</td><td data-th="Нові тести · відмови">10 і 8 · 4 і 4</td></tr>
+<tr><td data-th="Режим"><b>C</b> enterprise</td><td data-th="Час · вартість · ходи">130 і 152 с · $0,33 і $0,41 · 21 і 30</td><td data-th="Регресії · рішення spec">5/5 і 5/5 · 8/8 і 8/8</td><td data-th="Нові тести · відмови">7 і 10 · 2 і 4</td></tr>
+</tbody></table></div>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">A · середня вартість</span><span class="tr"><i style="--v:35%"></i><b style="--v:35%">$0,14</b></span></div>
+  <div class="bar"><span class="k">B · середня вартість</span><span class="tr"><i style="--v:90%"></i><b class="in" style="--v:90%">$0,36</b></span></div>
+  <div class="bar m"><span class="k">C · середня вартість</span><span class="tr"><i style="--v:92%"></i><b class="in" style="--v:92%">$0,37</b></span></div>
+</div>
+<figcaption>Вартість — оцінка <code>total_cost_usd</code> із результату <code>claude -p</code>, сума всіх ходів сесії разом із субагентом. n = 2 на режим: це ілюстрація механізмів, а не статистика. Сирі потоки, diff-и і результати тестів — у <code>console/runs/</code>.</figcaption>
+</figure>
+<h3>Що купив кожен шар</h3>
+<ol class="steps">
+<li><b>Специфікація купила рішення, а не надійність.</b> Режим A нічого не зламав: 5/5 регресійних перевірок в обох запусках. Але він зробив <b>іншу фічу</b>: в A1 немає колонки з цитатою взагалі, A2 поставив її останньою, і жоден не додав <code>--format json</code>. Без spec ці рішення ухвалює агент, і кожен запуск ухвалює їх по-різному.</li>
+<li><b>Інструкційний файл купив перевірку в правильному середовищі.</b> Без CLAUDE.md обидва агенти A взяли системні <code>python</code> і <code>ruff</code>: повний набір тестів не зібрався через відсутні залежності, лінтер «не встановлений». Обидва чесно про це написали, але закінчили з неперевіреною зміною. Агенти B і C взяли команди з CLAUDE.md і закінчили на 120–123 <code>passed</code> і <code>All checks passed!</code>.</li>
+<li><b>Шар enterprise нічого не додав до якості й майже нічого до ціни.</b> Stop-хук із обов'язковими перевірками жодного разу не спрацював: промпт B уже змусив агента їх запустити. Цінність C в іншому: гарантія не залежить від того, чи послухався агент, і є журнал на 44 і 60 подій із позначкою, хто діяв — головна сесія чи <code>spec-reviewer</code>.</li>
+<li><b>Тертя дає не режим, а форма allowlist.</b> B у режимі <code>acceptEdits</code> отримав 4 і 4 відмови, C у <code>dontAsk</code> — 2 і 4: агенти зшивали дозволені команди з недозволеними (<code>ls; …; grep -A30 …</code>, <code>cd …; …</code>) і кожна така відмова коштувала хід.</li>
+</ol>
+<div class="note warn"><span class="lbl">Знахідка, якої ніхто не шукав</span>
+<p>У режимі A агенти не викликали <code>Edit</code> жодного разу: усі правки йшли через <code>python - &lt;&lt;'EOF' … open(p,'w') …</code> у <code>Bash</code>. Така правка обходить правила <code>Edit(шлях)</code> і PostToolUse-хуки на <code>Edit|Write</code>. З вузьким allowlist агент пробував те саме в <b>8 з 8</b> запусків B, C і brownfield, отримував відмову і переходив на <code>Edit</code>. Захищені шляхи працюють лише тоді, коли <code>Bash</code> не дозволений цілком.</p>
+</div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>runs/C2/audit.jsonl — журнал з хука</span></div>
+<pre>{"event": "PreToolUse", "agent": "main", "tool": "Bash", "target": ".venv/bin/python - &lt;&lt;'EOF'\nimport re\np=\"tests/test_check_csv.py\"…
+<span class="d">  ← PostToolUse для цього виклику немає: відмова dontAsk</span>
+{"event": "PreToolUse", "agent": "spec-reviewer", "tool": "Bash", "target": ".venv/bin/python -m pytest -q 2&gt;&amp;1|tail -2; .venv/bin/ruff check src tests|tail -1; …
+<span class="d">  ← і тут: рецензент дописав до дозволених команд echo</span></pre>
+<div class="cap">реальний журнал · поля ts і session прибрано, target скорочено</div></div>
+<div class="note fact"><span class="lbl">Два уроки про журнал дій</span>
+<p>Перший: відмова в журналі хука виглядає як <b>PreToolUse без пари PostToolUse</b>, а причину видно лише в <code>permission_denials</code> результату або в OpenTelemetry-події <code>claude_code.tool_decision</code>. Другий: наш хук обрізав готовий JSON-рядок до 600 символів, і 5 рядків зі 104 стали невалідними. Обрізайте поле, а не рядок, і перевіряйте журнал парсером, перш ніж показувати його аудитору.</p>
+</div>
+<h3>Brownfield: той самий процес у чужому репозиторії</h3>
+<p>Режим B на знімку <code>python-tabulate</code> (коміт <code>268615a</code>, 2 900 рядків у <code>tabulate/__init__.py</code>, без CLAUDE.md). Тривіальна опція: <code>-W N</code> / <code>--maxcolwidth N</code> — переносити довгі клітинки. Специфікацію написано у двох версіях. Версія «інсайдера» підказує, де код: «передати як <code>maxcolwidths</code> у <code>tabulate()</code>», «описати в docstring <code>_main</code>». Версія «аутсайдера» має ті самі вимоги без цих підказок: «описати в тексті довідки (<code>tabulate -h</code>)».</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Spec</th><th>Час · вартість</th><th>До першої правки</th><th>Приймальні · README</th></tr></thead>
+<tbody>
+<tr><td data-th="Spec">Інсайдер (BF1, BF2)</td><td data-th="Час · вартість">91 і 92 с · $0,26 і $0,26</td><td data-th="До першої правки">4 виклики · ~98 тис. вхідних токенів</td><td data-th="Приймальні · README">6/6 і 6/6 · <b>0 з 2</b> оновили README</td></tr>
+<tr><td data-th="Spec">Аутсайдер (BF3, BF4)</td><td data-th="Час · вартість">103 і 118 с · $0,31 і $0,31</td><td data-th="До першої правки">5 викликів · ~135 тис. вхідних токенів</td><td data-th="Приймальні · README">6/6 і 6/6 · <b>2 з 2</b> оновили README</td></tr>
+</tbody></table></div>
+<p>Незнайомий код <b>не</b> зробив зміну дорожчою за CSV-зміну в Lectern у тому самому режимі B ($0,32–0,40): <code>cli.py</code> короткий, а набір із 323 тестів одразу показує, що зламалося. Дорожчою на 18% її зробила специфікація без підказок, і саме ця «зайва» розвідка знайшла другу копію довідки CLI в <code>README.md</code>. Агенти з підказками оновили лише docstring, тож документація розійшлася з кодом, і жоден тест цього не помітив.</p>
+<div class="key"><h4>Висновок для legacy</h4>
+<p>Специфікація, яка вказує агентові, <b>де</b> міняти, переносить у задачу сліпі плями свого автора. У незнайомому коді спершу дайте агентові знайти всі місця, яких торкається вимога, і лише потім фіксуйте план. Розвідка тут — це gate, а не витрата.</p>
+</div>
+</section>
+
+<section class="sec" id="promotion">
+<div class="sec-h"><span class="num">06</span><h2>Переходи між архетипами<span class="sub">Коли посилювати і коли полегшувати</span></h2></div>
+<p>Прототип рідко «стає» продуктом за рішенням. Зазвичай спрацьовує тригер: <b>перший зовнішній користувач, перші реальні дані, друга людина в репозиторії або код, який житиме довше за два тижні</b>. З цього моменту рахунок за пропущений процес росте з кожним комітом, тож перехід роблять одним PR за чеклистом, а не поступово.</p>
+<h3>Promotion checklist: прототип → продукт</h3>
+<ol class="steps">
+<li><b>Рішення «підняти чи переписати» записане.</b> ADR: що з прототипу лишається, що викидається і чому (5.4).</li>
+<li><b>Поведінку зафіксовано тестами.</b> Характеризаційні тести на 3–5 ключових сценаріїв, які вже показували користувачам: вони стають першою специфікацією.</li>
+<li><b>Агентові записано правила.</b> CLAUDE.md / AGENTS.md: команди збірки й тестів, межі модулів, заборони. Режим A показав, що без цього агент перевіряє зміну не в тому середовищі.</li>
+<li><b>Дозволи звужено.</b> Прибрати bypass і голий <code>Bash</code>, лишити allowlist команд, deny на секрети (3.3) і на шляхи з даними.</li>
+<li><b>CI і захищена гілка.</b> Тести й лінтер на кожен PR — обов'язкові перевірки; злиття в <code>main</code> лише через PR.</li>
+<li><b>Секрети й дані.</b> Ключі з коду — в оточення або менеджер секретів; дані класифіковано, маршрут до моделі визначено.</li>
+<li><b>Названо власника і рівень для ядра.</b> Які шляхи — P2 і хто їх рев'юїть; решта за замовчуванням P1.</li>
+<li><b>Знято базову лінію.</b> Вартість злитої зміни і час до злиття за перший тиждень, щоб наступне рішення про процес спиралося на цифри.</li>
+</ol>
+<h3>Сигнали, що процес пора полегшити</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сигнал</th><th>Що він означає</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Сигнал">Gate за останні N змін нічого не зловив, а інший шар ловить той самий клас дефектів</td><td data-th="Що він означає">Подвійна страховка</td><td data-th="Що зробити">Прибрати або перенести на рідший тип змін. N визначте заздалегідь, разом із вартістю gate</td></tr>
+<tr><td data-th="Сигнал">Рев'ю spec триває довше за саму зміну</td><td data-th="Що він означає">Рівень P2 застосовано до P1-змін</td><td data-th="Що зробити">Розвести типи змін у профілі процесу; spec лише для ядра</td></tr>
+<tr><td data-th="Сигнал">Кожен запуск агента має кілька відмов у дозволах</td><td data-th="Що він означає">Allowlist не відповідає реальним командам проєкту</td><td data-th="Що зробити">Додати перевірені команди, а не послаблювати режим; відмови — метрика якості політики</td></tr>
+<tr><td data-th="Сигнал">Розвідка в «legacy»-модулі вже нічого нового не знаходить, вкладений CLAUDE.md стабільний кілька тижнів</td><td data-th="Що він означає">Знання накопичились</td><td data-th="Що зробити">Зняти модифікатор «+1» для цього модуля</td></tr>
+<tr><td data-th="Сигнал">Спайк обріс тестами й рев'ю</td><td data-th="Що він означає">Процес продукту на коді, який викинуть</td><td data-th="Що зробити">Повернути P0 або чесно запустити promotion checklist</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Корпоративні механізми<span class="sub">Що вмикати на P2 і P3</span></h2></div>
+<p>Детальні таблиці відповідностей — в уроках 3.2 і 4.5. Тут — лише механізми, що відділяють P3 від P2: <b>правило, яке проєкт не може перекрити</b>.</p>
+<div class="tabs">
+<input type="radio" name="ent-t" id="ent-t1" checked><input type="radio" name="ent-t" id="ent-t2"><input type="radio" name="ent-t" id="ent-t3">
+<div class="tab-l"><label for="ent-t1">Claude Code</label><label for="ent-t2">Codex</label><label for="ent-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Managed settings</b> мають найвищий пріоритет: managed → <code>--settings</code> → local → project → user. Доставка — файл <code>managed-settings.json</code> (macOS: <code>/Library/Application Support/ClaudeCode/</code>, Linux: <code>/etc/claude-code/</code>), тека <code>managed-settings.d/</code>, MDM або server-managed із консолі claude.ai для планів Teams і Enterprise.</li>
+<li><b>Ключі лише для managed</b>: <code>allowManagedPermissionRulesOnly</code> (правила дозволів беруться тільки з managed), <code>allowManagedHooksOnly</code>, <code>allowManagedMcpServersOnly</code>, <code>strictKnownMarketplaces</code> (звідки можна ставити плагіни). <code>permissions.disableBypassPermissionsMode: "disable"</code> працює в будь-якому файлі, але зазвичай живе в managed.</li>
+<li><b>Режим для CI</b> — <code>dontAsk</code>: усе, що не дозволено явно, відхиляється без запиту.</li>
+<li><b>Аудит</b>: OpenTelemetry-події <code>claude_code.tool_decision</code>, <code>tool_result</code>, <code>user_prompt</code> (текст промпту за замовчуванням прихований, вмикається <code>OTEL_LOG_USER_PROMPTS</code>); хук <code>ConfigChange</code> — для аудиту змін налаштувань під час сесії.</li>
+<li><b>Для P1–P2 у команді</b>: <code>extraKnownMarketplaces</code> і <code>enabledPlugins</code> у проєктному <code>.claude/settings.json</code>, агент у GitHub Actions, Code Review (research preview для Team і Enterprise; знахідки не блокують PR).</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b><code>requirements.toml</code></b> — обмеження адміністратора, які користувач не перекриє: наприклад, <code>allowed_approval_policies</code> і <code>allowed_sandbox_modes</code>. Доставка: <code>/etc/codex/requirements.toml</code>, MDM на macOS або хмарне керування з Admin Console.</li>
+<li><b><code>managed_config.toml</code></b> — стартові значення, які користувач може змінити під час роботи. Це інструмент для P2-«типових налаштувань», а не для P3-заборон.</li>
+<li>Різниця між ними — це і є різниця між P2 і P3: умовчання проти заборони.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Team Rules</b> — правила з дашборда для планів Team і Enterprise, з перемикачем «Enforce this rule».</li>
+<li><b>Hooks</b> розповсюджуються через репозиторій, MDM (<code>/Library/Application Support/Cursor/hooks.json</code>, <code>/etc/cursor/hooks.json</code>) або хмарно (лише Enterprise).</li>
+<li><b>Run Mode</b>: Auto-review (за замовчуванням), Allowlist, Run Everything. Документація прямо застерігає, що allowlist — «best-effort, not a security boundary». Для P3 межею має бути пісочниця, а не список.</li>
+<li>Enterprise-дашборд: MCP allowlist, Repository Blocklist, Audit Log.</li>
+</ul>
+</div>
+</div>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Імітація P3 у прогоні C через <code>--settings</code> тримається, доки людина сама передає цей прапорець. До того ж allow-правила різних рівнів зливаються, тож проєктний <code>.claude/settings.json</code> може дописати свої. Справжнє P3 — це managed settings з <code>allowManagedPermissionRulesOnly</code>: правила allow, ask і deny з усіх інших файлів тоді ігноруються.</p>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: профіль процесу</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 8.4 · <code>docs/process.md</code></div><div class="pb">
+<p><b>Класифікація.</b> Один автор, але квізи публікуються учням, MCP-контракт читають Claude Code, Codex і Cursor, а <code>data/learners/</code> містить персональні дані. Це <b>соло-продукт</b>: архетип «продуктова команда», у якому працює одна людина, плюс дозволені спайки поза <code>main</code>. Рівень задає тип зміни:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип зміни</th><th>Рівень</th><th>Що обов'язково</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип зміни">Спайк (новий промпт, рушій, формат)</td><td data-th="Рівень">P0</td><td data-th="Що обов&#x27;язково">Мета й «готово, коли» в описі гілки; worktree; у <code>main</code> не зливається; через 7 днів — викинути або запустити promotion checklist</td></tr>
+<tr><td data-th="Тип зміни">Документи, CHANGELOG, <code>samples/</code></td><td data-th="Рівень">P1</td><td data-th="Що обов&#x27;язково">Власне читання diff; <code>pytest -q</code> + <code>ruff</code></td></tr>
+<tr><td data-th="Тип зміни">CLI і формати виводу</td><td data-th="Рівень">P1</td><td data-th="Що обов&#x27;язково">3–5 критеріїв у PR, тести наперед; вивід <code>--json</code> байт-у-байт той самий, бо це контракт для агентів</td></tr>
+<tr><td data-th="Тип зміни">Промпти, skill <code>generate-quiz</code></td><td data-th="Рівень">P2</td><td data-th="Що обов&#x27;язково">Очікувана поведінка в <code>docs/spec/</code>; <code>quiz-critic</code>; evals до злиття (модуль 12)</td></tr>
+<tr><td data-th="Тип зміни">Перевірка цитат (<code>check_quote</code>, <code>validate()</code>, <code>MIN_QUOTE_WORDS</code>)</td><td data-th="Рівень">P2, лише власник</td><td data-th="Що обов&#x27;язково">ADR до коду (0004), рядок у <code>docs/spec/quotes.md</code> у тому самому PR; агент пропонує diff, пише власник</td></tr>
+<tr><td data-th="Тип зміни">Схеми MCP</td><td data-th="Рівень">P2</td><td data-th="Що обов&#x27;язково">Рішення про версію; <code>scripts/mcp_contract.py check</code></td></tr>
+<tr><td data-th="Тип зміни">Дані, хуки, <code>.claude/settings.json</code></td><td data-th="Рівень">P3</td><td data-th="Що обов&#x27;язково">Агент не редагує (deny / ask); зміну пише й перевіряє людина</td></tr>
+</tbody></table></div>
+<p>Під таблицею — три правила з прогону: <b>голий <code>Bash</code> у <code>claude -p</code> заборонено</b> (CI, <code>batch_generate.sh</code>); метрики — вартість злитої зміни, частка повернутих змін, відмови в дозволах на запуск; тригер переходу до командного процесу — другий контриб'ютор або перші дані реальних учнів.</p>
+<p><b>Ваш крок:</b> збережіть профіль як <code>lectern/docs/process.md</code> (готовий файл — <code>console/process.md</code> цього уроку) і пропишіть посилання на нього в CLAUDE.md одним рядком: агент має знати, що зміна в <code>tools.py</code> — не P1.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Агент у CI змінив файл, на який стоїть <code>deny Edit</code></td><td data-th="Причина">Дозволено весь <code>Bash</code>; правка пройшла через <code>python - &lt;&lt;EOF</code></td><td data-th="Що зробити">Allowlist конкретних команд; захищені шляхи — ще й у пісочниці</td></tr>
+<tr><td data-th="Симптом">Прототип у продакшні з <code>bypassPermissions</code> і без тестів</td><td data-th="Причина">Тригер переходу пропустили</td><td data-th="Що зробити">Promotion checklist одним PR; <code>disableBypassPermissionsMode</code></td></tr>
+<tr><td data-th="Симптом">Кожна правка тексту чекає рев'ю spec</td><td data-th="Причина">Один рівень на весь репозиторій</td><td data-th="Що зробити">Профіль процесу за типами змін</td></tr>
+<tr><td data-th="Симптом">Після впровадження політики агенти «буксують», а люди переходять на інші інструменти</td><td data-th="Причина">Allowlist складено без реальних команд проєкту, процесу винятків немає</td><td data-th="Що зробити">Відмови як метрика, власник політики, термін розгляду винятку</td></tr>
+<tr><td data-th="Симптом">У legacy-модулі змінили одне з двох місць</td><td data-th="Причина">Spec вказав, де правити, і агент не шукав далі</td><td data-th="Що зробити">Крок розвідки до плану: «знайди всі місця, яких торкається вимога»</td></tr>
+<tr><td data-th="Симптом">Аудитор не бачить у журналі відхилених дій</td><td data-th="Причина">Журнал з PostToolUse; відмови туди не потрапляють</td><td data-th="Що зробити">Пари Pre/Post, <code>permission_denials</code>, OTel <code>tool_decision</code>; перевірка журналу парсером</td></tr>
+<tr><td data-th="Симптом">«Я один, процес мені не потрібен» — і зламаний формат у 2 000 користувачів</td><td data-th="Причина">Архетип визначили за кількістю розробників</td><td data-th="Що зробити">Архетип — за користувачами й зобов'язаннями; рецензента замінюють gates і пауза</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">blast radius</span><span class="h">яке питання ставить?</span></span><span class="b"><span class="t">Кого зачепить помилка</span><span class="d">лише вас, команду чи фічу, усіх користувачів, гроші, дані</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">reversibility</span><span class="h">приклад незворотного</span></span><span class="b"><span class="t">Наслідки лишаються</span><span class="d">міграція даних, надісланий лист, опублікований формат, платіж</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">правило максимуму</span><span class="h">як рахувати рівень?</span></span><span class="b"><span class="t">Найгірша вісь</span><span class="d">рядок у білінгу — P2, хоча diff малий</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">spike</span><span class="h">єдиний gate</span></span><span class="b"><span class="t">Не зливати</span><span class="d">мета, ліміт часу, дата викидання</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">голий Bash</span><span class="h">чим небезпечний?</span></span><span class="b"><span class="t">Обхід Edit-правил</span><span class="d">агент пише файли shell-скриптом повз deny і хуки</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">P2 → P3</span><span class="h">що додає?</span></span><span class="b"><span class="t">Правило, яке не перекрити</span><span class="d">managed policy, журнал дій, друга людина</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Зміна на один рядок: поріг округлення в розрахунку рахунків, які щомісяця автоматично надсилаються всім клієнтам. Який рівень процесу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>P1: diff на один рядок, а <code>git revert</code> відкотить його за хвилину</span></label><label class="opt ok"><input type="radio" name="q1"><span>P2: радіус — усі клієнти й гроші, а надісланий рахунок не відкотиш</span></label><label class="opt"><input type="radio" name="q1"><span>P0: такий дрібний фікс швидше перевірити в продакшні, ніж описувати</span></label></div>
+    <div class="why yes">Так. Рівень визначає найгірша вісь, а не обсяг diff: revert відкочує код, але не надіслані рахунки.</div>
+    <div class="why no">Обсяг diff не входить до осей. Радіус «усі й гроші» і незворотність надісланих рахунків дають P2, незалежно від того, скільки рядків змінено.</div></div>
+  <div class="q"><div class="qt">2. За вечір треба з'ясувати, чи зможе агент робити картки з PDF прийнятної якості. Що з процесу потрібно?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Питання й ознака відповіді, ліміт часу, worktree чи контейнер, і код не зливається</span></label><label class="opt"><input type="radio" name="q2"><span>Spec з критеріями приймання і план, бо картки потім підуть учням у продакшн</span></label><label class="opt"><input type="radio" name="q2"><span>Робота прямо в <code>main</code> з <code>acceptEdits</code>, але з обов'язковим CI на кожен коміт</span></label></div>
+    <div class="why yes">Так. Це P0: зворотність забезпечує ізоляція, а єдиний gate — прототип не потрапляє в продуктову гілку.</div>
+    <div class="why no">Спайк відповідає на питання і викидається. Spec і план — премія за ризик, якого тут немає, а робота в <code>main</code> якраз створює радіус ураження, від якого P0 мав би ізолювати.</div></div>
+  <div class="q"><div class="qt">3. У прогоні режим A пройшов 5/5 регресійних перевірок, але лише 3/8 і 6/8 рішень зі spec. Що з цього випливає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Прототипний режим не гірший: якщо нічого не зламано, spec можна не писати</span></label><label class="opt"><input type="radio" name="q3"><span>Режим A зламав код, бо без субагента-рецензента дефекти ніхто не ловить</span></label><label class="opt ok"><input type="radio" name="q3"><span>Spec купує узгоджені рішення: без неї агент щоразу ухвалює їх інакше</span></label></div>
+    <div class="why yes">Так. Регресій не було, але колонки, наявність цитати й <code>--format json</code> агенти вирішили по-різному, і жоден варіант не збігся з тим, що потрібно продукту.</div>
+    <div class="why no">Регресійні перевірки A пройшов, тож він нічого не зламав. Але він зробив іншу фічу: два запуски — два різні формати CSV. Для спайка це нормально, для контракту з користувачами — ні.</div></div>
+  <div class="q"><div class="qt">4. У CI для <code>claude -p</code> дозволено весь <code>Bash</code>, а <code>Edit(./src/billing/**)</code> заборонено. Що станеться, коли задача торкнеться білінгу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Нічого поганого: deny має пріоритет над будь-яким allow для всіх інструментів</span></label><label class="opt ok"><input type="radio" name="q4"><span>Агент може переписати файл shell-скриптом в обхід правила й Edit-хуків</span></label><label class="opt"><input type="radio" name="q4"><span>Сесія зупиниться: у headless-режимі <code>Bash</code> без шаблону команд не запускається</span></label></div>
+    <div class="why yes">Так. Правило <code>Edit(шлях)</code> стосується інструмента <code>Edit</code>. У прогоні з голим <code>Bash</code> агенти не викликали <code>Edit</code> жодного разу: усі правки йшли через <code>python - &lt;&lt;EOF</code>.</div>
+    <div class="why no">Deny перемагає allow для того самого інструмента, але <code>Bash</code> — інший інструмент, і з ним дозволено все. З вузьким allowlist ті самі спроби отримали відмову у 8 з 8 запусків.</div></div>
+  <div class="q"><div class="qt">5. Ви пишете spec для зміни в незнайомому модулі й хочете заощадити токени, вказавши в ній точне місце правки. Який головний ризик?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Агент не шукатиме інших місць, яких торкається вимога, і повторить вашу сліпу пляму</span></label><label class="opt"><input type="radio" name="q5"><span>Агент проігнорує підказку і все одно прочитає модуль повністю, тож економії не буде</span></label><label class="opt"><input type="radio" name="q5"><span>Підказки про реалізацію роблять spec недійсною для субагента-рецензента</span></label></div>
+    <div class="why yes">Так. У прогоні на <code>tabulate</code> spec з підказками був на 18% дешевшим, але жоден із двох агентів не оновив копію довідки в README; без підказок — обидва оновили.</div>
+    <div class="why no">Агенти з підказками якраз читали менше (4 виклики проти 5) і не знайшли другу копію довідки в README. Рецензент звіряє зміну зі spec, тож пропустить те саме, чого spec не згадує.</div></div>
+  <div class="q"><div class="qt">6. Організація хоче, щоб жоден репозиторій не міг дописати власні allow-правила для Claude Code. Що потрібно?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Deny-правила в кожному проєктному <code>.claude/settings.json</code>, перевірені в CI</span></label><label class="opt"><input type="radio" name="q6"><span>Запускати агентів лише з <code>--settings policy.json</code> і режимом <code>dontAsk</code></span></label><label class="opt ok"><input type="radio" name="q6"><span>Managed settings з <code>allowManagedPermissionRulesOnly</code>: решта правил ігнорується</span></label></div>
+    <div class="why yes">Так. Цей ключ діє лише з managed settings: правила allow, ask і deny з user, project, local і <code>--settings</code> ігноруються.</div>
+    <div class="why no">Проєктний файл може змінити сам проєкт, а <code>--settings</code> працює, лише доки людина передає прапорець. Allow-правила різних рівнів зливаються, тому заборону «не дописувати» дає тільки managed-ключ.</div></div>
+  <div class="q"><div class="qt">7. Адмін Codex хоче задати розумний режим затверджень за замовчуванням, але дозволити розробникам його змінювати. Який механізм?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span><code>requirements.toml</code>, бо його доставляють на всі машини через MDM і хмару</span></label><label class="opt ok"><input type="radio" name="q7"><span><code>managed_config.toml</code>: стартові значення, які користувач може змінити</span></label><label class="opt"><input type="radio" name="q7"><span><code>AGENTS.md</code> у корені кожного репозиторію з описом режиму затверджень</span></label></div>
+    <div class="why yes">Так. Це умовчання рівня P2. <code>requirements.toml</code> — обмеження, які користувач не перекриє, тобто P3.</div>
+    <div class="why no"><code>requirements.toml</code> забороняє, а не пропонує: користувач його не перекриє. <code>AGENTS.md</code> — інструкції для моделі, а не налаштування клієнта. Умовчання, яке можна змінити, — <code>managed_config.toml</code>.</div></div>
+  <div class="q"><div class="qt">8. Команда регульованого продукту вважає Allowlist у Run Mode Cursor межею безпеки. Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Allowlist доступний лише в Enterprise, а на Teams він мовчки вимикається</span></label><label class="opt"><input type="radio" name="q8"><span>Run Mode Allowlist слабший за Auto-review, тому на P3 його не можна вмикати взагалі</span></label><label class="opt ok"><input type="radio" name="q8"><span>За документацією це «best-effort, not a security boundary»; межа — пісочниця</span></label></div>
+    <div class="why yes">Так. Список команд зменшує ризик, але не гарантує ізоляції. На P3 межею має бути пісочниця, а список — додатковим шаром.</div>
+    <div class="why no">Документація Cursor каже прямо: allowlist — best-effort, а не межа безпеки. Для P3 потрібна ізоляція, що не залежить від того, як агент складе команду.</div></div>
+  <div class="q"><div class="qt">9. Прототип внутрішнього інструмента показали іншій команді, і вона хоче користуватися ним з понеділка. Що робити першим?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Promotion checklist одним PR: тести на сценарії з демо, CLAUDE.md, звужені дозволи, CI</span></label><label class="opt"><input type="radio" name="q9"><span>Переписати з нуля через повний SDD-конвеєр, бо прототипний код не можна підтримувати</span></label><label class="opt"><input type="radio" name="q9"><span>Віддати як є з попередженням «бета», а процес додати, коли з'являться скарги</span></label></div>
+    <div class="why yes">Так. Тригер переходу — перший зовнішній користувач. Чеклист фіксує поведінку тестами і прибирає широкі дозволи до того, як рахунок почне рости.</div>
+    <div class="why no">Переписування — окреме рішення, і його записують в ADR у першому пункті чеклиста, а не роблять за замовчуванням. «Бета» без тестів і з широкими дозволами — типовий провал архетипу «прототип».</div></div>
+  <div class="q"><div class="qt">10. Субагент-рецензент за 40 останніх CSS-змін нічого не знайшов, коштує ~3 хв на зміну, а ті самі дефекти ловлять візуальні тести. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Прибрати рецензента з усього процесу, бо 40 порожніх перевірок доводять, що він не потрібен</span></label><label class="opt ok"><input type="radio" name="q10"><span>Прибрати його для типу «CSS» і лишити там, де інші шари цей клас дефектів не ловлять</span></label><label class="opt"><input type="radio" name="q10"><span>Лишити всюди: зайва перевірка нічого не коштує, а пропущений дефект дорогий</span></label></div>
+    <div class="why yes">Так. Gate виправданий, лише коли ловить клас дефектів, який інакше пропуститься. Для CSS це подвійна страховка, для ядра — ні.</div>
+    <div class="why no">Порожні перевірки на CSS нічого не кажуть про зміни ядра. А «нічого не коштує» — неправда: 3 хв на кожну зміну і є премія, яку треба виправдати.</div></div>
+  <div class="q"><div class="qt">11. Аудитор просить список дій агента, які відхилила політика. Ваш хук пише PreToolUse і PostToolUse. Як їх знайти?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Знайти PostToolUse з прапорцем помилки: відхилені дії завершуються з <code>is_error</code></span></label><label class="opt"><input type="radio" name="q11"><span>Ніяк: у режимі <code>dontAsk</code> відмов не буває, бо агент бачить лише дозволені інструменти</span></label><label class="opt ok"><input type="radio" name="q11"><span>PreToolUse без пари PostToolUse; причина — у <code>permission_denials</code> чи OTel</span></label></div>
+    <div class="why yes">Так. У прогоні C відхилені виклики мали лише запис PreToolUse; причину відмови дає <code>permission_denials</code> результату або подія <code>claude_code.tool_decision</code>.</div>
+    <div class="why no">Відхилений виклик не виконується, тож PostToolUse для нього немає. А <code>dontAsk</code> не ховає інструменти: він відхиляє все, що не дозволено явно, — у прогоні C було 2 і 4 відмови.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>калібрування процесу</td><td>Вибір глибини spec, gates, перевірок і автономії під ризик конкретної зміни: рівні P0–P3.</td></tr>
+<tr><td>blast radius</td><td>Радіус ураження: кого зачепить помилка — автора, команду, усіх користувачів, гроші, дані.</td></tr>
+<tr><td>зворотність змін</td><td>Чи відкочується зміна без наслідків; незворотні — міграції, надіслані листи, опубліковані формати, платежі.</td></tr>
+<tr><td>spike</td><td>Обмежений у часі експеримент з одним питанням; код викидають, а не зливають.</td></tr>
+<tr><td>brownfield</td><td>Робота в наявній кодовій базі; додає рівень процесу і крок розвідки.</td></tr>
+<tr><td>promotion checklist</td><td>Перевірюваний перелік кроків переходу прототипу в продукт одним PR.</td></tr>
+<tr><td>managed policy для enterprise</td><td>Налаштування організації, які не перекрити: managed settings, <code>requirements.toml</code>, Team Rules з Enforce.</td></tr>
+<tr><td>review gate</td><td>Точка, яку зміна не пройде без перевірки; виправдана, лише коли ловить свій клас дефектів.</td></tr>
+<tr><td>audit log</td><td>Журнал дій агента: хто, що, з якими аргументами і що відхилила політика.</td></tr>
+<tr><td>профіль процесу</td><td>Документ проєкту «тип зміни → рівень → що обов'язково».</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Профіль процесу для вашого репозиторію</h3>
+<p>Визначте архетип за користувачами й зобов'язаннями, випишіть 6–8 типів змін, оцініть кожен за трьома осями, виведіть рівень P0–P3 і обов'язкові gates. Для трьох gates назвіть клас дефектів, який вони ловлять, і додайте дві метрики та тригер переходу.</p>
+<h3>2. Розбір кейсу: від спайка до регульованого продукту</h3>
+<p>Прототип за вихідні став сервісом для 300 клієнтів банку, а агент у CI змінив файл попри <code>deny Edit</code>. Поставте діагноз, складіть promotion checklist, профіль процесу на 5 типів змін і план контролю й аудиту.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://www-cdn.anthropic.com/58284b19e702b49db9302d5b6f135ad8871e7658.pdf" target="_blank" rel="noopener">Anthropic — How Anthropic teams use Claude Code (PDF)</a><span>24.07.2025 · асинхронні задачі проти синхронного нагляду, «ігровий автомат»; стаття: <a href="https://claude.com/resources/articles/how-anthropic-teams-use-claude-code" target="_blank" rel="noopener">claude.com</a></span></li>
+<li><a href="https://web.archive.org/web/20250602202220/https://www.anthropic.com/engineering/claude-code-best-practices" target="_blank" rel="noopener">Anthropic — Claude Code: Best practices for agentic coding (архів)</a><span>18.04.2025 · «safe YOLO mode» лише в контейнері без інтернету; чинна версія — документація Claude Code</span></li>
+<li><a href="https://code.claude.com/docs/en/third-party-integrations" target="_blank" rel="noopener">Claude Code — Enterprise deployment overview</a><span>варіанти розгортання і «Best practices for organizations»</span></li>
+<li><a href="https://code.claude.com/docs/en/managed-settings" target="_blank" rel="noopener">Claude Code — Managed settings</a><span>розташування файлів, <code>managed-settings.d/</code>, server-managed, ключі лише для managed; пріоритет областей: <a href="https://code.claude.com/docs/en/settings" target="_blank" rel="noopener">Settings</a></span></li>
+<li><a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">Claude Code — Permission modes</a><span><code>dontAsk</code> для CI, <code>bypassPermissions</code> лише в ізоляції</span></li>
+<li><a href="https://code.claude.com/docs/en/monitoring-usage" target="_blank" rel="noopener">Claude Code — Monitoring (OpenTelemetry)</a><span>події <code>tool_decision</code>, <code>tool_result</code>, аудит; хук <code>ConfigChange</code>: <a href="https://code.claude.com/docs/en/hooks" target="_blank" rel="noopener">Hooks</a></span></li>
+<li><a href="https://code.claude.com/docs/en/large-codebases" target="_blank" rel="noopener">Claude Code — Large codebases</a><span>вкладені CLAUDE.md на вимогу, <code>claudeMdExcludes</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/enterprise/managed-configuration" target="_blank" rel="noopener">Codex — Managed configuration</a><span><code>requirements.toml</code> проти <code>managed_config.toml</code>, доставка через MDM і Admin Console</span></li>
+<li><a href="https://cursor.com/docs/enterprise/llm-safety-and-controls" target="_blank" rel="noopener">Cursor — LLM safety and controls</a><span>Run Mode, «allowlist is best-effort»; <a href="https://cursor.com/docs/rules" target="_blank" rel="noopener">Team Rules</a>, <a href="https://cursor.com/docs/hooks" target="_blank" rel="noopener">Hooks і MDM</a></span></li>
+<li><a href="https://dora.dev/research/2025/dora-report/" target="_blank" rel="noopener">DORA — State of AI-assisted Software Development 2025</a><span>AI Capabilities Model, пропускна здатність проти нестабільності, платформна інженерія</span></li>
+<li><a href="https://github.com/github/spec-kit/blob/main/docs/concepts/sdd.md" target="_blank" rel="noopener">GitHub Spec Kit — Spec-Driven Development</a><span>фази greenfield, creative exploration, brownfield</span></li>
+<li><a href="https://kiro.dev/docs/steering/" target="_blank" rel="noopener">Kiro — Steering</a><span>Generate Steering Docs: <code>product.md</code>, <code>tech.md</code>, <code>structure.md</code></span></li>
+<li><a href="https://arxiv.org/abs/2501.06972" target="_blank" rel="noopener">Google — How is Google using AI for internal code migrations?</a><span>12.01.2025 · звіт про досвід; кейс int32 → int64 в Ads</span></li>
+<li><a href="https://airbnb.tech/infrastructure/accelerating-large-scale-test-migration-with-llms/" target="_blank" rel="noopener">Airbnb — Accelerating large-scale test migration with LLMs</a><span>2025 · ~3,5 тис. файлів, 6 тижнів, конвеєр перевірок на файл</span></li>
+<li><a href="https://aws.amazon.com/blogs/devops/amazon-q-developer-just-reached-a-260-million-dollar-milestone/" target="_blank" rel="noopener">AWS — Amazon Q Developer just reached a $260 million dollar milestone</a><span>01.08.2024 · заява вендора про міграцію Java</span></li>
+<li><a href="https://github.com/astanin/python-tabulate" target="_blank" rel="noopener">python-tabulate</a><span>репозиторій brownfield-прогону, коміт <code>268615a</code></span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 8.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 8.4 · Senomi<br><br><a href="lesson-40.html">← Урок 8.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-42.html">Урок 8.5 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

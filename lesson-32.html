@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 6.4. Subagents: власні агенти під ролі</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 6.4 · Модуль 6</div>
+<h1>Subagents: власні агенти під ролі</h1>
+<p class="lead">Власний субагент — це markdown-файл з frontmatter: опис, за яким Claude вирішує, кому делегувати, набір інструментів, модель і системний промпт з контрактом відповіді. Визначаємо для Lectern три ролі (критик квізу, аудитор цитат, автор тестів), міряємо маршрутизацію на 32 реальних прогонах, з'ясовуємо, що поле tools насправді не обмежує, і виправляємо баг B2 руками двох агентів.</p>
+<div class="hero-meta"><span class="chip">Розширення: commands, skills, hooks, plugins, Agent SDK</span><span class="chip t">≈ 50 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Проєктуйте сфокусовані субагенти: кожен має відмінно справлятися з однією конкретною задачею.</p><cite>Anthropic, документація Claude Code, «Create custom subagents» · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Роль замість «помічника»</a><a href="#anatomy"><b>02</b>Анатомія</a><a href="#context"><b>03</b>Що бачить субагент</a><a href="#routing"><b>04</b>Description як маршрутизатор</a><a href="#scope"><b>05</b>Що насправді обмежує tools</a><a href="#design"><b>06</b>Проєктування ролі</a><a href="#lectern"><b>07</b>Lectern: три ролі й баг B2</a><a href="#cost"><b>08</b>Ціна і затримка</a><a href="#tools"><b>09</b>Claude Code, Codex, Cursor</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>написати файл субагента: frontmatter, системний промпт, область видимості, і знати, яке визначення переможе при однакових іменах;</li>
+    <li>передбачити, що субагент отримає на старті (CLAUDE.md, git status, дозволи батька), а чого не отримає;</li>
+    <li>писати <code>description</code>, за яким Claude справді делегує, і міряти точність маршрутизації на наборі промптів;</li>
+    <li>обмежити роль по-справжньому: розуміти, що <code>tools</code> фільтрує лише назви інструментів, і замикати команди та шляхи хуком за <code>agent_type</code>;</li>
+    <li>вирішувати, коли субагент окупається, а коли додає лише час і токени.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Роль замість «помічника»<span class="sub">Що дає власний субагент</span></h2></div>
+<p>Механіку ізоляції контексту ви бачили в уроці 1.3, патерн orchestrator-workers і ліміти субагентів — у 2.4, фонові субагенти — у 4.4, стислий результат — у 5.2, порядок вибору моделі й невдалий scout — у 5.5. Командам агентів присвячено модуль 14. Тут тема вужча: як <b>визначити роль</b>, щоб Claude викликав її сам, вона не могла вийти за свої межі й повертала відповідь, яку можна розібрати кодом.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що фіксує файл ролі</th><th>Без нього</th><th>З ним</th></tr></thead>
+<tbody>
+<tr><td data-th="Що фіксує файл ролі">Інструкції</td><td data-th="Без нього">Claude щоразу переписує їх у задачі своїми словами</td><td data-th="З ним">тіло файла завжди однакове, у задачі лише конкретика</td></tr>
+<tr><td data-th="Що фіксує файл ролі">Інструменти</td><td data-th="Без нього">субагент отримує весь пул сесії, включно з MCP</td><td data-th="З ним">allowlist; для команд і шляхів потрібен ще хук</td></tr>
+<tr><td data-th="Що фіксує файл ролі">Модель і effort</td><td data-th="Без нього">модель сесії</td><td data-th="З ним">дешева модель для механічної ролі</td></tr>
+<tr><td data-th="Що фіксує файл ролі">Контракт відповіді</td><td data-th="Без нього">вільний текст, кожен раз інший</td><td data-th="З ним">фіксовані рядки: <code>VERDICT: PASS | FAIL</code></td></tr>
+<tr><td data-th="Що фіксує файл ролі">Незалежність оцінки</td><td data-th="Без нього">оцінює той самий контекст, що й робив роботу</td><td data-th="З ним">свіже вікно бачить лише результат і критерії</td></tr>
+</tbody></table></div>
+<p>Останній рядок — головний аргумент на користь рецензента. Настанови Claude Code формулюють його так:</p>
+<blockquote class="q-src">
+<p>Рецензент у свіжому контексті субагента бачить лише diff і критерії, які ви йому дали, а не міркування, що привели до зміни, тому оцінює результат за його власними мірками.</p>
+<p class="orig">“A reviewer running in a fresh subagent context sees only the diff and the criteria you give it, not the reasoning that produced the change, so it evaluates the result on its own terms.”</p>
+<cite>Anthropic, Claude Code docs, «Best practices», перевірено 15.10.2026</cite>
+</blockquote>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>У Lectern три такі ролі збігаються з етапами конвеєра: <b>критик квізу</b> перед публікацією, <b>аудитор цитат</b> як незалежна перевірка обіцянки «кожна цитата дослівна», <b>автор тестів</b> між звітом про баг і виправленням. Кожна відповідає на одне питання і не може зробити більше, ніж їй дозволено.</p>
+</div>
+</section>
+
+<section class="sec" id="anatomy">
+<div class="sec-h"><span class="num">02</span><h2>Анатомія<span class="sub">Файл, frontmatter, області видимості</span></h2></div>
+<p>Субагент — markdown-файл з YAML-frontmatter. Тіло файла стає системним промптом субагента <b>замість</b> системного промпту Claude Code; до нього додаються лише деталі середовища (робоча тека, платформа). Обов'язкові поля — тільки <code>name</code> і <code>description</code>.</p>
+<pre class="code" data-lang="markdown"><span class="cm"># .claude/agents/quiz-critic.md (Lectern; у кіті курсу — dot-claude/agents/)</span>
+---
+<span class="k">name:</span> quiz-critic
+<span class="k">description:</span> Use proactively for any question about whether a Lectern quiz is good,
+  balanced, guessable or ready to publish: gives a PASS/FAIL verdict against the course
+  rules (lectern check, answer-key balance). Read-only; does not audit quotes one by one.
+<span class="k">tools:</span> Read, Bash
+<span class="k">model:</span> haiku
+<span class="k">color:</span> purple
+---
+You review one Lectern quiz file against fixed rules. You never edit files …
+1. Run `.venv/bin/lectern check &lt;lecture&gt; &lt;quiz&gt; --json` as a bare command, without pipes.
+   `errors` are rule R1 violations, `warnings` are rule R2 (answer-key balance), word for word.
+   Do not recount option lengths or positions yourself: the numbers come from the tool.
+Reply with exactly these lines and nothing else:
+VERDICT: PASS | FAIL   (FAIL if there is any error or warning)
+R1 check: ok | fail: &lt;errors joined with "; "&gt;
+R2 key balance: ok | fail: &lt;warnings joined with "; "&gt;
+FIX: &lt;up to 3 short lines naming the items to change&gt;, or none</pre>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Поле</th><th>Що робить</th><th>Пастка</th></tr></thead>
+<tbody>
+<tr><td data-th="Поле"><code>name</code></td><td data-th="Що робить">ідентифікатор; ім'я файла може відрізнятися</td><td data-th="Пастка">без <code>:</code>; два файли з одним <code>name</code> в одній теці — завантажиться випадковий</td></tr>
+<tr><td data-th="Поле"><code>description</code></td><td data-th="Що робить">коли делегувати (маршрутизатор)</td><td data-th="Пастка">сума описів понад 15 000 токенів дає попередження на старті</td></tr>
+<tr><td data-th="Поле"><code>tools</code> / <code>disallowedTools</code></td><td data-th="Що робить">allowlist / denylist назв інструментів</td><td data-th="Пастка">без <code>tools</code> — увесь пул сесії з MCP; специфікатор у дужках обмежень не додає (розділ 5)</td></tr>
+<tr><td data-th="Поле"><code>model</code>, <code>effort</code></td><td data-th="Що робить">модель і рівень міркувань ролі</td><td data-th="Пастка">порядок вибору — урок 5.5</td></tr>
+<tr><td data-th="Поле"><code>permissionMode</code></td><td data-th="Що робить">режим дозволів ролі</td><td data-th="Пастка">ігнорується, якщо батько в <code>acceptEdits</code>, <code>auto</code> чи <code>bypassPermissions</code></td></tr>
+<tr><td data-th="Поле"><code>hooks</code></td><td data-th="Що робить">хуки, що діють, поки працює субагент; <code>Stop</code> стає <code>SubagentStop</code></td><td data-th="Пастка">з проєктної теки — лише після довіри до неї</td></tr>
+<tr><td data-th="Поле"><code>skills</code>, <code>mcpServers</code>, <code>memory</code></td><td data-th="Що робить">повний текст skills на старті; власні MCP-сервери; постійна тека пам'яті</td><td data-th="Пастка"><code>memory</code> автоматично вмикає Read, Write, Edit</td></tr>
+<tr><td data-th="Поле"><code>maxTurns</code>, <code>background</code>, <code>isolation: worktree</code>, <code>omitClaudeMd</code>, <code>color</code></td><td data-th="Що робить">ліміт ходів, завжди фоново, окремий worktree, старт без CLAUDE.md, колір у транскрипті</td><td data-th="Пастка">невідоме чи з помилкою поле ігнорується мовчки; шукайте <code>does not recognize</code> у <code>claude --debug</code></td></tr>
+</tbody></table></div>
+<p>Коли визначення з однаковим <code>name</code> є в кількох місцях, перемагає вище в таблиці:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Пріоритет</th><th>Звідки</th><th>Для чого</th></tr></thead>
+<tbody>
+<tr><td data-th="Пріоритет">1</td><td data-th="Звідки">managed settings організації</td><td data-th="Для чого">обов'язкові ролі компанії</td></tr>
+<tr><td data-th="Пріоритет">2</td><td data-th="Звідки"><code>--agents '{…}'</code> (JSON у CLI; у <code>-p</code> — і шлях до JSON-файла, v2.1.281+)</td><td data-th="Для чого">скрипти й CI: ролі живуть одну сесію і не лежать на диску</td></tr>
+<tr><td data-th="Пріоритет">3</td><td data-th="Звідки"><code>.claude/agents/</code> проєкту (шукається вгору від робочої теки, ближча перемагає)</td><td data-th="Для чого">ролі репозиторію в git</td></tr>
+<tr><td data-th="Пріоритет">4</td><td data-th="Звідки"><code>~/.claude/agents/</code></td><td data-th="Для чого">особисті ролі в усіх проєктах</td></tr>
+<tr><td data-th="Пріоритет">5</td><td data-th="Звідки"><code>agents/</code> плагіна, ім'я <code>плагін:агент</code></td><td data-th="Для чого">ролі з плагіна (урок 6.3); поля <code>hooks</code>, <code>mcpServers</code>, <code>permissionMode</code> ігноруються</td></tr>
+</tbody></table></div>
+<p>Зміни у файлах підхоплюються за кілька секунд без перезапуску, крім першої теки <code>agents/</code>, створеної під час сесії. <code>/agents</code> з v2.1.198 більше не відкриває майстер: він лише нагадує редагувати <code>.claude/agents/</code> або попросити Claude. У JSON для <code>--agents</code> тіло промпту — поле <code>prompt</code>, а <code>color</code> ігнорується.</p>
+<h3>Вбудовані агенти</h3>
+<p>Список з події <code>init</code> нашої сесії <code>-p</code> у 2.1.300: <code>claude</code>, <code>claude-code-guide</code>, <code>Explore</code>, <code>general-purpose</code>, <code>Plan</code>, <code>statusline-setup</code> і три наші ролі.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Агент</th><th>Інструменти й контекст</th><th>Коли Claude його бере</th></tr></thead>
+<tbody>
+<tr><td data-th="Агент"><code>Explore</code></td><td data-th="Інструменти й контекст">лише читання; <b>без CLAUDE.md і git status</b>; одноразовий, не відновлюється</td><td data-th="Коли Claude його бере">пошук і розуміння коду; Claude задає глибину quick / medium / very thorough</td></tr>
+<tr><td data-th="Агент"><code>Plan</code></td><td data-th="Інструменти й контекст">лише читання; без CLAUDE.md і git status</td><td data-th="Коли Claude його бере">дослідження в plan mode, поки головна розмова лишається read-only</td></tr>
+<tr><td data-th="Агент"><code>general-purpose</code></td><td data-th="Інструменти й контекст">усі інструменти, доступні субагентам</td><td data-th="Коли Claude його бере">дослідження плюс зміни, кілька залежних кроків</td></tr>
+<tr><td data-th="Агент"><code>claude</code>, <code>statusline-setup</code>, <code>claude-code-guide</code></td><td data-th="Інструменти й контекст">службові</td><td data-th="Коли Claude його бере">catch-all; <code>/statusline</code>; питання про сам Claude Code</td></tr>
+</tbody></table></div>
+<p>Власний <code>Explore</code> у <code>.claude/agents/</code> перекриває вбудований. Прибрати конкретного агента — <code>"deny": ["Agent(Explore)"]</code>, усі вбудовані в <code>-p</code> — <code>CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS=1</code>.</p>
+</section>
+
+<section class="sec" id="context">
+<div class="sec-h"><span class="num">03</span><h2>Що бачить субагент<span class="sub">Свіже вікно, але не порожнє</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 460" role="img" aria-label="Що отримує субагент на старті і що повертає батькові">
+  <defs>
+    <marker id="a32a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="a32b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="66" rx="10" class="bx m"/>
+  <text x="180" y="30" text-anchor="middle" class="tx b">Головна сесія</text>
+  <text x="180" y="48" text-anchor="middle" class="tx s">не передає: історію, прочитані файли,</text>
+  <text x="180" y="63" text-anchor="middle" class="tx s">output style, auto memory</text>
+  <path d="M110 74 V 112" class="ln a" marker-end="url(#a32a)"/>
+  <text x="118" y="97" class="tx s">Agent: тип + prompt</text>
+  <rect x="8" y="118" width="344" height="262" rx="10" class="bx a"/>
+  <text x="180" y="140" text-anchor="middle" class="tx b a">Субагент · нове вікно</text>
+  <rect x="22" y="152" width="316" height="38" rx="8" class="bx t"/>
+  <text x="34" y="168" class="tx b">Системний промпт</text>
+  <text x="34" y="183" class="tx s">тіло .md + середовище (cwd, платформа)</text>
+  <rect x="22" y="196" width="316" height="38" rx="8" class="bx t"/>
+  <text x="34" y="212" class="tx b">Task message</text>
+  <text x="34" y="227" class="tx s">пише Claude у момент делегування</text>
+  <rect x="22" y="240" width="316" height="38" rx="8" class="bx t"/>
+  <text x="34" y="256" class="tx b">CLAUDE.md усіх рівнів, git status</text>
+  <text x="34" y="271" class="tx s">Explore, Plan і omitClaudeMd — без них</text>
+  <rect x="22" y="284" width="316" height="38" rx="8" class="bx t"/>
+  <text x="34" y="300" class="tx b">Інструменти й дозволи</text>
+  <text x="34" y="315" class="tx s">tools ∩ пул сесії; правила і режим батька</text>
+  <rect x="22" y="328" width="316" height="38" rx="8" class="bx t"/>
+  <text x="34" y="344" class="tx b">skills з frontmatter</text>
+  <text x="34" y="359" class="tx s">повний текст, а не лише опис</text>
+  <path d="M250 112 V 78" class="ln d" marker-end="url(#a32b)"/>
+  <text x="258" y="94" class="tx s">лише фінальне</text>
+  <text x="258" y="108" class="tx s">повідомлення</text>
+  <rect x="8" y="392" width="344" height="60" rx="10" class="bx p"/>
+  <text x="180" y="413" text-anchor="middle" class="tx b">Батько отримує</text>
+  <text x="180" y="430" text-anchor="middle" class="tx s">останнє повідомлення, agentId, usage;</text>
+  <text x="180" y="445" text-anchor="middle" class="tx s">проміжні виклики лишаються у вікні ролі</text>
+</svg>
+<figcaption>Старт не-fork субагента за документацією Claude Code (перевірено 15.10.2026). Fork успадковує всю розмову і тут не розглядається.</figcaption>
+</figure>
+<p>Звідси три практичні наслідки, кожен ми побачили в прогонах.</p>
+<ol class="steps">
+<li><b>CLAUDE.md доходить до ролі й може з нею сперечатися.</b> У Lectern CLAUDE.md каже «Done = tests and lint pass». <code>test-writer</code> має право лише на pytest, але у 2 з 3 прогонів спробував <code>ruff check</code>, і хук його зупинив. Правило проєкту, що суперечить ролі, перекривайте в її тілі: після рядка «Lint is the parent's job: do not run ruff» у перевірному прогоні роль ruff не чіпала, а лінт запустила головна сесія. Інший варіант — <code>omitClaudeMd: true</code>, якщо роль бере все із задачі.</li>
+<li><b>Задачу пише Claude, а не ви.</b> На запит «чи не вгадується ключ у quiz-a.json» головна сесія сама дописала субагентові робочу теку й формат звіту. Контракт у тілі файла — те, що лишається незмінним, хоч як Claude перефразує задачу.</li>
+<li><b>Режим дозволів успадковується.</b> Lectern працює в <code>acceptEdits</code>, тож <code>permissionMode</code> у frontmatter ігнорується. Роль, яка має лише читати, обмежують <code>tools</code> і хуками, а не режимом.</li>
+</ol>
+<div class="note warn"><span class="lbl">Перший прогін аудитора провалився</span>
+<p>Шлях у задачі був відносним, а <code>Read</code> приймає лише абсолютний. Haiku-аудитор вигадав абсолютний шлях поза робочою текою, отримав відмову, а <code>pwd</code> йому заборонив хук. Роль здалася, і головна сесія перевірила цитати сама. Один рядок у тілі агента («Read needs an absolute path: join the working directory from your environment details…») усунув збій у всіх наступних прогонах. Вузька роль не має засобів зорієнтуватися, тож усе потрібне для цього пишіть у її промпт.</p>
+</div>
+</section>
+
+<section class="sec" id="routing">
+<div class="sec-h"><span class="num">04</span><h2>Description як маршрутизатор<span class="sub">Автоматичний і явний виклик</span></h2></div>
+<p>Автоматично Claude обирає субагента за трьома сигналами: текст запиту, <code>description</code> усіх агентів і поточний контекст. Явних способів чотири, від найм'якшого до найжорсткішого:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Спосіб</th><th>Приклад</th><th>Гарантія</th></tr></thead>
+<tbody>
+<tr><td data-th="Спосіб">Назвати в тексті</td><td data-th="Приклад">«Use the test-writer subagent to …»</td><td data-th="Гарантія">Claude зазвичай делегує, але вирішує сам</td></tr>
+<tr><td data-th="Спосіб">@-згадка</td><td data-th="Приклад"><code>@agent-quiz-critic …</code> або вибір з typeahead</td><td data-th="Гарантія">саме цей агент на одну задачу; prompt для нього все одно пише Claude</td></tr>
+<tr><td data-th="Спосіб">Уся сесія як агент</td><td data-th="Приклад"><code>claude --agent citation-auditor</code></td><td data-th="Гарантія">тіло агента замінює системний промпт сесії, діють його інструменти</td></tr>
+<tr><td data-th="Спосіб">Типовий агент проєкту</td><td data-th="Приклад"><code>"agent": "code-reviewer"</code> у <code>.claude/settings.json</code></td><td data-th="Гарантія">те саме для кожної сесії; прапорець має пріоритет</td></tr>
+</tbody></table></div>
+<h3>Вимір: 6 промптів, три набори описів</h3>
+<p>Шість звичайних запитів без назв агентів: R1 «чи не вгадується ключ у quiz-a.json», R2 «чи всі цитати quiz-b.json дослівні», R3 «баг B2, потрібен тест, що падає, код не чіпай», R4 «чи готовий quiz-b.json до публікації» (перекриття критика й аудитора), R5 «яке значення <code>MIN_QUOTE_WORDS</code>», R6 «додай у README розділ про <code>lectern check</code>». Для R5 і R6 правильно — не делегувати. Головна сесія — Sonnet, <code>claude -p</code>, свіжий клон на кожен прогін.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar m"><span class="k">v1: точні описи без «Use proactively» · 1 прогін</span><span class="tr"><i style="--v:66.7%"></i><b style="--v:66.7%">4 з 6</b></span></div>
+  <div class="bar t"><span class="k">v2: той самий опис + «Use proactively …» · 2 прогони</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">12 з 12</b></span></div>
+  <div class="bar p"><span class="k">generic: quiz-helper, checker, tester · 1 прогін</span><span class="tr"><i style="--v:33.3%"></i><b style="--v:33.3%">2 з 6</b></span></div>
+</div>
+<figcaption>Частка правильних рішень «кому делегувати». v1 пропустив R1 і R3: Sonnet зробив роботу сам і прямо написав «без окремого агента quiz-critic». Generic-агентів не викликано жодного разу; два «правильні» — це R5 і R6, де делегувати й не треба. Вибірка мала: це тенденція, а не точна частота.</figcaption>
+</figure>
+<pre class="code" data-lang="diff"><span class="cm"># test-writer, v1 → v2: змінено лише початок опису</span>
+<span class="k">-</span>description: Writes ONE failing pytest that reproduces a reported Lectern bug, in tests/ only, …
+<span class="s">+</span>description: Use proactively when a Lectern bug is reported and needs a regression test:
+<span class="s">+</span>  writes ONE failing pytest in tests/ only and proves it fails for the reported reason. …</pre>
+<p>Три висновки з виміру:</p>
+<ul>
+<li><b>Опис починайте з тригера</b> («Use proactively when …», «Use proactively whenever …»), а функцію ставте після нього. Документація прямо радить фразу «use proactively».</li>
+<li><b>Розмитий опис не призводить до хибної маршрутизації. Його просто ігнорують.</b> «Helps with tests and code quality» не перемагає сильну модель, яка впорається сама, тож такий агент лише займає місце в контексті.</li>
+<li><b>Перекриття розводьте явним «чого я не роблю».</b> R4 обидва рази пішов до критика, бо в описі аудитора стоїть «Does not judge question quality», а в описі критика — «does not audit quotes one by one».</li>
+</ul>
+<h3>Маршрут дрейфує разом з репозиторієм</h3>
+<p>Ті самі описи v2 ми перевірили ще раз на Lectern після решти уроків модуля 6. Тепер у ньому є skill <code>generate-quiz</code>, хуки (SessionStart додає в контекст <code>git status</code> і відкриті пункти беклогу), а B2 виправлено. Результат за 2 прогони на запит: R1 — 2 з 2 до критика. R4 — обидва рази до <b>двох</b> ролей паралельно, критика й аудитора. R2 — 0 з 2: головна сесія відповіла одним <code>lectern check --json</code>, бо після виправлення B2 він сам позначає коротку цитату як <code>short</code>. R3 — 1 з 2. Описи не змінилися, змінилися задача і контекст. Точність маршрутизації — властивість зв'язки «репозиторій + модель + описи», а не файла агента, тож набір R1–R6 варто проганяти після кожної зміни CLAUDE.md, skills чи хуків (у беклозі це B13).</p>
+<p>Явна @-згадка з описом v1 (запит R1) спрацювала з першого разу: <code>@agent-quiz-critic</code> делегував туди, куди v1 сам не дійшов. <code>--agent citation-auditor</code> віддав рівно контракт аудитора, без супровідного тексту, бо головної сесії над роллю вже немає. Для плагінів Claude Code має <code>claude plugin eval</code>, який міряє маршрутизацію на наборі промптів з плагіном і без нього.</p>
+</section>
+
+<section class="sec" id="scope">
+<div class="sec-h"><span class="num">05</span><h2>Що насправді обмежує tools<span class="sub">Чотири проби в -p</span></h2></div>
+<p>Типова ідея для ролі «лише <code>lectern check</code>» — записати <code>tools: Read, Bash(lectern check *)</code>, як у правилах дозволів. Перевіримо пробним агентом з <code>tools: Bash(python3 -c *)</code>: одна команда підходить під шаблон, друга ні.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>probes — субагент probe-bash</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Use the probe-bash subagent. It must run exactly these two commands: \`python3 -c \"print(41+1)\"\` and \`touch probe-allowall.txt\`. …" --model haiku --permission-mode default --allowedTools "Bash" …</span>
+<span class="y">● Bash</span>  python3 -c "print(41+1)"
+<span class="d">  ⎿ 42</span>
+<span class="y">● Bash</span>  touch probe-allowall.txt
+<span class="d">  ⎿ (Bash completed with no output)</span>
+
+<span class="ps">$ </span><span class="c">claude -p "… touch probe-noallow.txt …" --model haiku --permission-mode default …</span><span class="d">   # без --allowedTools</span>
+<span class="y">● Bash</span>  python3 -c "print(41+1)"
+<span class="er">  ⎿ Permission to use Bash has been denied. …</span>
+<span class="y">● Bash</span>  touch probe-noallow.txt
+<span class="er">  ⎿ Permission to use Bash has been denied. …</span></pre>
+<div class="cap">реальні прогони · Claude Code 2.1.300 · 15.10.2026 · console/probes/probe-bash-*.jsonl, виклики субагента зі stream-json</div></div>
+<p>Специфікатор у <code>tools</code> не обмежив команди, коли сесія дозволяла Bash, і не дозволив їх, коли не дозволяла: працює лише назва інструмента. Зведення всіх проб:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Механізм</th><th>Проба (15.10.2026)</th><th>Результат у <code>-p</code>, тека без довіри</th></tr></thead>
+<tbody>
+<tr><td data-th="Механізм"><code>tools: Bash(python3 -c *)</code></td><td data-th="Проба (15.10.2026)"><code>touch</code> при <code>--allowedTools "Bash"</code></td><td data-th="Результат у -p, тека без довіри">виконано: специфікатор ігнорується</td></tr>
+<tr><td data-th="Механізм"><code>tools: Read, Edit(tests/**)</code></td><td data-th="Проба (15.10.2026)">правка <code>src/lectern/__init__.py</code> в <code>acceptEdits</code></td><td data-th="Результат у -p, тека без довіри">файл змінено</td></tr>
+<tr><td data-th="Механізм"><code>hooks:</code> у frontmatter агента, блок <code>Edit</code></td><td data-th="Проба (15.10.2026)">та сама правка</td><td data-th="Результат у -p, тека без довіри">файл змінено: за документацією хуки з frontmatter проєктного агента в <code>-p</code> без довіри до теки не виконуються, і про це немає жодного повідомлення</td></tr>
+<tr><td data-th="Механізм"><code>permissions.allow</code> у <code>.claude/settings.json</code></td><td data-th="Проба (15.10.2026)">будь-який прогін</td><td data-th="Результат у -p, тека без довіри">ігноруються з попередженням <code>this workspace has not been trusted</code> у stderr</td></tr>
+<tr><td data-th="Механізм">PreToolUse-хук у <code>.claude/settings.json</code> з перевіркою <code>agent_type</code></td><td data-th="Проба (15.10.2026)">та сама правка</td><td data-th="Результат у -p, тека без довіри"><b>заблоковано</b>: хуки з settings у <code>-p</code> виконуються</td></tr>
+</tbody></table></div>
+<p>Робочий рецепт для Lectern такий. <code>tools</code> задає набір назв, бо без поля роль отримала б увесь пул, включно з MCP. Команди і шляхи обмежує один проєктний хук, що знає ролі. Кожна подія PreToolUse із субагента несе поле <code>agent_type</code> з ім'ям ролі, а <code>exit 2</code> блокує виклик і віддає stderr агентові (механіка хуків — урок 6.2).</p>
+<pre class="code" data-lang="python"><span class="cm"># scripts/hooks/agent_scope.py — у .claude/settings.json: PreToolUse,</span>
+<span class="cm"># matcher "Bash|Edit|Write|NotebookEdit", "onFailure": "block"</span>
+BASH = {  <span class="cm"># роль -&gt; дозволений початок команди</span>
+    <span class="s">"quiz-critic"</span>: <span class="s">".venv/bin/lectern check "</span>,
+    <span class="s">"citation-auditor"</span>: <span class="s">".venv/bin/lectern check "</span>,
+    <span class="s">"test-writer"</span>: <span class="s">".venv/bin/python -m pytest "</span>,
+}
+WRITE = {<span class="s">"test-writer"</span>: <span class="s">"tests"</span>}  <span class="cm"># роль -&gt; єдина тека, куди можна писати</span>
+CHAIN = re.compile(<span class="s">r"[;&amp;|`&lt;&gt;\n]|\$\("</span>)  <span class="cm"># ланцюжки, перенаправлення, підстановки</span>
+
+event = json.load(sys.stdin)
+agent, tool, args = event.get(<span class="s">"agent_type"</span>), event.get(<span class="s">"tool_name"</span>), event.get(<span class="s">"tool_input"</span>, {})
+<span class="k">if</span> agent <span class="k">not in</span> BASH:  <span class="cm"># головна сесія й інші агенти — за звичайними правилами</span>
+    sys.exit(<span class="n">0</span>)
+<span class="k">if</span> tool == <span class="s">"Bash"</span>:
+    cmd = args.get(<span class="s">"command"</span>, <span class="s">""</span>).strip()
+    <span class="k">if not</span> cmd.startswith(BASH[agent]) <span class="k">or</span> CHAIN.search(cmd):
+        print(<span class="s">f"{agent} may run only `{BASH[agent]}…` without chaining"</span>, file=sys.stderr)
+        sys.exit(<span class="n">2</span>)
+<span class="k">if</span> tool <span class="k">in</span> (<span class="s">"Edit"</span>, <span class="s">"Write"</span>, <span class="s">"NotebookEdit"</span>):
+    root = Path(event[<span class="s">"cwd"</span>]).resolve()
+    target = (root / args.get(<span class="s">"file_path"</span>, <span class="s">""</span>)).resolve()
+    <span class="k">if</span> agent <span class="k">not in</span> WRITE <span class="k">or not</span> target.is_relative_to(root / WRITE[agent]):
+        print(<span class="s">f"{agent} may not write {target.relative_to(root)}"</span>, file=sys.stderr)
+        sys.exit(<span class="n">2</span>)</pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>runs — хук у справжніх прогонах</span></div>
+<pre><span class="y">● Bash</span>  <span class="d">(test-writer)</span> .venv/bin/python -m pytest -q tests/test_tools.py::test_check_quote_rejects_… 2&gt;&amp;1 | tail -15
+<span class="er">  ⎿ PreToolUse:Bash hook error: [python3 .claude/hooks/agent_scope.py]: test-writer may run only `.venv/bin/python -m pytest …` without chaining</span>
+<span class="y">● Bash</span>  <span class="d">(test-writer)</span> .venv/bin/python -m pytest -q tests/test_tools.py::test_check_quote_rejects_…
+<span class="d">  ⎿ Exit code 1 · F · 1 failed</span>
+<span class="y">● Bash</span>  <span class="d">(test-writer)</span> .venv/bin/ruff check src tests
+<span class="er">  ⎿ PreToolUse:Bash hook error: … test-writer may run only `.venv/bin/python -m pytest …` without chaining</span></pre>
+<div class="cap">реальний вивід · runs/role-B2-1.jsonl і role-R3-2.jsonl · скорочено ім'я тесту</div></div>
+<div class="note tip"><span class="lbl">Чому хук у settings, а не у frontmatter</span>
+<p>Хук у frontmatter агента зручніший, бо живе поруч з роллю. Але в CI, у <code>claude -p</code> і в Agent SDK на теці без довіри він мовчки не спрацює. Хук у <code>.claude/settings.json</code> працює всюди, де працюють хуки проєкту. Ставте йому <code>"onFailure": "block"</code> (v2.1.295+): хук, що впав або не знайшовся, інакше лише пише попередження, і роль отримує повну свободу. Ціна охоронця — один хід на кожен заблокований виклик: усі три прогони <code>test-writer</code> спершу дописали до pytest <code>2&gt;&amp;1 | tail</code>. Після рядка «as a bare command, without pipes» у промпті ролі заблокованих викликів не було.</p>
+</div>
+</section>
+
+<section class="sec" id="design">
+<div class="sec-h"><span class="num">06</span><h2>Проєктування ролі<span class="sub">Чотири рішення і антипатерни</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рішення</th><th>Правило</th><th>У Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Рішення">Одна відповідальність</td><td data-th="Правило">роль відповідає на одне питання, а межу із сусідом записано в описі</td><td data-th="У Lectern">критик: «чи можна публікувати»; аудитор: «чи дослівні цитати»</td></tr>
+<tr><td data-th="Рішення">Мінімум інструментів</td><td data-th="Правило">лише ті, без яких роль не відповість, плюс хук для команд і шляхів</td><td data-th="У Lectern">критик і аудитор: <code>Read, Bash</code> → лише <code>lectern check</code>; автор тестів пише тільки в <code>tests/</code></td></tr>
+<tr><td data-th="Рішення">Модель за ціною помилки</td><td data-th="Правило">механічна перевірка з детермінованим інструментом — Haiku; судження і код — сильніша модель</td><td data-th="У Lectern">критик і аудитор на <code>haiku</code>, <code>test-writer</code> на <code>sonnet</code></td></tr>
+<tr><td data-th="Рішення">Контракт відповіді</td><td data-th="Правило">фіксовані рядки, які батько чи скрипт розбирає без моделі</td><td data-th="У Lectern"><code>VERDICT</code> + рядки правил, <code>AUDIT</code> + таблиця, <code>TEST / FAILS / WHY</code></td></tr>
+</tbody></table></div>
+<pre class="code" data-lang="markdown"><span class="cm"># .claude/agents/test-writer.md</span>
+---
+<span class="k">name:</span> test-writer
+<span class="k">description:</span> Use proactively when a Lectern bug is reported and needs a regression test:
+  writes ONE failing pytest in tests/ only and proves it fails for the reported reason.
+  Never fixes the code.
+<span class="k">tools:</span> Read, Grep, Glob, Edit, Write, Bash
+<span class="k">model:</span> sonnet
+---
+You write a regression test for a reported bug in Lectern. You change files under tests/ only;
+a hook blocks everything else.
+1. Read the code the bug report points to and the existing tests next to it.
+2. Add one test (one behaviour, named after it) to the most fitting existing file in tests/.
+3. Run `.venv/bin/python -m pytest -q &lt;file&gt;::&lt;test&gt;` as a bare command, without pipes, and make
+   sure it FAILS on an assertion that states the bug, not on an import error, a typo or a wrong
+   fixture. Lint is the parent's job: do not run ruff.
+4. If the bug does not reproduce, say so and stop. Never bend the test to make it fail.
+Reply with exactly these lines:
+TEST: &lt;file&gt;::&lt;test&gt;
+FAILS: yes | no: &lt;the assertion line from pytest&gt;
+WHY: &lt;one sentence linking the failure to the bug&gt;</pre>
+<p>Пункт 4 потрібен, бо без нього роль, яку оцінюють за червоним тестом, може зробити його червоним будь-яким способом. Аудитор (<code>citation-auditor</code>) побудований так само: по одному <code>lectern check --quote</code> на цитату і таблиця вердиктів. У виміряній версії він ще рахував слова й видавав рядок <code>MISMATCH</code> для цитат, які інструмент прийняв, хоча <code>validate()</code> їх відхилить. Після виправлення B2 це робить сам <code>check_quote</code>, і рядок зник з контракту.</p>
+<h3>Антипатерни</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Антипатерн</th><th>Що відбувається</th><th>Замість</th></tr></thead>
+<tbody>
+<tr><td data-th="Антипатерн">Generic «helper»: «Helps with tests and code quality»</td><td data-th="Що відбувається">у вимірі 0 делегувань з 4 можливих: агент є, але його ніхто не кличе</td><td data-th="Замість">тригер + одна функція + межа</td></tr>
+<tr><td data-th="Антипатерн">Роль, якій потрібен контекст батька</td><td data-th="Що відбувається">свіже вікно не знає, що вже вирішено; Claude або переказує пів розмови в задачі, або роль робить роботу заново</td><td data-th="Замість">fork (<code>/subtask</code>) або головна сесія</td></tr>
+<tr><td data-th="Антипатерн">Описи, що перекриваються</td><td data-th="Що відбувається">маршрут залежить від формулювання запиту</td><td data-th="Замість">«чого я не роблю» в кожному описі; перевірка набором промптів</td></tr>
+<tr><td data-th="Антипатерн">Без <code>tools</code>, «бо так простіше»</td><td data-th="Що відбувається">роль отримує всі інструменти сесії, включно з MCP</td><td data-th="Замість">явний allowlist назв</td></tr>
+<tr><td data-th="Антипатерн">Арифметика в промпті</td><td data-th="Що відбувається">критик рахував довжини варіантів «на око»: у 5 з 6 прогонів точно, один раз 5/6 замість 6/6</td><td data-th="Замість">рахувати в коді: коли <code>lectern check</code> почав повертати <code>warnings</code> (B4, урок 6.2), роль стала читати їх, а її токени впали з 10,5–14,2 до 8,1–8,5 тис.</td></tr>
+<tr><td data-th="Антипатерн">Контракт як побажання («be concise»)</td><td data-th="Що відбувається">формат відповіді щоразу інший, розбирати його може лише модель</td><td data-th="Замість">точні рядки й «nothing else»</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="lectern">
+<div class="sec-h"><span class="num">07</span><h2>Lectern: три ролі й баг B2<span class="sub">Від знахідки аудитора до зеленого CI</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · модуль 6 · ролі-субагенти і B2</div><div class="pb">
+<p><b>Знахідка.</b> На запит «перевір, чи всі цитати в quiz-b.json дослівні» Claude сам делегував аудиторові, і той повернув рівно свій контракт:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>citation-auditor · runs/role-R2-2</span></div>
+<pre>AUDIT: 3/5 quotes verified (exact or normalized, 5+ words)
+| item | words | match      | note |
+|------|-------|------------|------|
+| 1    | 10    | normalized |      |
+| 2    | 3     | exact      | short |
+| 3    | 8     | normalized |      |
+| 4    | 10    | missing    | closest: «У словниках CPython поріг дорівнює двом третинам.» |
+| 5    | 12    | normalized |      |
+<span class="y">MISMATCH: 2</span></pre>
+<div class="cap">реальний вивід субагента (haiku) · 15.10.2026 · таблицю вирівняно пробілами</div></div>
+<p>Пункт 2 — це баг B2 з беклогу: <code>check_quote</code> відповідає <code>exact</code> на цитату з трьох слів, яку <code>validate()</code> потім відхилить. Агент-генератор квізу перевіряє себе саме через <code>check_quote</code>, тож він бачить «ок», а гейт потім падає. У модулі 4 так провалилися 3 з 9 перших спроб.</p>
+<p><b>Виправлення двома агентами.</b> Один запит до головної сесії: «спершу хай test-writer напише тест, що падає, потім виправ код, не змінюючи тест». Власник погодив зміну, бо це посилення <code>check_quote</code>, а CLAUDE.md забороняє лише послаблення.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>runs/role-B2-1.jsonl — кроки</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat prompts/B2.txt)" --model sonnet --permission-mode acceptEdits --allowedTools "Bash(.venv/bin/python -m pytest *)" "Bash(.venv/bin/ruff check *)" … --setting-sources project --strict-mcp-config --output-format stream-json --verbose</span>
+<span class="y">● Grep</span>  B2
+<span class="y">● Agent</span>  test-writer · «Bug B2 (BACKLOG.md in repo root): `check_quote` … accepts quotes shorter than `MIN_QUOTE_WORDS`, while `validate()` rejects them. … Do not touch src or other tests.»
+<span class="d">  ↳ Grep · Grep · Read tests/test_tools.py · Edit tests/test_tools.py
+  ↳ Bash pytest … 2&gt;&amp;1 | tail -15
+    ⎿ hook error: … without chaining
+  ↳ Bash pytest …::test_check_quote_rejects_verbatim_quote_shorter_than_min_words
+    ⎿ 1 failed</span>
+<span class="c">  ⎿ TEST: tests/test_tools.py::test_check_quote_rejects_verbatim_quote_shorter_than_min_words
+    FAILS: yes: `AssertionError: check_quote accepts a too-short quote` (`assert True is False`)
+    WHY: The 3-word quote … is verbatim in the lecture and `validate()` rejects it. `check_quote`
+    still returns `ok: True`, so the two disagree.
+    The existing `test_exact_and_normalized_quotes` … will fail once `check_quote` is fixed …</span>
+<span class="y">● Edit</span>  src/lectern/tools.py · docs/spec/quotes.md · tests/test_tools.py · BACKLOG.md · CHANGELOG.md
+<span class="y">● Bash</span>  .venv/bin/python -m pytest -q 2&gt;&amp;1 | tail -3
+<span class="er">  ⎿ 3 failed, 46 passed</span>  <span class="d"># старі тести брали 3-слівну цитату за «хорошу»</span>
+<span class="y">● Edit</span>  tests/test_agent_sdk.py · tests/test_smoke.py ×2
+<span class="y">● Bash</span>  .venv/bin/python -m pytest -q 2&gt;&amp;1 | tail -3
+<span class="ok">  ⎿ 49 passed in 2.48s</span>
+<span class="y">● Bash</span>  .venv/bin/ruff check src tests 2&gt;&amp;1 | tail -3
+<span class="ok">  ⎿ All checks passed!</span>
+
+<span class="d">result · num_turns 23 · total_cost_usd 0,2509 · 84,5 с · субагент: 13 839 токенів</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.300 · 15.10.2026 · кроки скорочено, повний потік у console/runs/</div></div>
+<pre class="code" data-lang="python"><span class="cm"># src/lectern/tools.py — виправлення B2</span>
+    <span class="k">def</span> check_quote(self, lecture_id: str, quote: str) -&gt; dict:
+        text = self.read_lecture(lecture_id)
+        <span class="cm"># те саме правило, що в validate(): коротка цитата не шукається</span>
+        words = len(quote.split())
+        <span class="k">if</span> words &lt; MIN_QUOTE_WORDS:
+            <span class="k">return</span> {<span class="s">"ok"</span>: <span class="k">False</span>, <span class="s">"match"</span>: <span class="s">"short"</span>, <span class="s">"words"</span>: words}</pre>
+<p>Що варто помітити. Головна сесія чекала на субагента («щоб не перетинатися з ним у файлах»), а не правила паралельно. Субагент сам попередив, який старий тест зламає виправлення. Три старі тести використовували 3-слівну цитату як «правильну»: головна сесія замінила їх на 6-слівну, не послабивши жодної перевірки. Підсумок: 49 passed, ruff чистий, <code>check_context.py</code> — 0 проблем. Перенесене на Lectern після уроків 6.1–6.5 виправлення разом з ролями, хуком і трьома тестами хука дає 81 passed.</p>
+<p><b>Ваш крок.</b> Перенесіть у свою копію Lectern три ролі та хук з цього уроку і підключіть хук у <code>.claude/settings.json</code>. Напишіть шість власних запитів, з них два такі, де делегувати не треба. Проженіть кожен двічі через <code>claude -p … --output-format stream-json --verbose</code> і порахуйте точність за полем <code>subagent_type</code> у викликах <code>Agent</code> головної сесії (у них <code>parent_tool_use_id</code> дорівнює <code>null</code>).</p>
+</div></div>
+</section>
+
+<section class="sec" id="cost">
+<div class="sec-h"><span class="num">08</span><h2>Ціна і затримка<span class="sub">Коли роль окупається, а коли ні</span></h2></div>
+<p>Ті самі запити: v1 (головна сесія зробила роботу сама) проти v2 (делегувала ролі). Вартість — оцінка Claude Code (<code>total_cost_usd</code>), час — від запуску до виходу процесу.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Запит</th><th>Сам Sonnet (v1, 1 прогін)</th><th>З роллю (v2, середнє з 2)</th><th>Частка ролі у вартості</th></tr></thead>
+<tbody>
+<tr><td data-th="Запит">R1 · чи вгадується ключ</td><td data-th="Сам Sonnet (v1, 1 прогін)">$0,067 · 14,9 с</td><td data-th="З роллю (v2, середнє з 2)">quiz-critic (haiku): <b>$0,043</b> · 36,6 с</td><td data-th="Частка ролі у вартості">$0,003–0,005</td></tr>
+<tr><td data-th="Запит">R3 · тест на B2</td><td data-th="Сам Sonnet (v1, 1 прогін)">$0,083 · 27,9 с</td><td data-th="З роллю (v2, середнє з 2)">test-writer (sonnet): <b>$0,113</b> · 45,6 с</td><td data-th="Частка ролі у вартості">15–18 тис. токенів ролі</td></tr>
+<tr><td data-th="Запит">R2 · аудит цитат</td><td data-th="Сам Sonnet (v1, 1 прогін)">$0,053 · 26,1 с (роль впала, Sonnet переробив)</td><td data-th="З роллю (v2, середнє з 2)">citation-auditor (haiku): $0,042 · 30,0 с</td><td data-th="Частка ролі у вартості">$0,002–0,003</td></tr>
+<tr><td data-th="Запит">R5, R6 · без делегування</td><td colspan="2" data-th="Сам Sonnet (v1, 1 прогін)">$0,036–0,048 · 9–15 с в обох версіях</td><td data-th="З роллю (v2, середнє з 2)">—</td></tr>
+</tbody></table></div>
+<p>Що з цього випливає:</p>
+<ul>
+<li><b>Затримка росте завжди:</b> на 18–22 секунди, тобто в 1,6–2,5 раза. У <code>-p</code> субагент стартує у фоні, а головна сесія потім витрачає ще один хід, щоб переказати результат. В інтерактивній сесії ви за цей час можете робити інше (урок 4.4).</li>
+<li><b>Гроші економить лише делегування дешевшій моделі.</b> Haiku-критик коштував $0,003–0,005, і R1 подешевшав на 36%, бо Sonnet більше не читав квіз сам. Роль на тій самій моделі (<code>test-writer</code>) додала 36% вартості: нове вікно заново читає код і тести.</li>
+<li><b>Більшість ціни — оркестрація.</b> Навіть з Haiku-роллю близько 90% суми припадає на головну сесію: її системний промпт, делегування і переказ.</li>
+</ul>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Роль окупається</th><th>Роль не потрібна</th></tr></thead>
+<tbody>
+<tr><td>потрібна <b>незалежна</b> оцінка: критик чи рецензент не бачить міркувань автора</td><td>коротка точкова правка: субагент збирає контекст з нуля (у 5.5 scout дав +29% вартості і +60% часу, бо головна сесія все одно перечитала файли)</td></tr>
+<tr><td>межі треба <b>гарантувати</b>: лише читання, лише <code>tests/</code></td><td>кілька фаз над спільним контекстом: план → правка → тести</td></tr>
+<tr><td>механічну роботу можна віддати Haiku, а вивід великий</td><td>роль потребує історії розмови (тоді fork або головна сесія)</td></tr>
+<tr><td>контракт відповіді розбирає скрипт або CI</td><td>одноразова процедура в тому самому вікні: це skill (урок 6.1)</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">09</span><h2>Claude Code, Codex, Cursor<span class="sub">Та сама роль у трьох інструментах</span></h2></div>
+<div class="tabs">
+<input type="radio" name="ag-t" id="ag-t1" checked><input type="radio" name="ag-t" id="ag-t2"><input type="radio" name="ag-t" id="ag-t3">
+<div class="tab-l"><label for="ag-t1">Claude Code</label><label for="ag-t2">Codex</label><label for="ag-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Формат:</b> <code>.claude/agents/*.md</code> або <code>~/.claude/agents/</code>, YAML + тіло-промпт; на одну сесію — <code>--agents</code> JSON.</li>
+<li><b>Виклик:</b> автоматично за <code>description</code>; явно — назвою в тексті, <code>@agent-ім'я</code>, <code>--agent</code>, ключ <code>agent</code> у settings.</li>
+<li><b>Межі:</b> <code>tools</code> / <code>disallowedTools</code> за назвами, <code>Agent(ім'я)</code> у <code>permissions.deny</code>, хуки з <code>agent_type</code>; режим дозволів — від батька.</li>
+<li><b>Спостереження:</b> <code>/tasks</code> показує модель ролі; у <code>stream-json</code> — виклик <code>Agent</code> з <code>subagent_type</code>, події ролі з <code>parent_tool_use_id</code>; <code>--forward-subagent-text</code> додає її текст.</li>
+</ul>
+</div>
+<div class="tab-p">
+<p>Власні агенти Codex — TOML у <code>.codex/agents/</code> (проєкт) або <code>~/.codex/agents/</code>. Обов'язкові поля — <code>name</code>, <code>description</code>, <code>developer_instructions</code>, плюс опційні <code>model</code> і <code>model_reasoning_effort</code>. Вбудовані агенти: <code>default</code>, <code>worker</code>, <code>explorer</code>; власний з тим самим іменем має пріоритет.</p>
+<pre class="code" data-lang="toml"><span class="cm"># .codex/agents/citation-auditor.toml</span>
+name = <span class="s">"citation_auditor"</span>
+description = <span class="s">"Audits every quote of a Lectern quiz with lectern check --quote. Does not judge question quality."</span>
+model_reasoning_effort = <span class="s">"low"</span>
+developer_instructions = <span class="s">"""
+Do not edit files. For every item run .venv/bin/lectern check samples/lecture.txt --quote "&lt;quote&gt;".
+Reply: an AUDIT line and a table item | match | note.
+"""</span></pre>
+<p class="muted">формат з офіційної документації Codex · не запускався в цьому уроці</p>
+<ul>
+<li><b>Делегування лише на прохання:</b> локальний Codex запускає субагентів, коли ви прямо попросите або цього вимагає <code>AGENTS.md</code> чи skill. Маршрутизації за описом, як у Claude Code, немає. <code>/subagents</code> перемикає між потоками агентів.</li>
+<li><b>Межі задає батько:</b> агент успадковує sandbox і approvals сесії; <code>sandbox_mode</code>, <code>approval_policy</code> і <code>mcp_servers</code> у файлі агента нічого не змінюють. Документація прямо застерігає, що інструкція «не редагуй» не створює окремої read-only пісочниці. Можна лише вимкнути можливості: <code>features.shell_tool = false</code> тощо.</li>
+<li><b>Глобально:</b> таблиця <code>[agents]</code> у <code>config.toml</code>: <code>max_concurrent_threads_per_session</code>, <code>default_subagent_model</code>, <code>enabled</code>.</li>
+</ul>
+</div>
+<div class="tab-p">
+<p>Cursor читає <code>.cursor/agents/</code>, а для сумісності також <code>.claude/agents/</code> і <code>.codex/agents/</code> (на рівні проєкту і користувача). При однакових іменах перемагає <code>.cursor/</code>. Тобто три ролі Lectern Cursor знайде без змін, але зрозуміє з них лише частину полів:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Поле Cursor</th><th>Типово</th><th>Що з нашими файлами</th></tr></thead>
+<tbody>
+<tr><td data-th="Поле Cursor"><code>name</code>, <code>description</code></td><td data-th="Типово">ім'я з файла</td><td data-th="Що з нашими файлами">працюють як є</td></tr>
+<tr><td data-th="Поле Cursor"><code>model</code></td><td data-th="Типово"><code>inherit</code></td><td data-th="Що з нашими файлами">чекає <code>inherit</code> або ID з каталогу Cursor (<code>claude-opus-5[effort=high]</code>); аліас <code>haiku</code> з Claude Code там не задокументований</td></tr>
+<tr><td data-th="Поле Cursor"><code>readonly</code></td><td data-th="Типово"><code>false</code></td><td data-th="Що з нашими файлами">єдиний важіль обмеження: без правок і без shell-команд, що змінюють стан. Allowlist інструментів у форматі немає</td></tr>
+<tr><td data-th="Поле Cursor"><code>is_background</code></td><td data-th="Типово"><code>false</code></td><td data-th="Що з нашими файлами">фоновий запуск без блокування батька</td></tr>
+</tbody></table></div>
+<p>Явний виклик — <code>/ім'я</code> у промпті або назва в тексті. Вбудовані субагенти: <code>explore</code> (на швидшій моделі) і <code>browser</code>. Документація Cursor теж називає антипатернами generic «helper», 50+ агентів і промпти на 2000 слів і радить починати з 2–3 ролей.</p>
+<p class="muted">за офіційною документацією Cursor · у цьому уроці не запускався</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте себе</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">tools: Bash(x *)</span><span class="h">обмежує команди?</span></span><span class="b"><span class="t">Ні</span><span class="d">роль отримує весь Bash; команди обмежують дозволи сесії й хук</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">agent_type</span><span class="h">де це поле?</span></span><span class="b"><span class="t">У вході хука</span><span class="d">ім'я ролі в кожній події PreToolUse із субагента</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">«Use proactively …»</span><span class="h">навіщо на початку опису?</span></span><span class="b"><span class="t">Тригер делегування</span><span class="d">у нашому вимірі 4 з 6 → 12 з 12</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">@agent-ім'я</span><span class="h">що гарантує?</span></span><span class="b"><span class="t">Вибір агента</span><span class="d">але задачу для нього все одно пише Claude</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">omitClaudeMd: true</span><span class="h">коли?</span></span><span class="b"><span class="t">Роль бере все із задачі</span><span class="d">старт без CLAUDE.md, managed-політики лишаються</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">frontmatter-хук у -p</span><span class="h">спрацює?</span></span><span class="b"><span class="t">Ні, без довіри до теки</span><span class="d">і жодного повідомлення; хук у settings спрацює</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. У <code>quiz-critic</code> записано <code>tools: Read, Bash(.venv/bin/lectern check *)</code>, сесія запущена з <code>--allowedTools "Bash"</code>. Що зможе виконати критик?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Лише <code>lectern check</code>: специфікатор у <code>tools</code> діє як правило дозволу</span></label><label class="opt ok"><input type="radio" name="q1"><span>Будь-яку команду: у <code>tools</code> важить лише назва інструмента</span></label><label class="opt"><input type="radio" name="q1"><span>Нічого в Bash: специфікатор вимикає інструмент, якщо сесія дозволяє весь Bash</span></label></div>
+    <div class="why yes">Так. Проба з <code>Bash(python3 -c *)</code> виконала <code>touch</code>. Команди ролі обмежують дозволи сесії й хук, що знає <code>agent_type</code>.</div>
+    <div class="why no">Специфікатор у <code>tools</code> не обмежує і не дозволяє: проба з <code>Bash(python3 -c *)</code> при дозволеному Bash виконала <code>touch</code>, а без дозволу сесії відхилила обидві команди. Обмежує хук або правила сесії.</div></div>
+  <div class="q"><div class="qt">2. Проєктний агент має у frontmatter <code>hooks: PreToolUse</code>, що блокує Edit поза <code>tests/</code>. CI запускає <code>claude -p</code> на свіжому checkout. Що станеться з правкою в <code>src/</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Хук її заблокує, бо в <code>-p</code> Claude Code вважає теку довіреною для всіх хуків</span></label><label class="opt"><input type="radio" name="q2"><span>Сесія впаде на старті з помилкою про недовірену теку, правка не відбудеться</span></label><label class="opt ok"><input type="radio" name="q2"><span>Правка пройде: frontmatter-хук проєктного агента без довіри до теки мовчки не виконується</span></label></div>
+    <div class="why yes">Так, і наша проба це підтвердила. Хуки з <code>.claude/settings.json</code> у <code>-p</code> виконуються, тому охоронця ролі тримайте там.</div>
+    <div class="why no">Довіру в <code>-p</code> отримують хуки з settings-файлів, а frontmatter-хуки проєктних агентів — ні, і без жодної помилки. Наша проба змінила <code>src/lectern/__init__.py</code> попри такий хук.</div></div>
+  <div class="q"><div class="qt">3. Агенти <code>reviewer</code> («Reviews code») і <code>security-reviewer</code> («Reviews code for security») по черзі перехоплюють «глянь мій diff». Що виправити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Додати обом «Use proactively», щоб маршрутизація стала стабільнішою</span></label><label class="opt ok"><input type="radio" name="q3"><span>Розвести описи: тригер, одна функція і явне «чого я не роблю»</span></label><label class="opt"><input type="radio" name="q3"><span>Злити їх в одного агента без <code>tools</code>, щоб він робив обидві перевірки</span></label></div>
+    <div class="why yes">Так. Саме так R4 («чи готовий квіз») обидва рази пішов до критика: аудитор у своєму описі каже, що якість питань не оцінює.</div>
+    <div class="why no">Тригер підсилює делегування, але не розрізняє двох схожих агентів. Злиття дає generic-роль з усім пулом інструментів. Перекриття знімає межа, записана в обох описах.</div></div>
+  <div class="q"><div class="qt">4. Опис <code>quiz-critic</code> точний, але без тригерної фрази, і на «чи не вгадується ключ?» Sonnet перевірив усе сам. Яка зміна за нашими вимірами повернула делегування?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span>Почати <code>description</code> з «Use proactively for any question about …»</span></label><label class="opt"><input type="radio" name="q4"><span>Перевести роль на <code>sonnet</code>, щоб головна сесія їй довіряла</span></label><label class="opt"><input type="radio" name="q4"><span>Перенести всі правила R1–R3 з тіла в <code>description</code></span></label></div>
+    <div class="why yes">Так: v1 → v2 змінив лише початок описів, і точність зросла з 4 з 6 до 12 з 12.</div>
+    <div class="why no">Модель ролі на рішення головної сесії не впливає, а правила в описі лише роздувають спільний бюджет описів (попередження після 15 тис. токенів). Спрацював тригер на початку опису.</div></div>
+  <div class="q"><div class="qt">5. Lectern працює з <code>defaultMode: acceptEdits</code>. Ви ставите аудиторові <code>permissionMode: plan</code>, щоб він тільки читав. Що вийде?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Аудитор працюватиме в <code>plan</code>: frontmatter ролі важить більше за режим сесії</span></label><label class="opt"><input type="radio" name="q5"><span>Claude Code відмовиться запускати аудитора через конфлікт режимів</span></label><label class="opt ok"><input type="radio" name="q5"><span>Поле ігнорується: при <code>acceptEdits</code> у батька роль теж працює в ньому</span></label></div>
+    <div class="why yes">Так. За <code>acceptEdits</code>, <code>auto</code> і <code>bypassPermissions</code> батька <code>permissionMode</code> не діє. Читання гарантують <code>tools</code> без Edit/Write і хук.</div>
+    <div class="why no"><code>permissionMode</code> працює лише тоді, коли батько в <code>default</code>, <code>dontAsk</code> чи <code>plan</code>. Помилки немає: поле просто не застосовується.</div></div>
+  <div class="q"><div class="qt">6. У CLAUDE.md записано «Done = tests and lint pass», а <code>test-writer</code> має право лише на pytest. Що ви побачите?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Нічого: субагент отримує лише своє тіло й задачу, CLAUDE.md до нього не доходить</span></label><label class="opt ok"><input type="radio" name="q6"><span>Роль спробує <code>ruff</code> і впреться в хук; правило треба перекрити в тілі ролі</span></label><label class="opt"><input type="radio" name="q6"><span>Роль обійде свої межі, бо CLAUDE.md пріоритетніший за промпт агента</span></label></div>
+    <div class="why yes">Так: 2 з 3 прогонів спробували <code>ruff check</code>. Допоможе явна фраза в тілі або <code>omitClaudeMd: true</code>.</div>
+    <div class="why no">CLAUDE.md усіх рівнів доходить до звичайних субагентів (без нього стартують лише Explore, Plan і ролі з <code>omitClaudeMd</code>). Але межі тримає хук, тож роль не обійшла їх, а витратила хід на заблокований виклик.</div></div>
+  <div class="q"><div class="qt">7. Що з цього найменше виграє від окремої ролі-субагента?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Аудит цитат, де оцінка має бути незалежною від автора квізу</span></label><label class="opt"><input type="radio" name="q7"><span>Прогін усіх тестів, з виводу якого потрібні три рядки про падіння</span></label><label class="opt ok"><input type="radio" name="q7"><span>Правка у <code>cli.py</code>, який ви щойно обговорили в цій сесії</span></label></div>
+    <div class="why yes">Так. Нове вікно заново читатиме файл, а для точного <code>old_string</code> головній сесії все одно потрібен його текст. У 5.5 scout на такій задачі дав +29% вартості.</div>
+    <div class="why no">Незалежна оцінка і великий вивід, з якого потрібні кілька рядків, — класичні випадки для ролі. Точкова правка над уже прочитаним контекстом — ні.</div></div>
+  <div class="q"><div class="qt">8. Коли в наших вимірах делегування ролі зробило запит дешевшим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Коли роль працювала на тій самій моделі, бо її вікно коротше за головне</span></label><label class="opt"><input type="radio" name="q8"><span>Завжди, бо субагент не платить за системний промпт Claude Code</span></label><label class="opt ok"><input type="radio" name="q8"><span>Коли роботу взяла Haiku-роль, і Sonnet не читав файл сам</span></label></div>
+    <div class="why yes">Так: R1 подешевшав на 36%. Роль на Sonnet (<code>test-writer</code>), навпаки, додала 36%.</div>
+    <div class="why no">Роль на тій самій моделі заново читає код і коштує дорожче. Головна сесія платить за оркестрацію в будь-якому разі, це близько 90% суми. Виграш дає лише дешевша модель на основній роботі.</div></div>
+  <div class="q"><div class="qt">9. CI має запускати аудитора на чужих гілках, не покладаючись на файли в репозиторії. Що обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Покласти файл агента в <code>~/.claude/agents/</code> на CI-машині: пріоритет у нього найвищий</span></label><label class="opt ok"><input type="radio" name="q9"><span><code>claude -p --agents ./agents.json …</code>: визначення живе одну сесію</span></label><label class="opt"><input type="radio" name="q9"><span>Описати роль у CLAUDE.md і просити Claude «діяти як аудитор»</span></label></div>
+    <div class="why yes">Так. <code>--agents</code> має пріоритет 2, вище за проєкт, тож гілка не підмінить роль своїм <code>.claude/agents/</code>. Форма з файлом працює в <code>-p</code> з v2.1.281.</div>
+    <div class="why no"><code>~/.claude/agents/</code> — пріоритет 4, нижче за проєктний <code>.claude/agents/</code>, тож гілка може його перекрити. CLAUDE.md — не роль: немає ні окремого вікна, ні меж інструментів.</div></div>
+  <div class="q"><div class="qt">10. Ви перенесли критика в Codex як <code>.codex/agents/quiz-critic.toml</code> з інструкцією «Do not edit files». Що це гарантує?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q10"><span>Лише прохання: sandbox і approvals агент успадковує від батька</span></label><label class="opt"><input type="radio" name="q10"><span>Read-only пісочницю для цього агента, незалежно від режиму сесії</span></label><label class="opt"><input type="radio" name="q10"><span>Автоматичне делегування за <code>description</code>, як у Claude Code</span></label></div>
+    <div class="why yes">Так. Документація Codex прямо каже, що така інструкція не створює окремої read-only пісочниці. Делегує локальний Codex лише за прямим проханням або вказівкою з AGENTS.md чи skill.</div>
+    <div class="why no"><code>sandbox_mode</code> і <code>approval_policy</code> у файлі агента не діють, межі задає сесія. Маршрутизації за описом у Codex теж немає.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>файл визначення субагента</td><td><code>.claude/agents/&lt;ім'я&gt;.md</code>: YAML-frontmatter (обов'язкові <code>name</code>, <code>description</code>) + тіло, що стає системним промптом ролі.</td></tr>
+<tr><td>description субагента</td><td>Маршрутизатор: за ним Claude вирішує, кому делегувати. Тригер на початку, одна функція, межа із сусідами.</td></tr>
+<tr><td>tools субагента</td><td>Allowlist назв інструментів; без поля роль отримує весь пул сесії. Специфікатор у дужках команд не обмежує.</td></tr>
+<tr><td>вбудований агент Explore</td><td>Лише читання, без CLAUDE.md і git status, одноразовий; глибина quick / medium / very thorough.</td></tr>
+<tr><td>вбудований агент Plan</td><td>Дослідник для plan mode: лише читання, без CLAUDE.md, тримає вивід поза головною розмовою.</td></tr>
+<tr><td>команда /agents</td><td>З v2.1.198 лише нагадує редагувати <code>.claude/agents/</code>; до того — майстер з вкладками Running і Library.</td></tr>
+<tr><td>--agents</td><td>Ролі з JSON на одну сесію (у <code>-p</code> — і шлях до файла), пріоритет 2 після managed.</td></tr>
+<tr><td>контракт виводу субагента</td><td>Фіксовані рядки відповіді, які батько чи скрипт розбирає без моделі.</td></tr>
+<tr><td>антипатерни рольових агентів</td><td>Generic «helper», роль, якій потрібна історія батька, описи, що перекриваються, роль без <code>tools</code>, арифметика в промпті.</td></tr>
+<tr><td>свіжий контекст субагента</td><td>Без історії розмови, але з CLAUDE.md, git status, задачею від Claude, дозволами й режимом батька.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Дві ролі для вашого проєкту і вимір маршрутизації</h3>
+<p>Визначте дві ролі-субагенти для свого репозиторію (або для Lectern): повні файли, обґрунтування <code>tools</code>, моделі й контракту, правило хука, що замикає команди й шляхи. Проженіть 6 запитів по 2 рази й подайте таблицю «запит → очікувана роль → фактичні ролі» з точністю, вартістю й часом, а також одну зміну опису, яку ви зробили після першого заміру, і її ефект.</p>
+<h3>2. Розбір невдалого агента</h3>
+<p>У завданні дано файл агента з п'ятьма проблемами. Знайдіть кожну, поясніть, як вона проявиться в роботі (маршрутизація, межі, контекст, вартість), перепишіть файл і вирішіть, чи потрібен тут субагент узагалі.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Create custom subagents</a><span>формат файла, усі поля frontmatter, області й пріоритети, вбудовані агенти, що вантажиться на старті, явний виклик, фон і fork</span></li>
+<li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Claude Code — Best practices</a><span>субагенти для дослідження й незалежного рев'ю</span></li>
+<li><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code — Permissions</a><span>правила <code>Agent(ім'я)</code>; таблиця «What runs before you trust a folder»: frontmatter-хуки агентів і allow-правила в <code>-p</code></span></li>
+<li><a href="https://code.claude.com/docs/en/hooks" target="_blank" rel="noopener">Claude Code — Hooks</a><span><code>agent_id</code> і <code>agent_type</code> у вході хуків, SubagentStart / SubagentStop</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run programmatically</a><span>повідомлення субагентів у <code>stream-json</code>, <code>parent_tool_use_id</code>, <code>--forward-subagent-text</code></span></li>
+<li><a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">Claude Code — CLI reference</a><span><code>--agents</code>, <code>--agent</code>, <code>--append-subagent-system-prompt</code></span></li>
+<li><a href="https://code.claude.com/docs/en/plugin-evals" target="_blank" rel="noopener">Claude Code — Plugin evals</a><span><code>claude plugin eval</code>: вимір делегування для агентів у плагіні</span></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-configuration/subagents" target="_blank" rel="noopener">Codex — Subagents</a><span>TOML-агенти в <code>.codex/agents/</code>, <code>[agents]</code>, успадкування sandbox, делегування лише за запитом</span></li>
+<li><a href="https://cursor.com/docs/subagents" target="_blank" rel="noopener">Cursor — Subagents</a><span><code>.cursor/agents/</code> і сумісність з <code>.claude/agents/</code>, поля <code>readonly</code> і <code>is_background</code>, антипатерни</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 6.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 6.4 · Senomi<br><br><a href="lesson-31.html">← Урок 6.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-33.html">Урок 6.5 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 8.3. Специфікації в спільному репозиторії: рев&#x27;ю, версіонування, трасування, spec drift</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 8.3 · Модуль 8</div>
+<h1>Специфікації в спільному репозиторії: рев&#x27;ю, версіонування, трасування, spec drift</h1>
+<p class="lead">Специфікація в командному репозиторії корисна, лише поки їй можна вірити: на неї спираються рецензенти, тести й агенти, які пишуть код. Даємо вимогам id, статуси й власників, рев'юїмо їх окремо від коду, виводимо матрицю трасування з тестів і комітів і ловимо spec drift — від червоного CI до аудиту агентом.</p>
+<div class="hero-meta"><span class="chip">Spec-Driven Development</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Spec як командний артефакт</a><a href="#layout"><b>02</b>Де живуть специфікації</a><a href="#review"><b>03</b>Рев&#x27;ю специфікації</a><a href="#versioning"><b>04</b>Версіонування вимог</a><a href="#trace"><b>05</b>Трасування</a><a href="#drift"><b>06</b>Spec drift</a><a href="#branches"><b>07</b>Гілки й паралельні агенти</a><a href="#tools"><b>08</b>Агенти й id вимог</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>обрати розкладку специфікацій у репозиторії, дати вимогам глобальні id і статуси та призначити власників через CODEOWNERS;</li>
+    <li>рев'юїти spec-PR окремо від code-PR і використати агента як дешевого першого рецензента, розуміючи межі його точності;</li>
+    <li>версіонувати вимоги: уточнення, заміна (supersede), delta-специфікації, журнал змін із git-трейлерів;</li>
+    <li>побудувати автоматичну матрицю трасування «вимога → тест → коміт», яка валить CI на непокритих вимогах і осиротілих тестах;</li>
+    <li>розпізнати три типи spec drift, підібрати детектор під кожен і вирішити, що є джерелом істини, коли документ і код розійшлися.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Spec як командний артефакт<span class="sub">Зелені тести, неправдивий документ</span></h2></div>
+<p>Дослід на копії Lectern. Один коміт «wip: quote handling tweaks» робить три зміни: <code>norm()</code> перестає розрізняти регістр; <code>validate()</code> починає приймати коротку цитату, якщо вона дослівно є в лекції, і тест «підправлено» під це; у специфікації поріг <code>MIN_QUOTE_WORDS</code> записано як «6 слів», хоча в коді 5. Результат:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern · гілка drift</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q | tail -1</span>
+<span class="ok">118 passed in 6.87s</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/trace.py | tail -1</span>
+6 requirements, 4 tests: <span class="ok">0 error(s)</span>, 0 warning(s)</pre>
+<div class="cap">реальний вивід · 15.10.2026 · зміни — console/runs/drift/drift-seeded.diff</div></div>
+<p>Документ бреше в трьох місцях, і жодна перевірка не червона. Виконувана таблиця з уроку 5.4 мовчить, бо в ній немає рядка з різним регістром; тест відповідає коду, бо його змінили разом із кодом. Це і є <b>spec drift</b> — розбіжність між специфікацією, кодом і тестами.</p>
+<p>У спільному репозиторії вона множиться: кілька гілок пишуть вимоги паралельно, агенти читають <code>docs/spec</code> як інструкцію, а рев'юери дивляться diff коду. Для людини застаріла spec — незручність; для агента, якому CLAUDE.md каже «поведінка — у docs/spec», це <b>вхідні дані для наступної зміни</b>. Агент, що прочитає «6 слів», чесно «виправить» код під документ.</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Специфікація окуповується, лише поки їй можна вірити без перевірки. Тому все, що нижче, служить одній меті: щоб розбіжність ставала червоним CI або коментарем рецензента в момент PR, а не відкриттям через місяць.</p>
+</div>
+</section>
+
+<section class="sec" id="layout">
+<div class="sec-h"><span class="num">02</span><h2>Де живуть специфікації<span class="sub">Розкладка, id, статус, власник</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Схема</th><th>Приклад</th><th>Сильна сторона</th><th>Слабка сторона</th></tr></thead>
+<tbody>
+<tr><td data-th="Схема">Тека на фічу</td><td data-th="Приклад"><code>docs/specs/S-07-stats.md</code> (урок 8.1); Spec Kit — <code>specs/003-user-auth/spec.md</code></td><td data-th="Сильна сторона">spec, план і задачі фічі разом; зручно рев'юїти</td><td data-th="Слабка сторона">після злиття ніхто не тримає цілісну картину поведінки; id локальні (<code>FR-001</code> є в кожній теці)</td></tr>
+<tr><td data-th="Схема">Тека на зміну + поточний стан</td><td data-th="Приклад">OpenSpec: <code>openspec/changes/&lt;зміна&gt;/</code> зливається в <code>openspec/specs/</code></td><td data-th="Сильна сторона">delta показує лише зміну; архів зберігає «чому»</td><td data-th="Слабка сторона">два місця правди до архівації; потрібен інструмент злиття</td></tr>
+<tr><td data-th="Схема">Поруч із поведінкою</td><td data-th="Приклад"><code>docs/spec/quotes.md</code> (урок 5.4) — правило + таблиця, яку виконує pytest</td><td data-th="Сильна сторона">не може тихо відстати від коду</td><td data-th="Слабка сторона">годиться для правил, що задаються прикладами</td></tr>
+</tbody></table></div>
+<p>Lectern поєднує дві схеми: фічі в роботі — <code>docs/specs/S-NN-*.md</code> за шаблоном 8.1, чинна поведінка — <code>docs/spec/</code>. Склеює їх <b>глобальний id вимоги</b>: <code>LEC-Q-004</code> (проєкт, область, номер). Локальні <code>R1</code>–<code>R6</code> зручні в одному документі, але маркер тесту <code>req("R1")</code> у репозиторії з двадцятьма специфікаціями нічого не означає.</p>
+<div class="note warn"><span class="lbl">Пастка нумерації</span>
+<p>Spec Kit за замовчуванням бере для теки фічі <b>наступний вільний трицифровий номер</b>, сканувавши <code>specs/</code>. Дві гілки, створені з того самого main, отримають однаковий <code>004</code>. Для паралельної роботи шаблон пропонує <code>"feature_numbering": "timestamp"</code> (префікс <code>YYYYMMDD-HHMMSS</code>). Те саме стосується id вимог — розв'язки в розділі про гілки.</p>
+</div>
+<h3>Два рівні статусу</h3>
+<p>Статус <b>документа</b> (у шаблоні 8.1: чернетка → на рев'ю → затверджено; у Spec Kit — рядок <code>**Status**: Draft</code>) відповідає на питання «чи можна за цим будувати». Статус <b>вимоги</b> відповідає на інше: «чи це вже в коді і чим доведено». Саме його читає перевірка трасування.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 352" role="img" aria-label="Життєвий цикл вимоги: draft, approved, implemented, superseded">
+  <defs>
+    <marker id="l40a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="10" y="10" width="160" height="50" rx="10" class="bx m"/>
+  <text x="90" y="32" text-anchor="middle" class="tx b">draft</text>
+  <text x="90" y="49" text-anchor="middle" class="tx s">рядок у відкритому spec-PR</text>
+  <text x="186" y="31" class="tx s">тести вже є → WARN:</text>
+  <text x="186" y="46" class="tx s">поведінку ще не погоджено</text>
+  <path d="M90 60 V 101" class="ln a" marker-end="url(#l40a)"/>
+  <text x="186" y="80" class="tx s">spec-PR злито, власник</text>
+  <text x="186" y="95" class="tx s">з CODEOWNERS погодив</text>
+  <rect x="10" y="105" width="160" height="50" rx="10" class="bx t"/>
+  <text x="90" y="127" text-anchor="middle" class="tx b">approved</text>
+  <text x="90" y="144" text-anchor="middle" class="tx s">можна писати код</text>
+  <text x="186" y="126" class="tx s">без тестів — норма:</text>
+  <text x="186" y="141" class="tx s">робота ще попереду</text>
+  <path d="M90 155 V 196" class="ln a" marker-end="url(#l40a)"/>
+  <text x="186" y="175" class="tx s">code-PR: тест з req,</text>
+  <text x="186" y="190" class="tx s">коміт з Refs:</text>
+  <rect x="10" y="200" width="160" height="50" rx="10" class="bx a"/>
+  <text x="90" y="222" text-anchor="middle" class="tx b">implemented</text>
+  <text x="90" y="239" text-anchor="middle" class="tx s">доведено тестом</text>
+  <text x="186" y="221" class="tx s">без тестів → ERROR</text>
+  <text x="186" y="236" class="tx s">untested requirement</text>
+  <path d="M90 250 V 291" class="ln a" marker-end="url(#l40a)"/>
+  <text x="186" y="270" class="tx s">поведінка змінилась:</text>
+  <text x="186" y="285" class="tx s">нова вимога замість старої</text>
+  <rect x="10" y="295" width="160" height="50" rx="10" class="bx p"/>
+  <text x="90" y="317" text-anchor="middle" class="tx b">superseded → id</text>
+  <text x="90" y="334" text-anchor="middle" class="tx s">рядок лишається</text>
+  <text x="186" y="316" class="tx s">тест досі на ній → ERROR:</text>
+  <text x="186" y="331" class="tx s">тест кодує стару поведінку</text>
+</svg>
+<figcaption>Статус вимоги і реакція <code>scripts/trace.py</code> на кожному кроці. Номер не використовується повторно навіть після заміни: на нього посилаються старі коміти.</figcaption>
+</figure>
+<h3>Власники: CODEOWNERS</h3>
+<pre class="code" data-lang="text"><span class="cm"># .github/CODEOWNERS
+# останній збіг перемагає:
+# загальне правило — першим</span>
+*                      @lectern/maint
+/docs/spec/            @lectern/spec
+/docs/adr/             @lectern/arch
+/src/lectern/tools.py  @lectern/spec
+/scripts/trace.py      @lectern/spec</pre>
+<ul>
+<li>Файл шукається в <code>.github/</code>, у корені, потім у <code>docs/</code>; діє перший знайдений, і він має бути в <b>базовій гілці PR</b>.</li>
+<li>Власників запитують на рев'ю автоматично, але <b>не для чернеток PR</b> — лише коли PR позначать готовим.</li>
+<li>Блокує злиття не CODEOWNERS, а правило захисту гілки «Require review from Code Owners»; і тоді достатньо схвалення <b>будь-кого</b> з власників шляху.</li>
+<li>Власник мусить мати явний доступ <code>write</code>; рядок з неіснуючим користувачем або без доступу не призначає нікого — помилка видна лише у вікні файла на GitHub. Ліміт — 3 МБ.</li>
+</ul>
+<p>Навіщо окремий власник <code>tools.py</code>: вимоги LEC-Q реалізовано саме там, тож зміна коду без участі власника специфікації — найкоротший шлях до дрейфу першого типу.</p>
+<h3>Шаблон PR</h3>
+<p>GitHub бере <code>pull_request_template.md</code> з кореня, <code>docs/</code> або <code>.github/</code>; кілька шаблонів — у підтеці <code>PULL_REQUEST_TEMPLATE/</code> з вибором через параметр <code>?template=</code>. Шаблон діє після злиття в гілку за замовчуванням. У Lectern він вимагає поле <code>Refs:</code> і одну позначку типу PR: spec-PR, код за вимогою, зміна поведінки (нова вимога + <code>superseded</code>) або «без впливу на вимоги» — повний текст у кроці проєкту.</p>
+</section>
+
+<section class="sec" id="review">
+<div class="sec-h"><span class="num">03</span><h2>Рев'ю специфікації<span class="sub">Spec-PR перед code-PR</span></h2></div>
+<p>Рев'ю коду питає «чи правильно зроблено», рев'ю специфікації — «чи те робимо». Змішані в одному PR, ці питання програють: рецензент бачить 300 рядків коду і 20 рядків вимог і читає код.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що перевіряють</th><th>У spec-PR</th><th>У code-PR</th></tr></thead>
+<tbody>
+<tr><td data-th="Що перевіряють">Намір</td><td data-th="У spec-PR">яку проблему розв'язуємо і за якою ознакою зрозуміємо, що розв'язали</td><td data-th="У code-PR">не обговорюють: вирішено в spec-PR</td></tr>
+<tr><td data-th="Що перевіряють">Перевірюваність</td><td data-th="У spec-PR">кожна вимога має вхід і очікуваний результат, без «швидко» й «зручно»</td><td data-th="У code-PR">на кожен змінений id є тест з <code>req</code>, і без зміни він падає</td></tr>
+<tr><td data-th="Що перевіряють">Межі</td><td data-th="У spec-PR">non-goals названо явно</td><td data-th="У code-PR">diff не виходить за них</td></tr>
+<tr><td data-th="Що перевіряють">Ризики</td><td data-th="У spec-PR">суперечності між вимогами, нездійсненність, злам чинного контракту</td><td data-th="У code-PR">регресії, безпека, продуктивність</td></tr>
+<tr><td data-th="Що перевіряють">Хто схвалює</td><td data-th="У spec-PR">власник <code>docs/spec/</code> за CODEOWNERS</td><td data-th="У code-PR">власник коду</td></tr>
+</tbody></table></div>
+<p>Мінімум для spec-PR збігається з тим, що документація Claude Code називає найкориснішою специфікацією для агента: вона самодостатня, називає файли й інтерфейси, каже, що поза обсягом, і закінчується наскрізною перевіркою, яка доводить, що фіча працює.</p>
+<p>Правило: <b>код посилається лише на вимоги в статусі <code>approved</code></b>, а цей статус з'являється тільки зі злиттям spec-PR. Якщо реалізація показала, що вимога хибна, code-PR зупиняють і відкривають окремий spec-PR, а не правлять документ мовчки разом із кодом. Виняток — уточнення формулювання без зміни поведінки. Розмір spec-PR — одна здатність системи: OpenSpec з тієї ж причини тримає кожну зміну в окремій теці.</p>
+<h3>Агент як перший рецензент</h3>
+<p>Рецензент-людина дорогий, а частина вад специфікації механічна: дублікат id, порожній статус, оцінні слова. Їх дешево віддати агентові до того, як spec-PR побачить власник. Дослід: специфікація перемішування варіантів квізу з <b>вісьмома вадами, внесеними навмисно</b> (список — у <code>console/runs/review/seeded.txt</code>; моделі його не показували).</p>
+<figure class="fig"><pre class="code" data-lang="text">LEC-S-001 · approved
+  Варіанти кожного питання
+  перемішуються перед save_quiz
+LEC-S-002 · approved
+  Перемішування випадкове
+  і відтворюване; кожен запуск
+  дає інший порядок
+LEC-S-003 · approved
+  Правильна відповідь не стоїть
+  на одній позиції частіше
+  ніж у 50% питань
+LEC-S-002 · approved
+  Варіант «усі перелічені» завжди
+  лишається останнім
+LEC-S-005 · (статус порожній)
+  Перемішування працює швидко
+  і не дратує користувача
+LEC-S-006 · approved
+  Реалізація:
+  random.shuffle(item["options"])
+  у save_quiz</pre>
+<figcaption>Таблиця вимог shuffle-v1.md, показана списком під ширину екрана; файл повністю — console/runs/review/.</figcaption></figure>
+<p>Найгірша вада тут — відсутня: ніде не сказано, що <code>answer</code> (індекс у <code>options</code>) після перемішування має вказувати на той самий варіант. Рецензент отримує системний промпт з чинним контрактом квізу і шістьма пунктами перевірки, без інструментів:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/review</span></div>
+<pre><span class="ps">$ </span><span class="c">cat shuffle-v1.md | claude -p --model haiku --system-prompt-file reviewer.txt --tools "" --setting-sources project --strict-mcp-config --no-session-persistence --output-format json &gt; run-v1.json</span>
+<span class="y">[critical]</span> LEC-S-001 — після перемішування `answer` не перераховується, хоча в контракті це індекс у `options` … — додати вимогу оновлювати `answer` на нову позицію правильного варіанта та тест …
+<span class="y">[critical]</span> LEC-S-002 (два рядки) — ID дубльовано … — перенумерувати другу вимогу як LEC-S-004, бо номер 004 пропущено.
+<span class="y">[critical]</span> LEC-S-002 — вимоги «відтворюване» і «кожен запуск дає інший порядок» суперечать одна одній — визначити джерело відтворюваності (наприклад, явний seed) …
+<span class="y">[major]</span> LEC-S-003 / LEC-S-004 — якщо «усі перелічені» завжди останній, а така відповідь правильна у великій частці питань, позиція 4 отримує перекіс і LEC-S-003 порушується …
+<span class="d">… ще 5 пунктів: малі квізи, розпізнавання «усі перелічені», LEC-S-005, LEC-S-006, non-goals</span>
+<span class="d">total_cost_usd 0.0020 · duration 15,4 с · model claude-haiku-5-5</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.300 · 15.10.2026 · пункти скорочено, повністю — console/runs/review/</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Прогін</th><th>Знахідок</th><th>Внесені вади</th><th>Вартість · час</th></tr></thead>
+<tbody>
+<tr><td data-th="Прогін">v1, haiku × 3</td><td data-th="Знахідок">9 · 10 · 10</td><td data-th="Внесені вади">8 з 8 у кожному; «нездійсненно для 1–4 питань» — щоразу як «неоднозначно для малих квізів»</td><td data-th="Вартість · час">$0,0020–0,0022 · 15–18 с</td></tr>
+<tr><td data-th="Прогін">v2 (вади виправлено), haiku × 2</td><td data-th="Знахідок">7 · 10</td><td data-th="Внесені вади">—; в обох нова справжня критична вада</td><td data-th="Вартість · час">$0,0026–0,0035 · 20–30 с</td></tr>
+</tbody></table></div>
+<p>У виправленій версії ми закріпили позицію варіанта «усі перелічені» і зберегли вимогу балансу. Обидва прогони v2 позначили це як critical: якщо в більшості питань правильна відповідь — нерухомий варіант, баланс недосяжний, а spec не каже, що тоді робити. Цю ваду вніс сам автор виправлення.</p>
+<div class="note fact"><span class="lbl">Виміряно · 15.10.2026</span>
+<p>Хибних тривог серед знахідок не було, але <b>кількість знахідок не падає</b> після виправлення (9–10 → 7–10): рецензент, якого просять знайти проблеми, знаходить їх завжди, зміщуючись до дрібніших. Тому метрика — не «нуль зауважень», а «нуль critical після рев'ю людини». Важкість теж нестабільна: дубль id — то critical, то major.</p>
+</div>
+<p>Що агентові не доручати: рішення, яка з двох суперечливих вимог правильна, і чи варто фіча роботи. Він бачить текст, а не продукт.</p>
+</section>
+
+<section class="sec" id="versioning">
+<div class="sec-h"><span class="num">04</span><h2>Версіонування вимог<span class="sub">Id сталий, зміст змінюється через заміну</span></h2></div>
+<p>Git версіонує файл, але не вимогу: diff рядка таблиці не каже, чи змінилась поведінка, чи лише кома. Тому зміни класифікують явно.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Зміна</th><th>Id</th><th>Статус</th><th>Що ще</th></tr></thead>
+<tbody>
+<tr><td data-th="Зміна">Уточнення без зміни поведінки</td><td data-th="Id">той самий</td><td data-th="Статус">без змін</td><td data-th="Що ще">у PR: «поведінка не змінюється»; тести ті самі й зелені</td></tr>
+<tr><td data-th="Зміна">Зміна поведінки</td><td data-th="Id">новий</td><td data-th="Статус">старий → <code>superseded → новий</code></td><td data-th="Що ще">тести старої переносять або видаляють (інакше ERROR); ADR, якщо рішення архітектурне</td></tr>
+<tr><td data-th="Зміна">Скасування</td><td data-th="Id">той самий</td><td data-th="Статус"><code>superseded → новий</code>, де нова вимога описує «не робить X»: заміни без нащадка trace.py не приймає</td><td data-th="Що ще">старі коміти з <code>Refs:</code> лишаються валідними</td></tr>
+<tr><td data-th="Зміна">Нова вимога</td><td data-th="Id">наступний вільний</td><td data-th="Статус"><code>draft</code> → <code>approved</code></td><td data-th="Що ще">номер «бронює» злиття spec-PR</td></tr>
+</tbody></table></div>
+<p>Чому не переписати рядок на місці: на <code>LEC-Q-003</code> посилаються тести й коміти. Якщо поведінка інша, а id той самий, тест старої поведінки виглядатиме доказом нової. Новий id робить розрив видимим.</p>
+<h3>Delta-специфікації</h3>
+<p>OpenSpec розв'язує ту саму задачу інакше: зміна лежить у <code>openspec/changes/&lt;назва&gt;/specs/…</code> і описує лише різницю розділами <code>## ADDED Requirements</code>, <code>## MODIFIED Requirements</code>, <code>## REMOVED Requirements</code>. Під час архівації ADDED дописується в основну spec, MODIFIED <b>замінює</b> наявну вимогу, REMOVED її видаляє, а тека зміни переїжджає в <code>changes/archive/</code> з датою.</p>
+<figure class="fig"><pre class="code" data-lang="markdown"><span class="cm">## MODIFIED Requirements</span>
+
+### Requirement: Session Expiration
+The system MUST expire sessions after 15 minutes of inactivity.
+(Previously: 30 minutes)</pre>
+<figcaption>Фрагмент прикладу з документації OpenSpec (docs/concepts.md, v1.14.2).</figcaption></figure>
+<p>Різниця з підходом Lectern — де живе історія. OpenSpec тримає в основній spec лише чинний стан, історія — в архіві змін. Lectern лишає замінений рядок у таблиці, бо на нього посилаються маркери тестів і трейлери комітів. Правило вибору: якщо id вимог ніде, крім документа, не згадуються, заміна на місці чистіша; якщо на них посилаються тести й коміти, заміна на місці зробить ці посилання осиротілими.</p>
+<h3>Журнал змін вимог</h3>
+<p>Окремий CHANGELOG вимог не потрібен, якщо коміти несуть трейлер. <code>git commit --trailer "Refs: LEC-Q-004"</code> додає його, а <code>%(trailers:…)</code> у форматі <code>git log</code> дістає:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git log --format='%h %s%n   Refs: %(trailers:key=Refs,valueonly,separator=%x2C )' -- docs/spec</span>
+c3880e6 spec: complete LEC-Q-002, case and boundary rows; test for LEC-Q-005
+   Refs: LEC-Q-002, LEC-Q-003, LEC-Q-004, LEC-Q-005
+2e71da0 spec: requirement ids for quotes; scripts/trace.py
+   Refs:
+8b03fbc baseline: lectern after module 7
+   Refs:</pre>
+<div class="cap">реальний вивід · git 2.50.1 · 15.10.2026</div></div>
+<p>Кома у <code>separator</code> записується як <code>%x2C</code>, інакше git сприйме її як роздільник опцій. Зв'язок з ADR (урок 5.4) — односторонній: ADR пояснює, <i>чому</i> змінилось рішення, рядок вимоги посилається на нього в тексті, а не дублює аргументацію.</p>
+</section>
+
+<section class="sec" id="trace">
+<div class="sec-h"><span class="num">05</span><h2>Трасування<span class="sub">Вимога → тест → коміт, без ручної таблиці</span></h2></div>
+<blockquote class="q-src">
+<p>Трасування вимог — це здатність описати й простежити життя вимоги в обох напрямках: вперед і назад.</p>
+<p class="orig">“Requirements traceability refers to the ability to describe and follow the life of a requirement, in both a forwards and backwards direction.”</p>
+<cite>Orlena Gotel, Anthony Finkelstein, «An Analysis of the Requirements Traceability Problem», ICRE, 1994</cite>
+</blockquote>
+<p>«Вперед» — від вимоги до тестів і коду: що зламається, якщо її змінити. «Назад» — від тесту чи коміту до вимоги: навіщо цей код. Специфікація S-07 з уроку 8.1 має таблицю трасування, написану руками, і вже в день написання в ній дірка: у R6 немає критерію приймання. Ручна матриця гниє так само, як CLAUDE.md з уроку 5.4, тому її треба <b>виводити з артефактів</b>, а не підтримувати.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ланка</th><th>Як посилається</th><th>Що ловить розрив</th></tr></thead>
+<tbody>
+<tr><td data-th="Ланка">Вимога</td><td data-th="Як посилається">рядок таблиці «## Вимоги»: id, текст, статус, номери прикладів</td><td data-th="Що ловить розрив">trace.py: дублікат id, невідомий статус, неіснуючий рядок прикладу</td></tr>
+<tr><td data-th="Ланка">Приклад</td><td data-th="Як посилається">рядок таблиці «## Приклади», який виконує <code>test_spec_quotes.py</code></td><td data-th="Що ловить розрив">pytest; trace.py рахує рядки лише тоді, коли файл специфікації згадано в тестах</td></tr>
+<tr><td data-th="Ланка">Тест</td><td data-th="Як посилається"><code>@pytest.mark.req("LEC-Q-004")</code></td><td data-th="Що ловить розрив"><code>--strict-markers</code> — помилку в назві маркера; trace.py — невідомий id</td></tr>
+<tr><td data-th="Ланка">Коміт</td><td data-th="Як посилається">трейлер <code>Refs: LEC-Q-004</code></td><td data-th="Що ловить розрив">trace.py, лише попередження: історію не переписують</td></tr>
+<tr><td data-th="Ланка">PR</td><td data-th="Як посилається">поле <code>Refs:</code> у шаблоні</td><td data-th="Що ловить розрив">рецензент і власник з CODEOWNERS</td></tr>
+</tbody></table></div>
+<p>Маркер реєструють у <code>pyproject.toml</code>. Без реєстрації pytest лише попереджає про невідомий маркер, і <code>@pytest.mark.reqs</code> тихо випадає з трасування:</p>
+<pre class="code" data-lang="toml">[tool.pytest.ini_options]
+addopts = [<span class="s">"--strict-markers"</span>]
+markers = [
+    <span class="s">"req(*ids): вимоги з docs/spec, які перевіряє тест"</span>,
+]</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q tests/test_tools.py</span>     <span class="d"># у тесті @pytest.mark.reqs</span>
+<span class="er">ERROR tests/test_tools.py - Failed: 'reqs' not found in `markers` configurati...</span>
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!</pre>
+<div class="cap">реальний вивід · pytest 9.1.1 · 15.10.2026 · скорочено</div></div>
+<h3>scripts/trace.py</h3>
+<p>151 рядок, лише stdlib, як <code>check_context.py</code>. Тести не імпортує: маркери читає з AST, тому працює без залежностей і за 0,1 с. Ядро — правила над зібраними зв'язками (скорочено):</p>
+<pre class="code" data-lang="python"><span class="k">for</span> rid, names <span class="k">in</span> sorted(tests.items()):
+    <span class="k">if</span> rid <span class="k">not in</span> reqs:
+        problems.append(f<span class="s">"ERROR orphan test id {rid}: {', '.join(names)}"</span>)
+<span class="k">for</span> rid, r <span class="k">in</span> reqs.items():
+    <span class="k">if</span> r[<span class="s">"rows"</span>] <span class="k">and</span> r[<span class="s">"file"</span>] <span class="k">not in</span> source:   <span class="cm"># рядки рахуються, лише якщо їх виконує тест</span>
+        problems.append(f<span class="s">"ERROR {rid}: {r['file']} is not executed by any test"</span>)
+    evidence = r[<span class="s">"rows"</span>] <span class="k">or</span> r[<span class="s">"tests"</span>]
+    <span class="k">if</span> r[<span class="s">"status"</span>] == <span class="s">"implemented"</span> <span class="k">and not</span> evidence:
+        problems.append(f<span class="s">"ERROR untested requirement {rid} (implemented)"</span>)
+    <span class="k">elif</span> r[<span class="s">"status"</span>] == <span class="s">"superseded"</span> <span class="k">and</span> r[<span class="s">"tests"</span>]:
+        problems.append(f<span class="s">"ERROR {rid} is superseded but still pinned by ..."</span>)</pre>
+<p>Перший прогін на Lectern одразу знайшов справжню ваду. Ми дали id усім п'яти чинним правилам цитат, і <code>LEC-Q-005</code> («що <code>quote_coverage()</code> вважає <code>missing</code> або <code>short</code>, те відхиляє <code>validate()</code>») виявився непокритим: тест на нього є, але нічого його з вимогою не пов'язувало, а прикладу в таблиці немає. Після маркерів на чотирьох тестах:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/trace.py</span>
+LEC-Q-001  implemented 3b65f16
+  spec#1 · test_tools.py::test_exact_and_normalized_quotes
+LEC-Q-002  implemented 3b65f16
+  spec#2,3,4 · test_tools.py::test_exact_and_normalized_quotes
+LEC-Q-003  implemented 3b65f16
+  spec#5 · test_tools.py::test_paraphrase_is_rejected_with_a_hint
+LEC-Q-004  implemented 3b65f16
+  spec#6 · test_tools.py::test_check_quote_rejects_verbatim_quote_shorter_than_min_words
+LEC-Q-005  implemented 3b65f16
+  test_tools.py::test_coverage_agrees_with_validate
+LEC-Q-006  draft       —
+  —
+6 requirements, 4 tests: <span class="ok">0 error(s)</span>, 0 warning(s)</pre>
+<div class="cap">реальний вивід · 15.10.2026 · 3b65f16 — коміт з трейлерами Refs</div></div>
+<p>Порожня специфікація — теж помилка: trace.py без жодної вимоги виходить з кодом 1, бо «нуль вимог, нуль проблем» — та сама пастка порожньої таблиці, що й у 5.4.</p>
+<h3>Ламаємо навмисно</h3>
+<p>Дві правдоподібні зміни в одному diff: продукт вирішує, що парафраз має отримувати окремий вердикт, тож <code>LEC-Q-003</code> замінено новою <code>LEC-Q-007</code> (approved); а хтось «перенумерував» маркер тесту <code>LEC-Q-005</code> на неіснуючий <code>LEC-Q-008</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/trace.py; echo "exit $?"</span>
+<span class="d">… матриця з 7 вимог …</span>
+<span class="er">ERROR orphan test id LEC-Q-008: test_tools.py::test_coverage_agrees_with_validate</span>
+<span class="er">ERROR LEC-Q-003 is superseded but still pinned by test_tools.py::test_paraphrase_is_rejected_with_a_hint</span>
+<span class="er">ERROR untested requirement LEC-Q-005 (implemented)</span>
+7 requirements, 3 tests: 3 error(s), 0 warning(s)
+exit 1
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q | grep -E "^FAILED|passed"</span>
+<span class="er">FAILED tests/test_trace.py::test_lectern_itself_is_traced - AssertionError: [...</span>
+1 failed, 117 passed in 10.27s</pre>
+<div class="cap">реальний вивід · 15.10.2026 · матрицю скорочено, повністю й diff — console/runs/trace/</div></div>
+<p>Поведінка коду не змінилась, тож 117 тестів зелені; червоним став лише <code>test_trace.py</code>, який запускає trace.py на самому репозиторії. Окремий крок CI не потрібен: трасування падає разом із тестами.</p>
+<div class="note warn"><span class="lbl">Чого trace.py не бачить</span>
+<p>У першій версії досліду маркер «перенумерували» на <code>LEC-Q-007</code> — id, який уже існує. Результат: 2 помилки замість 3, а тест про <code>validate()</code> став «доказом» вимоги про парафраз. Трасування перевіряє, що <b>зв'язок існує</b>, а не що він <b>має сенс</b>. Сенс перевіряють рецензент і аудит дрейфу.</p>
+</div>
+</section>
+
+<section class="sec" id="drift">
+<div class="sec-h"><span class="num">06</span><h2>Spec drift<span class="sub">Три типи, чотири детектори</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип</th><th>Як виникає</th><th>У досліді</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип">1 · Код змінився, spec — ні</td><td data-th="Як виникає">«дрібний рефакторинг» без spec-PR; агент оптимізує локально</td><td data-th="У досліді"><code>norm()</code> став ігнорувати регістр</td></tr>
+<tr><td data-th="Тип">2 · Spec змінилась, код — ні</td><td data-th="Як виникає">spec-PR злито, реалізацію відклали, статус лишився <code>implemented</code></td><td data-th="У досліді">у специфікації «6 слів», у коді 5</td></tr>
+<tr><td data-th="Тип">3 · Тест кодує іншу поведінку</td><td data-th="Як виникає">тест «підправили» разом із кодом, щоб пройшов</td><td data-th="У досліді"><code>validate()</code> приймає дослівну коротку цитату, тест змінено на <code>== []</code></td></tr>
+</tbody></table></div>
+<p>Тип 3 найпідступніший: код і тест погоджені між собою, тож будь-яка перевірка «код проти тесту» мовчить. CLAUDE.md Lectern прямо забороняє правити тест під код, але заборона в інструкції — прохання, а не перевірка.</p>
+<h3>Аудит дрейфу агентом</h3>
+<p>Детерміновані перевірки на гілці <code>drift</code> зелені (початок уроку). Залишається агент, який читає документ і код разом. Промпт вимагає лише суперечностей, з <code>файл:рядок</code> і способом відтворення, і забороняє вирішувати, хто правий. Інструменти — тільки читання:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern · гілка drift</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat drift-prompt.txt)" --model sonnet --tools "Read,Grep,Glob" --allowedTools "Read" "Grep" "Glob" --setting-sources project --strict-mcp-config --no-session-persistence --output-format json &lt; /dev/null &gt; drift-sonnet-1.json</span>
+Знайшов три суперечності.
+1. <span class="y">LEC-Q-004</span> — spec каже: «Цитата коротша за 6 слів (`MIN_QUOTE_WORDS`) — `short`…»
+   - Код: `src/lectern/tools.py:54` має `MIN_QUOTE_WORDS = 5`. …
+   - Відтворення: `check_quote("l4", "Ключами можуть бути лише незмінні")` — це 5 слів … Вийде `{"ok": True, "match": "exact"}`, а за spec має бути `short` і `ok: false`.
+2. <span class="y">LEC-Q-005</span> — … `tools.py:144-148` не відхиляє коротку цитату, якщо вона дослівно є в якійсь лекції … Тест `tests/test_tools.py:32` прямо перевіряє цю поведінку …
+   - `test_coverage_agrees_with_validate` цього не ловить, бо його коротка цитата «коротка цитата» в лекції відсутня.
+3. <span class="y">LEC-Q-003</span> — … `tools.py:90` (`norm`) викликає `.casefold()`, тож `check_quote` ігнорує регістр. Крім того, `norm` застосовує NFKC і згортає будь-які пробіли, а цього spec у переліку не називає.
+<span class="d">total_cost_usd 0.0985 · duration 23,2 с · num_turns 4</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.300 · 15.10.2026 · скорочено, повністю — console/runs/drift/</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Детектор</th><th>Тип 1</th><th>Тип 2</th><th>Тип 3</th><th>Ціна</th></tr></thead>
+<tbody>
+<tr><td data-th="Детектор">pytest (118 тестів)</td><td data-th="Тип 1">—</td><td data-th="Тип 2">—</td><td data-th="Тип 3">—</td><td data-th="Ціна">7 с</td></tr>
+<tr><td data-th="Детектор">trace.py</td><td data-th="Тип 1">—</td><td data-th="Тип 2">—</td><td data-th="Тип 3">—</td><td data-th="Ціна">0,1 с</td></tr>
+<tr><td data-th="Детектор">Аудит, haiku × 3</td><td data-th="Тип 1">1 з 3 прогонів</td><td data-th="Тип 2">3 з 3</td><td data-th="Тип 3">3 з 3</td><td data-th="Ціна">$0,005–0,009 · 22–38 с</td></tr>
+<tr><td data-th="Детектор">Аудит, sonnet × 1</td><td data-th="Тип 1">так</td><td data-th="Тип 2">так</td><td data-th="Тип 3">так</td><td data-th="Ціна">$0,098 · 23 с</td></tr>
+</tbody></table></div>
+<p><b>Точність:</b> хибних знахідок не було. Обидві «зайві» — справжні: sonnet помітив, що NFKC і згортання пробілів не названо у специфікації, а третій прогін haiku — що звичайний розрив рядка теж нормалізується. Обидва стосуються тексту <code>LEC-Q-002</code>, який ми написали в цьому ж уроці. <b>Повнота</b> haiku нестабільна: регістр двічі з трьох пропущено. Висновок для бюджету: дешева модель — щоночі на змінених файлах, сильніша — перед релізом; жодна не замінює рядок-приклад.</p>
+<h3>Знахідку — у виконувану форму</h3>
+<p>Аудит знаходить дрейф один раз; щоб він не повторився, кожна знахідка стає перевіркою. До таблиці прикладів додали рядок 7 (різниця лише в регістрі → <code>missing</code>) і рядок 8 (рівно 5 слів → <code>exact</code>), а до <code>LEC-Q-005</code> — тест на дослівну коротку цитату. Ті самі три зміни на оновленому main:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern · гілка drift2</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q | grep -E "^FAILED|passed"</span>
+<span class="er">FAILED tests/test_spec_quotes.py::test_spec_row[row7-missing] - AssertionErro...</span>
+<span class="er">FAILED tests/test_tools.py::test_verbatim_short_quote_is_short_in_coverage_and_rejected_by_validate</span>
+2 failed, 119 passed in 6.86s</pre>
+<div class="cap">реальний вивід · 15.10.2026</div></div>
+<p>Типи 1 і 3 тепер ловить CI. Тип 2 — ні: «6 слів» у прозі не виконується ніким, а рядок 8 лише показує уважному читачеві протиріччя. Правило: <b>число чи назва з коду в прозі специфікації — або посилання на константу, або рядок-приклад на межі</b>. Інакше це другий екземпляр значення, який ніщо не синхронізує.</p>
+<h3>Хто правий: політика джерела істини</h3>
+<p>Коли детектор спрацював, треба вирішити, що правити. «Spec завжди права» не працює: користувачі могли місяцями покладатися на поведінку коду. «Код завжди правий» робить специфікацію описом випадковостей.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ситуація</th><th>Джерело істини</th><th>Дія</th></tr></thead>
+<tbody>
+<tr><td data-th="Ситуація">Вимога <code>draft</code></td><td data-th="Джерело істини">код</td><td data-th="Дія">spec ще не погоджена; уточнити її в spec-PR</td></tr>
+<tr><td data-th="Ситуація">Вимога <code>approved</code>/<code>implemented</code>, код змінено без spec-PR, поведінка ще не в релізі</td><td data-th="Джерело істини">spec</td><td data-th="Дія">повернути код; якщо зміна бажана — спершу spec-PR</td></tr>
+<tr><td data-th="Ситуація">Те саме, але поведінка вже в релізі і на неї покладаються</td><td data-th="Джерело істини">рішення власника spec</td><td data-th="Дія">spec-PR: нова вимога + <code>superseded</code>, або виправлення коду як баг — не мовчки</td></tr>
+<tr><td data-th="Ситуація">Безпека, приватність, юридичні вимоги, ADR</td><td data-th="Джерело істини">spec</td><td data-th="Дія">завжди виправляти код; інцидент, якщо поведінка вже в релізі</td></tr>
+<tr><td data-th="Ситуація">Тест суперечить spec, код погоджений з тестом</td><td data-th="Джерело істини">spec, доки власник не вирішив інакше</td><td data-th="Дія">з <code>git log -p</code> тесту з'ясувати, чи зміна була свідомою; несвідому — відкотити разом із кодом</td></tr>
+<tr><td data-th="Ситуація">Spec суперечить сама собі</td><td data-th="Джерело істини">жодне</td><td data-th="Дія">заморозити залежні PR, spec-PR з рішенням власника</td></tr>
+</tbody></table></div>
+<p>У досліді: регістр і коротка цитата — порушення <code>implemented</code>-вимог, які ще не в релізі, отже код повертають. «6 слів» — spec змінилась без рішення: або spec-PR з новою вимогою і реалізацією, або відкат рядка.</p>
+</section>
+
+<section class="sec" id="branches">
+<div class="sec-h"><span class="num">07</span><h2>Гілки й паралельні агенти<span class="sub">Конфлікт у специфікації — не лише текстовий</span></h2></div>
+<p>Дві гілки від того самого main: <code>spec/paraphrase</code> і <code>spec/page-numbers</code>. Кожна додає наступну вільну вимогу, і кожна бачить вільним <code>LEC-Q-007</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git merge -q --no-edit spec/paraphrase &amp;&amp; git merge --no-edit spec/page-numbers</span>
+Auto-merging docs/spec/quotes.md
+<span class="er">CONFLICT (content): Merge conflict in docs/spec/quotes.md</span>
+<span class="ps">$ </span><span class="c">git diff</span>
+++&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+ +| LEC-Q-007 | Парафраз зі схожістю ≥ 0,95 — вердикт `paraphrase`, `ok: false` | draft | |
+++=======
++ | LEC-Q-007 | Вердикт містить номер сторінки PDF, на якій знайдено цитату | draft | |
+++&gt;&gt;&gt;&gt;&gt;&gt;&gt; spec/page-numbers
+<span class="d"># «розв'язуємо» найпростіше: лишаємо обидва рядки, git add, commit</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/trace.py | tail -2</span>
+<span class="er">ERROR duplicate id LEC-Q-007: docs/spec/quotes.md:26 and docs/spec/quotes.md:27</span>
+7 requirements, 4 tests: 1 error(s), 0 warning(s)</pre>
+<div class="cap">реальний вивід · git 2.50.1 · 15.10.2026 · вивід git diff скорочено</div></div>
+<p>Тут git хоча б зупинився. Якби друга гілка дописала рядок в інше місце таблиці або в інший файл, злиття пройшло б без конфлікту, і дубль виявила б лише перевірка унікальності. Способи розвести id:</p>
+<ul>
+<li><b>Бронювання</b>: id видає злиття spec-PR у main; гілка з кодом посилається лише на вже злиті id. Найпростіше, але spec-PR стає вузьким місцем.</li>
+<li><b>Префікс області чи автора</b>: <code>LEC-Q-…</code>, <code>LEC-S-…</code>, <code>LEC-STATS-…</code> — паралельні фічі рідко ділять область.</li>
+<li><b>Позначка часу</b>, як <code>feature_numbering: timestamp</code> у Spec Kit: колізій немає, але id довгі й не читаються вголос.</li>
+<li><b>Теки змін</b>, як в OpenSpec: зміни лежать у різних теках і, за документацією, не конфліктують, доки змінюють різні вимоги; про дві зміни однієї вимоги ця гарантія нічого не каже.</li>
+</ul>
+<h3>Паралельні агенти на одній специфікації</h3>
+<p>Схема з уроків 4.4 і 3.5 (worktree на агента, людина-оркестратор) додає одне правило: <b>специфікацію пише один, реалізують багато</b>. Агенти-виконавці отримують spec лише для читання; хто знайшов суперечність, зупиняється і звітує обидві сторони з <code>файл:рядок</code>. Інакше п'ять агентів «уточнять» той самий рядок п'ятьма способами, і конфлікт злиття стане найменшою з проблем: кожна гілка буде внутрішньо узгодженою зі своєю версією вимоги.</p>
+<p>Технічно це три шари. Інструкція в CLAUDE.md (вкладки нижче) — прохання. Правило <code>ask</code> на <code>Edit(./docs/spec/**)</code> у Claude Code зупиняє вбудовані інструменти редагування й розпізнані shell-команди (<code>sed</code>, <code>tee</code>, перенаправлення), але не скрипт на Python, що відкриває файл сам. Остаточний бар'єр — на сервері: CODEOWNERS і захист гілки не дадуть злити зміну <code>docs/spec/</code> без власника.</p>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">08</span><h2>Агенти й id вимог<span class="sub">Claude Code · Codex · Cursor</span></h2></div>
+<p>Агент, який не знає про id, напише тест без маркера і коміт без трейлера: трасування не зламається, воно просто не з'явиться. Правило однакове для всіх трьох інструментів; відрізняється лише файл, звідки агент його прочитає.</p>
+<div class="tabs">
+<input type="radio" name="ids-t" id="ids-t1" checked><input type="radio" name="ids-t" id="ids-t2"><input type="radio" name="ids-t" id="ids-t3">
+<div class="tab-l"><label for="ids-t1">Claude Code</label><label for="ids-t2">Codex CLI</label><label for="ids-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Розділ у <code>.claude/CLAUDE.md</code> Lectern (у комплекті — <code>dot-claude/CLAUDE.kit.md</code>):</p>
+<pre class="code" data-lang="markdown">## Requirements (docs/spec)
+- Behaviour is specified by ids
+  such as `LEC-Q-004` in
+  `docs/spec/*.md` (table «Вимоги»).
+- A test that verifies a requirement
+  carries
+  `@pytest.mark.req("LEC-Q-004")`;
+  a commit that implements or
+  changes one ends with the trailer
+  `Refs: LEC-Q-004`.
+- Check:
+  `.venv/bin/python scripts/trace.py`
+  (0 errors before you report done).
+- In an implementation task never
+  edit `docs/spec/` to match the
+  code. If spec and code disagree,
+  stop and report both sides with
+  file:line; spec changes go through
+  a separate PR.</pre>
+<p>І два правила в <code>.claude/settings.json</code>: <code>allow</code> для <code>Bash(.venv/bin/python scripts/trace.py)</code>, щоб перевірка не питала дозволу, і <code>ask</code> для <code>Edit(./docs/spec/**)</code>, щоб кожна правка специфікації проходила через людину.</p>
+</div>
+<div class="tab-p">
+<p>Той самий текст — в <code>AGENTS.md</code>. Codex збирає ці файли від кореня репозиторію до поточної теки, не більше одного на теку; ближчий до теки файл іде пізніше і має перевагу. Сумарний ліміт — <code>project_doc_max_bytes</code>, за замовчуванням 32 KiB. Для монорепозиторію правило про id можна покласти в <code>AGENTS.md</code> саме тієї теки, де лежать специфікації й тести.</p>
+</div>
+<div class="tab-p">
+<p>Правило проєкту — файл <code>.mdc</code> у <code>.cursor/rules/</code> (звичайний <code>.md</code> там ігнорується). Тип «Apply to Specific Files» з <code>globs</code> підтягує правило лише тоді, коли агент працює з тестами:</p>
+<pre class="code" data-lang="markdown">---
+globs: tests/**/*.py
+alwaysApply: false
+---
+Every test that verifies behaviour from docs/spec carries
+@pytest.mark.req("LEC-…"). Run .venv/bin/python scripts/trace.py.</pre>
+<p>Cursor також читає <code>AGENTS.md</code> у корені й підтеках, тож одне спільне правило для Codex і Cursor можна тримати там.</p>
+</div>
+</div>
+<div class="note arch"><span class="lbl">Що насправді змушує</span>
+<p>Усі три механізми — інструкції. Примус — поза агентом: хук <code>commit-msg</code> може відхилити коміт без <code>Refs:</code>, але він локальний і обходиться <code>--no-verify</code>. Гарантію дає лише CI, де <code>trace.py</code> падає разом із тестами, і захист гілки, що не дає злити червоний PR.</p>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: id вимог, трасування, правила команди</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 8.3 · трасування вимог</div><div class="pb">
+<p>Після кроку в репозиторії змінюється:</p>
+<pre class="code" data-lang="text">lectern/
+├── .claude/CLAUDE.md
+├── .claude/settings.json
+├── .github/CODEOWNERS
+├── .github/pull_request_template.md
+├── docs/spec/quotes.md
+├── pyproject.toml
+├── scripts/trace.py
+├── tests/test_tools.py
+└── tests/test_trace.py</pre>
+<p>CLAUDE.md — розділ Requirements; settings.json — <code>allow</code> для trace.py і <code>ask</code> на редагування <code>docs/spec/</code>; quotes.md — таблиця «## Вимоги» <code>LEC-Q-001…006</code> і рядки прикладів 7–8; pyproject.toml — маркер <code>req</code> і <code>--strict-markers</code>; test_tools.py — 5 маркерів і новий тест для <code>LEC-Q-005</code>; test_trace.py — 7 тестів самої перевірки.</p>
+<p>Шаблон PR (скорочено, без коментарів-підказок):</p>
+<pre class="code" data-lang="markdown">## Вимоги
+Refs:
+
+## Тип PR
+- [ ] spec-PR: лише docs/spec/
+      (і ADR, якщо змінюється
+      рішення); коду немає
+- [ ] код за approved-вимогою;
+      у цьому ж PR статус →
+      implemented
+- [ ] зміна поведінки: нова
+      вимога, стара — superseded
+- [ ] без впливу на вимоги
+
+## Перевірка
+- [ ] scripts/trace.py — 0 error(s)
+- [ ] нові тести мають маркер req;
+      приклади виконуються
+- [ ] у специфікації немає чисел
+      і назв з коду без прикладу
+
+## Чого PR навмисно не робить</pre>
+<p>Стан: <code>pytest -q</code> — 122 passed, <code>ruff check .</code> чистий, <code>check_context.py</code> — 0 problems, <code>trace.py</code> — 0 errors. Файли кроку — у <code>console/lectern-8.3/</code> (<code>dot-github/</code> = <code>.github/</code>, <code>dot-claude/</code> = <code>.claude/</code>), прогони — у <code>console/runs/</code>. trace.py читає і <code>docs/specs/</code> з уроку 8.1: специфікації без таблиці id він пропускає, не падаючи.</p>
+<p><b>Ваш крок.</b> Переведіть S-07 з уроку 8.1 на глобальні id: таблиця «## Вимоги» з <code>LEC-STATS-001…006</code> і статусами, маркери <code>req</code> на тестах <code>tests/test_stats.py</code>. Запустіть trace.py: R6 без критерію приймання має стати або тестом, або явним <code>approved</code> без тестів. Потім зламайте трасування двома способами з уроку і переконайтеся, що кожен дає окремий рядок ERROR.</p>
+</div></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Помилки, які виглядають як порядок</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що робити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Матриця трасування в документі завжди «повна»</td><td data-th="Причина">її пишуть руками і ніхто не перевіряє</td><td data-th="Що робити">виводити з маркерів і трейлерів; ручна таблиця — лише для того, чого не видно з коду</td></tr>
+<tr><td data-th="Симптом">Тест-маркер на кожну вимогу, а дрейф є</td><td data-th="Причина">маркер доводить зв'язок, не зміст</td><td data-th="Що робити">рядки-приклади на межах, аудит змісту</td></tr>
+<tr><td data-th="Симптом">Зміна поведінки під старим id</td><td data-th="Причина">«git і так зберігає історію»</td><td data-th="Що робити">новий id + <code>superseded</code>; старі тести переїжджають</td></tr>
+<tr><td data-th="Симптом">Spec і код в одному PR, рев'ю лише коду</td><td data-th="Причина">рецензент читає те, що довше</td><td data-th="Що робити">spec-PR першим, з власником з CODEOWNERS</td></tr>
+<tr><td data-th="Симптом">Агент «виправляє» spec під свій код</td><td data-th="Причина">має запис у <code>docs/spec/</code></td><td data-th="Що робити"><code>ask</code>/<code>deny</code> на редагування, звіт про суперечність замість правки</td></tr>
+</tbody></table></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">orphan test</span><span class="h">що це?</span></span><span class="b"><span class="t">Тест з невідомим id</span><span class="d">маркер посилається на вимогу, якої немає в docs/spec</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">untested requirement</span><span class="h">коли це помилка?</span></span><span class="b"><span class="t">implemented без доказу</span><span class="d">для approved і draft відсутність тестів — норма</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">superseded → id</span><span class="h">навіщо, а не переписати?</span></span><span class="b"><span class="t">Розрив стає видимим</span><span class="d">тести й коміти старої поведінки не стануть «доказом» нової</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">spec drift, тип 3</span><span class="h">чому найпідступніший?</span></span><span class="b"><span class="t">Тест погоджений з кодом</span><span class="d">перевірка «код проти тесту» мовчить, бреше лише документ</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Refs: LEC-Q-004</span><span class="h">де і навіщо?</span></span><span class="b"><span class="t">Трейлер коміту</span><span class="d">журнал змін вимог з git log без окремого CHANGELOG</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">CODEOWNERS</span><span class="h">що блокує злиття?</span></span><span class="b"><span class="t">Захист гілки</span><span class="d">«Require review from Code Owners»; сам файл лише запитує рев'ю</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Code-PR змінює <code>norm()</code>, щоб ігнорувати регістр. Spec не змінено, усі тести й trace.py зелені. Що надійно зловить таке наступного разу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>trace.py, якщо додати в нього перевірку, що кожна вимога має щонайменше два тести</span></label><label class="opt ok"><input type="radio" name="q1"><span>Рядок у виконуваній таблиці прикладів, де цитата відрізняється лише регістром</span></label><label class="opt"><input type="radio" name="q1"><span>Заборона в CLAUDE.md змінювати нормалізацію без погодження власника специфікації</span></label></div>
+    <div class="why yes">Так. Це дрейф типу 1, і детерміновано його ловить лише приклад саме на цей випадок: з рядком 7 така зміна дала червоний тест.</div>
+    <div class="why no">Кількість тестів на вимогу не змінює того, що вони перевіряють; trace.py бачить зв'язки, а не зміст. Інструкція в CLAUDE.md — прохання, а не перевірка. Ловить приклад, що виконується: рядок 7 (регістр → missing) зробив цю зміну червоною.</div></div>
+  <div class="q"><div class="qt">2. trace.py зелений: кожна implemented-вимога має тест з маркером <code>req</code>. Що це гарантує?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Кожна implemented-вимога пов'язана хоча б з одним наявним тестом або виконуваним прикладом</span></label><label class="opt"><input type="radio" name="q2"><span>Тест, позначений вимогою, перевіряє саме ту поведінку, яку описує текст цієї вимоги</span></label><label class="opt"><input type="radio" name="q2"><span>Код відповідає специфікації, бо всі тести, пов'язані з вимогами, проходять у CI</span></label></div>
+    <div class="why yes">Так, і лише це. Маркер на чужому існуючому id (LEC-Q-007 у досліді) проходить перевірку, хоча зв'язок безглуздий.</div>
+    <div class="why no">Трасування перевіряє наявність зв'язку, не його зміст: «перенумерований» на існуючий LEC-Q-007 маркер дав 2 помилки замість 3. А зелені тести можуть кодувати іншу поведінку (дрейф типу 3).</div></div>
+  <div class="q"><div class="qt">3. Продукт вирішив: парафраз отримує окремий вердикт замість <code>missing</code>. Що робити з LEC-Q-003?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Переписати текст LEC-Q-003 на місці: git і так зберігає історію кожного рядка</span></label><label class="opt"><input type="radio" name="q3"><span>Видалити рядок LEC-Q-003 і створити нову вимогу з тим самим номером і новим текстом</span></label><label class="opt ok"><input type="radio" name="q3"><span>Нова вимога LEC-Q-007; LEC-Q-003 — superseded → LEC-Q-007; її тести перенести</span></label></div>
+    <div class="why yes">Так. Новий id робить розрив видимим, а trace.py видасть ERROR, доки на старій вимозі висить тест.</div>
+    <div class="why no">На LEC-Q-003 посилаються тести й коміти. Якщо поведінка інша, а id той самий, тест старої поведінки виглядатиме доказом нової. Зміна поведінки — це новий id і superseded для старого.</div></div>
+  <div class="q"><div class="qt">4. Після виправлення специфікації агент-рецензент знову повернув 10 зауважень. Як це трактувати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Виправлення не вдалося: якісна специфікація після рев'ю має давати нуль зауважень</span></label><label class="opt ok"><input type="radio" name="q4"><span>Рецензент знаходить проблеми завжди; людина перевіряє critical і вирішує по суті</span></label><label class="opt"><input type="radio" name="q4"><span>Дешева модель вигадує зауваження, тож рецензію варто повторити сильнішою моделлю</span></label></div>
+    <div class="why yes">Так. У досліді кількість знахідок не впала (9–10 → 7–10), але серед них не було хибних, і була нова справжня критична вада, внесена виправленням.</div>
+    <div class="why no">Рецензент, якого просять знайти проблеми, знаходить їх завжди, зміщуючись до дрібніших. Хибних знахідок у досліді не було — проблема не в моделі. Метрика — нуль critical після рев'ю людини.</div></div>
+  <div class="q"><div class="qt">5. Дві гілки додали вимогу LEC-Q-007 у <b>різні</b> файли <code>docs/spec/</code>. Що станеться під час злиття?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Git зіллє без конфлікту; дубль знайде лише перевірка унікальності id</span></label><label class="opt"><input type="radio" name="q5"><span>Git зупиниться з конфліктом, бо той самий id з'явився в обох гілках одразу</span></label><label class="opt"><input type="radio" name="q5"><span>GitHub не дасть злити PR, бо CODEOWNERS стежить за id у docs/spec/</span></label></div>
+    <div class="why yes">Так. Git порівнює рядки файлів, а не значення id. Навіть у тому самому файлі конфлікт буде лише тоді, коли рядки стоять в одному місці.</div>
+    <div class="why no">Git не знає про id: різні файли зливаються без конфлікту. CODEOWNERS призначає рецензентів за шляхами, зміст не аналізує. Дубль ловить trace.py («duplicate id … :26 and … :27»).</div></div>
+  <div class="q"><div class="qt">6. CODEOWNERS призначає <code>/docs/spec/</code> команді spec-owners, але зміну специфікації злили без їхнього схвалення. Найімовірніша причина?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>CODEOWNERS має лежати в теці docs/spec/, поруч зі специфікаціями, які він захищає</span></label><label class="opt"><input type="radio" name="q6"><span>У PR не заповнили поле Refs: з шаблону, тож GitHub не зміг визначити власників</span></label><label class="opt ok"><input type="radio" name="q6"><span>У захисті гілки не ввімкнено «Require review from Code Owners»</span></label></div>
+    <div class="why yes">Так. Сам файл лише запитує рев'ю; блокує злиття правило захисту гілки або ruleset.</div>
+    <div class="why no">GitHub шукає CODEOWNERS у .github/, корені й docs/ — не в підтеках. Власників визначають за шляхами змінених файлів, а не за текстом PR. Без «Require review from Code Owners» запит на рев'ю ні до чого не зобов'язує.</div></div>
+  <div class="q"><div class="qt">7. У прозі специфікації «поріг — 6 слів», у коді <code>MIN_QUOTE_WORDS = 5</code>, усі перевірки зелені. Що запобіжить повторенню?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Нічний аудит дешевою моделлю: у досліді він знаходив саме цю розбіжність у кожному прогоні</span></label><label class="opt ok"><input type="radio" name="q7"><span>Не дублювати константу в прозі: посилання на неї або рядок-приклад на межі порогу</span></label><label class="opt"><input type="radio" name="q7"><span>Розширити trace.py, щоб він порівнював усі числа в специфікації з числами в коді</span></label></div>
+    <div class="why yes">Так. Друга копія значення, яку ніщо не синхронізує, рано чи пізно розійдеться. Рядок-приклад на межі виконується і падає.</div>
+    <div class="why no">Аудит знаходить розбіжність, але не запобігає їй і коштує прогону щоразу; порівняння «всіх чисел» дасть шум від кожної дати й номера рядка. Причина — дубль значення в тексті; лікування — посилання на константу або приклад, що виконується.</div></div>
+  <div class="q"><div class="qt">8. Тест суперечить специфікації, код погоджений з тестом, поведінка ще не в релізі. Що є джерелом істини?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Код і тест: вони узгоджені між собою, а документ розійшовся з обома</span></label><label class="opt"><input type="radio" name="q8"><span>Тест: він виконується в CI, а специфікацію ніхто автоматично не перевіряє</span></label><label class="opt ok"><input type="radio" name="q8"><span>Специфікація, доки власник не вирішив інакше; історія тесту покаже, чи зміна свідома</span></label></div>
+    <div class="why yes">Так. Це дрейф типу 3: тест могли «підправити», щоб пройшов. <code>git log -p</code> тесту покаже, чи було рішення; несвідому зміну відкочують разом із кодом.</div>
+    <div class="why no">Згода коду з тестом нічого не доводить, якщо тест змінили разом із кодом, — саме так виник дрейф у досліді. Поки поведінка не в релізі, правою лишається погоджена вимога.</div></div>
+  <div class="q"><div class="qt">9. Чому trace.py зараховує рядки прикладів як покриття лише тоді, коли файл специфікації згадано в тестах?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Рядок прикладу доводить поведінку, лише якщо його виконує pytest, інакше це текст</span></label><label class="opt"><input type="radio" name="q9"><span>GitHub показує рядки специфікації в рев'ю тільки для файлів, на які є тести</span></label><label class="opt"><input type="radio" name="q9"><span>Без цієї умови trace.py мусив би імпортувати тести, а він читає лише їхній AST</span></label></div>
+    <div class="why yes">Так. Таблиця, яку ніхто не виконує, — та сама проза, що може розійтися з кодом.</div>
+    <div class="why no">GitHub тут ні до чого, а AST trace.py читає незалежно від цієї умови. Суть у доказовості: приклад є доказом, лише коли тест його виконує.</div></div>
+  <div class="q"><div class="qt">10. Агентові-виконавцю додали правило <code>ask</code> на <code>Edit(./docs/spec/**)</code>. Що воно не зупинить?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Правку файла специфікації вбудованими інструментами агента Edit або Write</span></label><label class="opt ok"><input type="radio" name="q10"><span>Python-скрипт, який агент запустить і який сам відкриє файл на запис</span></label><label class="opt"><input type="radio" name="q10"><span>Команду <code>sed -i</code> чи перенаправлення <code>&gt;</code> у файл специфікації</span></label></div>
+    <div class="why yes">Так. Правила Edit поширюються на вбудовані інструменти й розпізнані shell-команди, але не на довільний підпроцес. Тому остаточний бар'єр — CODEOWNERS і захист гілки.</div>
+    <div class="why no">За документацією Claude Code, правила Edit діють для вбудованих інструментів, <code>sed</code>, <code>tee</code> і перенаправлень. Не діють вони для скрипта, що відкриває файл сам.</div></div>
+  <div class="q"><div class="qt">11. Під час реалізації агент виявив, що approved-вимога нездійсненна для квізів з 1–4 питань. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Виправити вимогу в тому ж code-PR, щоб рецензент бачив проблему і рішення разом</span></label><label class="opt ok"><input type="radio" name="q11"><span>Зупинити code-PR і відкрити окремий spec-PR з рішенням власника вимоги</span></label><label class="opt"><input type="radio" name="q11"><span>Реалізувати як написано, а проблему записати в BACKLOG для наступної ітерації</span></label></div>
+    <div class="why yes">Так. Зміна поведінки йде через spec-PR і власника з CODEOWNERS; code-PR продовжують після злиття.</div>
+    <div class="why no">У змішаному PR рецензент читає код, а не вимогу. Реалізація заздалегідь хибної вимоги — свідомий дрейф. Правку робить окремий spec-PR, і власник вирішує по суті.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>requirement id</td><td>Глобальний сталий ідентифікатор вимоги (<code>LEC-Q-004</code>), на який посилаються тести й коміти; повторно не використовується.</td></tr>
+<tr><td>traceability matrix</td><td>Таблиця «вимога → тести → коміти → статус»; тут вона виводиться з маркерів і трейлерів, а не пишеться руками.</td></tr>
+<tr><td>статуси вимоги</td><td>draft → approved → implemented → superseded → id; кожен статус задає, що вважається помилкою трасування.</td></tr>
+<tr><td>CODEOWNERS</td><td>Файл, що призначає власників шляхів, напр. <code>/docs/spec/</code>; злиття блокує лише разом із захистом гілки.</td></tr>
+<tr><td>spec-PR першим</td><td>Вимогу погоджують окремим PR; код посилається лише на злиті approved-вимоги.</td></tr>
+<tr><td>delta spec</td><td>Зміна, описана як ADDED / MODIFIED / REMOVED щодо чинної специфікації (OpenSpec); зливається при архівації.</td></tr>
+<tr><td>spec drift</td><td>Розбіжність специфікації, коду й тестів: змінився код; змінилась spec; тест кодує іншу поведінку.</td></tr>
+<tr><td>orphan / untested</td><td>Тест з id, якого немає в специфікаціях / implemented-вимога без жодного тесту чи прикладу.</td></tr>
+<tr><td>source of truth</td><td>Правило, що правити, коли spec і код розійшлися: залежить від статусу, релізу й класу вимоги.</td></tr>
+<tr><td>agent spec review</td><td>Перший прохід рецензування специфікації агентом до власника: механічні вади, суперечності, пропуски.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Специфікація під трасуванням</h3>
+<p>Візьміть 5–8 вимог свого проєкту (або S-07 з уроку 8.1), дайте їм глобальні id і статуси, пов'яжіть із тестами і зберіть матрицю: власним скриптом або trace.py з Lectern. Зламайте трасування трьома способами, покажіть вивід і опишіть, що перевірка принципово не бачить.</p>
+<h3>2. Дрейф і джерело істини</h3>
+<p>Розберіть кейс з трьома розбіжностями (текст — у завданні): класифікуйте кожну за типом, вирішіть за політикою джерела істини, що правити, і перетворіть кожну знахідку на перевірку, яка зловить її наступного разу.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners" target="_blank" rel="noopener">GitHub Docs — About code owners</a><span>розташування файла, «останній збіг перемагає», write-доступ, чернетки PR, ліміт 3 МБ</span></li>
+<li><a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches" target="_blank" rel="noopener">GitHub Docs — About protected branches</a><span>«Require review from Code Owners», обов'язкові перевірки статусу</span></li>
+<li><a href="https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository" target="_blank" rel="noopener">GitHub Docs — Creating a pull request template</a><span>розташування, <code>PULL_REQUEST_TEMPLATE/</code>, параметр <code>template</code></span></li>
+<li><a href="https://github.com/Fission-AI/OpenSpec/blob/main/docs/concepts.md" target="_blank" rel="noopener">OpenSpec — Concepts</a><span>v1.14.2 (15.10.2026) · specs і changes, delta-специфікації, архівація</span></li>
+<li><a href="https://github.com/github/spec-kit/blob/main/templates/commands/specify.md" target="_blank" rel="noopener">Spec Kit — команда specify</a><span>v1.2.0 (13.10.2026) · теки <code>specs/NNN-…</code>, <code>feature_numbering</code>, гілка через git-хук; <a href="https://github.com/github/spec-kit/blob/main/templates/spec-template.md" target="_blank" rel="noopener">шаблон spec</a> з <code>FR-001</code> і статусом</span></li>
+<li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Claude Code — Best practices</a><span>інтерв'ю → SPEC.md, якою має бути самодостатня специфікація</span></li>
+<li><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code — Permissions</a><span>правила <code>Edit(…)</code>: що вони покривають у Bash і чого не покривають</span></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md" target="_blank" rel="noopener">Codex — AGENTS.md</a><span>порядок пошуку файлів, <code>project_doc_max_bytes</code> = 32 KiB</span></li>
+<li><a href="https://cursor.com/docs/context/rules" target="_blank" rel="noopener">Cursor — Rules</a><span><code>.cursor/rules/*.mdc</code>, <code>globs</code>, <code>alwaysApply</code>, підтримка AGENTS.md</span></li>
+<li><a href="https://docs.pytest.org/en/stable/how-to/mark.html" target="_blank" rel="noopener">pytest — How to mark test functions</a><span>реєстрація маркерів, <code>--strict-markers</code></span></li>
+<li><a href="https://git-scm.com/docs/pretty-formats" target="_blank" rel="noopener">git — pretty formats</a><span><code>%(trailers:key=…,valueonly,separator=…)</code>; також <a href="https://git-scm.com/docs/git-interpret-trailers" target="_blank" rel="noopener">git interpret-trailers</a> і <a href="https://git-scm.com/docs/githooks" target="_blank" rel="noopener">githooks</a> (<code>commit-msg</code>, <code>--no-verify</code>)</span></li>
+<li><a href="https://discovery.ucl.ac.uk/749/1/2.2_rtprob.pdf" target="_blank" rel="noopener">Gotel, Finkelstein — An Analysis of the Requirements Traceability Problem</a><span>ICRE 1994 · визначення трасування вимог, pre-RS і post-RS</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 8.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 8.3 · Senomi<br><br><a href="lesson-39.html">← Урок 8.2</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-41.html">Урок 8.4 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

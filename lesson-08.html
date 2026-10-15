@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 1.5. Моделі й економіка: Opus, Sonnet, Haiku, ціни, латентність, prompt caching, batch</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="32" width="56" height="56" rx="8"/><rect x="48" y="48" width="24" height="24" rx="3"/><path d="M44 20v12M60 20v12M76 20v12M44 88v12M60 88v12M76 88v12M20 44h12M20 60h12M20 76h12M88 44h12M88 60h12M88 76h12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 1.5 · Модуль 1</div>
+<h1>Моделі й економіка: Opus, Sonnet, Haiku, ціни, латентність, prompt caching, batch</h1>
+<p class="lead">Вартість AI-фічі визначають не лише ціни моделей, а й те, скільки входу читається з кешу, що можна відкласти в batch і де потрібна сильна модель. Розбираємо прайс, латентність і кеш на реальних прогонах і складаємо модель вартості Lectern.</p>
+<div class="hero-meta"><span class="chip">Як працюють LLM — механіка під капотом</span><span class="chip t">≈ 55 хв</span><span class="chip a">13 карток</span><span class="chip g">перевірено 14.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#lineup"><b>01</b>Лінійка моделей</a><a href="#latency"><b>02</b>Латентність</a><a href="#caching"><b>03</b>Prompt caching</a><a href="#breakeven"><b>04</b>Економіка кешу</a><a href="#batch"><b>05</b>Batch API</a><a href="#choose"><b>06</b>Вибір моделі</a><a href="#plans"><b>07</b>Підписка чи API-ключ</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>порахувати вартість запиту з урахуванням кешу, batch, довгого контексту Haiku 5.5 і множника регіону;</li>
+    <li>розкласти затримку на TTFT і швидкість виходу та знати, що рухає кожну складову;</li>
+    <li>розставити точки <code>cache_control</code>, обрати TTL і перевірити влучання за полями <code>usage</code>;</li>
+    <li>вирішити, що відправляти в Batch API, а що лишити синхронним;</li>
+    <li>обрати модель під етап конвеєра за вартістю виконаної задачі, а не за ціною токена;</li>
+    <li>скласти модель вартості Lectern і порівняти конфігурації числами.</li>
+  </ul>
+</div>
+
+<section class="sec" id="lineup">
+<div class="sec-h"><span class="num">01</span><h2>Лінійка моделей<span class="sub">Рівні, ціни, межі</span></h2></div>
+<p>Станом на 14.10.2026 — чотири рівні. У всіх моделей контекст 1 млн токенів і до 128 тис. токенів виходу (до 300 тис. у Message Batches з beta-заголовком <code>output-300k-2026-03-24</code>).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Модель</th><th>Вхід / вихід, $ за MTok</th><th>Читання кешу</th><th>Затримка (за docs)</th><th>Призначення (за docs)</th></tr></thead>
+<tbody>
+<tr><td data-th="Модель">Claude Fable 5.1</td><td data-th="Вхід / вихід, $ за MTok">10 / 50</td><td data-th="Читання кешу">0,025× = $0,25</td><td data-th="Затримка (за docs)">повільна</td><td data-th="Призначення (за docs)">складні міркування, агентна робота на години</td></tr>
+<tr><td data-th="Модель">Claude Opus 5.5</td><td data-th="Вхід / вихід, $ за MTok">4 / 20</td><td data-th="Читання кешу">0,05× = $0,20</td><td data-th="Затримка (за docs)">помірна</td><td data-th="Призначення (за docs)">довгий агентний кодинг і knowledge work; старт для більшості задач</td></tr>
+<tr><td data-th="Модель">Claude Sonnet 5.5</td><td data-th="Вхід / вихід, $ за MTok">2 / 10</td><td data-th="Читання кешу">0,05× = $0,10</td><td data-th="Затримка (за docs)">швидка</td><td data-th="Призначення (за docs)">найкраще поєднання швидкості й інтелекту</td></tr>
+<tr><td data-th="Модель">Claude Haiku 5.5</td><td data-th="Вхід / вихід, $ за MTok">0,10 / 0,50 (промпт ≤ 100 тис.)<br>0,50 / 2,50 (промпт &gt; 100 тис.)</td><td data-th="Читання кешу">0,1× = $0,01</td><td data-th="Затримка (за docs)">найшвидша</td><td data-th="Призначення (за docs)">класифікація, витяг даних, маршрутизація, великі обсяги</td></tr>
+</tbody></table></div>
+<p><b>Claude Mythos 5.1</b> — можливості й ціни Fable 5.1, але лише для організацій, верифікованих Anthropic (наприклад, Cyber Verification Program). MTok — мільйон токенів.</p>
+<ul>
+<li><b>Вихід у 5 разів дорожчий за вхід</b> у кожної моделі: 1 тис. токенів відповіді коштує як 5 тис. токенів промпту.</li>
+<li><b>Opus 5.5 = 2× Sonnet 5.5</b> за кожною статтею, включно з кешем; Haiku 5.5 = 1/20 Sonnet, поки промпт до 100 тис. токенів.</li>
+<li><b>Поріг Haiku 5.5 — на запит:</b> промпт понад 100 тис. токенів (кеш теж рахується) множить на 5 усі ціни цього запиту, вихід теж. Інші моделі 4.6+ рахують увесь 1 млн за стандартною ціною.</li>
+<li><b>Регіон:</b> <code>inference_geo: "us"</code> на моделях 4.6+ множить усі категорії на 1,1; типовий <code>"global"</code> — без надбавки.</li>
+<li><b>Fast mode</b> (research preview, лише Claude API, лише Opus 5.5 / 5 / 4.8) — та сама модель у швидшій конфігурації інференсу: для Opus 5.5 $8 / $40 (2×) за до 2,5× більше токенів виходу на секунду. TTFT не змінює, з Batch API несумісний.</li>
+</ul>
+<figure class="fig">
+<div class="bars">
+  <div class="bar p"><span class="k">Fable 5.1 без кешу</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">$0,560</b></span></div>
+  <div class="bar"><span class="k">Opus 5.5 без кешу</span><span class="tr"><i style="--v:40%"></i><b style="--v:40%">$0,224</b></span></div>
+  <div class="bar m"><span class="k">Sonnet 5.5 без кешу</span><span class="tr"><i style="--v:20%"></i><b style="--v:20%">$0,112</b></span></div>
+  <div class="bar p"><span class="k">Fable 5.1 з кешем</span><span class="tr"><i style="--v:13.4%"></i><b style="--v:13.4%">$0,075</b></span></div>
+  <div class="bar"><span class="k">Opus 5.5 з кешем</span><span class="tr"><i style="--v:6.3%"></i><b style="--v:6.3%">$0,035</b></span></div>
+  <div class="bar m"><span class="k">Sonnet 5.5 з кешем</span><span class="tr"><i style="--v:3.1%"></i><b style="--v:3.1%">$0,018</b></span></div>
+  <div class="bar t"><span class="k">Haiku 5.5 без кешу</span><span class="tr"><i style="--v:1%"></i><b style="--v:1%">$0,0056</b></span></div>
+  <div class="bar t"><span class="k">Haiku 5.5 з кешем</span><span class="tr"><i style="--v:0.4%"></i><b style="--v:0.4%">$0,0011</b></span></div>
+</div>
+<figcaption>Один хід агента: 50 тис. токенів історії, 1 тис. нових, 1 тис. виходу. «З кешем»: історія читається з кешу, нові токени пишуться в 5-хвилинний кеш. Прайс на 14.10.2026. Opus 5.5 з кешем утричі дешевший за Sonnet 5.5 без кешу.</figcaption>
+</figure>
+<div class="key"><h4>Головне про ціни</h4>
+<p>Агентний цикл щоходу надсилає всю історію, тому <b>частка входу з кешу</b> важить більше за рівень моделі. За вимірами Anthropic агентні цикли на реальному трафіку читають з кешу в медіані 84% входу; менше 80% — ознака, що щось ламає кеш.</p>
+</div>
+</section>
+
+<section class="sec" id="latency">
+<div class="sec-h"><span class="num">02</span><h2>Латентність<span class="sub">TTFT і швидкість виходу</span></h2></div>
+<pre class="code" data-lang="text">латентність ≈ TTFT
+            + вихідні_токени / OTPS</pre>
+<p><b>TTFT</b> (time to first token) — час до першого токена відповіді, <b>OTPS</b> (output tokens per second) — швидкість генерації після нього. Рухають їх різні речі:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Фактор</th><th>На що впливає</th><th>Механізм і важіль</th></tr></thead>
+<tbody>
+<tr><td data-th="Фактор">Довжина промпту</td><td data-th="На що впливає">TTFT</td><td data-th="Механізм і важіль">Prefill: увесь вхід обробляється до першого токена. Кеш (і 5-хвилинний, і годинний) скорочує TTFT на довгих документах.</td></tr>
+<tr><td data-th="Фактор">Thinking</td><td data-th="На що впливає">TTFT видимого тексту, вартість</td><td data-th="Механізм і важіль">Міркування генеруються до відповіді й оплачуються як вихід, навіть якщо їхній текст не повертається. Важіль — <code>effort</code>.</td></tr>
+<tr><td data-th="Фактор">Розмір моделі</td><td data-th="На що впливає">OTPS і TTFT</td><td data-th="Механізм і важіль">Більша модель генерує повільніше; fast mode пришвидшує лише OTPS Opus.</td></tr>
+<tr><td data-th="Фактор">Довжина виходу</td><td data-th="На що впливає">загальний час</td><td data-th="Механізм і важіль">Лінійно; важелі — формат відповіді, <code>max_tokens</code>, <code>effort</code>.</td></tr>
+<tr><td data-th="Фактор">Мережа, черга, harness</td><td data-th="На що впливає">TTFT</td><td data-th="Механізм і важіль">Поза вашим контролем; домінує на коротких промптах.</td></tr>
+</tbody></table></div>
+<p><b>Streaming</b> не скорочує загальний час, але користувач бачить текст уже через TTFT. Для чату головна метрика — TTFT, для фонового конвеєра — загальний час.</p>
+<h3>Вимірювання: той самий промпт на трьох моделях</h3>
+<p>Промпт просить 8 пунктів по реченню (≈500 токенів виходу), інструменти вимкнено. Haiku і Sonnet — по три прогони, Opus — два.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Поясни в 8 нумерованих пунктах, по одному реченню в кожному, як працює кешування промптів в LLM API. Без вступу й висновку." --model haiku --output-format json --tools "" --strict-mcp-config --no-session-persistence &gt; b-haiku-1.json</span>
+<span class="ps">$ </span><span class="c">jq '{duration_ms, duration_api_ms, ttft_stream_ms, ttft_ms, total_cost_usd, out: .usage.output_tokens}' b-haiku-1.json</span>
+{
+  "duration_ms": 4019,
+  "duration_api_ms": 4832,
+  "ttft_stream_ms": 792,
+  "ttft_ms": 3969,
+  "total_cost_usd": 0.0006461,
+  "out": 515
+}</pre>
+<div class="cap">реальний прогін · Claude Code 2.1.299 · 14.10.2026 · модель claude-haiku-5-5 · вибрані поля JSON; попередження в stderr про порожній stdin пропущено</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Модель</th><th>TTFT, мс (медіана · діапазон)</th><th>≈ OTPS, токенів/с</th><th>duration_ms (медіана)</th><th>total_cost_usd (медіана)</th></tr></thead>
+<tbody>
+<tr><td data-th="Модель">Haiku 5.5 · 3 прогони</td><td data-th="TTFT, мс (медіана · діапазон)">1004 · 792–1677</td><td data-th="≈ OTPS, токенів/с">162 (158–186)</td><td data-th="duration_ms (медіана)">4019</td><td data-th="total_cost_usd (медіана)">$0,00060</td></tr>
+<tr><td data-th="Модель">Sonnet 5.5 · 3 прогони</td><td data-th="TTFT, мс (медіана · діапазон)">1283 · 1126–2413</td><td data-th="≈ OTPS, токенів/с">114 (110–115)</td><td data-th="duration_ms (медіана)">5696</td><td data-th="total_cost_usd (медіана)">$0,0092</td></tr>
+<tr><td data-th="Модель">Opus 5.5 · 2 прогони</td><td data-th="TTFT, мс (медіана · діапазон)">1598 і 2711</td><td data-th="≈ OTPS, токенів/с">88 і 85</td><td data-th="duration_ms (медіана)">7839 і 9394</td><td data-th="total_cost_usd (медіана)">$0,033 і $0,018</td></tr>
+</tbody></table></div>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">Haiku 5.5</span><span class="tr"><i style="--v:87%"></i><b class="in" style="--v:87%">162 ток/с</b></span></div>
+  <div class="bar m"><span class="k">Sonnet 5.5</span><span class="tr"><i style="--v:61%"></i><b class="in" style="--v:61%">114 ток/с</b></span></div>
+  <div class="bar"><span class="k">Opus 5.5</span><span class="tr"><i style="--v:46%"></i><b class="in" style="--v:46%">≈ 86 ток/с</b></span></div>
+</div>
+<figcaption>OTPS ≈ <code>output_tokens / (ttft_ms − ttft_stream_ms)</code>: за документацією Agent SDK, <code>ttft_stream_ms</code> — відкриття потоку, <code>ttft_ms</code> — повністю отримане перше повідомлення. Один комп'ютер, один вечір, 2–3 прогони: орієнтир, а не бенчмарк.</figcaption>
+</figure>
+<ol class="steps">
+<li><b>TTFT на короткому промпті (≈4 тис. токенів) моделі майже не розрізняє:</b> діапазони перекриваються, домінують мережа й черга.</li>
+<li><b>OTPS стабільний і різний:</b> Haiku ≈1,4× швидший за Sonnet і ≈1,9× за Opus; відповідь на 500 токенів — 4,0 с проти 5,7 і ≈8,6 с.</li>
+<li><b>Перший прогін Opus майже вдвічі дорожчий за другий</b> ($0,033 проти $0,018): він записав у кеш 2,8 тис. токенів системного промпту Claude Code за ціною годинного запису (2×). Після прогріву Opus коштує ≈2× Sonnet, як у прайсі.</li>
+</ol>
+<div class="note warn"><span class="lbl">Пастка вимірювання</span>
+<p>У <code>modelUsage</code> кожного прогону Sonnet і Opus є другий рядок — допоміжний виклик Claude Code на Haiku 5.5 (≈1,2 тис. токенів входу, $0,00013). <code>duration_api_ms</code> буває більшим за <code>duration_ms</code> (4832 проти 4019 мс), імовірно, бо враховує і такі виклики. Для латентності беріть <code>ttft_stream_ms</code> і <code>duration_ms</code>, для вартості моделі — її рядок у <code>modelUsage</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="caching">
+<div class="sec-h"><span class="num">03</span><h2>Prompt caching<span class="sub">Як працює префіксний кеш</span></h2></div>
+<p>Кеш зберігає не відповіді, а <b>оброблений префікс запиту</b>. Ключ — хеш вмісту від початку запиту до блоку з <code>cache_control</code> включно, у порядку <code>tools</code> → <code>system</code> → <code>messages</code>. Збіг побайтовий: зміна в будь-якому місці робить недійсним усе після неї. На відповідь моделі кеш не впливає.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 318" role="img" aria-label="Три запити з однаковим префіксом: запис, читання і промах після зміни system">
+  <text x="8" y="16" class="tx b">Запит 1 · холодний кеш</text>
+  <rect x="8" y="24" width="44" height="30" rx="5" class="bx m"/><text x="30" y="43" text-anchor="middle" class="tx s">tools</text>
+  <rect x="54" y="24" width="60" height="30" rx="5" class="bx m"/><text x="84" y="43" text-anchor="middle" class="tx s">system</text>
+  <rect x="116" y="24" width="150" height="30" rx="5" class="bx m"/><text x="191" y="43" text-anchor="middle" class="tx s">текст лекції</text>
+  <path d="M268 18 V 60" class="ln a"/><text x="268" y="72" text-anchor="middle" class="tx s a">cache_control</text>
+  <rect x="272" y="24" width="80" height="30" rx="5" class="bx"/><text x="312" y="43" text-anchor="middle" class="tx s">питання 1</text>
+  <text x="8" y="90" class="tx s">усе до точки записано в кеш: 1,25× (5 хв) або 2× (1 год)</text>
+  <text x="8" y="122" class="tx b">Запит 2 · той самий префікс</text>
+  <rect x="8" y="130" width="44" height="30" rx="5" class="bx t"/><text x="30" y="149" text-anchor="middle" class="tx s">tools</text>
+  <rect x="54" y="130" width="60" height="30" rx="5" class="bx t"/><text x="84" y="149" text-anchor="middle" class="tx s">system</text>
+  <rect x="116" y="130" width="150" height="30" rx="5" class="bx t"/><text x="191" y="149" text-anchor="middle" class="tx s">текст лекції</text>
+  <path d="M268 124 V 166" class="ln a"/>
+  <rect x="272" y="130" width="80" height="30" rx="5" class="bx"/><text x="312" y="149" text-anchor="middle" class="tx s">питання 2</text>
+  <text x="8" y="184" class="tx s">префікс прочитано, питання — за повною ціною</text>
+  <text x="8" y="216" class="tx b">Запит 3 · змінено system</text>
+  <rect x="8" y="224" width="44" height="30" rx="5" class="bx t"/><text x="30" y="243" text-anchor="middle" class="tx s">tools</text>
+  <rect x="54" y="224" width="60" height="30" rx="5" class="bx p"/><text x="84" y="243" text-anchor="middle" class="tx s">system′</text>
+  <rect x="116" y="224" width="150" height="30" rx="5" class="bx p"/><text x="191" y="243" text-anchor="middle" class="tx s">текст лекції</text>
+  <path d="M268 218 V 260" class="ln a"/>
+  <rect x="272" y="224" width="80" height="30" rx="5" class="bx"/><text x="312" y="243" text-anchor="middle" class="tx s">питання 3</text>
+  <text x="8" y="278" class="tx s">промах від system: лекцію знову записано</text>
+  <path d="M8 300 H 352" class="ln d"/>
+  <text x="180" y="314" text-anchor="middle" class="tx s">бірюзове — читання, жовте — запис, рожеве — промах</text>
+</svg>
+<figcaption>Лекція незмінна, змінюється лише питання після точки кешу. Зміна вище за точку робить недійсним увесь префікс після неї.</figcaption>
+</figure>
+<h3>Від чого залежить влучання</h3>
+<ul>
+<li><b>Запис — лише на точці.</b> Читання шукає записи попередніх запитів не далі ніж на 20 блоків назад від точки. Точок до 4, наприклад окремо для інструментів і для контексту, що оновлюється щодня.</li>
+<li><b>Мінімум:</b> 512 токенів для Fable 5.1 і моделей 5.5, 1 024 для Sonnet 5 і Opus 4.8, 4 096 для Haiku 4.5. Коротший префікс мовчки не кешується: помилки немає, обидва поля кешу в <code>usage</code> нульові.</li>
+<li><b>TTL рахується від початку запиту</b>, кожне влучання безкоштовно його оновлює. Після відповіді, що стрімилась 4 хвилини, 5-хвилинний кеш проживе ще хвилину.</li>
+<li><b>Паралельні запити на холодному кеші пишуть усі:</b> запис доступний лише після початку першої відповіді.</li>
+<li><b>Ізоляція:</b> кеш окремий для кожного workspace (Claude API) і для кожної моделі.</li>
+<li><b>Automatic caching</b> — одне поле <code>cache_control</code> на верхньому рівні: точка сама стає на останній блок. Якщо цей блок щоразу інший (мітка часу), читань не буде, і потрібна явна точка в кінці статичної частини.</li>
+</ul>
+<pre class="code" data-lang="python"><span class="k">import</span> anthropic
+client = anthropic.Anthropic()
+resp = client.messages.create(
+    model=<span class="s">"claude-sonnet-5-5"</span>,
+    max_tokens=<span class="n">2000</span>,
+    system=[
+        {<span class="s">"type"</span>: <span class="s">"text"</span>,
+         <span class="s">"text"</span>: INSTRUCTIONS},
+        {<span class="s">"type"</span>: <span class="s">"text"</span>,
+         <span class="s">"text"</span>: lecture_text,
+         <span class="cm"># точка кешу</span>
+         <span class="s">"cache_control"</span>: {
+             <span class="s">"type"</span>: <span class="s">"ephemeral"</span>,
+             <span class="s">"ttl"</span>: <span class="s">"1h"</span>}},
+    ],
+    messages=[{<span class="s">"role"</span>: <span class="s">"user"</span>,
+               <span class="s">"content"</span>: QUIZ_TASK}],
+)
+u = resp.usage
+<span class="cm"># увесь вхід = read + creation</span>
+<span class="cm">#   + input_tokens (після точки)</span>
+print(u.cache_read_input_tokens,
+      u.cache_creation_input_tokens,
+      u.input_tokens)</pre>
+<h3>Що ламає кеш</h3>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Що змінилось</th><th>Що стає недійсним</th></tr></thead>
+<tbody>
+<tr><td>Визначення інструментів (назва, опис, параметри)</td><td>усе: tools, system, messages</td></tr>
+<tr><td>Увімкнення web search або citations, перемикання <code>speed: "fast"</code></td><td>system і messages</td></tr>
+<tr><td><code>tool_choice</code>, додані чи видалені зображення</td><td>messages</td></tr>
+<tr><td>Конфігурація thinking, значення <code>effort</code></td><td>messages; на деяких моделях також tools і system</td></tr>
+<tr><td>Інша модель</td><td>усе: кеш у кожної моделі свій</td></tr>
+</tbody></table></div>
+<p>Змінити інструкцію посеред розмови без промаху (Opus 5.5, Sonnet 5.5, Haiku 5.5, Fable 5.1) можна повідомленням <code>{"role": "system"}</code> у <code>messages</code>, не чіпаючи верхнє <code>system</code>. Claude Code кешує автоматично, і ті самі правила дають там один повільний і дорогий хід після <code>/model</code>, <code>/compact</code> чи підключення MCP-сервера без відкладеного завантаження інструментів. Тактики економії в Claude Code — у модулі 5.5.</p>
+</section>
+
+<section class="sec" id="breakeven">
+<div class="sec-h"><span class="num">04</span><h2>Економіка кешу<span class="sub">Коли запис окупається</span></h2></div>
+<p>Префікс P токенів іде в 1 + k запитів; b — ціна входу, w і r — множники запису й читання. Без кешу: (1 + k)·P·b, з кешем: w·P·b + k·r·P·b. Кеш вигідний, коли:</p>
+<pre class="code" data-lang="text">k &gt; (w − 1) / (1 − r)
+
+5 хв (w = 1,25): k &gt; 0,26
+  → окупає 1 читання
+1 год (w = 2):   k &gt; 1,05
+  → окупають 2 читання</pre>
+<p>Для r від 0,025 до 0,1 межі майже не рухаються: <b>5-хвилинний запис окупає одне читання, годинний — два</b>, на будь-якій моделі. Префікс 100 тис. токенів на Sonnet 5.5:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Запитів з префіксом</th><th>Без кешу</th><th>Кеш 5 хв</th><th>Кеш 1 год</th></tr></thead>
+<tbody>
+<tr><td data-th="Запитів з префіксом">1 запит</td><td data-th="Без кешу">$0,20</td><td data-th="Кеш 5 хв">$0,25</td><td data-th="Кеш 1 год">$0,40</td></tr>
+<tr><td data-th="Запитів з префіксом">2 запити</td><td data-th="Без кешу">$0,40</td><td data-th="Кеш 5 хв">$0,26</td><td data-th="Кеш 1 год">$0,41</td></tr>
+<tr><td data-th="Запитів з префіксом">3 запити</td><td data-th="Без кешу">$0,60</td><td data-th="Кеш 5 хв">$0,27</td><td data-th="Кеш 1 год">$0,42</td></tr>
+</tbody></table></div>
+<p><b>Ціна промаху:</b> весь префікс за ціною запису замість читання. На 100 тис. токенів це $0,50 замість $0,02 на Opus 5.5 (25×), 50× на Fable 5.1, 12,5× на інших. В одному з вимірів Anthropic (на попередній моделі) рядок статусу на 25 токенів на початку системного промпту зробив прогін агента дорожчим, ніж без кешу взагалі.</p>
+<p><b>Вибір TTL</b> — за паузами між запитами розмови. Ходи з інтервалом у секунди — 5 хвилин. Хоча б одна пауза з двадцяти від 5 хвилин до години і мало довших — година (беззбитковість, за даними Anthropic, ≈ один такий хід із тридцяти). Більшість довгих пауз понад годину — знову 5 хвилин: обидва TTL згорять, а годинний дорожче перезаписує.</p>
+<h3>Реальний прогін: три виклики над однією лекцією</h3>
+<p>Емулюємо Lectern: текст уроку 0.1 (≈28 тис. символів) іде в системний промпт, до нього — три різні задачі.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">SYS="Ти — генератор навчальних матеріалів Lectern. Нижче текст лекції. …$(cat lecture.txt)"</span>
+<span class="ps">$ </span><span class="c">claude -p "Склади одне питання квізу з чотирма варіантами за розділом про рівні автономії. Позначте правильний." --model sonnet --append-system-prompt "$SYS" --output-format json --tools "" --strict-mcp-config --no-session-persistence &lt; /dev/null &gt; c-1.json</span>
+<span class="ps">$ </span><span class="c">claude -p "Дай три терміни з лекції з визначенням в одне речення кожен." … &gt; c-2.json</span>
+<span class="ps">$ </span><span class="c">claude -p "Сформулюй одне домашнє завдання за лекцією, два речення." … &gt; c-3.json</span>
+<span class="ps">$ </span><span class="c">jq -c '{in: .usage.input_tokens, cache_write: .usage.cache_creation_input_tokens, cache_read: .usage.cache_read_input_tokens, out: .usage.output_tokens, sonnet_usd: .modelUsage["claude-sonnet-5-5"].costUSD}' c-1.json c-2.json c-3.json</span>
+{"in":2,"cache_write":15593,"cache_read":544,"out":405,"sonnet_usd":0.0664804}
+{"in":2,"cache_write":1104,"cache_read":15021,"out":182,"sonnet_usd":0.0077421}
+{"in":2,"cache_write":1100,"cache_read":15021,"out":134,"sonnet_usd":0.0072461}</pre>
+<div class="cap">реальний прогін · 14.10.2026 · claude-sonnet-5-5 · у 2-му і 3-му виклику «…» — ті самі прапорці, що в 1-му; текст промпту в SYS скорочено</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Виклик</th><th>Запис / читання кешу, токенів</th><th>Фактично (Sonnet)</th><th>Без кешу було б</th><th>Наростаючим підсумком</th></tr></thead>
+<tbody>
+<tr><td data-th="Виклик">1 · квіз</td><td data-th="Запис / читання кешу, токенів">15 593 / 544</td><td data-th="Фактично (Sonnet)">$0,0665</td><td data-th="Без кешу було б">$0,0363</td><td data-th="Наростаючим підсумком">$0,0665 проти $0,0363</td></tr>
+<tr><td data-th="Виклик">2 · терміни</td><td data-th="Запис / читання кешу, токенів">1 104 / 15 021</td><td data-th="Фактично (Sonnet)">$0,0077</td><td data-th="Без кешу було б">$0,0341</td><td data-th="Наростаючим підсумком">$0,0742 проти $0,0704</td></tr>
+<tr><td data-th="Виклик">3 · домашнє</td><td data-th="Запис / читання кешу, токенів">1 100 / 15 021</td><td data-th="Фактично (Sonnet)">$0,0072</td><td data-th="Без кешу було б">$0,0336</td><td data-th="Наростаючим підсумком">$0,0815 проти $0,1040</td></tr>
+</tbody></table></div>
+<p>«Без кешу» пораховано за прайсом з тих самих токенів.</p>
+<ol class="steps">
+<li><b>Перший виклик майже вдвічі дорожчий, ніж без кешу:</b> у <code>usage.cache_creation</code> — <code>ephemeral_1h_input_tokens: 15593</code>. З підпискою Claude Code запитує для основної розмови (і для <code>-p</code>) годинний TTL; з API-ключем типовий — 5 хвилин.</li>
+<li><b>Беззбитковість — на другому читанні</b>, як і передбачає формула для 1 год: після двох викликів кеш ще програвав, після трьох виграв 22%.</li>
+<li><b>≈1,1 тис. токенів щоразу записуються заново</b> — усе після останнього збігу: нове питання і службовий хвіст Claude Code. Частка входу з кешу — 93%.</li>
+</ol>
+</section>
+
+<section class="sec" id="batch">
+<div class="sec-h"><span class="num">05</span><h2>Batch API<span class="sub">Половина ціни за очікування</span></h2></div>
+<p>Message Batches API виконує пакет звичайних запитів Messages асинхронно за <b>50% стандартної ціни</b> входу й виходу.</p>
+<ul>
+<li>до 100 000 запитів або 256 МБ на пакет, що настане раніше;</li>
+<li>більшість пакетів готові менш ніж за годину; що не встигло за 24 години, стає <code>expired</code> і не оплачується;</li>
+<li>результати зберігаються 29 днів;</li>
+<li>знижки кешу й batch складаються, але влучання не гарантовані (запити йдуть паралельно, типово 30–98% влучань); для спільного контексту docs радять годинний TTL;</li>
+<li>fast mode у пакетах недоступний, <code>max_tokens: 0</code> (прогрів кешу) не приймається.</li>
+</ul>
+<div class="cols">
+<div class="cmp good"><h4>Підходить</h4><ul>
+<li>ніхто не чекає відповіді наживо;</li>
+<li>запити незалежні один від одного;</li>
+<li>результат перевіряється потім: evals, перегенерація квізів, переклади, переіндексація.</li>
+</ul></div>
+<div class="cmp bad"><h4>Не підходить</h4><ul>
+<li>чат і будь-який UI з очікуванням;</li>
+<li>агентний цикл: кожен крок залежить від результату попереднього;</li>
+<li>задачі з терміном, коротшим за 24 години.</li>
+</ul></div>
+</div>
+<pre class="code" data-lang="python"><span class="cm"># Lectern: нічна перегенерація квізів,</span>
+<span class="cm"># 3 варіанти на лекцію</span>
+requests = [{
+    <span class="s">"custom_id"</span>: f<span class="s">"quiz-{lec.id}-v{v}"</span>,
+    <span class="s">"params"</span>: {
+        <span class="s">"model"</span>: <span class="s">"claude-sonnet-5-5"</span>,
+        <span class="s">"max_tokens"</span>: <span class="n">4000</span>,
+        <span class="s">"system"</span>: [{
+            <span class="s">"type"</span>: <span class="s">"text"</span>,
+            <span class="s">"text"</span>: lec.text,
+            <span class="s">"cache_control"</span>: {
+                <span class="s">"type"</span>: <span class="s">"ephemeral"</span>,
+                <span class="s">"ttl"</span>: <span class="s">"1h"</span>}}],
+        <span class="s">"messages"</span>: [{
+            <span class="s">"role"</span>: <span class="s">"user"</span>,
+            <span class="s">"content"</span>: QUIZ_PROMPTS[v]}],
+    },
+} <span class="k">for</span> lec <span class="k">in</span> lectures <span class="k">for</span> v <span class="k">in</span> range(<span class="n">3</span>)]
+batch = client.messages.batches.create(
+    requests=requests)
+<span class="cm"># вранці: processing_status == "ended",</span>
+<span class="cm"># тоді batches.results(batch.id)</span></pre>
+<p>30 квізів (10 лекцій × 3 варіанти) на Sonnet 5.5 за моделлю вартості Lectern: синхронно $1,62, у batch $0,81, у batch з годинним кешем лекції $0,68. Останнє число припускає один запис і два читання на лекцію, тож закладайте $0,81, а кеш вважайте бонусом.</p>
+</section>
+
+<section class="sec" id="choose">
+<div class="sec-h"><span class="num">06</span><h2>Вибір моделі<span class="sub">Ціна виконаної задачі і routing</span></h2></div>
+<p>Anthropic радить порівнювати моделі за <b>вартістю виконаної задачі, а не токена</b>: сильніша модель часто закриває задачу за менше кроків. Виміри на підмножині SWE-bench Pro:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Модель · effort</th><th>Розв'язано задач</th><th>$ за розв'язану задачу</th></tr></thead>
+<tbody>
+<tr><td data-th="Модель · effort">Sonnet 5.5 · high (типовий)</td><td data-th="Розв&#x27;язано задач">87,6%</td><td data-th="$ за розв&#x27;язану задачу">0,11</td></tr>
+<tr><td data-th="Модель · effort">Opus 5.5 · low</td><td data-th="Розв&#x27;язано задач">87,4%</td><td data-th="$ за розв&#x27;язану задачу">0,12</td></tr>
+<tr><td data-th="Модель · effort">Opus 5.5 · medium (типовий)</td><td data-th="Розв&#x27;язано задач">92,8%</td><td data-th="$ за розв&#x27;язану задачу">0,22</td></tr>
+<tr><td data-th="Модель · effort">Fable 5.1 · high (типовий), один прогін</td><td data-th="Розв&#x27;язано задач">92,3%</td><td data-th="$ за розв&#x27;язану задачу">1,19</td></tr>
+</tbody></table></div>
+<p>Токени Opus удвічі дорожчі, а задача — на 7%. На GPQA Diamond Haiku 5.5 дав 85% проти 91% в Opus і Sonnet за ≈1/20 і ≈1/10 їхньої ціни правильної відповіді. Ще два правила: <b>спершу змінюйте <code>effort</code></b>, потім модель (типовий: <code>medium</code> в Opus 5.5 і Haiku 5.5, <code>high</code> у Sonnet 5.5 і Fable 5.1), і <b>рахуйте хвіст</b>: у прогоні WideSearch 2 задачі з 20 забрали 43% витрат, а провал дешевшої моделі оплачує її токени, повтор і наслідки.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Задача</th><th>З чого почати</th><th>Підстава</th></tr></thead>
+<tbody>
+<tr><td data-th="Задача">Класифікація, витяг полів, маршрутизація запитів, субагенти</td><td data-th="З чого почати">Haiku 5.5</td><td data-th="Підстава">призначення в docs; найвищий OTPS у нашому вимірі</td></tr>
+<tr><td data-th="Задача">Масова робота з результатом, який можна перевірити (цитати Lectern)</td><td data-th="З чого почати">Haiku 5.5</td><td data-th="Підстава">docs: «outputs you can check — try Haiku first»</td></tr>
+<tr><td data-th="Задача">Генерація контенту, повсякденний код, агентний tool use</td><td data-th="З чого почати">Sonnet 5.5</td><td data-th="Підстава">матриця вибору в docs</td></tr>
+<tr><td data-th="Задача">Агент, що кодує годинами, великий рефакторинг, складна інженерія</td><td data-th="З чого почати">Opus 5.5</td><td data-th="Підстава">docs: з Opus 5.5 починають більшість задач</td></tr>
+<tr><td data-th="Задача">Сесії на години, глибоке дослідження; Opus на <code>xhigh</code>/<code>max</code> не дотягує</td><td data-th="З чого почати">Fable 5.1</td><td data-th="Підстава">матриця вибору, capability-first</td></tr>
+</tbody></table></div>
+<p><b>Model routing</b> — вибір моделі для кожного запиту: правило або дешевий класифікатор оцінює складність і відправляє запит на відповідну модель. Anthropic описує два варіанти: дешевий виконавець ескалує складні рішення до моделі-радника (advisor) або сильний оркестратор роздає масову роботу дешевшим виконавцям. Готові приклади — <code>opusplan</code> у Claude Code (Opus у plan mode, Sonnet при виконанні) і режим Auto в Cursor (Cost, Balance, Intelligence). Ціна routing — кеш: у кожної моделі він свій, і перемикання посеред розмови дає повний промах. Проєктування routing — модуль 9.</p>
+<div class="tabs">
+<input type="radio" name="mdl-t" id="mdl-t1" checked><input type="radio" name="mdl-t" id="mdl-t2"><input type="radio" name="mdl-t" id="mdl-t3">
+<div class="tab-l"><label for="mdl-t1">Claude Code</label><label for="mdl-t2">Codex CLI</label><label for="mdl-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<p>Пріоритет: <code>/model</code> у сесії → <code>claude --model</code> → <code>ANTHROPIC_MODEL</code> → поле <code>model</code> у settings. Аліаси <code>opus</code>, <code>sonnet</code>, <code>haiku</code> на Anthropic API вказують на моделі 5.5, <code>fable</code> — на Fable 5.1, <code>opusplan</code> — гібрид. <code>--effort</code> задає рівень міркувань, <code>/fast</code> вмикає fast mode.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Перелічи п'ять найбільших міст України через кому. Лише назви, без пояснень." --model haiku --output-format json --tools "" --strict-mcp-config --no-session-persistence &lt; /dev/null | jq -r '.result, (.modelUsage | keys[]), .total_cost_usd'</span>
+Київ, Харків, Одеса, Дніпро, Донецьк
+claude-haiku-5-5
+0.00038623</pre>
+<div class="cap">реальний прогін · Claude Code 2.1.299 · 14.10.2026</div></div>
+</div>
+<div class="tab-p">
+<p>У Codex модель задає <code>--model</code> / <code>-m</code> (перекриває значення з <code>~/.codex/config.toml</code>), а в сесії — <code>/model</code>, який обирає модель і reasoning effort. <code>/fast</code> вмикає швидкий рівень обслуговування, якщо модель його має.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec -m gpt-6.1-sol "Оціни вартість конвеєра з cost.py"</span></pre>
+<div class="cap">команда з офіційної документації Codex · не запускалась у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p>У Cursor CLI — <code>--model &lt;model&gt;</code>, список доступних моделей дають <code>--list-models</code> або <code>agent models</code>, у сесії — <code>/model [filter]</code>. Режим Auto з Cursor Router сам обирає модель для кожного запиту; оплата — за ціною тієї моделі, куди потрапив запит.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">agent --list-models</span>
+<span class="ps">$ </span><span class="c">agent -p --model &lt;model&gt; "Оціни вартість конвеєра з cost.py"</span></pre>
+<div class="cap">команди з офіційної документації Cursor · не запускались у цьому уроці</div></div>
+</div>
+</div>
+</section>
+
+<section class="sec" id="plans">
+<div class="sec-h"><span class="num">07</span><h2>Підписка чи API-ключ<span class="sub">Економіка Claude Code</span></h2></div>
+<p>Дві моделі оплати Claude Code, за офіційними сторінками на 14.10.2026:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th></th><th>Підписка Pro / Max</th><th>API-ключ (Claude Console)</th></tr></thead>
+<tbody>
+<tr><td>Ціна</td><td data-th="Підписка Pro / Max">Pro — $20 на місяць ($17 при річній оплаті); Max — від $100, з 5× або 20× використання Pro за 5-годинну сесію</td><td data-th="API-ключ (Claude Console)">за токени за прайсом; стеля — лише ліміт витрат workspace</td></tr>
+<tr><td>Ліміти</td><td data-th="Підписка Pro / Max">вікно 5 годин, що зсувається, і тижневі ліміти; один пул для чату Claude і Claude Code; понад ліміт — usage credits за цінами API</td><td data-th="API-ключ (Claude Console)">rate limits за рівнем використання (Start, Build, Scale)</td></tr>
+<tr><td>TTL кешу основної розмови</td><td data-th="Підписка Pro / Max">1 година (у межах плану)</td><td data-th="API-ключ (Claude Console)">5 хвилин; <code>promptCacheTtl: "1h"</code> змінює</td></tr>
+<tr><td>Fast mode</td><td data-th="Підписка Pro / Max">лише з usage credits</td><td data-th="API-ключ (Claude Console)">за тарифом fast mode, якщо організації надано доступ</td></tr>
+</tbody></table></div>
+<p>Орієнтир з документації Claude Code: у корпоративних розгортаннях з оплатою за API в середньому ≈$13 на розробника за активний день і $150–250 на місяць, у 90% — менше $30 за день. Тобто за щоденної інтенсивної роботи ціна Max співмірна з типовим рахунком API, за епізодичної дешевшим буде API. Серверний код Lectern викликає Claude API з ключем і завжди платить за токени; Max включає $100–200 на місяць API-кредитів для Claude Platform.</p>
+<div class="note warn"><span class="lbl">Пастка автентифікації</span>
+<p><code>ANTHROPIC_API_KEY</code> в оточенні має пріоритет над входом через підписку (<code>/login</code>). Інтерактивний Claude Code один раз спитає, чи брати ключ, а в <code>-p</code> ключ <b>використовується завжди, без питання</b>. Забутий ключ у <code>.zshrc</code> робить скрипти платними за API, хоча ви платите за Max.</p>
+</div>
+<p><code>total_cost_usd</code> у <code>claude -p --output-format json</code> і Agent SDK — <b>оцінка на боці клієнта</b> за вбудованою таблицею цін. Для обліку грошей docs відсилають до Usage and Cost API і Console і застерігають не виставляти за цим полем рахунки користувачам. Наші перерахунки збігаються з ним лише тому, що ми рахуємо за тим самим прайсом.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: модель вартості курсу</span></h2></div>
+<p>Курс з 10 лекцій. Етапи: план курсу (один раз), урок, картки й домашнє (синхронно, над текстом лекції), квіз, перевірка цитат. <b>Обсяги токенів — припущення</b>: лекція 15 тис. (наш прогін з уроком 0.1 дав 15,6 тис.), інструкції етапу 2 тис., вихід уроку 6 тис., карток 2,5 тис., домашнього 0,8 тис., квізу 2 тис., звіту перевірки 1,5 тис. Ціни — прайс на 14.10.2026. Ядро скрипту:</p>
+<pre class="code" data-lang="python"><span class="k">def</span> call(model, inp, out, cached=<span class="n">0</span>,
+         cache=<span class="s">"none"</span>, batch=<span class="k">False</span>):
+    <span class="s">"""cache: none|write5m|write1h|read"""</span>
+    p = PRICE[model]
+    k = BATCH <span class="k">if</span> batch <span class="k">else</span> <span class="n">1.0</span>
+    <span class="k">if</span> cache == <span class="s">"read"</span>:
+        mult = p[<span class="s">"read"</span>]
+    <span class="k">elif</span> cache.startswith(<span class="s">"write"</span>):
+        mult = WRITE[cache[<span class="n">5</span>:]]
+    <span class="k">else</span>:
+        mult = <span class="n">1.0</span>
+    pref = cached * p[<span class="s">"in"</span>] * mult
+    usd = (pref + inp * p[<span class="s">"in"</span>]
+           + out * p[<span class="s">"out"</span>])
+    <span class="k">return</span> k * usd / 1e6
+
+
+<span class="k">def</span> course(gen, plan, check,
+           caching, batch):
+    total = call(plan, PLAN_IN, PLAN_OUT)
+    <span class="k">for</span> _ <span class="k">in</span> range(LECTURES):
+        <span class="cm"># урок, картки, домашнє</span>
+        <span class="k">for</span> i, out <span class="k">in</span> enumerate(GEN.values()):
+            mode = <span class="s">"none"</span>
+            <span class="k">if</span> caching:
+                mode = <span class="s">"read"</span> <span class="k">if</span> i <span class="k">else</span> <span class="s">"write5m"</span>
+            total += call(gen, INSTR_TOK, out,
+                          LECTURE_TOK, mode)
+        <span class="cm"># квіз і перевірка цитат</span>
+        total += call(gen, INSTR_TOK, QUIZ_OUT,
+                      LECTURE_TOK, batch=batch)
+        total += call(check,
+                      LECTURE_TOK + GEN[<span class="s">"lesson"</span>],
+                      CHECK_OUT, batch=batch)
+    <span class="k">return</span> total</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 cost_model.py</span>
+A · усе Opus, без кешу   $ 6.26 100%
+B · модель під етап      $ 2.66  42%
+C · B + кеш + batch      $ 1.88  30%
+break-even 5m opus: k &gt; 0.26
+break-even 5m haiku: k &gt; 0.28
+break-even 1h opus: k &gt; 1.05
+break-even 1h haiku: k &gt; 1.11
+Haiku 1x150k $0.0788 · 10x15k $0.0158
+квізи x30: $1.62 · batch $0.81 · +кеш $0.68
+C: вхід $0.79 · вихід $1.09 (58%)</pre>
+<div class="cap">реальний вивід · Python 3.9 · 14.10.2026</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Конфігурація</th><th>План · генерація · перевірка</th><th>Курс, $</th></tr></thead>
+<tbody>
+<tr><td data-th="Конфігурація">A · наївна</td><td data-th="План · генерація · перевірка">Opus · Opus · Opus, без кешу, синхронно</td><td data-th="Курс, $">6,26</td></tr>
+<tr><td data-th="Конфігурація">B · модель під етап</td><td data-th="План · генерація · перевірка">Opus · Sonnet · Haiku, без кешу</td><td data-th="Курс, $">2,66 (−58%)</td></tr>
+<tr><td data-th="Конфігурація">C · B + кеш + batch</td><td data-th="План · генерація · перевірка">лекція в 5-хвилинному кеші для трьох синхронних етапів; квіз і перевірка — у batch</td><td data-th="Курс, $">1,88 (−70%)</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Найбільший крок — модель під етап</b> (−58%). Якість генерації на Sonnet треба підтвердити evals (модуль 12), інакше економія фіктивна.</li>
+<li><b>Після кешу й batch 58% вартості C — вихід.</b> Наступний важіль — довжина виходу й <code>effort</code>: 6 тис. токенів виходу уроку дорожчі за весь його вхід.</li>
+<li><b>Перевірка цитат на Haiku коштує центи</b>, поки запит менший за 100 тис. токенів; весь курс одним запитом (150 тис.) — уп'ятеро дорожче.</li>
+</ul>
+<div class="project"><div class="ph"><b>Lectern</b> · модуль 1 · модель вартості</div><div class="pb">
+<p>Додайте в <code>lectern/</code> файл <code>src/lectern/cost.py</code> з <code>call</code> і <code>course</code>, підставте свої припущення (кількість лекцій, довжину PDF у токенах з уроку 1.1) і впишіть результат у розділ «бюджет» PRD з уроку 0.2. Покрийте модуль unit-тестом на відомому прикладі: 1 млн вхідних токенів Sonnet 5.5 = $2.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Де губляться гроші й секунди</span></h2></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Помилка</th><th>Наслідок і виправлення</th></tr></thead>
+<tbody>
+<tr><td>Порівнювати моделі за ціною токена</td><td>Дешевша модель, що провалює задачу, платить за провал і повтор. Рахуйте вартість виконаної задачі на власних evals.</td></tr>
+<tr><td>Мітка часу або ID запиту на початку системного промпту</td><td>Кожен запит — повний запис, читань нуль, дорожче, ніж без кешу. Змінне — лише після останньої точки кешу.</td></tr>
+<tr><td>Кешувати промпт коротший за мінімум</td><td>Мовчки без кешу. Перевіряйте поля кешу в <code>usage</code>, а не наявність позначки в запиті.</td></tr>
+<tr><td>Увесь курс одним запитом до Haiku 5.5</td><td>Понад 100 тис. токенів — усі токени запиту, включно з виходом, у 5 разів дорожчі. Діліть на запити до порогу.</td></tr>
+<tr><td>Міряти TTFT одним запуском на короткому промпті</td><td>Шум мережі більший за різницю моделей. Мінімум 5 прогонів на промптах реальної довжини.</td></tr>
+<tr><td>Вважати клієнтську оцінку вартості рахунком</td><td><code>total_cost_usd</code> рахують за прайсом на вашому боці. Гроші — у Usage and Cost API і Console.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Порахуйте в голові</span></h2></div>
+<p>Натисніть на картку, щоб перевірити відповідь.</p>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">200k вхід + 10k вихід</span><span class="h">Sonnet 5.5, без кешу?</span></span><span class="b"><span class="t">$0,50</span><span class="d">0,2 × $2 + 0,01 × $10 = $0,40 + $0,10</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">кеш 1 год</span><span class="h">скільки читань окупають запис?</span></span><span class="b"><span class="t">Два</span><span class="d">запис 2× окупається, коли k &gt; 1/(1 − r) ≈ 1,05</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">відповідь на 600 токенів</span><span class="h">Haiku, ≈160 ток/с, TTFT 1 с</span></span><span class="b"><span class="t">≈ 4,7 с</span><span class="d">1 + 600 / 160 = 4,75 с; на Opus (≈86 ток/с) — ≈ 8 с</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">fast mode Opus 5.5</span><span class="h">що купуєте за 2× ціни?</span></span><span class="b"><span class="t">До 2,5× OTPS</span><span class="d">швидший вихід; TTFT той самий; batch недоступний</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Haiku 5.5, промпт 120k</span><span class="h">яка ціна виходу?</span></span><span class="b"><span class="t">$2,50 за MTok</span><span class="d">понад 100k ціни всього запиту ×5, вихід теж</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">batch + кеш</span><span class="h">чи складаються знижки?</span></span><span class="b"><span class="t">Так, але кеш не гарантований</span><span class="d">влучання в пакетах best-effort, типово 30–98%</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Префікс 100 тис. токенів на Sonnet 5.5 з годинним кешем. Скільки запитів з ним потрібно, щоб кеш почав економити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Кеш економить уже з першого запиту</span></label><label class="opt"><input type="radio" name="q1"><span>Два: запис і одне читання, як і з 5-хвилинним</span></label><label class="opt ok"><input type="radio" name="q1"><span>Три: запис і два читання</span></label></div>
+    <div class="why yes">Так. Запис 2× окупається при k &gt; 1/(1 − 0,05) ≈ 1,05 читання: $0,41 проти $0,40 після двох запитів, $0,42 проти $0,60 після трьох.</div>
+    <div class="why no">Годинний запис коштує 2×, тож після двох запитів кеш коштує $0,41 проти $0,40 без кешу; одним читанням окупається лише 5-хвилинний запис. Виграш починається з другого читання.</div></div>
+  <div class="q"><div class="qt">2. На початок системного промпту додали поточний час, а <code>cache_control</code> стоїть у його кінці. Що буде в <code>usage</code>?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Щоразу великий <code>cache_creation_input_tokens</code> і нульовий <code>cache_read_input_tokens</code></span></label><label class="opt"><input type="radio" name="q2"><span>Великий <code>cache_read_input_tokens</code>: кеш пропустить мітку часу й прочитає решту промпту</span></label><label class="opt"><input type="radio" name="q2"><span>Нулі в обох полях кешу: змінний префікс API мовчки не кешує</span></label></div>
+    <div class="why yes">Так. Хеш префікса щоразу інший: кожен запит платить за запис і жодного разу не читає, тобто дорожче, ніж без кешу.</div>
+    <div class="why no">Кеш — побайтовий збіг префікса, і зміна на початку робить недійсним усе після неї, а «мовчки не кешується» лише префікс, коротший за мінімум. Тут кожен запит пише кеш і жодного разу його не читає.</div></div>
+  <div class="q"><div class="qt">3. Чат-тьютор Lectern: студент відповідає через 10–15 хвилин, рідко пізніше за годину. Який TTL кешу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>5 хвилин: запис дешевший, а кожне влучання оновлює TTL</span></label><label class="opt ok"><input type="radio" name="q3"><span>1 година, хоч запис і дорожчий</span></label><label class="opt"><input type="radio" name="q3"><span>Без кешу: між ходами студента він однаково згорить</span></label></div>
+    <div class="why yes">Так. Пауза перед кожним ходом лежить між 5 хвилинами й годиною: 5-хвилинний кеш щоразу згоряв би, годинний її переживає.</div>
+    <div class="why no">5-хвилинний кеш згорить до відповіді студента, і кожен хід перезапише всю історію, а годинний цю паузу переживе. Правило: хоча б 1 пауза з 20 між 5 хв і годиною — беріть годину.</div></div>
+  <div class="q"><div class="qt">4. Класифікатор вхідних листів повертає одне слово. Що визначає латентність і що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>OTPS: fast mode на Opus 5.5 дає до 2,5× швидший вихід</span></label><label class="opt ok"><input type="radio" name="q4"><span>TTFT: Haiku 5.5, статична частина промпту в кеші, низький effort</span></label><label class="opt"><input type="radio" name="q4"><span>Довжина виходу: обмежити <code>max_tokens</code> і попросити коротшу відповідь</span></label></div>
+    <div class="why yes">Так. За одного токена виходу майже весь час — TTFT: prefill, міркування, мережа. Кеш скорочує prefill, низький effort — міркування.</div>
+    <div class="why no">Вихід — один токен, тож OTPS і довжина відповіді нічого не дають. Працювати треба з TTFT.</div></div>
+  <div class="q"><div class="qt">5. Агент на Opus 5.5 стрімить довгі відповіді, користувачі скаржаться на швидкість. Що дасть fast mode?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Удвічі коротший TTFT за ту саму ціну: інференс іде на швидшому залізі</span></label><label class="opt"><input type="radio" name="q5"><span>Перемикання на меншу й швидшу модель за нижчою ціною, ніж Opus</span></label><label class="opt ok"><input type="radio" name="q5"><span>До 2,5× швидший вихід за $8 / $40 замість $4 / $20; TTFT не зміниться</span></label></div>
+    <div class="why yes">Так. Та сама модель у швидшій конфігурації інференсу: виграш в OTPS, саме там, де проблема.</div>
+    <div class="why no">Fast mode не змінює модель і не прискорює TTFT: він дає до 2,5× OTPS за 2× ціни.</div></div>
+  <div class="q"><div class="qt">6. Треба вночі перегенерувати 300 квізів для 10 курсів, результат потрібен до 9:00. Що обрати?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Batch API: −50% із запуском звечора, а кеш — лише бонус</span></label><label class="opt"><input type="radio" name="q6"><span>Batch API з <code>max_tokens: 0</code>, щоб спершу прогріти кеш лекцій</span></label><label class="opt"><input type="radio" name="q6"><span>Batch API з fast mode, щоб гарантовано встигнути до 9:00</span></label></div>
+    <div class="why yes">Так. Запити незалежні, ніхто не чекає наживо, 24-годинне вікно перекриває ніч. Влучання кешу в пакетах не гарантовані.</div>
+    <div class="why no">Fast mode з batch несумісний, а <code>max_tokens: 0</code> у пакетах не приймається. Batch підходить і без них: запити незалежні, ніхто не чекає наживо, а 24-годинне вікно перекриває ніч.</div></div>
+  <div class="q"><div class="qt">7. У CI запускають <code>claude -p</code>, в оточенні є <code>ANTHROPIC_API_KEY</code>, а розробник має Max. Хто платить?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q7"><span>Організація ключа, за цінами API</span></label><label class="opt"><input type="radio" name="q7"><span>Підписка Max, бо вона має пріоритет</span></label><label class="opt"><input type="radio" name="q7"><span>Claude Code спитає, чим платити</span></label></div>
+    <div class="why yes">Так. <code>ANTHROPIC_API_KEY</code> стоїть вище за <code>/login</code>, а в <code>-p</code> використовується завжди, без питання.</div>
+    <div class="why no">Питання про ключ буває лише в інтерактивному режимі. У <code>-p</code> присутній ключ використовується завжди.</div></div>
+  <div class="q"><div class="qt">8. На SWE-bench Pro Sonnet 5.5 (high) розв'язав 87,6% задач по $0,11, Opus 5.5 (low) — 87,4% по $0,12. Який висновок?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Ціна токена погано передбачає ціну задачі; порівнюйте моделі й effort на evals</span></label><label class="opt"><input type="radio" name="q8"><span>Opus має вдвічі дорожчі токени, тож і кожна задача на ньому вдвічі дорожча</span></label><label class="opt"><input type="radio" name="q8"><span>Sonnet кращий за Opus для коду: розв'язує більше задач і дешевше</span></label></div>
+    <div class="why yes">Так. Вдвічі дорожчі токени дали +7% до ціни задачі, а рейтинг змінюється від навантаження до навантаження.</div>
+    <div class="why no">Різниця за задачу — 7%, а не 2×, а на типовому medium Opus розв'язує 92,8%, більше за Sonnet. Висновок залежить від задачі й effort, а не від прайсу.</div></div>
+  <div class="q"><div class="qt">9. Сервіс виставляє клієнтам рахунок за <code>total_cost_usd</code> з Agent SDK. Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Нічого: це точна сума, яку Anthropic спише з рахунку організації за запит</span></label><label class="opt ok"><input type="radio" name="q9"><span>Це клієнтська оцінка за вбудованим прайсом; гроші — в Usage and Cost API</span></label><label class="opt"><input type="radio" name="q9"><span>Поле не враховує читання з кешу, тож рахунки клієнтам вийдуть завищеними</span></label></div>
+    <div class="why yes">Так. Оцінка може розходитися з рахунком: контрактні ціни, правила, яких клієнт не моделює.</div>
+    <div class="why no">Кеш у полі враховано, наш перерахунок збігся. Проблема в тому, що це клієнтська оцінка за list price, а не облікові дані.</div></div>
+  <div class="q"><div class="qt">10. У конфігурації C Lectern 58% вартості — вихідні токени. Який наступний крок дасть найбільше?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Перевести всі етапи на годинний кеш, щоб читання охопили й квіз</span></label><label class="opt"><input type="radio" name="q10"><span>Закешувати вихід уроку: кеш зріже вихідні токени, як зрізав вхідні</span></label><label class="opt ok"><input type="radio" name="q10"><span>Скоротити вихід уроку (формат, <code>max_tokens</code>, effort), звіряючи якість на evals</span></label></div>
+    <div class="why yes">Так. Кеш уже зрізав вхід, далі гроші у виході, який у 5 разів дорожчий. Скорочувати — лише разом з evals.</div>
+    <div class="why no">Кеш працює лише з входом — і для читання, і для запису, — а більша частина вартості тепер у виході, у 5 разів дорожчому. Скорочувати його — лише разом з evals.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>Opus / Sonnet / Haiku</td><td>Рівні моделей Claude від сильного й дорогого до швидкого й дешевого; над ними Fable.</td></tr>
+<tr><td>MTok</td><td>Мільйон токенів, одиниця прайсу.</td></tr>
+<tr><td>ціна входу й виходу</td><td>Окремі тарифи на токени промпту й відповіді; у Claude вихід у 5 разів дорожчий.</td></tr>
+<tr><td>prompt caching</td><td>Повторне використання обробленого префікса запиту за частку ціни входу.</td></tr>
+<tr><td>cache_control breakpoint</td><td>Позначка на блоці запиту: префікс до неї включно записується в кеш; до 4 на запит.</td></tr>
+<tr><td>cache write / cache hit</td><td>Запис префікса (1,25× або 2×) і читання з кешу (0,1×, 0,05× або 0,025× залежно від моделі).</td></tr>
+<tr><td>TTL кешу</td><td>Час життя запису: 5 хвилин або 1 година від початку запиту, кожне влучання оновлює.</td></tr>
+<tr><td>Batch API</td><td>Асинхронна обробка пакетів запитів за 50% ціни, результати протягом 24 годин.</td></tr>
+<tr><td>TTFT</td><td>Час до першого токена відповіді: prefill промпту, міркування, мережа й черга.</td></tr>
+<tr><td>OTPS</td><td>Швидкість генерації виходу, токенів за секунду; залежить від моделі та fast mode.</td></tr>
+<tr><td>fast mode</td><td>Швидша конфігурація інференсу Opus: до 2,5× OTPS за 2× ціни, у research preview.</td></tr>
+<tr><td>model routing</td><td>Вибір моделі для кожного запиту за складністю: дешеві запити — на дешеву модель.</td></tr>
+<tr><td>total_cost_usd</td><td>Оцінка вартості в результаті Claude Code / Agent SDK, порахована на клієнті за прайсом.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Модель вартості власної AI-фічі</h3>
+<p>Розкладіть свою фічу (або Lectern) на етапи, оберіть модель для кожного з обґрунтуванням, позначте припущення, сплануйте кеш і batch, порахуйте три конфігурації й покажіть, де гроші. Текст завдання — у полі домашнього завдання.</p>
+<h3>2. Вимірювання латентності й кешу</h3>
+<p>Повторіть виміри уроку на двох моделях і своєму промпті, проведіть експеримент із кешем на префіксі від 2 тис. токенів і поясніть кожне число в <code>usage</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 14.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Anthropic — Pricing</a><span>ціни моделей, кеш, batch, довгий контекст Haiku 5.5, data residency, fast mode</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/models/overview" target="_blank" rel="noopener">Anthropic — Models overview</a><span>лінійка, контекст, вихід, типовий effort, порівняльна затримка</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/models/choosing-a-model" target="_blank" rel="noopener">Anthropic — Choosing the right model</a><span>матриця вибору, efficiency-first і capability-first</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence" target="_blank" rel="noopener">Anthropic — Optimizing for cost and intelligence</a><span>виміряні результати: кеш, TTL, ціна задачі, advisor і orchestrator</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Anthropic — Prompt caching</a><span>точки кешу, lookback 20 блоків, мінімуми, що інвалідує кеш</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing" target="_blank" rel="noopener">Anthropic — Batch processing</a><span>ліміти, 24 години, кеш у пакетах</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/fast-mode" target="_blank" rel="noopener">Anthropic — Fast mode</a><span>research preview: OTPS, ціна, підтримувані моделі</span></li>
+<li><a href="https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-latency" target="_blank" rel="noopener">Anthropic — Reducing latency</a><span>TTFT, вибір моделі, streaming</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/thinking" target="_blank" rel="noopener">Anthropic — Thinking</a><span>токени міркувань оплачуються як вихідні</span></li>
+<li><a href="https://code.claude.com/docs/en/prompt-caching" target="_blank" rel="noopener">Claude Code — How Claude Code uses prompt caching</a><span>що інвалідує кеш, TTL для підписки й API-ключа</span></li>
+<li><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code — Model configuration</a><span>аліаси, <code>--model</code>, <code>/model</code>, <code>opusplan</code></span></li>
+<li><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code — Manage costs</a><span><code>/usage</code>, середні витрати на розробника</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/cost-tracking" target="_blank" rel="noopener">Claude Agent SDK — Cost tracking</a><span><code>total_cost_usd</code> як клієнтська оцінка</span></li>
+<li><a href="https://code.claude.com/docs/en/authentication" target="_blank" rel="noopener">Claude Code — Authentication</a><span>пріоритет облікових даних</span></li>
+<li><a href="https://claude.com/pricing" target="_blank" rel="noopener">Claude — Plans and pricing</a><span>Pro, Max, ліміти, usage credits</span></li>
+<li><a href="https://learn.chatgpt.com/docs/developer-commands" target="_blank" rel="noopener">Codex — CLI reference і slash commands</a><span><code>--model</code>, <code>/model</code>, <code>/fast</code></span></li>
+<li><a href="https://cursor.com/docs/cli/reference/parameters" target="_blank" rel="noopener">Cursor CLI — Parameters</a><span><code>--model</code>, <code>--list-models</code>; режим Auto: <a href="https://cursor.com/docs/cursor-router" target="_blank" rel="noopener">Cursor Router</a></span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 1.5 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 1.5 · Senomi<br><br><a href="lesson-07.html">← Урок 1.4</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-09.html">Урок 2.1 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

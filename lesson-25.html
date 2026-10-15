@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 5.2. Context engineering: що, коли і скільки завантажувати</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 5.2 · Модуль 5</div>
+<h1>Context engineering: що, коли і скільки завантажувати</h1>
+<p class="lead">Вікно на мільйон токенів знімає питання «чи влізе», але не питання «чи варто»: кожен токен оплачується, сповільнює відповідь і забирає увагу моделі. Порівнюємо шість стратегій завантаження контексту, міряємо три з них на однакових лекціях і складаємо план контексту для конвеєра Lectern.</p>
+<div class="hero-meta"><span class="chip">Prompt і Context Engineering: повторюваний результат</span><span class="chip t">≈ 50 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 13 розділів</summary><nav class="toc"><a href="#principle"><b>01</b>Принцип</a><a href="#strategies"><b>02</b>Шість стратегій</a><a href="#experiment"><b>03</b>Експеримент</a><a href="#disclosure"><b>04</b>Progressive disclosure</a><a href="#notes"><b>05</b>Нотатки поза вікном</a><a href="#tool-results"><b>06</b>Результат інструмента</a><a href="#sessions"><b>07</b>Ваші сесії</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#practice"><b>09</b>Практика</a><a href="#quiz"><b>10</b>Квіз</a><a href="#terms"><b>11</b>Терміни уроку</a><a href="#homework"><b>12</b>Домашнє завдання</a><a href="#resources"><b>13</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>задати бюджет контексту для кожного етапу агента до того, як вирішувати, що в нього покласти;</li>
+    <li>обирати між upfront-завантаженням, just-in-time retrieval, progressive disclosure, компакцією, нотатками поза вікном і субагентом за розміром даних, частотою звернень і ціною помилки;</li>
+    <li>прочитати результат експерименту з трьома стратегіями і передбачити, де проходить межа між «покласти все» і «шукати»;</li>
+    <li>проєктувати відповіді інструментів: пагінацію, обрізання з підказкою, ідентифікатори замість вмісту;</li>
+    <li>вирішувати в сесії Claude Code, Codex чи Cursor, що підкласти через <code>@</code>, а що залишити пошуку агента;</li>
+    <li>скласти план контексту для конвеєра Lectern по етапах.</li>
+  </ul>
+</div>
+
+<section class="sec" id="principle">
+<div class="sec-h"><span class="num">01</span><h2>Принцип<span class="sub">Найменший набір сигнальних токенів</span></h2></div>
+<blockquote class="q-src">
+<p>Добрий context engineering — це пошук <b>найменшого можливого набору сигнальних (high-signal) токенів</b>, які максимізують імовірність бажаного результату.</p>
+<p class="orig">“Good context engineering means finding the smallest possible set of high-signal tokens that maximize the likelihood of some desired outcome.”</p>
+<cite>Anthropic, «Effective context engineering for AI agents», 29.09.2025</cite>
+</blockquote>
+<p>Тут два слова, і обидва працюють як обмеження. <b>«Найменший»</b> не означає «короткий»: та сама стаття уточнює, що мінімальний промпт мусить повністю описувати очікувану поведінку, і для цього агентові іноді треба багато дати наперед. <b>«Сигнальних»</b> означає, що токен має змінювати рішення моделі. Шаблонний вступ, повний JSON замість двох полів, третій однаковий приклад — це шум, за який ви платите і який конкурує за увагу (context rot, урок 1.3).</p>
+<p>З вікном на 1 млн токенів питання «чи влізе» майже зникло. Запит з дев'ятьма лекціями з експерименту нижче займав 93,5 тис. токенів, тобто 9% вікна Haiku 5.5, і дав правильні відповіді. Проте коштував у 6,9 раза дорожче, ніж той самий результат зі стратегією «карта + пошук». Тому бюджет контексту — це рішення, яке ви ухвалюєте до вмісту, а не залишок вікна:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що обмежує бюджет</th><th>Механізм</th><th>Як рахувати</th></tr></thead>
+<tbody>
+<tr><td data-th="Що обмежує бюджет">Гроші</td><td data-th="Механізм">Агент на <i>N</i> кроків надсилає історію <i>N</i> разів. Кеш здешевлює повтор, але перший запис у кеш дорожчий за звичайний вхід.</td><td data-th="Як рахувати"><code>usage</code> кожного запиту, сума за сесію</td></tr>
+<tr><td data-th="Що обмежує бюджет">Латентність</td><td data-th="Механізм">Prefill обробляє весь вхід до першого токена відповіді (урок 1.5).</td><td data-th="Як рахувати">час до першого токена на типовому вході етапу</td></tr>
+<tr><td data-th="Що обмежує бюджет">Увага</td><td data-th="Механізм">Що більше схожих фрагментів, то частіше модель бере не той (дистрактори, урок 1.3).</td><td data-th="Як рахувати">evals на ваших питаннях, а не NIAH</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Правило</span>
+<p>Бюджет задають <b>на етап</b>: «генерація уроку — до 40 тис. токенів входу», «перевірка цитати — до 5 тис.». Стратегію обирають потім, як спосіб у цей бюджет вкластися. Якщо жодна стратегія не вкладається, етап треба ділити.</p>
+</div>
+</section>
+
+<section class="sec" id="strategies">
+<div class="sec-h"><span class="num">02</span><h2>Шість стратегій<span class="sub">Коли кожна виграє і як ламається</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Стратегія</th><th>Що потрапляє у вікно</th><th>Коли обирати</th><th>Як ламається</th></tr></thead>
+<tbody>
+<tr><td data-th="Стратегія"><b>1. Upfront</b> (попереднє завантаження)</td><td data-th="Що потрапляє у вікно">Дані кладуть у промпт до першого кроку: системний промпт, <code>CLAUDE.md</code>, документ, результат RAG до інференсу.</td><td data-th="Коли обирати">Дані потрібні на кожному кроці, їх мало і вони відомі наперед; повторюються, тож кешуються.</td><td data-th="Як ламається">Ціна росте лінійно з корпусом; копія застаріває; нерелевантне заважає релевантному.</td></tr>
+<tr><td data-th="Стратегія"><b>2. Just-in-time</b></td><td data-th="Що потрапляє у вікно">Легкі ідентифікатори: шляхи, збережені запити, посилання. Дані агент тягне інструментами, коли знадобляться.</td><td data-th="Коли обирати">Корпус великий, змінний або невідомо наперед, що знадобиться.</td><td data-th="Як ламається">Більше кроків; глухі кути; один широкий пошук заливає вікно.</td></tr>
+<tr><td data-th="Стратегія"><b>3. Progressive disclosure</b></td><td data-th="Що потрапляє у вікно">Спершу назва й опис; тіло — коли спрацював тригер; файли — коли прочитані.</td><td data-th="Коли обирати">Великі бібліотеки skills, інструментів, довідки.</td><td data-th="Як ламається">Опис не збігся із запитом — навичка «невидима».</td></tr>
+<tr><td data-th="Стратегія"><b>4. Компакція</b></td><td data-th="Що потрапляє у вікно">Підсумок історії замість самої історії (механіка — урок 1.3).</td><td data-th="Коли обирати">Довгий діалог, де важлива нитка розмови.</td><td data-th="Як ламається">Губить деталь, цінність якої з'ясується пізніше.</td></tr>
+<tr><td data-th="Стратегія"><b>5. Нотатки поза вікном</b></td><td data-th="Що потрапляє у вікно">Файл прогресу, <code>NOTES.md</code>, memory tool; у вікні лише те, що прочитано зараз.</td><td data-th="Коли обирати">Робота з віхами, яка переживає вікно чи сесію.</td><td data-th="Як ламається">Нотатки застарівають або розростаються, якщо їх не підтримувати.</td></tr>
+<tr><td data-th="Стратегія"><b>6. Субагент</b></td><td data-th="Що потрапляє у вікно">Лише стислий результат чужого вікна.</td><td data-th="Коли обирати">Розвідка на десятки тисяч токенів заради висновку; паралельні гілки.</td><td data-th="Як ламається">Субагент не повернув деталі, бо про неї не попросили.</td></tr>
+</tbody></table></div>
+<p>Для довгих задач Anthropic дає правило вибору між трьома останніми:</p>
+<blockquote class="q-src">
+<p>Компакція підтримує плин розмови в задачах з інтенсивним обміном репліками; нотатки найкращі для ітеративної розробки з чіткими віхами; мультиагентні архітектури — для складного дослідження й аналізу, де паралельна розвідка окупається.</p>
+<p class="orig">“Compaction maintains conversational flow for tasks requiring extensive back-and-forth; Note-taking excels for iterative development with clear milestones; Multi-agent architectures handle complex research and analysis where parallel exploration pays dividends.”</p>
+<cite>Anthropic, «Effective context engineering for AI agents», 29.09.2025</cite>
+</blockquote>
+<p>Стратегії комбінують. Claude Code сам гібридний: <code>CLAUDE.md</code> завантажується наперед, а файли агент шукає через glob і grep на вимогу. Межа гібрида залежить від того, як швидко змінюються дані: для статичних (юридичні, фінансові документи) більше наперед, для коду, що змінюється щогодини, більше на вимогу.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 552" role="img" aria-label="Дерево рішень: що завантажити в контекст">
+  <defs>
+    <marker id="c25a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="c25b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="200" height="66" rx="10" class="bx"/>
+  <text x="18" y="30" class="tx b">1 · Потрібне на кожному</text>
+  <text x="18" y="47" class="tx">кроці й відоме наперед,</text>
+  <text x="18" y="64" class="tx">влазить у бюджет?</text>
+  <path d="M208 41 H 236" class="ln a" marker-end="url(#c25a)"/>
+  <text x="222" y="35" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="8" width="112" height="66" rx="10" class="bx a"/>
+  <text x="296" y="32" text-anchor="middle" class="tx b">Upfront</text>
+  <text x="296" y="50" text-anchor="middle" class="tx s">у промпт</text>
+  <text x="296" y="65" text-anchor="middle" class="tx s">+ кеш</text>
+  <path d="M108 74 V 98" class="ln" marker-end="url(#c25b)"/>
+  <text x="116" y="90" class="tx s">ні</text>
+
+  <rect x="8" y="102" width="200" height="66" rx="10" class="bx"/>
+  <text x="18" y="124" class="tx b">2 · Велика бібліотека</text>
+  <text x="18" y="141" class="tx">інструкцій чи tools,</text>
+  <text x="18" y="158" class="tx">а треба дрібку?</text>
+  <path d="M208 135 H 236" class="ln a" marker-end="url(#c25a)"/>
+  <text x="222" y="129" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="102" width="112" height="66" rx="10" class="bx a"/>
+  <text x="296" y="124" text-anchor="middle" class="tx b">Progressive</text>
+  <text x="296" y="141" text-anchor="middle" class="tx b">disclosure</text>
+  <text x="296" y="158" text-anchor="middle" class="tx s">опис → тіло</text>
+  <path d="M108 168 V 192" class="ln" marker-end="url(#c25b)"/>
+  <text x="116" y="184" class="tx s">ні</text>
+
+  <rect x="8" y="196" width="200" height="66" rx="10" class="bx"/>
+  <text x="18" y="218" class="tx b">3 · Агент знайде сам:</text>
+  <text x="18" y="235" class="tx">шлях, назва, слово</text>
+  <text x="18" y="252" class="tx">з питання?</text>
+  <path d="M208 229 H 236" class="ln a" marker-end="url(#c25a)"/>
+  <text x="222" y="223" text-anchor="middle" class="tx s">ні</text>
+  <rect x="240" y="196" width="112" height="66" rx="10" class="bx t"/>
+  <text x="296" y="218" text-anchor="middle" class="tx b">Карта</text>
+  <text x="296" y="236" text-anchor="middle" class="tx s">index.md</text>
+  <text x="296" y="252" text-anchor="middle" class="tx s">+ пошук</text>
+  <path d="M108 262 V 286" class="ln" marker-end="url(#c25b)"/>
+  <text x="116" y="278" class="tx s">так</text>
+
+  <rect x="8" y="290" width="200" height="66" rx="10" class="bx"/>
+  <text x="18" y="312" class="tx b">4 · Пошук дасть багато</text>
+  <text x="18" y="329" class="tx">сирого виводу, а треба</text>
+  <text x="18" y="346" class="tx">лише висновок?</text>
+  <path d="M208 323 H 236" class="ln a" marker-end="url(#c25a)"/>
+  <text x="222" y="317" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="290" width="112" height="66" rx="10" class="bx t"/>
+  <text x="296" y="312" text-anchor="middle" class="tx b">Субагент</text>
+  <text x="296" y="330" text-anchor="middle" class="tx s">повертає</text>
+  <text x="296" y="346" text-anchor="middle" class="tx s">1–2 тис. токенів</text>
+  <path d="M108 356 V 380" class="ln" marker-end="url(#c25b)"/>
+  <text x="116" y="372" class="tx s">ні</text>
+
+  <rect x="8" y="384" width="200" height="56" rx="10" class="bx t"/>
+  <text x="108" y="406" text-anchor="middle" class="tx b">Just-in-time</text>
+  <text x="108" y="426" text-anchor="middle" class="tx s">Read · Grep · ID · пагінація</text>
+
+  <rect x="8" y="458" width="344" height="86" rx="10" class="bx m"/>
+  <text x="20" y="480" class="tx b">У будь-якій гілці</text>
+  <text x="20" y="499" class="tx s">Робота переживе вікно чи сесію? Стан — у файл</text>
+  <text x="20" y="516" class="tx s">поза вікном (progress, memory tool). Компакція —</text>
+  <text x="20" y="533" class="tx s">коли важлива нитка розмови, а не факти.</text>
+</svg>
+<figcaption>Що завантажити: питання ставлять згори вниз. Нотатки поза вікном доповнюють будь-яку гілку, а не замінюють її.</figcaption>
+</figure>
+<h3>Субагент як фільтр</h3>
+<p>За Anthropic, субагент може використати десятки тисяч токенів на розвідку, але повертає «стислий, дистильований підсумок» — <b>часто 1–2 тис. токенів</b>. Ізоляція працює лише тоді, коли цей контракт записано в задачі: що повернути (висновок, шляхи й рядки, що не перевірено), у якій формі і скільки. Субагент Claude Code стартує з чистим вікном: він не бачить вашої історії, викликаних skills і прочитаних файлів, тож делегування має бути самодостатнім. Fork (розгалуження сесії) успадковує всю розмову і цієї ізоляції на вході не дає. Економіку субагентів розбираємо в уроці 5.5.</p>
+</section>
+
+<section class="sec" id="experiment">
+<div class="sec-h"><span class="num">03</span><h2>Експеримент<span class="sub">Три стратегії на тих самих лекціях</span></h2></div>
+<p><b>Дані.</b> Чотири синтетичні лекції українською про вигадану мережу метеостанцій «Обрій»: 21&nbsp;530 символів, ≈9,3 тис. токенів. Факти вигадані, щоб модель не могла відповісти з пам'яті. У текст закладено пастки: застарілий інтервал калібрування (120 днів поруч із чинними 90), дві різні «автономності» (живлення 6 діб і пам'ять логера 21 добу), коди-близнюки E-14 і E-41.</p>
+<p><b>Питання.</b> П'ять, кожне перевіряє інший тип пошуку: факт із застарілим двійником; питання словами, яких немає в тексті («без зв'язку» проти «пам'ять логера»); два кроки між лекціями (кількість станцій класу A з лекції 1 і пріоритет з лекції 4); код помилки з двійником; два кроки й арифметика (6 з 9 станцій = 67%). Відповіді перевіряє регулярний вираз.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Стратегія</th><th>Що отримує модель</th><th>Інструменти</th></tr></thead>
+<tbody>
+<tr><td data-th="Стратегія">A · upfront</td><td data-th="Що отримує модель">усі лекції в промпті блоками <code>&lt;document&gt;</code></td><td data-th="Інструменти"><code>--tools ""</code></td></tr>
+<tr><td data-th="Стратегія">B · just-in-time</td><td data-th="Що отримує модель">лише назву теки <code>lectures/</code></td><td data-th="Інструменти"><code>--tools "Read,Grep"</code> (Grep на macOS типово вимкнений, урок 3.1)</td></tr>
+<tr><td data-th="Стратегія">C · карта + пошук</td><td data-th="Що отримує модель">як B, плюс <code>index.md</code> у промпті: 991 символ, де що шукати, без відповідей</td><td data-th="Інструменти"><code>--tools "Read,Grep"</code></td></tr>
+</tbody></table></div>
+<p>Кожен прогін іде в новій теці, ізольований від особистих налаштувань (<code>--setting-sources project --strict-mcp-config --disable-slash-commands</code>), модель <code>claude-haiku-5-5</code>, по три прогони на стратегію. Другий масштаб, «×8», — ті самі чотири лекції плюс п'ять уроків цього курсу як сторонні файли: 191&nbsp;545 символів, запит A ≈93,5 тис. токенів.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/exp</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 run.py C 2</span>   <span class="d"># CORPUS=lectures-x INDEX=index-x.md TAG=x</span>
+<span class="d">  claude -p "&lt;карта&gt; + 5 питань" --model haiku --tools "Read,Grep" --allowedTools Read Grep \
+    --setting-sources project --strict-mcp-config --disable-slash-commands \
+    --no-session-persistence --output-format stream-json --verbose &lt; /dev/null</span>
+<span class="y">● Read</span>  lectures/02-kalibruvannia.md
+<span class="y">● Read</span>  lectures/03-peredacha.md
+<span class="y">● Read</span>  lectures/01-merezha.md
+<span class="y">● Read</span>  lectures/04-intsydenty.md
+<span class="c">{"q1": "Датчики вологості калібрують кожні 90 днів (раніше 120 днів, до 1 березня 2023 року).", …
+ "q5": "Інцидент «Ожина» зачепив 6 із 9 станцій класу A, тобто 66,7 %."}</span>
+<span class="d">result · 5 ходів · 4 виклики · вхід 25 807 · $0.0039 · 5,6 с · <span class="ok">5/5</span></span></pre>
+<div class="cap">реальний прогін · 15.10.2026 · Claude Code 2.1.300 · claude-haiku-5-5 · відповіді скорочено · console/runs/C-x2.jsonl</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Прогін (n = 3, якщо не вказано інше)</th><th>Правильно</th><th>Ходи · виклики</th><th>Вхід, тис.</th><th>Ціна, $</th><th>Час, с</th></tr></thead>
+<tbody>
+<tr><td data-th="Прогін (n = 3, якщо не вказано інше)">A · 4 лекції</td><td data-th="Правильно">15/15</td><td data-th="Ходи · виклики">1 · 0</td><td data-th="Вхід, тис.">13,8</td><td data-th="Ціна, $">0,0042–0,0043</td><td data-th="Час, с">5,4–6,4</td></tr>
+<tr><td data-th="Прогін (n = 3, якщо не вказано інше)">A · 4 лекції, теплий кеш (прогони 2–3)</td><td data-th="Правильно">10/10</td><td data-th="Ходи · виклики">1 · 0</td><td data-th="Вхід, тис.">13,8</td><td data-th="Ціна, $">0,0017–0,0018</td><td data-th="Час, с">4,6–5,2</td></tr>
+<tr><td data-th="Прогін (n = 3, якщо не вказано інше)">B · 4 лекції</td><td data-th="Правильно">15/15</td><td data-th="Ходи · виклики">6 · 5</td><td data-th="Вхід, тис.">30,9–31,4</td><td data-th="Ціна, $">0,0039–0,0044</td><td data-th="Час, с">8,5–9,5</td></tr>
+<tr><td data-th="Прогін (n = 3, якщо не вказано інше)">C · 4 лекції</td><td data-th="Правильно">15/15</td><td data-th="Ходи · виклики">5 · 4</td><td data-th="Вхід, тис.">24,7–25,2</td><td data-th="Ціна, $">0,0038–0,0041</td><td data-th="Час, с">6,5–9,2</td></tr>
+<tr><td data-th="Прогін (n = 3, якщо не вказано інше)">A · ×8</td><td data-th="Правильно">15/15</td><td data-th="Ходи · виклики">1 · 0</td><td data-th="Вхід, тис.">93,5</td><td data-th="Ціна, $">0,0283–0,0284</td><td data-th="Час, с">8,4–10,1</td></tr>
+<tr><td data-th="Прогін (n = 3, якщо не вказано інше)">A · ×8, теплий кеш (прогони 2–3)</td><td data-th="Правильно">10/10</td><td data-th="Ходи · виклики">1 · 0</td><td data-th="Вхід, тис.">93,5</td><td data-th="Ціна, $">0,0108–0,0110</td><td data-th="Час, с">7,5–9,8</td></tr>
+<tr><td data-th="Прогін (n = 3, якщо не вказано інше)">B · ×8</td><td data-th="Правильно">15/15</td><td data-th="Ходи · виклики">6–11 · 5–10</td><td data-th="Вхід, тис.">41,8–54,7</td><td data-th="Ціна, $">0,0042–0,0053</td><td data-th="Час, с">11,4–14,0</td></tr>
+<tr><td data-th="Прогін (n = 3, якщо не вказано інше)">C · ×8</td><td data-th="Правильно">15/15</td><td data-th="Ходи · виклики">5 · 4</td><td data-th="Вхід, тис.">25,8–26,3</td><td data-th="Ціна, $">0,0039–0,0042</td><td data-th="Час, с">5,6–8,1</td></tr>
+</tbody></table></div>
+<figure class="fig">
+<div class="bars">
+  <div class="bar p"><span class="k">A · холодний кеш</span><span class="tr"><i style="--v:70%"></i><b style="--v:70%">$0,0283</b></span></div>
+  <div class="bar m"><span class="k">A · теплий кеш</span><span class="tr"><i style="--v:27%"></i><b style="--v:27%">$0,0109</b></span></div>
+  <div class="bar"><span class="k">B · пошук</span><span class="tr"><i style="--v:12%"></i><b style="--v:12%">$0,0047</b></span></div>
+  <div class="bar t"><span class="k">C · карта + пошук</span><span class="tr"><i style="--v:10%"></i><b style="--v:10%">$0,0041</b></span></div>
+</div>
+<figcaption>Середня ціна прогону на масштабі ×8 (93,5 тис. токенів корпусу), n = 3. «Теплий кеш» — середнє другого і третього прогону в тій самій теці. Ціни — оцінка Claude Code (<code>total_cost_usd</code>) за прайсом.</figcaption>
+</figure>
+<h3>Що показали числа</h3>
+<ul>
+<li><b>Точність не відрізнилася:</b> 5/5 у всіх 24 прогонах. На п'яти питаннях-пошуках при 93 тис. токенів Haiku 5.5 не загубився ні в пастках, ні серед сторонніх файлів. Стратегія змінила ціну, час і передбачуваність, а не правильність. Context rot з уроку 1.3 цей дослід не спростовує: він проявляється на задачах з міркуванням над багатьма фрагментами, а не на пошуку п'яти фактів.</li>
+<li><b>На малому корпусі пошук вироджується в upfront частинами.</b> B і C прочитали всі чотири файли, бо кожен був потрібен. Вхідних токенів вони витратили в 2,3 і 1,8 раза більше, ніж A, а ціна вийшла однакова: історію між ходами читали з кешу, а A щоразу записував у кеш 13,8 тис. токенів за ціною запису. З теплим кешем A коштує $0,0018 і виграє вдвічі. Якщо корпус малий і питань до нього багато, кладіть його в промпт і кешуйте.</li>
+<li><b>На ×8 upfront програє лінійно.</b> A подорожчав у 6,6 раза, C — ні: у всіх трьох прогонах він прочитав рівно чотири потрібні файли. Навіть з теплим кешем A дорожчий за C у 2,7 раза.</li>
+<li><b>Карта купує передбачуваність.</b> B на ×8 був дешевим, але робив від 6 до 11 ходів. Індекс на 991 символ прибрав розкид повністю: щоразу 5 ходів, 4 виклики.</li>
+</ul>
+<p>Звідки розкид у B, видно з найгіршого прогону:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>B-x3.jsonl — кроки агента</span></div>
+<pre><span class="y">● Grep</span>  "."  files_with_matches
+<span class="d">  ⎿ Found 9 files</span>
+<span class="y">● Grep</span>  "калібру|вологост|E-41|Ожина|повн|програм|спостережен|годин|днів|LoRa|…|%"  content, head_limit 0
+<span class="d">  ⎿ &lt;persisted-output&gt; Output too large (37.7KB). Full output saved to: ~/.claude/projects/…/tool-results/toolu_….txt
+    Preview (first 2KB): lectures/x-ae-1-5.md:23: Claude Fable 5.1 10 / 50 …</span>
+<span class="y">● Read</span>  ~/Documents/Projects/startup-senseai/scratchpad/…/lectures/02-kalibruvannia.md  <span class="d">×4 файли</span>
+<span class="er">  ⎿ File does not exist.</span>
+<span class="y">● Read</span>  /work/lectures/02-kalibruvannia.md, 03-…, 04-…, 01-…
+<span class="d">result · 11 ходів · 10 викликів · вхід 51 866 · $0.0053 · 14,0 с · <span class="ok">5/5</span></span></pre>
+<div class="cap">реальний прогін · 15.10.2026 · шляхи скорочено · console/runs/B-x3.jsonl</div></div>
+<p>Модель склеїла 16 основ слів з усіх питань в одну альтернативу і вимкнула ліміт (<code>head_limit: 0</code>). Збігів набралося 37,7 KB, і три чверті рядків — у сторонніх файлах, через «%», «годин» і «днів». Claude Code не віддав їх у вікно, а зберіг у файл і показав 2 KB початку. Далі модель вигадала абсолютний шлях, отримала чотири помилки і лише тоді прочитала правильні файли. У прогонах з картою широких пошуків не було жодного.</p>
+<div class="note fact"><span class="lbl">Перевірено · 15.10.2026</span>
+<p>Сирі потоки всіх прогонів, лекції, карта, питання й ключ відповідей — у <code>console/</code> уроку. Перша версія ключа вимагала слова «синхроніз» у відповіді на E-41 і помилково зарахувала як хибну правильну відповідь «втрачено сигнал GNSS… перевірити антену… SYNC». Ключ розширено до «синхроніз|GNSS», усі прогони перераховано, інших змін у ключі немає.</p>
+</div>
+</section>
+
+<section class="sec" id="disclosure">
+<div class="sec-h"><span class="num">04</span><h2>Progressive disclosure<span class="sub">Опис → тіло → файли</span></h2></div>
+<p>Поступове розкриття — це just-in-time для інструкцій і інструментів: у вікні постійно лежить лише те, що потрібно, щоб вирішити, чи розкривати далі. В Agent Skills рівні мають задокументовану ціну:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Коли потрапляє у вікно</th><th>Ціна</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">1 · <code>name</code> і <code>description</code></td><td data-th="Коли потрапляє у вікно">завжди, на старті</td><td data-th="Ціна">≈100 токенів на skill</td></tr>
+<tr><td data-th="Рівень">2 · тіло <code>SKILL.md</code></td><td data-th="Коли потрапляє у вікно">коли запит збігся з описом</td><td data-th="Ціна">до 5 тис. токенів</td></tr>
+<tr><td data-th="Рівень">3 · файли й скрипти</td><td data-th="Коли потрапляє у вікно">коли прочитані; зі скрипта — лише його вивід</td><td data-th="Ціна">0, доки не відкриті</td></tr>
+</tbody></table></div>
+<p>Звідси головна пастка: опис — це <b>тригер</b>, а не анотація. Він мусить казати і що робить навичка, і коли її вживати, бо саме з ним модель зіставляє запит. Будову skills розбираємо в уроці 6.1. Тут — де поступове розкриття ламається в реальних harness:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Механізм</th><th>Задокументована поведінка</th><th>Наслідок</th></tr></thead>
+<tbody>
+<tr><td data-th="Механізм">Список skills у Claude Code</td><td data-th="Задокументована поведінка">Бюджет списку — 1% вікна моделі. Якщо skills багато, Claude Code відкидає <b>описи</b> найрідше вживаних, назви лишаються.</td><td data-th="Наслідок">Рідкісна навичка мовчки перестає спрацьовувати. <code>/doctor</code> показує ціну списку і найбільших споживачів.</td></tr>
+<tr><td data-th="Механізм">Skills після компакції</td><td data-th="Задокументована поведінка">Claude Code знову додає кожен викликаний skill, але лише перші 5 тис. токенів, і всі разом — до 25 тис., починаючи з найсвіжішого.</td><td data-th="Наслідок">Після компакції давно викликаний skill може зникнути; довгий <code>SKILL.md</code> обрізається.</td></tr>
+<tr><td data-th="Механізм">Tool search в API</td><td data-th="Задокументована поведінка"><code>defer_loading: true</code>: у вікні лише інструмент пошуку; знайдені схеми API розгортає сам (типово 5 за пошук, до 10&nbsp;000 відкладених). Типовий набір з п'яти MCP-серверів займає ≈55 тис. токенів; tool search зазвичай скорочує це більш ніж на 85%.</td><td data-th="Наслідок">Вибір інструмента, за документацією, погіршується вже після 30–50 доступних. 3–5 найчастіших не відкладайте. Відкладені схеми не входять у префікс, тож кеш не ламається.</td></tr>
+<tr><td data-th="Механізм">MCP tool search у Claude Code</td><td data-th="Задокументована поведінка">Увімкнено типово. <code>ENABLE_TOOL_SEARCH=auto</code> вантажить схеми наперед, поки вони менші за 10% вікна. Якщо <code>ANTHROPIC_BASE_URL</code> веде на сторонній хост (проксі, gateway), tool search вимикається.</td><td data-th="Наслідок">За корпоративним gateway усі MCP-схеми знову вантажаться наперед — перевірте <code>/context</code>.</td></tr>
+<tr><td data-th="Механізм">MCP у Cursor</td><td data-th="Задокументована поведінка">Описи інструментів синхронізуються в теки, по одній на сервер; у вікні лише назви.</td><td data-th="Наслідок">A/B-тест Cursor: −46,9% усіх токенів агента в прогонах, що викликали MCP-інструмент.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="notes">
+<div class="sec-h"><span class="num">05</span><h2>Нотатки поза вікном<span class="sub">NOTES.md, файл прогресу, memory tool</span></h2></div>
+<p>Structured note-taking: агент регулярно пише нотатки поза вікном і читає їх, коли потрібно. Найпростіша форма — <code>NOTES.md</code> або файл прогресу, з якого стартує кожна нова сесія (урок 2.3). У прикладі Anthropic Claude, граючи в Pokémon, вів підрахунки на тисячах кроків («останні 1234 кроки тренуюся на Route 1, Pikachu виріс на 8 рівнів з 10») і після скидання контексту продовжував з власних нотаток.</p>
+<p>Для власного агента на API той самий патерн дає <b>memory tool</b>. Це клієнтський інструмент: модель лише просить операції, а виконує їх ваш код у сховищі, яке ви контролюєте.</p>
+<ul>
+<li>Підключення — один запис у <code>tools</code>: <code>{"type": "memory_20250818", "name": "memory"}</code>; схему не пишете. Працює на всіх моделях Claude 4 і новіших, beta-заголовок не потрібен (хелпери SDK лежать у beta-просторі імен).</li>
+<li>Команди: <code>view</code>, <code>create</code>, <code>str_replace</code>, <code>insert</code>, <code>delete</code>, <code>rename</code> — усе під префіксом <code>/memories</code>, який ваш обробник відображає на реальне сховище, наприклад теку на користувача.</li>
+<li>API сам додає в системний промпт протокол, тож модель починає з <code>view</code>: «IMPORTANT: ALWAYS VIEW YOUR MEMORY DIRECTORY BEFORE DOING ANYTHING ELSE… ASSUME INTERRUPTION: Your context window might be reset at any moment».</li>
+<li>З context editing (урок 1.3): коли контекст наближається до порогу очищення, Claude отримує попередження і встигає записати важливе в пам'ять до того, як результати інструментів зникнуть.</li>
+</ul>
+<div class="note fact"><span class="lbl">Виміряно Anthropic · 29.09.2025</span>
+<p>Внутрішній eval агентного пошуку: memory tool разом із context editing підняв якість на 39% від базової лінії, context editing сам — на 29%. У 100-ходовому eval веб-пошуку context editing дозволив завершити задачі, які інакше впиралися у вікно, і скоротив споживання токенів на 84%.</p>
+</div>
+<p>Безпека — ваша: обробник виконує кожну файлову операцію, яку попросить модель. Документація наводить шлях <code>/memories/../../secrets.env</code> і вимагає перевіряти кожен шлях у кожній команді. Перевірка шляху для такого обробника (саму функцію перевірено локально на шести шляхах, з API обробник не запускався, бо на цій машині немає ключа):</p>
+<pre class="code" data-lang="python"><span class="k">from</span> pathlib <span class="k">import</span> Path
+
+ROOT = Path(<span class="s">"data/memory"</span>).resolve()
+
+<span class="k">def</span> resolve(virtual, user_id):
+    <span class="cm"># /memories/... → тека користувача</span>
+    head, _, rest = virtual.partition(<span class="s">"/memories"</span>)
+    <span class="k">if</span> head <span class="k">or</span> rest[:<span class="n">1</span>] <span class="k">not in</span> (<span class="s">""</span>, <span class="s">"/"</span>):
+        <span class="k">raise</span> ValueError(<span class="s">"path outside /memories"</span>)
+    base = (ROOT / user_id).resolve()
+    real = (base / rest.lstrip(<span class="s">"/"</span>)).resolve()
+    real.relative_to(base)  <span class="cm"># ../../ → ValueError</span>
+    <span class="k">return</span> real</pre>
+<p>Документація радить ще три запобіжники: обмежити розмір файлів пам'яті, віддавати <code>view</code> частинами через <code>view_range</code> і видаляти файли, до яких давно не зверталися. Без них пам'ять стає тим самим смітником, від якого вона мала рятувати вікно.</p>
+</section>
+
+<section class="sec" id="tool-results">
+<div class="sec-h"><span class="num">06</span><h2>Результат інструмента<span class="sub">Пагінація, обрізання, ідентифікатори</span></h2></div>
+<p>Формат <code>concise</code>/<code>detailed</code> і ліміт MCP-виводу розібрано в уроці 2.1. Тут три рішення, які визначають, чи працюватиме just-in-time взагалі.</p>
+<ol class="steps">
+<li><b>Повертайте ідентифікатори, а не вміст.</b> Just-in-time стоїть на легких посиланнях: шляхах, запитах, URL. Пошук повертає <code>id</code>, сторінку і короткий фрагмент, повний текст — окремим викликом. Стислий формат не має викидати ідентифікатор, якого потребує наступний інструмент: у прикладі Anthropic зі Slack <code>concise</code> без <code>thread_ts</code> робить неможливим наступний виклик за відповідями в треді.</li>
+<li><b>Обрізання без підказки — мовчазна втрата.</b> Якщо обрізаєте, напишіть у відповіді, скільки показано з якої кількості і як звузити запит. Anthropic радить прямо підштовхувати агента до «багатьох малих і цільових пошуків замість одного широкого». Прогін B-x3 вище — саме той випадок, коли цього не зробили.</li>
+<li><b>Великий вивід — у файл, у вікно — посилання й початок.</b> У Claude Code вивід Bash понад ≈30 тис. символів зберігається у файл, а модель отримує шлях і перші 2 тис. символів; так само в нашому прогоні вчинив Grep з 37,7 KB. Cursor пише довгі виводи shell і MCP у файли замість обрізання, і агент читає їх через <code>tail</code>, а потім далі, якщо треба. За словами Cursor, це зменшило кількість зайвих підсумовувань біля межі вікна.</li>
+</ol>
+<p>Так виглядатиме відповідь <code>search_lectures</code> у Lectern: 5 результатів на сторінку, фрагмент до 300 символів.</p>
+<pre class="code" data-lang="json">{
+  <span class="s">"total"</span>: <span class="n">37</span>,
+  <span class="s">"results"</span>: [
+    {<span class="s">"id"</span>: <span class="s">"03"</span>, <span class="s">"page"</span>: <span class="n">4</span>, <span class="s">"line"</span>: <span class="n">41</span>,
+     <span class="s">"snippet"</span>: <span class="s">"E-41 | втрата синхронізації часу: сигналу GNSS немає понад 24 години"</span>}
+  ],
+  <span class="s">"next_cursor"</span>: <span class="s">"5"</span>,
+  <span class="s">"note"</span>: <span class="s">"Показано 5 з 37. Звузьте запит (код помилки, назва розділу) або передайте cursor. Повний текст сторінки: read_page(id, page)."</span>
+}</pre>
+</section>
+
+<section class="sec" id="sessions">
+<div class="sec-h"><span class="num">07</span><h2>Ваші сесії<span class="sub">Що підкласти самому, а що лишити пошуку</span></h2></div>
+<p>Ті самі стратегії діють у вашій сесії Claude Code. <code>@</code>-згадка — це upfront: вміст файлу потрапляє в повідомлення одразу, до відповіді. Шлях у тексті — це just-in-time: агент сам вирішить, читати файл цілком чи шукати рядок. Ми виміряли обидва варіанти на двох файлах: лекція на 5,4 тис. символів з питанням «що означає E-41» і урок на 32,4 тис. символів з питанням про один факт (TTL кешу). Haiku 5.5, інструменти Read і Grep, по два прогони:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Як вказано файл</th><th>Файл 5,4 тис. символів</th><th>Файл 32,4 тис. символів</th></tr></thead>
+<tbody>
+<tr><td data-th="Як вказано файл"><code>@lectures/….md</code></td><td data-th="Файл 5,4 тис. символів">1 хід, 0 викликів, 9,0 тис. токенів, 1,7–2,8 с</td><td data-th="Файл 32,4 тис. символів">1 хід, 24,0 тис. токенів, $0,0040–0,0042</td></tr>
+<tr><td data-th="Як вказано файл">шлях у тексті</td><td data-th="Файл 5,4 тис. символів">Read+Grep або лише Grep: 13,7–16,0 тис., 2,7–4,2 с</td><td data-th="Файл 32,4 тис. символів">Grep: 13,9 тис., $0,0010; в іншому прогоні Read: 30,5 тис., $0,0042</td></tr>
+<tr><td data-th="Як вказано файл"><code>@</code> з <code>CLAUDE_CODE_DISABLE_FILE_MENTIONS=1</code></td><td data-th="Файл 5,4 тис. символів">2 ходи, Read, 15,6 тис.</td><td data-th="Файл 32,4 тис. символів">—</td></tr>
+</tbody></table></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/exp/at</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "@lectures/03-peredacha.md Що означає код E-41? Одним реченням." --model haiku \
+    --tools "Read,Grep" --allowedTools Read Grep --setting-sources project --strict-mcp-config \
+    --disable-slash-commands --no-session-persistence --output-format stream-json --verbose &lt; /dev/null</span>
+<span class="c">Код E-41 означає втрату синхронізації часу логера: сигналу GNSS немає понад 24 години.</span>
+<span class="d">result · 1 хід · 0 викликів · вхід 9 032 · 2,8 с</span></pre>
+<div class="cap">реальний прогін · 15.10.2026 · Claude Code 2.1.300 · console/runs/at-*.jsonl</div></div>
+<p>Правила, які з цього випливають, і ще кілька задокументованих:</p>
+<ul>
+<li><b><code>@</code> — для малого файлу, потрібного цілком.</b> Для одного факту з великого файлу назвіть шлях і попросіть знайти його grep-ом: <code>@</code> вантажить 24 тис. токенів щоразу, а пошук — один рядок. Без прямої вказівки агент в одному з двох прогонів таки прочитав файл цілком.</li>
+<li><b><code>@</code> тягне більше, ніж файл.</b> Разом з ним у контекст ідуть <code>CLAUDE.md</code> з теки файлу і батьківських тек. <code>@тека</code> дає лише список файлів, не вміст. Файл понад 256 KB не включається; ліміт — як у Read, 25 тис. токенів.</li>
+<li><b><code>CLAUDE_CODE_DISABLE_FILE_MENTIONS=1</code></b> (v2.1.299+, лише в shell або user settings) перетворює <code>@</code> на шляхи з приміткою «прочитай сам»: усі згадки стають just-in-time.</li>
+<li><b>Розвідку — субагентові.</b> Документація радить субагента, коли побічна задача «залила б розмову результатами пошуку, логами чи вмістом файлів, до яких ви не повернетеся». Вбудований Explore можна перевизначити власним з <code>model: haiku</code>.</li>
+<li><b>Перед <code>/clear</code> стан — у файл.</b> Коли чистити, розібрано в уроці 4.3. Що перенести: рішення, відкинуті варіанти, наступний крок. Тоді нова сесія стартує з файлу, а не з підсумку підсумку.</li>
+</ul>
+<div class="tabs">
+<input type="radio" name="ses-t" id="ses-t1" checked><input type="radio" name="ses-t" id="ses-t2"><input type="radio" name="ses-t" id="ses-t3">
+<div class="tab-l"><label for="ses-t1">Claude Code</label><label for="ses-t2">Codex</label><label for="ses-t3">Cursor</label></div>
+<div class="tab-p">
+<p><b>Згадки:</b> <code>@файл</code> вставляє вміст, <code>@тека</code> — список, <code>@server:resource</code> — ресурс MCP-сервера.</p>
+<p><b>Пам'ять:</b> <code>CLAUDE.md</code> і перші 200 рядків або 25 KB <code>MEMORY.md</code> auto memory вантажаться на старті (урок 4.2); вкладені <code>CLAUDE.md</code> і правила з <code>paths:</code> — на вимогу.</p>
+</div>
+<div class="tab-p">
+<p><b>Згадки:</b> у CLI <code>@</code> шукає файл у робочій теці і <b>вставляє його шлях</b>, а не вміст; читає агент сам. <code>/mention src/lib/api.ts</code> прикріплює файл до розмови. Розширення для IDE автоматично додає відкриті файли.</p>
+<p><b>Пам'ять:</b> локальні memories типово вимкнені (<code>[features] memories = true</code> у <code>config.toml</code>), <code>/memories</code> керує поточним чатом, файли лежать у <code>~/.codex/memories/</code>. <code>memories.disable_on_external_context</code> не пускає в пам'ять чати з MCP чи веб-пошуком. Документація прямо каже: обов'язкові правила тримайте в <code>AGENTS.md</code>, memories — лише «шар пригадування».</p>
+</div>
+<div class="tab-p">
+<p><b>Згадки:</b> <code>@</code> додає файли й теки, <code>@Terminals</code>, <code>@Chats</code> (попередня розмова), <code>@Commit</code>/<code>@Branch</code> (diff), <code>@Browser</code>. Документація: якщо не знаєте, які файли важливі, не згадуйте нічого — агент знайде їх пошуком.</p>
+<p><b>Dynamic context discovery</b> (січень 2026): довгі виводи — у файли, термінали — як файли, а під час підсумовування агент отримує історію чату файлом і може дошукати те, що підсумок загубив.</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: план контексту для курсу з 10 лекцій</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 5.2 · план контексту по етапах</div><div class="pb">
+<p>Лекція на 20 сторінок — це ≈18–32 тис. токенів (урок 1.3), курс з 10 лекцій — 180–320 тис. Експеримент показав, що на малому корпусі вигідно класти все в промпт, а на великому треба шукати за картою. Курс Lectern великий, окрема лекція — мала. Тому стратегія залежить від етапу:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Етап</th><th>Upfront</th><th>На вимогу</th><th>Поза вікном</th><th>Бюджет входу</th></tr></thead>
+<tbody>
+<tr><td data-th="Етап">0 · Ingest</td><td data-th="Upfront">одна лекція</td><td data-th="На вимогу">—</td><td data-th="Поза вікном">текст посторінково; дайджест ≤ 500 токенів</td><td data-th="Бюджет входу">1 лекція</td></tr>
+<tr><td data-th="Етап">1 · План курсу</td><td data-th="Upfront">10 дайджестів + цілі курсу</td><td data-th="На вимогу"><code>read_lecture</code>, якщо дайджести суперечать</td><td data-th="Поза вікном"><code>outline.json</code></td><td data-th="Бюджет входу">≤ 10 тис.</td></tr>
+<tr><td data-th="Етап">2 · Урок з лекції k</td><td data-th="Upfront">лекція k цілком, план, стиль</td><td data-th="На вимогу"><code>search_lectures</code> для перехресних посилань</td><td data-th="Поза вікном"><code>state.json</code>: готові уроки, введені терміни</td><td data-th="Бюджет входу">≤ 40 тис.</td></tr>
+<tr><td data-th="Етап">3 · Квіз</td><td data-th="Upfront">лекція k цілком: цитата має бути дослівною</td><td data-th="На вимогу">—</td><td data-th="Поза вікном"><code>used_quotes.json</code></td><td data-th="Бюджет входу">≤ 35 тис.</td></tr>
+<tr><td data-th="Етап">4 · Перевірка цитат</td><td data-th="Upfront">нічого: <code>check_quote</code> — код</td><td data-th="На вимогу">рецензент у чистому контексті: сторінка цитати ±1</td><td data-th="Поза вікном">звіт JSON</td><td data-th="Бюджет входу">≤ 5 тис. на питання</td></tr>
+</tbody></table></div>
+<ul>
+<li>Дайджест на етапі 0 — це карта курсу, як <code>index.md</code> в експерименті: план курсу будується з 5 тис. токенів замість 320 тис.</li>
+<li>Для квізу пошук не годиться: фрагмент на 300 символів може обірвати речення, а цитата мусить збігтися з лекцією дослівно. Лекція цілком вміщується в бюджет, тож тут upfront.</li>
+<li>Рецензент цитат не бачить міркувань автора, лише цитату, сторінку і критерій. Це ізоляція субагента, застосована до перевірки.</li>
+<li>Стан між етапами — у файлах. Запуск уроку 7 не повинен тягнути історію уроків 1–6.</li>
+</ul>
+<p>План записано у <code>console/context_plan.md</code>. <b>Ваш крок:</b> порахуйте бюджет етапу 2 для власного курсу (символи лекції ÷ 2,24 для української прози) і перевірте, чи вкладаєтеся в 40 тис. Якщо ні, розділіть лекцію на частини за розділами, а не урізайте план.</p>
+</div></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">09</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">upfront loading</span><span class="h">коли виграє?</span></span><span class="b"><span class="t">Малий корпус, багато питань</span><span class="d">у промпт і в кеш: $0,0018 проти $0,0039 у карти з пошуком</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">just-in-time retrieval</span><span class="h">що тримає у вікні?</span></span><span class="b"><span class="t">Ідентифікатори</span><span class="d">шляхи, запити, посилання; дані тягне інструментом, коли треба</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">progressive disclosure</span><span class="h">три рівні skills</span></span><span class="b"><span class="t">Опис → тіло → файли</span><span class="d">≈100 токенів завжди, до 5 тис. при тригері, файли — коли прочитані</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">карта контексту</span><span class="h">що дала в досліді?</span></span><span class="b"><span class="t">Передбачуваність</span><span class="d">рівно 4 потрібні файли і 5 ходів у всіх прогонах замість 6–11</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">memory tool</span><span class="h">хто виконує операції?</span></span><span class="b"><span class="t">Ваш код</span><span class="d">клієнтський інструмент: модель просить, обробник перевіряє шлях і пише</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">стислий результат субагента</span><span class="h">скільки?</span></span><span class="b"><span class="t">Часто 1–2 тис. токенів</span><span class="d">висновок, шляхи й рядки, що не перевірено, — за контрактом із задачі</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">10</span><h2>Квіз<span class="sub">11 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Бот підтримки має довідку на 6 тис. токенів, яка потрібна майже в кожній відповіді і змінюється раз на місяць. Як її подати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Інструментом <code>search_help</code>, щоб модель брала лише потрібний розділ</span></label><label class="opt ok"><input type="radio" name="q1"><span>У системний промпт наперед, з кешуванням префікса</span></label><label class="opt"><input type="radio" name="q1"><span>Субагентом, який читає довідку і повертає підсумок</span></label></div>
+    <div class="why yes">Так. Мало, потрібно щоразу, змінюється рідко — ідеальний upfront. У нашому досліді малий корпус з теплим кешем коштував удвічі менше, ніж пошук.</div>
+    <div class="why no">Пошук і субагент додають ходи заради даних, які потрібні майже завжди. На малому корпусі агент і так читав усе, лише частинами й дорожче.</div></div>
+  <div class="q"><div class="qt">2. Агент для юристів працює з 4 тис. договорів, питання довільні, а відповідь має цитувати пункт дослівно. Що в основі?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Пошук, що повертає id договору, пункт і фрагмент, плюс читання пункту цілком</span></label><label class="opt"><input type="radio" name="q2"><span>Наперед підготовлені підсумки договорів по 200 токенів у кожному запиті</span></label><label class="opt"><input type="radio" name="q2"><span>Усі договори у вікні на 1 млн токенів, бо кеш зробить це дешевим</span></label></div>
+    <div class="why yes">Так. Корпус великий, потреба невідома наперед — just-in-time з ідентифікаторами, а дослівність забезпечує читання пункту цілком.</div>
+    <div class="why no">4 тис. договорів не вміщуються в жодне вікно, а підсумки гублять дослівні формулювання. Кеш здешевлює повтор, але не робить корпус меншим.</div></div>
+  <div class="q"><div class="qt">3. В експерименті на масштабі ×8 агент без карти робив від 6 до 11 ходів, а з картою — завжди 5. Що саме дала карта?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Вищу точність: без карти агент помилявся у двох питаннях із п'яти</span></label><label class="opt"><input type="radio" name="q3"><span>Відповіді: карта містила числа, і файли можна було не читати</span></label><label class="opt ok"><input type="radio" name="q3"><span>Передбачуваність: агент одразу читав чотири потрібні файли</span></label></div>
+    <div class="why yes">Так. Точність була 5/5 в обох стратегіях; карта прибрала широкі пошуки і глухі кути, тож зник розкид ходів і часу.</div>
+    <div class="why no">Карта свідомо каже лише, де шукати, а не відповідає. Обидві стратегії відповіли правильно в усіх прогонах; різниця — у кількості ходів.</div></div>
+  <div class="q"><div class="qt">4. Корпус — 9 тис. токенів, до нього приходять сотні питань на день. Пошукова стратегія дала ту саму точність, що й upfront. Що обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Пошук: він читає лише потрібні фрагменти, тому завжди дешевший за upfront</span></label><label class="opt ok"><input type="radio" name="q4"><span>Upfront з кешем: на малому корпусі пошук усе одно читає майже все</span></label><label class="opt"><input type="radio" name="q4"><span>Субагента на кожне питання, щоб головне вікно лишалося чистим</span></label></div>
+    <div class="why yes">Так. У досліді B і C прочитали всі файли і спожили в 1,8–2,3 раза більше вхідних токенів; з теплим кешем upfront коштував $0,0018 проти $0,0039.</div>
+    <div class="why no">«Читає лише потрібне» не працює, коли потрібне — майже все. Субагент лише додасть ще одне вікно з тим самим корпусом.</div></div>
+  <div class="q"><div class="qt">5. У вашого агента MCP-сервер на 60 інструментів, і агент дедалі частіше кличе не той. Що змінити першим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Збільшити ліміт виводу MCP, щоб агент бачив повніші відповіді</span></label><label class="opt"><input type="radio" name="q5"><span>Перенести описи всіх інструментів у системний промпт одним блоком</span></label><label class="opt ok"><input type="radio" name="q5"><span>Відкласти схеми через tool search і лишити 3–5 найчастіших завантаженими</span></label></div>
+    <div class="why yes">Так. Документація: вибір погіршується після 30–50 доступних інструментів; tool search вантажить лише знайдені схеми і не ламає кеш префікса.</div>
+    <div class="why no">Проблема у виборі з 60 схем, а не в розмірі відповідей. Ті самі описи в системному промпті нічого не зменшують.</div></div>
+  <div class="q"><div class="qt">6. У Claude Code встановлено кілька десятків skills, і рідко вживаний перестав спрацьовувати, хоча опис добрий. Найімовірніша причина?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Список не вмістився в бюджет 1% вікна, і опис рідкісного skill відкинуто</span></label><label class="opt"><input type="radio" name="q6"><span>Claude Code завантажує лише перші 20 skills за абеткою, решту ігнорує</span></label><label class="opt"><input type="radio" name="q6"><span>Після першої компакції всі skills вимикаються до кінця сесії</span></label></div>
+    <div class="why yes">Так. Назва лишається, а опис — тригер — відкидається першим у найрідше вживаних. <code>/doctor</code> показує ціну списку.</div>
+    <div class="why no">Ліміту на кількість немає; є бюджет символів. Після компакції Claude Code повторно додає викликані skills (до 5 тис. токенів кожен, разом до 25 тис.).</div></div>
+  <div class="q"><div class="qt">7. Агент-мігратор працює через кілька вікон і після компакції повторює варіанти, які вже відкинув. Що додати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Підняти поріг автокомпакції до 1 млн, щоб компакція не наставала</span></label><label class="opt ok"><input type="radio" name="q7"><span>Файл рішень і прогресу, який агент оновлює і читає на старті вікна</span></label><label class="opt"><input type="radio" name="q7"><span>Інструкцію для компакції: дослівно зберігати всі виводи інструментів і рішення</span></label></div>
+    <div class="why yes">Так. Робота з віхами, що переживає вікно, — випадок для нотаток поза вікном (або memory tool в агенті на API).</div>
+    <div class="why no">Відкласти компакцію — означає жити з context rot довше; дослівні виводи в підсумку роблять його не підсумком. Рішення мають лежати поза вікном.</div></div>
+  <div class="q"><div class="qt">8. Інструмент <code>search_logs</code> повертає до 40 KB збігів, і агент після нього часто втрачає задачу. Як переробити відповідь?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Мовчки обрізати до 25 тис. токенів, як Claude Code обрізає MCP</span></label><label class="opt"><input type="radio" name="q8"><span>Формат concise без жодних ідентифікаторів, щоб відповідь була якомога коротшою</span></label><label class="opt ok"><input type="radio" name="q8"><span>Сторінка збігів з id і рядком, total, cursor і підказка, як звузити</span></label></div>
+    <div class="why yes">Так. Ідентифікатори дають наступний крок, а підказка і пагінація ведуть до малих цільових пошуків замість одного широкого.</div>
+    <div class="why no">Мовчазне обрізання губить дані без сліду, а відповідь без id не дає зробити наступний виклик. Скоротити треба обсяг, а не інформацію для дії.</div></div>
+  <div class="q"><div class="qt">9. У сесії Claude Code вам потрібне одне значення з файлу на 32 тис. символів. Як вказати файл?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Назвати шлях і попросити знайти рядок grep-ом</span></label><label class="opt"><input type="radio" name="q9"><span><code>@файл</code>: один хід без інструментів завжди найдешевший</span></label><label class="opt"><input type="radio" name="q9"><span>Вставити файл у промпт вручну, щоб агент нічого не шукав</span></label></div>
+    <div class="why yes">Так. У нашому прогоні Grep дав 13,9 тис. токенів і $0,0010, а <code>@</code> — 24 тис. і $0,0040. Без вказівки «grep-ом» агент в одному з прогонів прочитав файл цілком.</div>
+    <div class="why no"><code>@</code> і ручна вставка — це upfront: увесь файл у кожному запиті. Один хід дешевший лише для малого файлу.</div></div>
+  <div class="q"><div class="qt">10. Субагент-дослідник повертає в головну сесію 15 тис. токенів сирих знахідок. Що виправити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Запускати його як fork, щоб він бачив усю історію сесії</span></label><label class="opt ok"><input type="radio" name="q10"><span>Контракт у задачі: висновок, шляхи й рядки, що не перевірено, до 2 тис.</span></label><label class="opt"><input type="radio" name="q10"><span>Перенести дослідження в головну сесію: субагент лише дублює витрати на токени</span></label></div>
+    <div class="why yes">Так. Користь ізоляції — у стислому результаті (часто 1–2 тис. токенів); формат повернення треба замовити явно.</div>
+    <div class="why no">Fork прибирає ізоляцію на вході, а не скорочує вихід. Дослідження в головній сесії залишить у вікні всі прочитані файли.</div></div>
+  <div class="q"><div class="qt">11. Обробник memory tool отримав <code>create</code> зі шляхом <code>/memories/../../app/.env</code>. Що має статися?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Нічого особливого: API відфільтровує такі шляхи до вашого коду</span></label><label class="opt"><input type="radio" name="q11"><span>Записати файл: модель не просила б цього без причини</span></label><label class="opt ok"><input type="radio" name="q11"><span>Відмова: розв'язаний шлях виходить за межі теки пам'яті</span></label></div>
+    <div class="why yes">Так. Memory tool клієнтський: перевірка кожного шляху (canonical path, <code>relative_to</code>) — обов'язок вашого обробника.</div>
+    <div class="why no">API лише передає запит моделі; виконує його ваш код. Документація прямо наводить <code>../../</code> як атаку обходу шляху.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">11</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>мінімальний<br>high-signal контекст</td><td>Принцип: найменший набір сигнальних токенів, що максимізує ймовірність бажаного результату.</td></tr>
+<tr><td>контекстний<br>бюджет етапу</td><td>Межа вхідних токенів на виклик етапу, яку задають до вибору вмісту.</td></tr>
+<tr><td>upfront loading</td><td>Дані в промпті до першого кроку: системний промпт, <code>CLAUDE.md</code>, документ, результат RAG.</td></tr>
+<tr><td>just-in-time<br>retrieval</td><td>У вікні — ідентифікатори; дані агент тягне інструментами, коли вони потрібні.</td></tr>
+<tr><td>progressive<br>disclosure</td><td>Поступове розкриття: опис → тіло → файли, кожен рівень лише за потреби.</td></tr>
+<tr><td>structured<br>note-taking</td><td>Агент пише нотатки поза вікном і читає їх пізніше: файл прогресу, <code>NOTES.md</code>.</td></tr>
+<tr><td>memory tool</td><td>Клієнтський інструмент API (<code>memory_20250818</code>) для файлів у <code>/memories</code> між сесіями.</td></tr>
+<tr><td>пагінація<br>й обрізання</td><td>Відповідь інструмента частинами, з <code>total</code>, курсором і підказкою, як звузити запит.</td></tr>
+<tr><td>карта контексту</td><td>Короткий index-файл: що де лежить, без самих відповідей.</td></tr>
+<tr><td>стислий результат<br>субагента</td><td>Висновок із чужого вікна, часто 1–2 тис. токенів, за контрактом із задачі.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">12</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. План контексту для власного агента</h3>
+<p>Візьміть агента чи LLM-фічу, яку будуєте або хотіли б побудувати. Розбийте роботу на 3–5 етапів, задайте кожному бюджет входу в токенах і оберіть стратегію з обґрунтуванням, спроєктуйте відповідь одного інструмента пошуку і назвіть, як кожна стратегія у вашому плані може зламатися.</p>
+<h3>2. Повторіть експеримент на своїх документах</h3>
+<p>Порівняйте upfront, пошук і карту з пошуком на 3+ власних документах і 5 питаннях з ключем відповідей, по два прогони на стратегію. Подайте таблицю (правильність, ходи, вхідні токени, ціна, час) і висновок: що виграло і за якого розміру корпусу, на вашу оцінку, результат зміниться.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">13</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic — Effective context engineering for AI agents</a><span>29.09.2025 · принцип найменшого набору сигнальних токенів, just-in-time, компакція, нотатки, субагенти</span></li>
+<li><a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents" target="_blank" rel="noopener">Anthropic — Effective harnesses for long-running agents</a><span>26.11.2025 · файл прогресу, список фіч у JSON, старт сесії з нотаток</span></li>
+<li><a href="https://www.anthropic.com/news/context-management" target="_blank" rel="noopener">Anthropic — Managing context on the Claude Developer Platform</a><span>29.09.2025 · memory tool і context editing: +39%, +29%, −84% токенів</span></li>
+<li><a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">Anthropic — Writing effective tools for agents</a><span>11.09.2025 · пагінація, обрізання з підказкою, ідентифікатори у відповідях</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/memory-tool" target="_blank" rel="noopener">Claude Docs — Memory tool</a><span>команди, протокол у системному промпті, захист від обходу шляху, зв'язка з context editing</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool" target="_blank" rel="noopener">Claude Docs — Tool search tool</a><span><code>defer_loading</code>, 55 тис. токенів → −85%, 30–50 інструментів, ліміти</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Claude Docs — Agent Skills</a><span>три рівні progressive disclosure і їхня ціна</span></li>
+<li><a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills" target="_blank" rel="noopener">Anthropic — Equipping agents for the real world with Agent Skills</a><span>16.10.2025 · навіщо skills і як працює поступове розкриття</span></li>
+<li><a href="https://code.claude.com/docs/en/common-workflows" target="_blank" rel="noopener">Claude Code — Common workflows</a><span><code>@</code>-згадки файлів, тек і MCP-ресурсів; <code>CLAUDE_CODE_DISABLE_FILE_MENTIONS</code></span></li>
+<li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code — Skills</a><span>бюджет списку 1% вікна, skills після компакції</span></li>
+<li><a href="https://code.claude.com/docs/en/mcp" target="_blank" rel="noopener">Claude Code — MCP</a><span>MCP tool search, <code>ENABLE_TOOL_SEARCH</code></span></li>
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Subagents</a><span>чисте вікно, підсумок назад, fork, Explore</span></li>
+<li><a href="https://code.claude.com/docs/en/tools-reference" target="_blank" rel="noopener">Claude Code — Tools reference</a><span>ліміти Read і Bash, вивід у файл з попереднім переглядом</span></li>
+<li><a href="https://learn.chatgpt.com/docs/customization/memories" target="_blank" rel="noopener">Codex — Memories</a><span>локальні memories, <code>/memories</code>, налаштування</span></li>
+<li><a href="https://learn.chatgpt.com/docs/developer-commands" target="_blank" rel="noopener">Codex — Command line options і slash-команди</a><span><code>@</code>-пошук файлу, <code>/mention</code></span></li>
+<li><a href="https://cursor.com/help/customization/context" target="_blank" rel="noopener">Cursor — @ mentions and context</a><span>що можна згадати і коли не варто</span></li>
+<li><a href="https://cursor.com/blog/dynamic-context-discovery" target="_blank" rel="noopener">Cursor — Dynamic context discovery</a><span>06.01.2026 · виводи у файли, MCP у теках (−46,9% токенів), історія чату файлом</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 5.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 5.2 · Senomi<br><br><a href="lesson-24.html">← Урок 5.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-26.html">Урок 5.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

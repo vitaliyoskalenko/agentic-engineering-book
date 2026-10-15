@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 4.3. Plan mode, checkpoints, /context, /cost, /compact: керування сесією</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="60" r="38"/><path d="M60 22l-8-6M60 22l-8 6M98 60l6-8M98 60l-6-8M60 98l8 6M60 98l8-6M22 60l-6 8M22 60l6 8"/><rect x="46" y="46" width="28" height="28" rx="6"/><path d="M54 56h12M54 64h8"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 4.3 · Модуль 4</div>
+<h1>Plan mode, checkpoints, /context, /cost, /compact: керування сесією</h1>
+<p class="lead">Багатогодинна задача з агентом ламається в передбачуваних місцях: не той напрям, невдала спроба, переповнений контекст, перерва. Проводимо фічу Lectern через план, правку плану, виконання з --resume, відкат і рев'ю, і для кожного кроку виводимо правило вибору інструмента.</p>
+<div class="hero-meta"><span class="chip">Claude Code: встановлення, налаштування, робоче середовище</span><span class="chip t">≈ 50 хв</span><span class="chip a">12 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#plan"><b>01</b>Plan mode як робочий процес</a><a href="#headless"><b>02</b>План без інтерфейсу</a><a href="#rewind"><b>03</b>Checkpoints у роботі</a><a href="#sessions"><b>04</b>Сесії</a><a href="#monitor"><b>05</b>Приладова панель</a><a href="#playbook"><b>06</b>Плейбук довгої задачі</a><a href="#tools"><b>07</b>Три інструменти</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>вирішувати, коли задачі потрібен plan mode, і проводити план через перевірку, правку й схвалення, зокрема в <code>claude -p</code>;</li>
+    <li>обирати дію в меню <code>/rewind</code> і знати, коли замість нього брати git;</li>
+    <li>продовжувати, називати й розгалужувати сесії (<code>--continue</code>, <code>--resume</code>, <code>/rename</code>, <code>--fork-session</code>), не потрапляючи в чужу сесію;</li>
+    <li>стежити за контекстом, витратами й кешем через <code>/context</code>, <code>/usage</code>, власний status line і <code>/btw</code>;</li>
+    <li>вести багатогодинну задачу за плейбуком: план → виконання → checkpoint → відкат → стиснення → продовження.</li>
+  </ul>
+</div>
+
+<section class="sec" id="plan">
+<div class="sec-h"><span class="num">01</span><h2>Plan mode як робочий процес<span class="sub">Спершу дослідити, потім змінювати</span></h2></div>
+<p>Довга сесія з агентом ламається в чотирьох місцях, і на кожне в Claude Code є окремий інструмент:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що йде не так</th><th>Інструмент</th><th>Ціна помилки без нього</th></tr></thead>
+<tbody>
+<tr><td data-th="Що йде не так">Агент правильно робить не те</td><td data-th="Інструмент">plan mode: напрям погоджують до першої правки</td><td data-th="Ціна помилки без нього">переробка всього diff-а</td></tr>
+<tr><td data-th="Що йде не так">Спроба не вдалася</td><td data-th="Інструмент">checkpoints і <code>/rewind</code>, git-коміти</td><td data-th="Ціна помилки без нього">ручне розплутування змін</td></tr>
+<tr><td data-th="Що йде не так">Контекст роздувся</td><td data-th="Інструмент"><code>/compact</code>, <code>/clear</code>, «Summarize from here»</td><td data-th="Ціна помилки без нього">кожен запит несе всю історію, модель відволікається</td></tr>
+<tr><td data-th="Що йде не так">Робота розтягнулась на кілька днів</td><td data-th="Інструмент"><code>--continue</code>, <code>--resume</code>, назви сесій</td><td data-th="Ціна помилки без нього">пояснювати задачу з нуля</td></tr>
+</tbody></table></div>
+<p>Механіку режиму дозволів <code>plan</code> і аліас <code>opusplan</code> розібрано в уроці 4.1. Тут важливо, що відбувається між «агент дослідив» і «агент почав правити».</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 452" role="img" aria-label="Карта довгої сесії: план, схвалення, виконання, перевірка, коміт; бічні дії: правка плану, rewind, compact або clear, resume">
+  <defs>
+    <marker id="s21a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="s21d" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="168" height="56" rx="10" class="bx m"/>
+  <text x="92" y="31" text-anchor="middle" class="tx b">1 · План</text>
+  <text x="92" y="50" text-anchor="middle" class="tx s">plan mode, лише читання</text>
+  <path d="M92 64 V 92" class="ln a" marker-end="url(#s21a)"/>
+  <rect x="8" y="96" width="168" height="56" rx="10" class="bx m"/>
+  <text x="92" y="119" text-anchor="middle" class="tx b">2 · Схвалення</text>
+  <text x="92" y="138" text-anchor="middle" class="tx s">рішення — у файл плану</text>
+  <path d="M92 152 V 180" class="ln a" marker-end="url(#s21a)"/>
+  <rect x="8" y="184" width="168" height="56" rx="10" class="bx t"/>
+  <text x="92" y="207" text-anchor="middle" class="tx b">3 · Виконання</text>
+  <text x="92" y="226" text-anchor="middle" class="tx s">acceptEdits або auto</text>
+  <path d="M92 240 V 268" class="ln a" marker-end="url(#s21a)"/>
+  <rect x="8" y="272" width="168" height="56" rx="10" class="bx t"/>
+  <text x="92" y="295" text-anchor="middle" class="tx b">4 · Перевірка</text>
+  <text x="92" y="314" text-anchor="middle" class="tx s">тести, лінтер, рев'ю diff</text>
+  <path d="M92 328 V 356" class="ln a" marker-end="url(#s21a)"/>
+  <rect x="8" y="360" width="168" height="56" rx="10" class="bx a"/>
+  <text x="92" y="383" text-anchor="middle" class="tx b a">5 · Коміт</text>
+  <text x="92" y="402" text-anchor="middle" class="tx s">точка повернення</text>
+  <path d="M10 388 C 0 330, 0 250, 8 214" class="ln d" marker-end="url(#s21d)"/>
+  <rect x="200" y="96" width="152" height="56" rx="10" class="bx p"/>
+  <text x="276" y="119" text-anchor="middle" class="tx b">Ctrl+G</text>
+  <text x="276" y="138" text-anchor="middle" class="tx s">правка плану</text>
+  <path d="M198 124 H 178" class="ln d" marker-end="url(#s21d)"/>
+  <rect x="200" y="184" width="152" height="56" rx="10" class="bx p"/>
+  <text x="276" y="207" text-anchor="middle" class="tx b">/rewind</text>
+  <text x="276" y="226" text-anchor="middle" class="tx s">спроба невдала</text>
+  <path d="M176 292 C 198 292, 216 272, 226 244" class="ln d" marker-end="url(#s21d)"/>
+  <path d="M200 212 H 178" class="ln d" marker-end="url(#s21d)"/>
+  <rect x="200" y="272" width="152" height="56" rx="10" class="bx p"/>
+  <text x="276" y="295" text-anchor="middle" class="tx b">/compact · /clear</text>
+  <text x="276" y="314" text-anchor="middle" class="tx s">контекст роздувся</text>
+  <rect x="200" y="360" width="152" height="56" rx="10" class="bx p"/>
+  <text x="276" y="383" text-anchor="middle" class="tx b">продовження</text>
+  <text x="276" y="402" text-anchor="middle" class="tx s">--continue / --resume</text>
+  <path d="M198 388 H 178" class="ln d" marker-end="url(#s21d)"/>
+  <text x="92" y="440" text-anchor="middle" class="tx s">наступний крок плану → знову 3</text>
+</svg>
+<figcaption>Основний цикл зліва. Праві дії вмикаються, коли щось іде не так. Коміт після кожного зеленого кроку робить відкат дешевим незалежно від того, чи бачать checkpoints зміну.</figcaption>
+</figure>
+<h3>Схвалення плану</h3>
+<p>Коли план готовий, агент викликає інструмент <code>ExitPlanMode</code>, і Claude Code показує меню:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Пункт</th><th>Що далі</th><th>Коли обирати</th></tr></thead>
+<tbody>
+<tr><td data-th="Пункт"><b>Yes, and use auto mode</b> (без auto — «Yes, auto-accept edits»)</td><td data-th="Що далі">виконання без запитів; дії перевіряє класифікатор</td><td data-th="Коли обирати">план точний, є тести, напрям вам зрозумілий</td></tr>
+<tr><td data-th="Пункт"><b>Yes, manually approve edits</b></td><td data-th="Що далі">кожна правка — на ваше схвалення</td><td data-th="Коли обирати">чутливий код, перший прохід у незнайомому модулі</td></tr>
+<tr><td data-th="Пункт"><b>No, keep planning</b></td><td data-th="Що далі">лишаєтесь у plan mode і пишете, що змінити</td><td data-th="Коли обирати">план відповідає не на те питання</td></tr>
+<tr><td data-th="Пункт"><b>Yes, clear context and …</b> (з <code>showClearContextOnPlanAccept: true</code>)</td><td data-th="Що далі">схвалює план, очищує розмову, виконує з самого плану; у підписі видно, скільки контексту з'їло планування</td><td data-th="Коли обирати">дослідження було важким, а план самодостатній</td></tr>
+</tbody></table></div>
+<ul>
+<li><b><code>Ctrl+G</code></b> відкриває план у вашому редакторі. Правте план, а не пишіть поправки в чат: файл плану повертається з диска після компакції, а поправка в чаті живе лише в підсумку.</li>
+<li>План — це Markdown-файл, типово в <code>~/.claude/plans/</code>. Ключ <code>plansDirectory</code> (наприклад, <code>"./docs/plans"</code>, лише всередині проєкту) кладе його в репозиторій, і план можна закомітити й рев'юїти поруч із кодом.</li>
+<li>Схвалений план дає сесії назву, якщо ви ще не назвали її самі. Повернутися до планування — <code>Shift+Tab</code> або префікс <code>/plan</code> у наступному промпті.</li>
+</ul>
+<h3>Коли план потрібен</h3>
+<p>Правило з документації Anthropic: <b>якщо diff можна описати одним реченням, план не потрібен</b>. Plan mode окупається, коли ви не впевнені в підході, зміна зачіпає кілька файлів або код вам незнайомий. Найцінніше, що дає план, — розділ відкритих питань: він показує неоднозначність специфікації до того, як вона стане кодом.</p>
+<div class="note fact"><span class="lbl">Виміряно · 15.10.2026</span>
+<p>Plan mode змінює модель. Прогін з <code>--model haiku</code> у plan mode пішов на Sonnet 5.5: $0,0812 з $0,0814. Наступне виконання тієї ж сесії в <code>acceptEdits</code> пішло на Haiku і коштувало $0,0053. Документація описує це як «сесія Haiku, яка в plan mode підвищується до Sonnet». <code>opusplan</code> так само піднімає планування до Opus (урок 4.1). У звіті про вартість таке планування може виявитися головною статтею.</p>
+</div>
+</section>
+
+<section class="sec" id="headless">
+<div class="sec-h"><span class="num">02</span><h2>План без інтерфейсу<span class="sub">Два прогони claude -p: план, потім виконання</span></h2></div>
+<p>У скриптах і CI меню схвалення немає. Як поводиться plan mode в <code>-p</code>, перевіримо на крихітному репозиторії: функція <code>slugify</code> викидає кирилицю, і заголовок «Привіт, світе!» дає порожній slug.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/slug</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Додай підтримку українських заголовків у slugify (транслітерація). Спершу план." \
+    --permission-mode plan --model haiku \
+    --setting-sources project --strict-mcp-config --output-format stream-json --verbose &gt; plan.jsonl</span></pre>
+<div class="cap">реальна сесія · 15.10.2026 · Claude Code 2.1.299</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>plan.jsonl — кроки агента</span></div>
+<pre><span class="y">● Bash</span>  git ls-files &amp;&amp; grep -rni slugify . | head -20
+<span class="y">● Read</span>  slug.py
+<span class="y">● Read</span>  test_slug.py
+<span class="y">● Write</span> ~/.claude/plans/prancy-squishing-nygaard.md      <span class="d"># єдиний дозволений запис</span>
+<span class="y">● ToolSearch</span> select:ExitPlanMode,AskUserQuestion
+<span class="d">  ⎿ No matching deferred tools found</span>
+
+<span class="c">План готовий і збережений у ~/.claude/plans/prancy-squishing-nygaard.md. Нічого не змінював.
+Інструмента для офіційного підтвердження плану в мене тут немає, тому прошу підтвердження текстом.
+…
+Питання до тебе: чи підходить система 2010 без правил початку слова? Якщо хочеш спрощену схему (ю→yu, я→ya, є→ye), скажи, і я змінюю таблицю та очікувані значення в тестах.</span>
+
+<span class="d">result · num_turns 6 · 24,2 с · total_cost_usd 0.0814 (Sonnet 5.5 — 0.0812)</span></pre>
+<div class="cap">реальний вивід · план і відповідь скорочено · повний потік у console/slug-plan.jsonl</div></div>
+<p>Агент шукав <code>ExitPlanMode</code> і не знайшов: у <code>-p</code> немає ні його, ні <code>AskUserQuestion</code>. Тож план повертається текстом, а відкрите питання стає вашою частиною роботи. Виконуємо в тій самій сесії:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/slug</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Система 2010 без правил початку слова — ок. Виконуй план і запусти тести." \
+    --resume 7847d2d9-cbf0-43af-9557-2f55ee587eb8 --permission-mode acceptEdits \
+    --allowedTools "Bash(python3 -m unittest*)" --model haiku --setting-sources project --strict-mcp-config</span>
+<span class="y">● Edit</span>  slug.py        <span class="d"># таблиця _UK_TRANSLIT + translate()</span>
+<span class="y">● Edit</span>  test_slug.py   <span class="d"># 5 нових тестів</span>
+<span class="y">● Bash</span>  python3 -m unittest -v
+<span class="ok">  Ran 6 tests in 0.000s · OK</span>
+<span class="d">result · num_turns 4 · 14,4 с · total_cost_usd 0.0865 (власна частина — 0.0053, Haiku)</span></pre>
+<div class="cap">реальна сесія · 15.10.2026 · вивід скорочено · console/slug-exec.jsonl</div></div>
+<p>Три правила, які показав цей прогін:</p>
+<ol class="steps">
+<li><b>Режим при <code>--resume</code> у <code>-p</code> не успадковується.</b> Продовжений прогін стартує в режимі нового <code>claude -p</code>. Plan mode відновлюється лише з <code>--permission-prompt-tool</code> і без <code>--permission-mode</code>. Тому режим виконання завжди передавайте явно.</li>
+<li><b>Рішення людини йдуть промптом продовження,</b> а не правкою коду: «система 2010 — ок» закрила питання до першої правки.</li>
+<li><b><code>total_cost_usd</code> після <code>--resume</code> — накопичений</b> (0,0865 = 0,0814 + 0,0053). Рахуйте різницю, а не суму (урок 4.4).</li>
+</ol>
+</section>
+
+<section class="sec" id="rewind">
+<div class="sec-h"><span class="num">03</span><h2>Checkpoints у роботі<span class="sub">Що обрати в меню /rewind</span></h2></div>
+<p>Що checkpoints відстежують, а що ні (Bash, субагенти, зовнішні правки), розібрано в уроці 3.1. Тут — як ними керувати. Меню відкриває <code>/rewind</code> (аліаси <code>/checkpoint</code>, <code>/undo</code>) або подвійний <code>Esc</code> на порожньому полі вводу. Якщо в полі є текст, подвійний <code>Esc</code> лише очистить його, а <code>Up</code> поверне. Спершу обирають промпт, до якого повертаються, потім дію:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Дія</th><th>Код</th><th>Розмова</th><th>Типова ситуація</th></tr></thead>
+<tbody>
+<tr><td data-th="Дія"><b>Restore code and conversation</b></td><td data-th="Код">назад</td><td data-th="Розмова">назад</td><td data-th="Типова ситуація">спроба провалилася повністю, починаєте цей крок наново</td></tr>
+<tr><td data-th="Дія"><b>Restore conversation</b></td><td data-th="Код">лишається</td><td data-th="Розмова">назад</td><td data-th="Типова ситуація">код добрий, але розмова звернула не туди; промпт повертається в поле вводу — виправте його й надішліть знову</td></tr>
+<tr><td data-th="Дія"><b>Restore code</b></td><td data-th="Код">назад</td><td data-th="Розмова">лишається</td><td data-th="Типова ситуація">підхід не спрацював, і агент має пам'ятати чому, щоб не повторити його</td></tr>
+<tr><td data-th="Дія"><b>Summarize from here</b></td><td data-th="Код">не чіпає</td><td data-th="Розмова">від точки — у підсумок</td><td data-th="Типова ситуація">довгий дебаг уже закінчився, початкові інструкції лишаються дослівно</td></tr>
+<tr><td data-th="Дія"><b>Summarize up to here</b></td><td data-th="Код">не чіпає</td><td data-th="Розмова">до точки — у підсумок</td><td data-th="Типова ситуація">старий розгін заважає, останні ходи потрібні повністю</td></tr>
+</tbody></table></div>
+<p>Пункти з кодом з'являються лише тоді, коли після точки є відстежені правки. Підсумок можна спрямувати: виберіть пункт стрілками і впишіть фокус у рядок «add context (optional)». Якщо натиснути цифру, підсумок піде без інструкцій. Це прицільний <code>/compact</code> на частину розмови, і оригінальні повідомлення лишаються в транскрипті.</p>
+<ul>
+<li><b>Checkpoints зберігаються разом із сесією.</b> Після <code>--resume</code> наступного дня <code>/rewind</code> працює, поки знімки не прибере очищення (типово ≈30 днів).</li>
+<li><b><code>/clear</code> не остаточний.</b> У тому самому процесі меню показує вгорі <code>/resume &lt;id&gt; (previous session)</code>, тож очищену розмову можна повернути.</li>
+<li><b>Повідомлення, надіслане посеред ходу,</b> позначене «No code restore»: власного checkpoint у нього немає. Код відкочують від промпту, який почав цей хід.</li>
+</ul>
+<h3>Rewind, git чи «скасуй це»</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ситуація</th><th>Інструмент</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Ситуація">Останні 1–3 ходи, правки лише через Edit/Write</td><td data-th="Інструмент"><code>/rewind</code></td><td data-th="Чому">секунди, і розмова відкочується разом із кодом</td></tr>
+<tr><td data-th="Ситуація">Агент запускав форматер, кодоген, <code>mv</code></td><td data-th="Інструмент"><code>git status</code> → <code>git restore</code></td><td data-th="Чому">Bash-змін checkpoints не бачать (урок 3.1)</td></tr>
+<tr><td data-th="Ситуація">Повернутися на вчорашній стан</td><td data-th="Інструмент">git-коміт кроку</td><td data-th="Чому">знімків лише 100, і вони прив'язані до сесії</td></tr>
+<tr><td data-th="Ситуація">Зовнішня дія: міграція, API, деплой</td><td data-th="Інструмент">ні те, ні інше</td><td data-th="Чому">відкату немає, тому спершу погодження (урок 4.1)</td></tr>
+<tr><td data-th="Ситуація">Невелика правка, яку легше описати, ніж знайти</td><td data-th="Інструмент">«Undo that» агентові</td><td data-th="Чому">агент відкотить і Bash-наслідки, але це нова дія, яку теж треба перевірити</td></tr>
+</tbody></table></div>
+<div class="note tip"><span class="lbl">Ризикувати дешево</span>
+<p>Документація радить не планувати кожен крок, а просити ризиковану спробу і відкочуватися, якщо вона не вдалася. Це працює лише з комітом перед спробою: тоді будь-який шлях назад, через rewind чи git, займає одну команду.</p>
+</div>
+</section>
+
+<section class="sec" id="sessions">
+<div class="sec-h"><span class="num">04</span><h2>Сесії<span class="sub">Продовжити, назвати, розгалузити</span></h2></div>
+<p>Сесія — це збережена розмова, прив'язана до каталогу проєкту. Де лежать транскрипти і скільки зберігаються, описано в уроці 3.3. Входи в сесію:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Команда</th><th>Що робить</th><th>Пастка</th></tr></thead>
+<tbody>
+<tr><td data-th="Команда"><code>claude --continue</code> (<code>-c</code>)</td><td data-th="Що робить">найсвіжіша сесія цього каталогу</td><td data-th="Пастка">інтерактивний <code>-c</code> пропускає сесії <code>-p</code> і SDK, а <code>claude -p --continue</code> їх бере</td></tr>
+<tr><td data-th="Команда"><code>claude --resume</code> / <code>/resume</code></td><td data-th="Що робить">picker: <code>Space</code> — перегляд, <code>Ctrl+R</code> — перейменувати, <code>Ctrl+B</code> — лише поточна гілка git, <code>Ctrl+A</code> — усі проєкти</td><td data-th="Пастка">сесій <code>-p</code> у picker немає, їх продовжують за ID</td></tr>
+<tr><td data-th="Команда"><code>claude --resume &lt;id|назва&gt;</code></td><td data-th="Що робить">одразу в потрібну сесію</td><td data-th="Пастка">якщо назва неоднозначна, відкривається picker</td></tr>
+<tr><td data-th="Команда"><code>claude -n auth-refactor</code>, <code>/rename</code></td><td data-th="Що робить">назва, за якою потім робиться resume</td><td data-th="Пастка">типова назва на кшталт <code>my-app-3f</code> для resume не годиться</td></tr>
+<tr><td data-th="Команда"><code>/branch [назва]</code>, <code>--fork-session</code></td><td data-th="Що робить">копія розмови з новим ID, оригінал не змінюється</td><td data-th="Пастка">дозволи «на цю сесію» у новому процесі треба дати знову</td></tr>
+<tr><td data-th="Команда"><code>/fork [prompt]</code></td><td data-th="Що робить">копія у фоновій сесії, ви лишаєтесь тут</td><td data-th="Пастка">копія працює паралельно (урок 4.4)</td></tr>
+</tbody></table></div>
+<p>Перевіримо назви й форк на сесії зі <code>slugify</code>:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/slug</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "/rename slug-translit" --resume 7847d2d9-… --output-format json | jq -c '{num_turns, total_cost_usd}'</span>
+{"num_turns":0,"total_cost_usd":0.08646498}            <span class="d"># локальна команда, модель не викликається</span>
+<span class="ps">$ </span><span class="c">claude -p "Без інструментів, одним рядком: яку систему ми обрали і скільки тестів пройшло?" \
+    --resume slug-translit --fork-session --tools "" --output-format json | jq -c '{session_id, result}'</span>
+{"session_id":"5a1d3b5f-…","result":"Обрали систему транслітерації 2010 (постанова КМУ №55) без правил початку слова, і пройшло 6 з 6 тестів."}
+<span class="ps">$ </span><span class="c">claude -p "Без інструментів, одним словом: ок" --continue --tools "" --output-format json | jq -c '{session_id}'</span>
+<span class="er">{"session_id":"5a1d3b5f-…"}</span>                       <span class="d"># не оригінал 7847d2d9, а форк</span></pre>
+<div class="cap">реальні прогони · 15.10.2026 · --model haiku і прапорці ізоляції пропущено · console/sessions.txt</div></div>
+<p>Форк пам'ятає все, а <code>--continue</code> після нього потрапляє у форк, бо той найсвіжіший. Якщо в каталозі більше однієї лінії роботи, продовжуйте за назвою або ID.</p>
+<h3>Що відновлює продовження</h3>
+<ul>
+<li><b>Відновлює:</b> повну історію з викликами інструментів, модель, агента (<code>--agent</code>), активну ціль <code>/goal</code>. У терміналі (без <code>-p</code>) — також режим дозволів; <code>bypassPermissions</code> не відновлюється.</li>
+<li><b>Не відновлює:</b> <code>--mcp-config</code>, <code>--settings</code>, <code>--plugin-dir</code>, <code>--add-dir</code> і <code>/add-dir</code>. Їх треба передати знову, а файли <code>settings.json</code> перечитуються самі. Фонові Bash-задачі не перезапускаються.</li>
+<li><b>Інструмент, перерваний збоєм,</b> повторно не виконується. Агент бачить, що виклик обірвався, і має спершу перевірити, чи той спрацював.</li>
+<li><b>Після довгої перерви</b> (Pro/Max, понад годину простою і понад 100 тис. токенів) Claude Code пропонує «Resume from summary», тобто <code>/compact</code> одразу. Кеш уже холодний, тож перший запит однаково прочитає всю історію. Питання лише в тому, чи нести її далі.</li>
+</ul>
+<h3>Правило вибору</h3>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Ситуація</th><th>Дія</th></tr></thead>
+<tbody>
+<tr><td>Та сама задача, контекст роздули виводи</td><td><code>/compact &lt;фокус&gt;</code> або «Summarize from here» від початку відступу</td></tr>
+<tr><td>Нова, не пов'язана задача</td><td><code>/clear назва-старої</code>, щоб стара сесія лишилася у picker під назвою</td></tr>
+<tr><td>Двічі поправили агента в тому самому, а він знову помиляється</td><td><code>/clear</code> і новий промпт, у якому враховано обидві помилки</td></tr>
+<tr><td>Хочете спробувати інший підхід, не втративши поточний</td><td><code>/branch</code> або <code>--fork-session</code></td></tr>
+<tr><td>Планування з'їло багато контексту, план самодостатній</td><td>«clear context» при схваленні або нова сесія: «виконай docs/plans/….md»</td></tr>
+<tr><td>Після компакції агент повторює відкинуті рішення</td><td>нова сесія з файлу плану, де ці рішення записано (урок 1.3)</td></tr>
+</tbody></table></div>
+<p>Цифри, як компакція стискає контекст і що втрачає, наведено в уроці 1.3. Нагадаємо головне: <code>/clear</code> безкоштовний, а <code>/compact</code> — окремий великий запит на всю історію.</p>
+</section>
+
+<section class="sec" id="monitor">
+<div class="sec-h"><span class="num">05</span><h2>Приладова панель<span class="sub">/context, /usage, status line, /btw</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Питання</th><th>Інструмент</th><th>Ціна</th></tr></thead>
+<tbody>
+<tr><td data-th="Питання">Чим заповнене вікно?</td><td data-th="Інструмент"><code>/context</code> (розбір — урок 1.3)</td><td data-th="Ціна">без виклику моделі</td></tr>
+<tr><td data-th="Питання">Скільки коштувала сесія, чи теплий кеш, скільки лишилося ліміту?</td><td data-th="Інструмент"><code>/usage</code> (аліаси <code>/cost</code>, <code>/stats</code>)</td><td data-th="Ціна">запит статусу ліміту</td></tr>
+<tr><td data-th="Питання">Те саме, але постійно перед очима</td><td data-th="Інструмент">status line</td><td data-th="Ціна">локальний скрипт, токенів не витрачає</td></tr>
+<tr><td data-th="Питання">Нагадати деталь, не засмічуючи історію</td><td data-th="Інструмент"><code>/btw питання</code></td><td data-th="Ціна">відповідь, решту бере з теплого кешу</td></tr>
+<tr><td data-th="Питання">Що відбувалося, поки мене не було?</td><td data-th="Інструмент"><code>/recap</code>; автоматичний підсумок після 3 хв відсутності</td><td data-th="Ціна">до 400 символів</td></tr>
+</tbody></table></div>
+<p><b><code>/usage</code></b> на API-ключі показує блок Session: оцінку вартості за прайсом, токени за моделями й рядок <code>Prompt cache (main)</code> з часткою входу з кешу, промахами і станом warm/cold. На підписці сума нічого не означає для рахунку, тож важливі смуги лімітів і розбивка: які skills, субагенти й MCP-сервери з'їдають ліміт. Через <code>-p</code> команда теж працює:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/slug</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "/usage" --resume 7847d2d9-…</span>
+Current session: 12% used · resets Oct 15 at 7:50am (Europe/Kiev)
+Current week (all models): 24% used · resets Oct 19 at 6am (Europe/Kiev)
+Last 24h · 4547 requests · 162 sessions
+  90% of your usage came from sessions active for 8+ hours
+  <span class="y">80% of your usage was at &gt;150k context</span>
+  66% of your usage came from subagent-heavy sessions</pre>
+<div class="cap">реальний вивід · 15.10.2026 · підписка автора курсу · рядки з назвами skills і плагінів прибрано</div></div>
+<p>Рядок «80% at &gt;150k context» означає, що чотири п'ятих ліміту пішли на запити, які несли понад 150 тис. токенів історії. Саме цю статтю витрат прибирають <code>/clear</code> між задачами і своєчасний <code>/compact</code>.</p>
+<h3>Status line: контекст і гроші постійно на екрані</h3>
+<p>Claude Code передає скрипту JSON сесії в stdin і показує під промптом те, що скрипт надрукує. Скрипт запускається на старті, після кожної відповіді, після <code>/compact</code>, при зміні режиму і за <code>refreshInterval</code>. Оновлення збираються з інтервалом 300 мс, і скрипт, що ще працює, скасовується. Налаштування в <code>.claude/settings.json</code> проєкту або в <code>~/.claude/settings.json</code>:</p>
+<pre class="code" data-lang="json">{
+  <span class="s">"statusLine"</span>: {
+    <span class="s">"type"</span>: <span class="s">"command"</span>,
+    <span class="s">"command"</span>: <span class="s">"~/.claude/statusline.sh"</span>
+  }
+}</pre>
+<pre class="code" data-lang="bash"><span class="cm">#!/bin/bash</span>
+<span class="cm"># JSON сесії приходить у stdin; поля — з довідника statusline</span>
+<span class="cm"># (у console/statusline.sh є ще запис входу у файл — лише для уроку)</span>
+jq -r <span class="s">'
+  (.context_window.used_percentage // 0 | floor) as $pct
+  | (if $pct &gt;= 60 then "ctx \($pct)% ⚠" else "ctx \($pct)%" end) as $ctx
+  | (if .prompt_cache == null then "cache —"
+     elif .prompt_cache.warm then "cache warm" else "cache COLD" end) as $cache
+  | ((.cost.total_cost_usd // 0) * 1000 | round / 1000) as $usd
+  | "\(.model.display_name) · \($ctx) · $\($usd) · \($cache) · 5h \(.rate_limits.five_hour.used_percentage // "—")% · \(.session_name // "без назви")"'</span></pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>statusline-output.txt — що бачив користувач</span></div>
+<pre><span class="d">старт сесії (claude -n statusline-demo):</span>
+Haiku 5.5 · ctx 0% · $0 · cache — · 5h —% · statusline-demo
+<span class="d">після першої відповіді:</span>
+Haiku 5.5 · ctx 3% · $0.002 · cache warm · 5h 17% · statusline-demo
+<span class="d">після /rename sl-renamed:</span>
+Haiku 5.5 · ctx 3% · $0.002 · cache warm · 5h 17% · sl-renamed</pre>
+<div class="cap">реальна інтерактивна сесія · 15.10.2026 · Claude Code 2.1.300 · вхідний JSON — console/statusline-input-sample.json</div></div>
+<ul>
+<li><b><code>used_percentage</code> рахує лише вхід</b> (input + cache read + cache write) від вікна моделі. У Haiku 5.5 вікно 1 млн, тож 3% — це ≈32 тис. токенів. Поріг ⚠ задавайте у відсотках від вікна вашої моделі.</li>
+<li><b><code>cost.total_cost_usd</code> — оцінка на клієнті за прайсом</b>, обнуляється на <code>/clear</code>. <code>prompt_cache.warm</code> і <code>expires_at</code> показують, чи наступне повідомлення після паузи перечитає всю історію за повною ціною.</li>
+<li><b>Status line виконує shell-команду,</b> тому в непідтвердженій теці (діалог довіри) рядок порожній: діє те саме правило, що для хуків.</li>
+</ul>
+<div class="note warn"><span class="lbl">Лічильник біля спінера — не контекст</span>
+<p>Рядок на кшталт <code>(10m 27s · ↓ 5.5k tokens)</code> рахує лише вихід поточного ходу й обнуляється з кожним ходом. Розмір контексту він не показує, для цього є <code>/context</code> або <code>used_percentage</code> у status line.</p>
+</div>
+<p><b><code>/btw</code></b> відповідає з того, що вже є в контексті, без інструментів, і в історію не записується. Він працює, навіть поки агент зайнятий основним ходом. Підходить для питань на кшталт «як називався той конфіг?» чи «чому ти відкинув варіант з кешем?». Якщо відповідь потребує нового дослідження, клавіша <code>f</code> передає питання форк-субагентові з повним доступом до інструментів.</p>
+</section>
+
+<section class="sec" id="playbook">
+<div class="sec-h"><span class="num">06</span><h2>Плейбук довгої задачі<span class="sub">Чекліст з точками рішень</span></h2></div>
+<ol class="steps">
+<li><b>Старт.</b> Чистий <code>git status</code>, гілка під задачу, <code>claude -n &lt;задача&gt;</code>. Status line показує контекст і кеш. <i>Рішення:</i> diff описується одним реченням? Так — одразу пункт 5.</li>
+<li><b>План.</b> <code>Shift+Tab</code> до plan mode або <code>/plan &lt;задача&gt;</code>. Просіть окремий розділ відкритих питань і критерій готовності (які тести мають пройти). Для важкого дослідження — субагенти, щоб читання не осідало в головному контексті.</li>
+<li><b>Схвалення.</b> Відповіді на відкриті питання вписуйте в план через <code>Ctrl+G</code>, а не в чат. Перевірте план на складність, крайові випадки, зміни наявних тестів і межі обсягу. <i>Рішення:</i> якщо планування з'їло помітну частку вікна, схвалюйте з «clear context» або продовжуйте в новій сесії з файлу плану. Інакше — «Yes, and use auto mode» чи «manually approve».</li>
+<li><b>Коміт плану.</b> План у репозиторії (<code>plansDirectory</code>) — точка, від якої можна стартувати знову.</li>
+<li><b>Виконання кроками.</b> Один крок плану — тести — коміт. <i>Рішення після кожного кроку:</i> зелено — коміт і наступний; провал з правок Edit/Write — <code>/rewind</code> → «Restore code», щоб агент пам'ятав причину; провал після Bash-дій — <code>git restore</code>.</li>
+<li><b>Курс збився.</b> <code>Esc</code> зупиняє одразу. Після двох безуспішних поправок — <code>/clear</code> і кращий промпт; новий підхід без втрати старого — <code>/branch</code>.</li>
+<li><b>Контекст.</b> <i>Рішення за status line:</i> багато сирих виводів у тій самій задачі — «Summarize from here» або <code>/compact &lt;фокус&gt;</code>; інша задача — <code>/clear назва</code>. Деталь «нагадати» — <code>/btw</code>.</li>
+<li><b>Перерва.</b> <code>/rename</code>, якщо назва ще не відповідає задачі; невикомічене — в коміт <code>wip</code>. Повернення: <code>claude --resume &lt;назва&gt;</code>. Прапорці <code>--add-dir</code>/<code>--mcp-config</code> передайте знову. Кеш холодний — перше повідомлення перечитає всю історію.</li>
+<li><b>Рев'ю.</b> <code>git diff main</code> читає людина, а не тільки тести: складність, змінені наявні тести, межі обсягу. Знахідки — у ту саму сесію одним промптом з цифрами, виправлення — окремим комітом.</li>
+<li><b>Завершення.</b> <code>/usage</code> (або <code>total_cost_usd</code>) запишіть у PR: скільки коштували план і виконання. Застарілі рішення з плану перенесіть у CLAUDE.md чи ADR.</li>
+</ol>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Три інструменти<span class="sub">Та сама сесійна дисципліна в Codex і Cursor</span></h2></div>
+<div class="tabs">
+<input type="radio" name="ses-t" id="ses-t1" checked><input type="radio" name="ses-t" id="ses-t2"><input type="radio" name="ses-t" id="ses-t3">
+<div class="tab-l"><label for="ses-t1">Claude Code</label><label for="ses-t2">Codex CLI</label><label for="ses-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Дія</th><th>Команда</th></tr></thead>
+<tbody>
+<tr><td>План</td><td><code>Shift+Tab</code>, <code>/plan</code>, <code>--permission-mode plan</code>; схвалення через <code>ExitPlanMode</code>, <code>Ctrl+G</code></td></tr>
+<tr><td>Відкат</td><td><code>/rewind</code>, <code>Esc Esc</code>: код, розмова, обидва, summarize</td></tr>
+<tr><td>Продовжити</td><td><code>-c</code>, <code>-r &lt;id|назва&gt;</code>, <code>/resume</code>; <code>-n</code>, <code>/rename</code></td></tr>
+<tr><td>Розгалузити</td><td><code>/branch</code>, <code>--fork-session</code>, <code>/fork</code> (у фон)</td></tr>
+<tr><td>Стиснути / почати знову</td><td><code>/compact</code>, <code>/clear</code></td></tr>
+<tr><td>Стан</td><td><code>/context</code>, <code>/usage</code> (<code>/cost</code>), status line (власний скрипт), <code>/btw</code>, <code>/recap</code></td></tr>
+</tbody></table></div>
+</div>
+<div class="tab-p">
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Дія</th><th>Команда</th></tr></thead>
+<tbody>
+<tr><td>План</td><td><code>/plan [prompt]</code> — перемикає в plan mode; поки Codex працює, недоступний</td></tr>
+<tr><td>Відкат</td><td>відкату файлів немає, лише git (урок 3.1); <code>Esc</code> двічі з порожнім полем — правка попереднього повідомлення з форком розмови</td></tr>
+<tr><td>Продовжити</td><td><code>codex resume</code> (picker), <code>--last</code> (у поточному каталозі, <code>--all</code> — усюди), <code>/resume</code>; <code>codex exec resume --last</code> для скриптів; <code>/rename</code></td></tr>
+<tr><td>Розгалузити</td><td><code>/fork</code>, <code>codex fork [--last]</code>, <code>codex fork &lt;ID&gt; --worktree</code></td></tr>
+<tr><td>Стиснути / почати знову</td><td><code>/compact</code>, <code>/new</code>, <code>/clear</code></td></tr>
+<tr><td>Стан</td><td><code>/status</code> (модель, політика, токени, залишок контексту), <code>/statusline</code> (вибір полів, зберігається в <code>config.toml</code>), <code>/side</code> (<code>/btw</code>)</td></tr>
+</tbody></table></div>
+<div class="cap">з офіційної документації Codex · не запускалось у цьому уроці</div>
+</div>
+<div class="tab-p">
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Дія</th><th>Команда</th></tr></thead>
+<tbody>
+<tr><td>План</td><td><code>Shift+Tab</code>, <code>/plan</code>, <code>--plan</code> / <code>--mode=plan</code>; план — Markdown-файл у домашньому каталозі, «Save to workspace» переносить його в репозиторій</td></tr>
+<tr><td>Відкат</td><td><code>/rewind</code> (<code>/undo</code>, <code>/restore</code>) у CLI: файли й розмова, з diff по ходах; checkpoints у редакторі повертають лише файли, повідомлення лишаються</td></tr>
+<tr><td>Продовжити</td><td><code>agent resume</code>, <code>--continue</code>, <code>--resume [id]</code>, <code>/resume</code>, <code>agent ls</code>; <code>/rename</code></td></tr>
+<tr><td>Розгалузити</td><td><code>/fork</code></td></tr>
+<tr><td>Стиснути / почати знову</td><td><code>/summarize</code> (<code>/compress</code>), <code>/clear</code> (<code>/new</code>)</td></tr>
+<tr><td>Стан</td><td><code>/context</code>, <code>/usage</code> (ліміти й витрати), <code>statusLine</code> з власною командою — з changelog CLI</td></tr>
+</tbody></table></div>
+<div class="cap">з офіційної документації Cursor · не запускалось у цьому уроці</div>
+</div>
+</div>
+<p>Порада Cursor про plan mode збігається з правилом цього уроку: якщо агент побудував не те, поверніть зміни, уточніть план і запустіть знову. Це зазвичай швидше, ніж виправляти результат поправками.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: фіча через план, три продовження і рев'ю</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 4.3 · покриття цитатами в <code>lectern check</code></div><div class="pb">
+<p>Задача сформульована свідомо коротко: «<code>lectern check</code> має показувати покриття цитатами по кожному питанню квізу». Копія Lectern лежить у scratch-репозиторії, у <code>.claude/settings.json</code> додано <code>"plansDirectory": "./docs/plans"</code>. Вся робота йде в одній сесії <code>6936aee5</code>, і кожен наступний прогін продовжує її через <code>--resume</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Фіча: \`lectern check\` має показувати покриття цитатами по кожному питанню квізу. Досліди код і склади план реалізації: що виводимо в текстовому режимі і в --json, які файли змінюються, які тести додаємо. Відкриті питання винеси окремим списком. Код не змінюй." \
+    --permission-mode plan --model opusplan --setting-sources project --strict-mcp-config --max-budget-usd 3</span>
+<span class="d">Ignoring 5 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. …</span>
+<span class="y">● Bash</span> git ls-files …   <span class="y">● Read</span> tools.py, cli.py, test_smoke.py, test_tools.py, .claude/rules/tests.md, CHANGELOG.md
+<span class="y">● Write</span> docs/plans/lectern-check-buzzing-hammock.md   <span class="d"># 805 слів</span>
+<span class="c">Відкриті питання:
+1. Що таке «покриття»: вердикт для кожного питання (як у плані) чи частка лекції, яку покривають цитати?
+2. Показувати покриття завжди чи лише з окремим прапорцем --coverage? …
+6. Чи піднімати версію (зараз 0.2.0, її перевіряє тест) і під яким модулем записати зміну в CHANGELOG?
+7. Чи достатньо номерів рядків у .txt, а не сторінок PDF?</span>
+<span class="d">result · 10 ходів · 87,7 с · $0.4396 (Opus 5.5)</span>
+<span class="ps">$ </span><span class="c">claude -p "/context" --resume 6936aee5-… --model opusplan</span>
+Tokens: 53k / 1m (5%) · Messages 27.1k</pre>
+<div class="cap">реальна сесія · 15.10.2026 · Claude Code 2.1.300 · вивід скорочено · console/lectern-plan.jsonl</div></div>
+<p>Перше ж відкрите питання показує, що «покриття» можна зрозуміти двома способами. Без плану агент обрав би один із них мовчки. Сім відповідей власник вписав у план замість розділу «Відкриті питання» (diff: <code>lectern-plan-before-edit.md</code> → <code>lectern-plan-approved.md</code>): вердикт по кожному питанню, завжди і без прапорця, версію не піднімати. План закомічено. <code>/context</code> показав 5% вікна, тож виконання лишилося в тій самій сесії.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "План затверджено. Я відредагував docs/plans/…: відкриті питання замінено розділом «Рішення» — перечитай його. Реалізуй план у гілці feat/quote-coverage, запусти тести й ruff, зроби коміт у цій гілці." \
+    --resume 6936aee5-… --permission-mode acceptEdits --model opusplan \
+    --allowedTools "Read" "Edit" "Write" "Bash(.venv/bin/python -m pytest *)" "Bash(.venv/bin/ruff check *)" "Bash(git switch *)" …</span>
+<span class="y">● Bash</span> git checkout -b feat/quote-coverage
+<span class="er">  ⎿ This command requires approval</span>
+<span class="c">Не можу почати: Bash не дозволив створити гілку feat/quote-coverage. … Писати код на main не буду,
+бо CLAUDE.md забороняє комітити туди. Обходити запит на підтвердження іншою командою … теж не буду.</span>
+<span class="d">result · 4 ходи · 11,5 с · +$0.2438 · перший запит Sonnet: cache_creation 52 335, cache_read 0</span></pre>
+<div class="cap">реальна сесія · 15.10.2026 · console/lectern-exec-denied.jsonl</div></div>
+<p>Дозволено було <code>git switch</code>, а агент узяв <code>git checkout -b</code>. Майже всі ці 24 центи пішли не на роботу, а на запис кешу: <code>opusplan</code> перейшов з Opus на Sonnet, і всі 52 тис. токенів історії записалися в кеш заново (урок 1.5). Гілку створила людина (<code>git switch -c feat/quote-coverage</code>), далі ще одне продовження:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git switch -c feat/quote-coverage &amp;&amp; claude -p "Гілку feat/quote-coverage я створив, ти вже на ній. Продовжуй: реалізуй план, запусти тести й ruff, зроби коміт." --resume 6936aee5-… …</span>
+<span class="d">29 ходів: Edit ×14, Bash ×12 · 4 відмови (heredoc, python3 -, складені команди) → агент щоразу переходив на Edit або простішу команду</span>
+<span class="ok">36 passed · All checks passed! · коміт 85d93e8</span>
+<span class="ps">$ </span><span class="c">.venv/bin/lectern check samples/lecture.txt out/quiz.json</span>
+item 1  exact       line 38       «Ключами можуть бути лише незмінні об’єкти.»
+item 2  normalized  lines 6-7     «Тому пошук, вставка й видалення в середньому відбуваються за…»
+item 3  missing     closest: «Добра хеш-функція має дві властивості.»
+item 4  short       3 words &lt; 5
+coverage: 2/4 quotes found in the lecture
+item 3: quote not found verbatim in the lecture
+item 4: quote shorter than 5 words</pre>
+<div class="cap">реальна сесія · 15.10.2026 · 109 с · +$0.3233 · console/lectern-exec.jsonl</div></div>
+<p>Тести зелені, вивід збігається з планом. Рев'ю diff-а знайшло те, чого не бачили ні план, ні тести: <code>_lines()</code> для кожного рядка заново нормалізує весь префікс лекції, тобто працює за O(n²). Алгоритм був у схваленому плані дослівно. Заміри з цитатою в останньому рядку:</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar p"><span class="k">517 рядків · до</span><span class="tr"><i style="--v:6%"></i><b style="--v:6%">1,59 с</b></span></div>
+  <div class="bar p"><span class="k">1076 рядків · до</span><span class="tr"><i style="--v:26%"></i><b style="--v:26%">6,89 с</b></span></div>
+  <div class="bar p"><span class="k">2151 рядок · до</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">26,75 с</b></span></div>
+  <div class="bar t"><span class="k">2151 рядок · після</span><span class="tr"><i style="--v:0.5%"></i><b style="--v:0.5%">0,134 с</b></span></div>
+  <div class="bar t"><span class="k">12 041 рядок · після</span><span class="tr"><i style="--v:3.4%"></i><b style="--v:3.4%">0,904 с</b></span></div>
+</div>
+<figcaption>Час пошуку рядків для однієї цитати. 12 тис. рядків — це приблизно лекція на 300 сторінок; до виправлення її не міряли, бо за квадратичним трендом це хвилини на кожне питання. Виправлення — бінарний пошук за монотонною умовою, O(n log n), 37 тестів (console/timings.txt).</figcaption>
+</figure>
+<p>Знахідку з цифрами передали в ту саму сесію одним промптом. Агент зробив бінарний пошук, звірив стару й нову версію на 2969 випадкових лекціях, додав тест на 12 тис. рядків без замірів часу і зробив окремий коміт <code>eb19cee</code> (14 ходів, +$0.1975).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Етап сесії</th><th>Модель</th><th>Вартість</th></tr></thead>
+<tbody>
+<tr><td data-th="Етап сесії">План (plan mode)</td><td data-th="Модель">Opus 5.5</td><td data-th="Вартість">$0.44 · 37%</td></tr>
+<tr><td data-th="Етап сесії">Виконання, зупинене дозволами</td><td data-th="Модель">Sonnet 5.5</td><td data-th="Вартість">$0.24 · 20%</td></tr>
+<tr><td data-th="Етап сесії">Виконання</td><td data-th="Модель">Sonnet 5.5</td><td data-th="Вартість">$0.32 · 27%</td></tr>
+<tr><td data-th="Етап сесії">Виправлення після рев'ю</td><td data-th="Модель">Sonnet 5.5</td><td data-th="Вартість">$0.20 · 16%</td></tr>
+<tr><td data-th="Етап сесії"><b>Разом</b></td><td data-th="Модель">Opus + Sonnet</td><td data-th="Вартість"><b>$1.20</b></td></tr>
+</tbody></table></div>
+<p><b>Ваш крок:</b> повторіть цикл на своїй копії Lectern з іншою фічею, наприклад «<code>lectern check --json</code> показує, які речення лекції не покриті жодним питанням» (саме це питання №1 відклало). Задайте <code>plansDirectory</code>, зробіть прогін у plan mode, впишіть рішення в план, закомітьте його і виконайте через <code>--resume</code>. Дозволи для виконання складіть із команд, названих у плані, заміряйте час на великій лекції і запишіть вартість кожного етапу в CHANGELOG.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що ламає довгу сесію</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Наслідок</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">Рішення щодо плану пишуть у чат</td><td data-th="Наслідок">після компакції вони живуть лише в підсумку</td><td data-th="Як правильно">правити файл плану (<code>Ctrl+G</code>), тримати його в репозиторії</td></tr>
+<tr><td data-th="Помилка">План схвалено «на око»</td><td data-th="Наслідок">помилка в алгоритмі з плану потрапила в код (O(n²) у Lectern)</td><td data-th="Як правильно">перевіряти в плані складність, крайові випадки, зміни наявних тестів</td></tr>
+<tr><td data-th="Помилка"><code>-p --resume</code> без <code>--permission-mode</code></td><td data-th="Наслідок">продовження в режимі нового <code>-p</code>: правки відхиляються або йдуть не так, як ви чекали</td><td data-th="Як правильно">режим і <code>--allowedTools</code> завжди явно</td></tr>
+<tr><td data-th="Помилка">Дозволи виконання не збігаються з командами плану</td><td data-th="Наслідок">агент зупиняється на першій же команді (<code>git checkout -b</code> проти <code>git switch</code>)</td><td data-th="Як правильно">складати allowlist з плану або робити git-кроки самому</td></tr>
+<tr><td data-th="Помилка"><code>--continue</code> після форку чи паралельного запуску</td><td data-th="Наслідок">продовжено не ту сесію</td><td data-th="Як правильно"><code>--resume &lt;назва|id&gt;</code></td></tr>
+<tr><td data-th="Помилка">Третя поправка в тій самій розмові</td><td data-th="Наслідок">контекст забитий невдалими спробами, і агент повторює їх</td><td data-th="Як правильно"><code>/clear</code> і новий промпт з урахуванням обох помилок; або «Restore code» з поясненням</td></tr>
+<tr><td data-th="Помилка"><code>/compact</code> «про всяк випадок» на початку нової задачі</td><td data-th="Наслідок">платите за підсумок історії, яка вже не потрібна</td><td data-th="Як правильно">нова задача — <code>/clear</code>, він безкоштовний</td></tr>
+<tr><td data-th="Помилка">Модель у звіті про вартість беруть з <code>--model</code></td><td data-th="Наслідок">планування насправді йшло на Sonnet або Opus</td><td data-th="Як правильно">дивитися <code>modelUsage</code> / <code>/usage</code> за моделями</td></tr>
+<tr><td data-th="Помилка">Перерва без коміту й назви</td><td data-th="Наслідок">наступного дня сесію не знайти, а відкат залежить лише від знімків, яких 100</td><td data-th="Як правильно"><code>/rename</code> і коміт <code>wip</code> перед перервою</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте себе</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Restore code</span><span class="h">коли саме його?</span></span><span class="b"><span class="t">Код назад, розмова лишається</span><span class="d">агент пам'ятатиме, чому підхід не спрацював</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">ExitPlanMode у -p</span><span class="h">що буде?</span></span><span class="b"><span class="t">Його немає</span><span class="d">план — файл і текст; рішення — промптом наступного --resume</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">--continue після форку</span><span class="h">куди потрапите?</span></span><span class="b"><span class="t">У форк</span><span class="d">він найсвіжіший у каталозі; оригінал — за назвою чи ID</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Summarize from here</span><span class="h">чим кращий за /compact?</span></span><span class="b"><span class="t">Прицільний</span><span class="d">стискає лише відступ, початкові інструкції лишаються дослівно</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">--model haiku + plan mode</span><span class="h">яка модель планує?</span></span><span class="b"><span class="t">Sonnet</span><span class="d">plan mode підвищує Haiku; opusplan — до Opus</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">/btw</span><span class="h">що з історією?</span></span><span class="b"><span class="t">Не змінюється</span><span class="d">відповідь з контексту, без інструментів, у історію не потрапляє</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Треба додати один рядок логування в обробник помилок. Чи вмикати plan mode?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Так: продакшн-код — підстава для плану, навіть коли змінюється один рядок</span></label><label class="opt"><input type="radio" name="q1"><span>Так, але з <code>opusplan</code>: план на Opus окупиться навіть на дрібній правці</span></label><label class="opt ok"><input type="radio" name="q1"><span>Ні: diff описується одним реченням, план лише додасть ходів і токенів</span></label></div>
+    <div class="why yes">Так. Правило з документації: якщо diff можна описати одним реченням, план пропускають.</div>
+    <div class="why no">Plan mode окупається, коли підхід неочевидний, файлів кілька або код незнайомий; «продакшн» сам по собі не критерій. Для рядка логування це зайві витрати, а з <code>opusplan</code> — ще й на Opus.</div></div>
+  <div class="q"><div class="qt">2. Агент три ходи переписував модуль кешування, тести впали, і ви вирішили, що весь підхід хибний. Яка дія в <code>/rewind</code> найкраща, якщо наступна спроба має врахувати цей досвід?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Restore code: файли назад, а розмова з причиною провалу лишається</span></label><label class="opt"><input type="radio" name="q2"><span>Restore code and conversation: почати крок наново з чистими кодом і розмовою</span></label><label class="opt"><input type="radio" name="q2"><span>Summarize up to here: стиснути спробу, щоб агент бачив лише висновок</span></label></div>
+    <div class="why yes">Так. Агент бачить, чому підхід не спрацював, і не повторить його, а код повернувся до стану перед спробою.</div>
+    <div class="why no">Повний відкат стирає і досвід, а Summarize нічого не робить з файлами: зламаний код лишиться.</div></div>
+  <div class="q"><div class="qt">3. Нічний скрипт: <code>claude -p … --permission-mode plan</code>, потім <code>claude -p "виконуй" --resume "$sid"</code> без інших прапорців. Що станеться з правками?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Сесія лишиться в plan mode: <code>--resume</code> відновлює і режим дозволів, тож нічого не зміниться</span></label><label class="opt ok"><input type="radio" name="q3"><span>Продовження стартує в режимі нового <code>-p</code>, і правки, що потребують дозволу, відхилено</span></label><label class="opt"><input type="radio" name="q3"><span>Правки пройдуть: план уже готовий, і продовження вмикає acceptEdits</span></label></div>
+    <div class="why yes">Так. У <code>-p</code> режим не успадковується, plan mode відновлюється лише з <code>--permission-prompt-tool</code>. Режим виконання і дозволені команди передають явно.</div>
+    <div class="why no">У <code>-p</code> немає схвалення плану, а режим при <code>--resume</code> береться як для нового запуску: відновлення режиму працює лише в терміналі. Тому і «лишиться plan», і «увімкнеться acceptEdits» — хибні.</div></div>
+  <div class="q"><div class="qt">4. Ви зробили <code>--fork-session</code>, щоб спробувати альтернативу, а наступного ранку запустили <code>claude -p "продовжуй" --continue</code>. Куди піде промпт?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>В оригінал: <code>--continue</code> пропускає форки, як і сесії <code>-p</code></span></label><label class="opt"><input type="radio" name="q4"><span>Нікуди: за двох ліній роботи в каталозі <code>--continue</code> відкриє picker і спитає</span></label><label class="opt ok"><input type="radio" name="q4"><span>У форк: він найсвіжіша сесія цього каталогу, а оригінал — лише за ID</span></label></div>
+    <div class="why yes">Так, у реальному прогоні уроку <code>--continue</code> потрапив у форк <code>5a1d3b5f</code>. Коли ліній роботи дві, продовжуйте за назвою або ID.</div>
+    <div class="why no"><code>--continue</code> бере найсвіжішу сесію каталогу, а форк — окрема сесія з новим ID. Питати він не буде, а <code>claude -p --continue</code> сесії <code>-p</code> якраз бере.</div></div>
+  <div class="q"><div class="qt">5. Після години дебагу контекст на 70%, задача та сама, а перші інструкції (обмеження API, формат) важливі дослівно. Що обрати?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>«Summarize from here» від початку дебагу, з фокусом у «add context»</span></label><label class="opt"><input type="radio" name="q5"><span>«Summarize up to here» від початку дебагу, щоб стиснути все до нього</span></label><label class="opt"><input type="radio" name="q5"><span><code>/clear</code>: він безкоштовний, а перші інструкції легко повторити</span></label></div>
+    <div class="why yes">Так. Дебаг стиснеться, а все до нього лишиться дослівно. Це прицільний <code>/compact</code>.</div>
+    <div class="why no">«Summarize up to here» стисне саме те, що треба зберегти, — початкові інструкції. <code>/clear</code> викине їх зовсім, і для тієї самої задачі разом з ними зникне весь дебаг.</div></div>
+  <div class="q"><div class="qt">6. Планування в <code>opusplan</code> зайняло 40% вікна, план самодостатній і лежить у <code>docs/plans</code>. Як виконувати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>У тій самій сесії: агент пам'ятатиме все дослідження, а з ним і причини рішень</span></label><label class="opt ok"><input type="radio" name="q6"><span>Схвалити з «clear context» або почати нову сесію «виконай docs/plans/….md»</span></label><label class="opt"><input type="radio" name="q6"><span>Спершу <code>/compact</code> з фокусом на план, потім схвалити в тій самій сесії</span></label></div>
+    <div class="why yes">Так. Виконанню потрібен план, а не сирі виводи дослідження. Ці 40% надсилалися б із кожним запитом.</div>
+    <div class="why no">Коли план самодостатній, сирі виводи дослідження лише здорожчують кожен запит виконання. <code>/compact</code> — окремий великий запит на всю історію. Опція «clear context» якраз для цього.</div></div>
+  <div class="q"><div class="qt">7. Агент запустив <code>ruff format .</code> і кодоген, а потім ви вирішили відкотити останні два ходи. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span><code>/rewind</code> → Restore code: checkpoint знято перед ходом, отже й до форматера</span></label><label class="opt"><input type="radio" name="q7"><span>Попросити агента «Undo that»: він відкотить і Bash-наслідки, тож перевіряти нічого</span></label><label class="opt ok"><input type="radio" name="q7"><span><code>git status</code> і відкат через git до коміту перед задачею; rewind — для розмови</span></label></div>
+    <div class="why yes">Так. Bash-змін checkpoints не бачать. Тому коміт перед кожним кроком і є головна страховка.</div>
+    <div class="why no">Checkpoint зберігає лише файли, які змінюють Edit/Write, тож rewind поверне тільки їх. «Undo that» справді може відкотити й Bash-наслідки, але це нова дія агента, і її теж треба перевірити.</div></div>
+  <div class="q"><div class="qt">8. Команда рахує вартість за прапорцем <code>--model haiku</code> у скриптах, де перший крок іде в plan mode. Чому рахунок не сходиться?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Plan mode підвищує Haiku до Sonnet; у прогоні уроку Sonnet дав 99,7% вартості плану</span></label><label class="opt"><input type="radio" name="q8"><span><code>total_cost_usd</code> після <code>--resume</code> рахує лише нову частину, і план губиться</span></label><label class="opt"><input type="radio" name="q8"><span>Plan mode вмикає для Haiku вищий effort, і вихідних токенів стає в рази більше</span></label></div>
+    <div class="why yes">Так. Дивіться <code>modelUsage</code> у JSON або розбивку за моделями в <code>/usage</code>, а не прапорець запуску.</div>
+    <div class="why no">Змінюється модель, а не effort: з $0,0814 за план $0,0812 — Sonnet 5.5. А <code>total_cost_usd</code> після <code>--resume</code> якраз накопичений, тож рахувати треба різницю.</div></div>
+  <div class="q"><div class="qt">9. Хочете бачити заповнення контексту постійно і попереджати себе на 60%. Що правильно про status line?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Брати лічильник токенів біля спінера: він уже показує зайнятий контекст</span></label><label class="opt ok"><input type="radio" name="q9"><span><code>used_percentage</code> — вхід від вікна моделі; скрипт локальний, токенів не витрачає</span></label><label class="opt"><input type="radio" name="q9"><span>Кожне оновлення — запит до моделі, тож <code>refreshInterval</code> треба тримати великим</span></label></div>
+    <div class="why yes">Так. Поріг ставте у відсотках від вікна вашої моделі: у вікні на 1 млн 60% — це 600 тис. токенів.</div>
+    <div class="why no">Status line — локальний скрипт на JSON сесії. Лічильник біля спінера показує лише вихід поточного ходу, а не контекст.</div></div>
+  <div class="q"><div class="qt">10. Посеред довгої реалізації ви забули, чому агент відкинув варіант з Redis. Як спитати, не засмічуючи контекст?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q10"><span><code>/btw чому ти відкинув Redis?</code> — відповідь в історію не потрапить</span></label><label class="opt"><input type="radio" name="q10"><span>Звичайним повідомленням, а потім <code>/compact</code>, щоб прибрати його з історії</span></label><label class="opt"><input type="radio" name="q10"><span><code>/fork</code> і спитати в копії, щоб основна сесія лишилася чистою</span></label></div>
+    <div class="why yes">Так. Відповідь береться з того, що вже є в контексті, в історію не потрапляє і майже вся йде з теплого кешу.</div>
+    <div class="why no">Звичайне повідомлення лягає в історію, а <code>/compact</code> — окремий дорогий запит. Форк для одного питання надмірний: у <code>/btw</code> є клавіша <code>f</code> на випадок, коли справді потрібні інструменти.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>plan mode<br>як робочий<br>процес</td><td>Дослідити й узгодити план до першої правки: план → правка плану → схвалення → виконання кроками.</td></tr>
+<tr><td>ExitPlanMode</td><td>Інструмент, яким агент подає план на схвалення; у <code>-p</code> його немає.</td></tr>
+<tr><td>rewind</td><td><code>/rewind</code> або <code>Esc Esc</code>: повернення до промпту сесії з відкатом коду, розмови або стисненням.</td></tr>
+<tr><td>Restore code<br>і Summarize</td><td>П'ять дій меню <code>/rewind</code>: код і/або розмова назад, підсумок від точки або до неї.</td></tr>
+<tr><td>--continue</td><td>Продовжити найсвіжішу сесію поточного каталогу.</td></tr>
+<tr><td>--resume</td><td>Продовжити сесію за ID чи назвою або вибрати її в picker.</td></tr>
+<tr><td>--fork-session</td><td>Продовжити копію сесії з новим ID, не змінюючи оригінал.</td></tr>
+<tr><td>rename</td><td><code>/rename</code> або <code>-n</code>: назва сесії, за якою працює <code>--resume</code>.</td></tr>
+<tr><td>status line</td><td>Рядок під промптом, який друкує ваш скрипт з JSON сесії: контекст, вартість, кеш, ліміти.</td></tr>
+<tr><td>usage</td><td><code>/usage</code> (<code>/cost</code>, <code>/stats</code>): вартість сесії, стан кешу, ліміти плану і що їх з'їдає.</td></tr>
+<tr><td>btw</td><td><code>/btw</code>: побічне питання з контексту сесії без інструментів і без запису в історію.</td></tr>
+<tr><td>плейбук<br>довгої задачі</td><td>Порядок план → виконання → коміт → відкат → стиснення → продовження з правилами вибору на кожному кроці.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Журнал однієї довгої сесії</h3>
+<p>Проведіть реальну задачу на 1–3 години за плейбуком уроку і здайте журнал: план і відкриті питання, ваші правки плану, кожну точку рішення (rewind, git, compact, clear, fork, resume) з причиною, показники status line чи <code>/usage</code> на старті й наприкінці, вартість за етапами і одну знахідку рев'ю.</p>
+<h3>2. Розбір зламаної сесії</h3>
+<p>За заданим транскриптом сесії з помилками (поправки в чаті, <code>--continue</code> після форку, rewind після Bash-змін, <code>-p --resume</code> без режиму) знайдіть щонайменше п'ять порушень, поясніть наслідок кожного і перепишіть послідовність команд.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">Claude Code — Choose a permission mode</a><span>plan mode, меню схвалення плану, <code>Ctrl+G</code>, <code>useAutoModeDuringPlan</code></span></li>
+<li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Claude Code — Best practices</a><span>explore → plan → code, «diff одним реченням», керування сесією, дві невдалі поправки → <code>/clear</code></span></li>
+<li><a href="https://code.claude.com/docs/en/checkpointing" target="_blank" rel="noopener">Claude Code — Checkpointing</a><span>п'ять дій <code>/rewind</code>, «add context», rewind після <code>/clear</code>, «No code restore»</span></li>
+<li><a href="https://code.claude.com/docs/en/sessions" target="_blank" rel="noopener">Claude Code — Manage sessions</a><span><code>--continue</code>, <code>--resume</code>, picker, назви, <code>/branch</code> і <code>--fork-session</code>, режим дозволів при продовженні, «Resume from summary»</span></li>
+<li><a href="https://code.claude.com/docs/en/statusline" target="_blank" rel="noopener">Claude Code — Customize your status line</a><span>поля JSON, <code>used_percentage</code>, <code>prompt_cache</code>, коли запускається скрипт, довіра до теки</span></li>
+<li><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code — Manage costs effectively</a><span><code>/usage</code>, рядок Prompt cache, лічильник біля спінера, чому витрати ростуть у довгій сесії</span></li>
+<li><a href="https://code.claude.com/docs/en/commands" target="_blank" rel="noopener">Claude Code — Commands</a><span><code>/plan</code>, <code>/rewind</code>, <code>/rename</code>, <code>/branch</code>, <code>/fork</code>, <code>/btw</code>, <code>/recap</code>, <code>/usage</code></span></li>
+<li><a href="https://code.claude.com/docs/en/interactive-mode" target="_blank" rel="noopener">Claude Code — Interactive mode</a><span><code>Esc Esc</code>, <code>/btw</code>, session recap</span></li>
+<li><a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Claude Code — Settings reference</a><span><code>plansDirectory</code>, <code>showClearContextOnPlanAccept</code></span></li>
+<li><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code — Model configuration</a><span><code>opusplan</code>, підвищення Haiku до Sonnet у plan mode</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run programmatically</a><span><code>-p --continue</code>, <code>--resume</code>, накопичений <code>total_cost_usd</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/developer-commands" target="_blank" rel="noopener">Codex — Developer commands</a><span><code>/plan</code>, <code>/compact</code>, <code>/status</code>, <code>/statusline</code>, <code>/fork</code>, <code>/side</code>, <code>codex resume</code>, <code>codex fork</code></span></li>
+<li><a href="https://cursor.com/docs/agent/plan-mode" target="_blank" rel="noopener">Cursor — Plan Mode</a><span>уточнювальні питання, план у Markdown, «Save to workspace», «Starting over from a plan»</span></li>
+<li><a href="https://cursor.com/docs/cli/using" target="_blank" rel="noopener">Cursor CLI — Using Agent</a><span><code>--plan</code>, <code>/summarize</code>, <code>--continue</code>, <code>--resume</code>, <code>agent ls</code>; <a href="https://cursor.com/docs/cli/reference/slash-commands" target="_blank" rel="noopener">slash commands</a>, <a href="https://cursor.com/docs/cli/changelog" target="_blank" rel="noopener">changelog</a> (<code>/rewind</code>, <code>/context</code>, <code>statusLine</code>)</span></li>
+<li><a href="https://cursor.com/docs/agent/overview" target="_blank" rel="noopener">Cursor — Agent overview</a><span>checkpoints: лише файли, повідомлення лишаються</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 4.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 4.3 · Senomi<br><br><a href="lesson-20.html">← Урок 4.2</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-22.html">Урок 4.4 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

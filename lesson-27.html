@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 5.4. Проєктний контекст, що не старіє: CLAUDE.md, AGENTS.md, ADR, живі специфікації</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 5.4 · Модуль 5</div>
+<h1>Проєктний контекст, що не старіє: CLAUDE.md, AGENTS.md, ADR, живі специфікації</h1>
+<p class="lead">Тести ловлять застарілий код, але ніщо не ловить застарілий CLAUDE.md, який агент читає в кожній сесії. Розкладаємо знання проєкту по шарах з різним часом життя, пишемо ADR для рішень Lectern, перетворюємо таблицю прикладів на тест і ставимо в CI скрипт, що звіряє інструкції з репозиторієм, а агентові доручаємо пропонувати правки.</p>
+<div class="hero-meta"><span class="chip">Prompt і Context Engineering: повторюваний результат</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Ми писатимемо кожен ADR так, ніби це розмова з майбутнім розробником.</p><cite>Майкл Найгард, «Documenting Architecture Decisions», 15 листопада 2011 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 15 розділів</summary><nav class="toc"><a href="#rot"><b>01</b>Як гниє контекст репозиторію</a><a href="#layers"><b>02</b>Шари контексту</a><a href="#adr"><b>03</b>ADR</a><a href="#living-spec"><b>04</b>Жива специфікація</a><a href="#mechanisms"><b>05</b>Механізми актуальності</a><a href="#check-context"><b>06</b>check_context.py</a><a href="#agent-sync"><b>07</b>Агент оновлює контекст</a><a href="#reload"><b>08</b>Коли агент побачить зміну</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#mistakes"><b>10</b>Типові помилки</a><a href="#practice"><b>11</b>Практика</a><a href="#quiz"><b>12</b>Квіз</a><a href="#terms"><b>13</b>Терміни уроку</a><a href="#homework"><b>14</b>Домашнє завдання</a><a href="#resources"><b>15</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>пояснити, чому файли контексту застарівають мовчки і які симптоми це дає в сесії агента;</li>
+    <li>розкласти знання проєкту по шарах (інструкції, ADR, специфікації, README, changelog) так, щоб кожен факт жив в одному місці;</li>
+    <li>писати ADR у форматі Найгарда і замінювати рішення, не переписуючи історію;</li>
+    <li>перетворити таблицю прикладів на тест, щоб документ падав разом із кодом;</li>
+    <li>поставити в CI перевірку, що звіряє CLAUDE.md і README з репозиторієм, а агентові доручити пропонувати правки.</li>
+  </ul>
+</div>
+
+<section class="sec" id="rot">
+<div class="sec-h"><span class="num">01</span><h2>Як гниє контекст репозиторію<span class="sub">Тести зелені, інструкції брешуть</span></h2></div>
+<p>Код перевіряють тести, лінтер і типи. Текст, який агент читає на початку <b>кожної</b> сесії, не перевіряє ніщо: <code>CLAUDE.md</code> може називати прапорець, якого вже немає, а збірка залишиться зеленою. Ось два звичайні коміти в Lectern:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git log --oneline -2</span>
+4ddd737 feat(cli): lectern check --text replaces --quote
+1b6efe8 refactor(tests): move FakeClient and reply helpers to tests/fakes.py
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q | tail -1</span>
+<span class="ok">44 passed in 2.49s</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/check_context.py</span>
+checked 4 files (15 commands, 12 paths, 11 symbols): 2 problem(s)
+<span class="er">.claude/CLAUDE.md:12: `lectern check --quote`: no such option
+prompt.txt:4: `lectern check --quote`: no such option</span></pre>
+<div class="cap">реальний вивід · копія Lectern у scratch-теці · 15.10.2026 · скрипт перевірки будуємо нижче</div></div>
+<p>Після цих комітів у файлах контексту неправдиві <b>три</b> рядки, а скрипт знайшов два. Третій — «<code>FakeClient</code> лежить у <code>tests/test_agent_api.py</code>»: і символ, і файл існують, хибний лише зв'язок між ними. Так виглядає вся проблема в мініатюрі: розбіжність у назвах ловить машина, у змісті — лише людина або модель.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом у сесії</th><th>Що застаріло</th><th>Хто помітить</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом у сесії">Агент запускає команду, яка падає, і йде в <code>--help</code> чи код шукати правильну</td><td data-th="Що застаріло">Команда, прапорець, шлях у CLAUDE.md чи README</td><td data-th="Хто помітить">Скрипт у CI: це рядок, його можна звірити</td></tr>
+<tr><td data-th="Симптом у сесії">Агент дотримується правила про модуль, якого більше немає, або «відновлює» його</td><td data-th="Що застаріло">Правило пережило рефакторинг</td><td data-th="Хто помітить">Рев'ю, аудит агентом</td></tr>
+<tr><td data-th="Симптом у сесії">Дві сесії поводяться по-різному на тій самій задачі</td><td data-th="Що застаріло">Два файли суперечать один одному</td><td data-th="Хто помітить">Аудит: <code>/doctor prompt-audit</code> (урок 4.2)</td></tr>
+<tr><td data-th="Симптом у сесії">Агент «спрощує» дивний код і ламає продуктову гарантію</td><td data-th="Що застаріло">Записано правило, але не причину</td><td data-th="Хто помітить">ADR, на який правило посилається</td></tr>
+</tbody></table></div>
+<p>Перший рядок таблиці ми виміряли: та сама задача «перевір цитату інструментом проєкту», Haiku, по три прогони з застарілим і з оновленим <code>CLAUDE.md</code>.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>CLAUDE.md</th><th>Ходи</th><th>Виклики інструментів</th><th>Час</th><th>Вартість</th></tr></thead>
+<tbody>
+<tr><td data-th="CLAUDE.md">Застарілий (<code>--quote</code>)</td><td data-th="Ходи">4–6</td><td data-th="Виклики інструментів">3–5</td><td data-th="Час">15,9–20,2 с</td><td data-th="Вартість">$0.0021–0.0030</td></tr>
+<tr><td data-th="CLAUDE.md">Оновлений (<code>--text</code>)</td><td data-th="Ходи">2</td><td data-th="Виклики інструментів">1</td><td data-th="Час">6,7–7,3 с</td><td data-th="Вартість">$0.0009–0.0014</td></tr>
+</tbody></table></div>
+<p>З застарілим файлом усі три сесії <b>почали з <code>lectern check --help</code></b>, а дві прямо написали, що CLAUDE.md розходиться з комітом <code>4ddd737</code>: git status і останні коміти Claude Code завантажує на старті сесії. З оновленим — одна команда і відповідь. Розбіжність, яку не видно ні з <code>--help</code>, ні з повідомлення коміту, — правило, рішення, розташування — агент не помітить взагалі.</p>
+<div class="note warn"><span class="lbl">Пастка, яку ми побачили в прогоні</span>
+<p>Компенсуючи застарілий контекст, агент досліджує, а дослідження — місце, де він помиляється. В одному з трьох прогонів Haiku пропустив рядок через <code>od -c</code>, прийняв байти кирилиці за зірочки і відповів «дослівно не збігається» — хоча цитата є, лише з переносом рядка. Правильний контекст скорочує не лише ходи, а й простір для таких висновків.</p>
+</div>
+<p>Документація Claude Code формулює підхід так:</p>
+<blockquote class="q-src">
+<p>Ставтеся до CLAUDE.md як до коду: переглядайте його, коли щось іде не так, регулярно обрізайте і перевіряйте зміни, спостерігаючи, чи справді змінюється поведінка Claude.</p>
+<p class="orig">“Treat CLAUDE.md like code: review it when things go wrong, prune it regularly, and test changes by observing whether Claude's behavior actually shifts.”</p>
+<cite>Claude Code Docs, «Best practices for Claude Code», станом на 15.10.2026</cite>
+</blockquote>
+<p>У тій самій таблиці «що не включати» стоїть <b>інформація, що часто змінюється</b>. Це перше правило проти старіння: що менше фактів інструкція копіює з коду, то менше в ній може застаріти. Решта уроку — що робити з фактами, які все ж треба записати.</p>
+</section>
+
+<section class="sec" id="layers">
+<div class="sec-h"><span class="num">02</span><h2>Шари контексту<span class="sub">Що відповідає на яке питання і скільки живе</span></h2></div>
+<p>Знання проєкту лежать у п'яти шарах. Вони старіють з різною швидкістю, і кожен потребує свого механізму. Головне правило: <b>кожен факт живе в одному шарі</b>, решта на нього посилається.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Шар</th><th>Відповідає на питання</th><th>Хто й коли оновлює</th><th>Як виявити застарілість</th></tr></thead>
+<tbody>
+<tr><td data-th="Шар"><b>Інструкції</b>: <code>CLAUDE.md</code>, <code>AGENTS.md</code>, rules, промпти</td><td data-th="Відповідає на питання">Як тут працювати: команди, межі, заборони</td><td data-th="Хто й коли оновлює">Автор зміни, у тому самому PR</td><td data-th="Як виявити застарілість">Скрипт у CI звіряє команди, шляхи, символи; аудит змісту — агентом</td></tr>
+<tr><td data-th="Шар"><b>ADR</b>: <code>docs/adr/NNNN-*.md</code></td><td data-th="Відповідає на питання">Чому зроблено саме так і що це скасує</td><td data-th="Хто й коли оновлює">Ніхто: прийнятий ADR не редагують, а замінюють новим</td><td data-th="Як виявити застарілість">Не старіє за визначенням; перевіряється лише формат і індекс</td></tr>
+<tr><td data-th="Шар"><b>Жива специфікація</b>: таблиці прикладів, тести</td><td data-th="Відповідає на питання">Яка поведінка мусить лишатися правдою</td><td data-th="Хто й коли оновлює">Автор зміни поведінки</td><td data-th="Як виявити застарілість">Сама: таблицю виконує тест</td></tr>
+<tr><td data-th="Шар"><b>README і docs</b></td><td data-th="Відповідає на питання">Як встановити й користуватися (для людей)</td><td data-th="Хто й коли оновлює">Автор зміни інтерфейсу</td><td data-th="Як виявити застарілість">Команди й шляхи — тим самим скриптом; решта — рев'ю</td></tr>
+<tr><td data-th="Шар"><b>CHANGELOG</b></td><td data-th="Відповідає на питання">Що змінилося в кожній версії</td><td data-th="Хто й коли оновлює">Автор зміни або реліз</td><td data-th="Як виявити застарілість">Порожній <code>Unreleased</code> при непорожньому diff</td></tr>
+</tbody></table></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 420" role="img" aria-label="Один PR і п'ять шарів контексту: що в кожному ловить застарілість">
+  <defs>
+    <marker id="m27a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="46" rx="10" class="bx a"/>
+  <text x="180" y="28" text-anchor="middle" class="tx b">PR змінює код</text>
+  <text x="180" y="45" text-anchor="middle" class="tx s">команду, шлях, поведінку або рішення</text>
+  <path d="M26 54 V 380" class="ln a"/>
+  <path d="M26 98 H 44" class="ln a" marker-end="url(#m27a)"/>
+  <rect x="48" y="72" width="304" height="52" rx="9" class="bx t"/>
+  <text x="60" y="93" class="tx b">Інструкції · CLAUDE.md, AGENTS.md</text>
+  <text x="60" y="112" class="tx s">ловить: check_context.py у CI</text>
+  <path d="M26 166 H 44" class="ln a" marker-end="url(#m27a)"/>
+  <rect x="48" y="140" width="304" height="52" rx="9" class="bx t"/>
+  <text x="60" y="161" class="tx b">Жива специфікація</text>
+  <text x="60" y="180" class="tx s">ловить: pytest виконує таблицю</text>
+  <path d="M26 234 H 44" class="ln a" marker-end="url(#m27a)"/>
+  <rect x="48" y="208" width="304" height="52" rx="9" class="bx t"/>
+  <text x="60" y="229" class="tx b">README і docs</text>
+  <text x="60" y="248" class="tx s">ловить: той самий скрипт (команди, шляхи)</text>
+  <path d="M26 302 H 44" class="ln a" marker-end="url(#m27a)"/>
+  <rect x="48" y="276" width="304" height="52" rx="9" class="bx m"/>
+  <text x="60" y="297" class="tx b">ADR</text>
+  <text x="60" y="316" class="tx s">не редагують: нове рішення → новий ADR</text>
+  <path d="M26 370 H 44" class="ln a" marker-end="url(#m27a)"/>
+  <rect x="48" y="344" width="304" height="52" rx="9" class="bx m"/>
+  <text x="60" y="365" class="tx b">CHANGELOG</text>
+  <text x="60" y="384" class="tx s">ловить лише рев'ю: рядок у тому самому PR</text>
+</svg>
+<figcaption>Три верхні шари перевіряє машина, два нижні — людина на рев'ю. Що більше фактів у верхніх шарах, то менше залежите від уважності рев'юера.</figcaption>
+</figure>
+<p>Як це працює на Lectern. Правило «не послаблювати <code>check_quote</code>» стоїть у <code>CLAUDE.md</code> одним рядком, бо агентові воно потрібне в кожній сесії. Причина — чому перевірка в коді, а не в моделі, і чому парафраз завжди відхиляється — у <code>docs/adr/0004</code>: агент прочитає його, лише коли збирається це правило чіпати. Які саме лапки й переноси нормалізуються — у таблиці <code>docs/spec/quotes.md</code>, яку виконує тест. Три шари, жодного дубля, і лише перший платить контекстом у кожній сесії.</p>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Межа між шарами — за швидкістю змін. Команди змінюються щотижня — їм місце там, де їх перевіряє скрипт. Рішення змінюються раз на квартал і мають історію — їм місце в ADR. Поведінка змінюється разом із кодом — їй місце в тесті. Факт, який часто змінюється і не має перевірки, у постійному контексті агента не потрібен: агент знайде його в коді сам.</p>
+</div>
+</section>
+
+<section class="sec" id="adr">
+<div class="sec-h"><span class="num">03</span><h2>ADR<span class="sub">Рішення, яке не редагують</span></h2></div>
+<p><b>ADR</b> (architecture decision record) — короткий файл про одне архітектурно значуще рішення. Формат запропонував Майкл Найгард у листопаді 2011 року: п'ять розділів, одна-дві сторінки, файли в репозиторії поруч із кодом.</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Розділ</th><th>Що в ньому (за Найгардом)</th></tr></thead>
+<tbody>
+<tr><td>Назва</td><td>Коротка іменна група; номер — послідовний, ніколи не використовується повторно</td></tr>
+<tr><td>Контекст</td><td>Сили, що діють: технічні, політичні, соціальні, локальні для проєкту</td></tr>
+<tr><td>Рішення</td><td>Наша відповідь на ці сили</td></tr>
+<tr><td>Статус</td><td>«proposed», поки зацікавлені сторони не погодились; «accepted» після згоди; згодом — «deprecated» або «superseded»</td></tr>
+<tr><td>Наслідки</td><td>Контекст після рішення: що стало легше, що важче, які ризики</td></tr>
+</tbody></table></div>
+<blockquote class="q-src">
+<p>Якщо рішення скасовують, ми зберігаємо старе, але позначаємо його як замінене.</p>
+<p class="orig">“If a decision is reversed, we will keep the old one around, but mark it as superseded.”</p>
+<cite>Michael Nygard, «Documenting Architecture Decisions», 15.11.2011</cite>
+</blockquote>
+<p>Саме це робить ADR шаром, що не старіє: він описує рішення <b>на дату прийняття</b> і не претендує на актуальність. Тому <code>check_context.py</code> навмисно не звіряє шляхи й символи в ADR: замінений ADR має право згадувати видалений модуль. Перевіряються лише формат, номери і посилання «замінено рішенням N».</p>
+<p>Конвенції найпоширенішого інструмента <code>adr-tools</code> (Nat Pryce): тека <code>doc/adr</code> за замовчуванням, файли <code>0001-record-architecture-decisions.md</code> — номер з чотирьох цифр і назва в нижньому регістрі через дефіс; <code>adr new -s 9 …</code> створює ADR, що замінює дев'ятий, і сам змінює статус старого; <code>adr generate toc</code> друкує індекс. Останній коміт у репозиторії — березень 2020 року, тож для Lectern індекс генерує той самий Python-скрипт, що й перевірка, без зовнішньої залежності. Теку беремо <code>docs/adr</code>, як уже вирішили в уроці 3.2.</p>
+<p>ADR для агента корисний з тієї ж причини, що й для нової людини в команді: код показує <b>що</b>, але не <b>чому</b>. Агент, який бачить «дивну» перевірку, схильний її спростити. Рядок у CLAUDE.md «зміни в <code>check_quote</code> — лише через власника, причини в <code>docs/adr/0004</code>» коштує десяток токенів у кожній сесії, а повний текст агент прочитає лише тоді, коли збирається цю перевірку чіпати.</p>
+<p>Lectern уже прийняв кілька рішень у модулях 2–4. Записуємо їх заднім числом — звичайна практика, коли ADR вводять у живий проєкт:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>ADR</th><th>Рішення</th><th>Статус</th></tr></thead>
+<tbody>
+<tr><td data-th="ADR">0001</td><td data-th="Рішення">Claude Code основний, Codex для рев'ю; правила в <code>AGENTS.md</code> (урок 3.2)</td><td data-th="Статус">Прийнято · 14.10.2026</td></tr>
+<tr><td data-th="ADR">0002</td><td data-th="Рішення">Квіз генерує workflow evaluator-optimizer (урок 2.4)</td><td data-th="Статус">Замінено рішенням 0003</td></tr>
+<tr><td data-th="ADR">0003</td><td data-th="Рішення">Квіз генерує агент із трьома власними інструментами (урок 2.5)</td><td data-th="Статус">Прийнято · замінює 0002</td></tr>
+<tr><td data-th="ADR">0004</td><td data-th="Рішення">Цитату перевіряє код, а не модель (уроки 1.4, 2.5, 3.4)</td><td data-th="Статус">Прийнято · 14.10.2026</td></tr>
+<tr><td data-th="ADR">0005</td><td data-th="Рішення">Маршрут до моделі визначає клас даних (урок 3.3)</td><td data-th="Статус">Прийнято · 15.10.2026</td></tr>
+<tr><td data-th="ADR">0006</td><td data-th="Рішення">Файли контексту перевіряються в CI й оновлюються в тому самому PR (цей урок)</td><td data-th="Статус">Запропоновано · 15.10.2026</td></tr>
+</tbody></table></div>
+<pre class="code" data-lang="markdown"><span class="cm"># 4. Цитату перевіряє код, а не модель</span>
+
+<span class="k">## Статус</span>
+Прийнято · 14.10.2026
+
+<span class="k">## Контекст</span>
+Модель може «виправити» цитату, склеїти
+шматки речень або вигадати джерело,
+і впевнено сказати, що все звірено.
+Обіцянка продукту — кожна цитата є
+в лекції дослівно.
+
+<span class="k">## Рішення</span>
+Вердикт про цитату дає лише `check_quote`
+і `validate()`: підрядок у тексті лекції
+після нормалізації того, що спотворює
+витяг з PDF (переноси, лапки, апострофи,
+тире — `QUOTES`). Мінімальна довжина —
+`MIN_QUOTE_WORDS`. Послаблювати ці правила,
+щоб пройшов тест чи генерація, заборонено;
+зміни — лише через рев'ю власника.
+
+<span class="k">## Наслідки</span>
+- Перевірка детермінована, працює без
+  моделі (`lectern check`) і в CI.
+- Цитата доводить походження тексту,
+  а не його безпечність: ін'єкцію з
+  лекції процитувати можна, тому
+  потрібен ще `flag_instructions()`.
+- Парафраз завжди відхиляється, навіть
+  точний за змістом.</pre>
+<p class="cap">Повний текст — <code>docs/adr/0004-quote-check-in-code.md</code>; у файлі рядки довші, тут перенесено під ширину екрана.</p>
+<p>Пара 0002 → 0003 показує заміну. Старий файл лишається, змінюється лише рядок статусу, а в наслідках дописано, що саме зламало рішення: коли цитата не знаходиться дослівно, наступний крок залежить від знайденого, а фіксований цикл цього не вміє. Через рік це відповідь на питання «а чому не простий workflow?» без археології в чатах.</p>
+<div class="note tip"><span class="lbl">Коли писати ADR</span>
+<p>Тест на одне речення: <b>чи захоче хтось через пів року це «виправити», не знаючи причини?</b> Якщо так — ADR. Вибір бібліотеки для дат — ні; «цитату перевіряє код, а не модель» — так. Thoughtworks Technology Radar тримав легкі ADR у кільці Adopt у 2017–2018 роках саме з умовою зберігати їх у репозиторії, а не у вікі: так вони лишаються синхронними з кодом.</p>
+</div>
+</section>
+
+<section class="sec" id="living-spec">
+<div class="sec-h"><span class="num">04</span><h2>Жива специфікація<span class="sub">Документ, який падає</span></h2></div>
+<p><b>Жива специфікація</b> — опис поведінки, який перевіряється автоматично і тому не може тихо розійтися з кодом. Класична форма — сценарії Given/When/Then з Behavior-Driven Development (Деніел Терхорст-Норт і Кріс Маттс): <i>given</i> — стан світу до дії, <i>when</i> — сама поведінка, <i>then</i> — очікувані зміни. Для правил, які задаються прикладами, компактніша форма — таблиця: рядок = випадок, стовпці = вхід і очікуваний результат.</p>
+<p>У Lectern найтонше місце — що вважається «дослівною» цитатою. Описуємо це таблицею в <code>docs/spec/quotes.md</code>, яку читає людина і виконує pytest:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>#</th><th>Лекція</th><th>Цитата</th><th>Вердикт</th></tr></thead>
+<tbody>
+<tr><td data-th="#">1</td><td data-th="Лекція">Хеш-таблиця зберігає пари «ключ — значення» і шукає за O(1).</td><td data-th="Цитата">Хеш-таблиця зберігає пари «ключ — значення»</td><td data-th="Вердикт"><code>exact</code></td></tr>
+<tr><td data-th="#">2</td><td data-th="Лекція">те саме</td><td data-th="Цитата">Хеш-таблиця зберігає пари "ключ - значення"</td><td data-th="Вердикт"><code>normalized</code></td></tr>
+<tr><td data-th="#">3</td><td data-th="Лекція">Колізію розв’язують ланцюжками або відкритою адресацією.</td><td data-th="Цитата">Колізію розв'язують ланцюжками… (інший апостроф)</td><td data-th="Вердикт"><code>normalized</code></td></tr>
+<tr><td data-th="#">4</td><td data-th="Лекція">Колізію розв’язу-↵ють ланцюжками…</td><td data-th="Цитата">Колізію розв’язують ланцюжками…</td><td data-th="Вердикт"><code>normalized</code></td></tr>
+<tr><td data-th="#">5</td><td data-th="Лекція">Колізію розв’язують ланцюжками…</td><td data-th="Цитата">Колізії вирішують ланцюжками…</td><td data-th="Вердикт"><code>missing</code></td></tr>
+<tr><td data-th="#">6</td><td data-th="Лекція">Хеш-таблиця зберігає пари…</td><td data-th="Цитата">пари «ключ — значення»</td><td data-th="Вердикт"><code>short</code></td></tr>
+</tbody></table></div>
+<pre class="code" data-lang="python"><span class="cm"># tests/test_spec_quotes.py — виконує таблицю з docs/spec/quotes.md</span>
+SPEC = Path(__file__).resolve().parent.parent / <span class="s">"docs/spec/quotes.md"</span>
+
+<span class="k">def</span> spec_rows() -&gt; list[tuple[str, str, str, str]]:
+    section = SPEC.read_text().split(<span class="s">"## Приклади"</span>, <span class="n">1</span>)[<span class="n">1</span>]
+    rows = []
+    <span class="k">for</span> line <span class="k">in</span> section.splitlines():
+        cells = [c.strip() <span class="k">for</span> c <span class="k">in</span> line.strip().strip(<span class="s">"|"</span>).split(<span class="s">"|"</span>)]
+        <span class="k">if</span> len(cells) == <span class="n">4</span> <span class="k">and</span> cells[<span class="n">0</span>].isdigit():
+            no, lecture, quote, verdict = cells
+            rows.append((no, lecture.replace(<span class="s">"\\n"</span>, <span class="s">"\n"</span>), quote, verdict))
+    <span class="k">return</span> rows
+
+<span class="k">def</span> test_spec_has_examples():
+    <span class="k">assert</span> len(spec_rows()) &gt;= <span class="n">6</span>  <span class="cm"># порожня таблиця не повинна «проходити»</span>
+
+@pytest.mark.parametrize((<span class="s">"no"</span>, <span class="s">"lecture"</span>, <span class="s">"quote"</span>, <span class="s">"verdict"</span>),
+                         [pytest.param(*r, id=f<span class="s">"row{r[0]}-{r[3]}"</span>) <span class="k">for</span> r <span class="k">in</span> spec_rows()])
+<span class="k">def</span> test_spec_row(no, lecture, quote, verdict, tmp_path):
+    session = Session(lectures={<span class="s">"l"</span>: lecture}, out=tmp_path)
+    got = session.quote_coverage(<span class="s">"l"</span>, [{<span class="s">"quote"</span>: quote}])[<span class="n">0</span>][<span class="s">"match"</span>]
+    <span class="k">assert</span> got == verdict, f<span class="s">"docs/spec/quotes.md row {no}: expected {verdict}, got {got}"</span></pre>
+<p>Перевірка в дії: хтось вирішив, що точний за змістом парафраз теж підходить, і виправив рядок 5 у документі, не чіпаючи коду.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git diff docs/spec</span>
+<span class="er">-| 5 | Колізію розв’язують … | Колізії вирішують … | missing |</span>
+<span class="ok">+| 5 | Колізію розв’язують … | Колізії вирішують … | normalized |</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q tests/test_spec_quotes.py</span>
+<span class="er">E       AssertionError: docs/spec/quotes.md row 5: expected normalized, got missing
+FAILED tests/test_spec_quotes.py::test_spec_row[row5-normalized] - AssertionE...</span>
+1 failed, 6 passed in 0.03s</pre>
+<div class="cap">реальний вивід · 15.10.2026 · клітинки скорочено</div></div>
+<p>Документ більше не може обіцяти поведінку, якої немає. Зворотний бік ми теж перевірили: коли з <code>QUOTES</code> прибрати заміну апострофів, падає рядок 3 специфікації — і ще 5 старих тестів. Отже, специфікація не додає покриття коду, вона додає <b>гарантію документові</b>: таблиця, яку читає продакт чи автор курсу, правдива на кожному зеленому коміті.</p>
+<div class="note warn"><span class="lbl">Перевірено: порожня таблиця — зелений CI</span>
+<p>Ми додали в таблицю п'ятий стовпець «Примітка» — і парсер, що чекає чотири клітинки, не знайшов жодного рядка. <code>parametrize</code> отримав порожній список, і pytest <b>пропустив</b> тест з позначкою «got empty parameter set»: <code>1 skipped</code>, код виходу 0. Упав лише окремий <code>test_spec_has_examples</code>, який вимагає мінімум рядків. Будь-який тест, що читає документ, потребує такого запобіжника.</p>
+</div>
+<p>Таблиця підходить для правил, що задаються прикладами: нормалізація, валідація, ціноутворення, маршрутизація. Для довгих сценаріїв з кроками є Gherkin і Cucumber; великі специфікації фіч, план і задачі з них — тема модуля 8.</p>
+</section>
+
+<section class="sec" id="mechanisms">
+<div class="sec-h"><span class="num">05</span><h2>Механізми актуальності<span class="sub">Від правила в голові до червоного CI</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Механізм</th><th>Що ловить</th><th>Що пропускає</th><th>Ціна</th></tr></thead>
+<tbody>
+<tr><td data-th="Механізм"><b>Правило того самого PR</b>: зміна команди, шляху, поведінки чи рішення оновлює контекст у тому ж PR</td><td data-th="Що ловить">Усе, якщо автор і рев'юер пам'ятають</td><td data-th="Що пропускає">Усе, якщо не пам'ятають</td><td data-th="Ціна">Пункт у шаблоні PR</td></tr>
+<tr><td data-th="Механізм"><b>Скрипт у CI</b>: команди, прапорці, шляхи, символи, посилання з CLAUDE.md і README</td><td data-th="Що ловить">Назви, що зникли або змінилися</td><td data-th="Що пропускає">Хибний зв'язок між існуючими назвами; застаріле правило</td><td data-th="Ціна">~200 рядків, 0,05 с</td></tr>
+<tr><td data-th="Механізм"><b>Виконувана специфікація</b></td><td data-th="Що ловить">Документ обіцяє поведінку, якої немає</td><td data-th="Що пропускає">Поведінку поза таблицею</td><td data-th="Ціна">Тест на 30 рядків</td></tr>
+<tr><td data-th="Механізм"><b>Згенерований індекс ADR</b></td><td data-th="Що ловить">Індекс, що розійшовся з файлами; посилання на неіснуючий ADR</td><td data-th="Що пропускає">Застаріле рішення без нового ADR</td><td data-th="Ціна">Функція в тому ж скрипті</td></tr>
+<tr><td data-th="Механізм"><b>Агент після злиття</b> і <b>періодичний аудит</b></td><td data-th="Що ловить">Зміст: правила, зв'язки, суперечності</td><td data-th="Що пропускає">Детерміновані речі — їх дешевше перевірити кодом</td><td data-th="Ціна">Центи за прогін і ваше рев'ю</td></tr>
+</tbody></table></div>
+<p>Порядок важливий: усе, що можна звірити рядком, звіряє скрипт; агентові лишається те, що вимагає розуміння. Правило того самого PR фіксуємо в ADR 0006, і воно працює лише тому, що CI не дає його забути.</p>
+</section>
+
+<section class="sec" id="check-context">
+<div class="sec-h"><span class="num">06</span><h2>check_context.py<span class="sub">CLAUDE.md, який перевіряють як код</span></h2></div>
+<p>Скрипт читає <code>.claude/CLAUDE.md</code> (або кореневі <code>CLAUDE.md</code> і <code>AGENTS.md</code>), правила з <code>.claude/rules/</code>, <code>README.md</code> і <code>prompt.txt</code> — промпт для <code>claude -p</code> і <code>codex exec</code> теж контекст. Лише stdlib і жодного запуску коду проєкту, тож його можна ставити в CI, у pre-commit і в hook агента.</p>
+<ol class="steps">
+<li><b>Команди.</b> Рядки з блоків <code>```bash</code> і inline-код. <code>.venv/bin/X</code> і <code>python -m X</code>: X має бути залежністю чи скриптом у <code>pyproject.toml</code>. <code>lectern SUB --flag</code>: підкоманда і прапорці беруться з AST <code>cli.py</code> — без імпорту, тож не потрібні ні <code>anthropic</code>, ні мережа.</li>
+<li><b>Шляхи.</b> Усе, що схоже на шлях, має існувати; ім'я без теки (<code>cli.py</code>) шукається по репозиторію. Шлях, якого немає <i>навмисно</i>, має бути в <code>.gitignore</code>.</li>
+<li><b>Символи.</b> <code>check_quote</code>, <code>validate()</code>, <code>Session.call</code>, <code>FakeClient</code>, <code>MIN_QUOTE_WORDS</code> мають бути визначені в <code>src/</code> чи <code>tests/</code> (AST: класи, функції, методи, присвоєння).</li>
+<li><b>Посилання</b> <code>[текст](шлях)</code> ведуть на існуючий файл.</li>
+<li><b>ADR:</b> ім'я <code>NNNN-назва.md</code>, чотири розділи, унікальні номери, «замінено рішенням N» веде на існуючий файл, <code>docs/adr/README.md</code> збігається з тим, що згенерував би <code>--write-index</code>.</li>
+</ol>
+<pre class="code" data-lang="python"><span class="k">def</span> cli_spec() -&gt; dict[str, set[str]]:
+    <span class="s">"""Підкоманди й прапорці `lectern` — з AST cli.py, без імпорту залежностей."""</span>
+    tree = ast.parse((ROOT / <span class="s">"src/lectern/cli.py"</span>).read_text())
+    subs: dict[str, set[str]] = {}
+    var_to_sub: dict[str, str] = {}
+    <span class="k">for</span> node <span class="k">in</span> ast.walk(tree):  <span class="cm"># c = sub.add_parser("check", ...)</span>
+        <span class="k">if</span> isinstance(node, ast.Assign) <span class="k">and</span> isinstance(node.value, ast.Call):
+            call = node.value
+            <span class="k">if</span> getattr(call.func, <span class="s">"attr"</span>, <span class="s">""</span>) == <span class="s">"add_parser"</span> <span class="k">and</span> call.args:
+                name = call.args[<span class="n">0</span>].value
+                subs[name] = {<span class="s">"--help"</span>}
+                var_to_sub[node.targets[<span class="n">0</span>].id] = name
+    <span class="k">for</span> node <span class="k">in</span> ast.walk(tree):  <span class="cm"># c.add_argument("--json", ...)</span>
+        <span class="k">if</span> isinstance(node, ast.Call) <span class="k">and</span> getattr(node.func, <span class="s">"attr"</span>, <span class="s">""</span>) == <span class="s">"add_argument"</span>:
+            owner = getattr(node.func.value, <span class="s">"id"</span>, <span class="s">""</span>)
+            <span class="k">for</span> a <span class="k">in</span> node.args:
+                <span class="k">if</span> isinstance(a, ast.Constant) <span class="k">and</span> str(a.value).startswith(<span class="s">"-"</span>):
+                    subs.setdefault(var_to_sub.get(owner, <span class="s">""</span>), set()).add(a.value)
+    <span class="k">return</span> subs</pre>
+<p>Перший прогін на Lectern після модуля 4 — і одразу справжня знахідка:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/check_context.py</span>
+checked 4 files (15 commands, 12 paths, 11 symbols): 2 problem(s)
+<span class="er">.claude/CLAUDE.md:39: path `data/learners/` does not exist
+.claude/CLAUDE.md:39: path `lectures/private/` does not exist</span>
+<span class="d"># .gitignore += data/learners/, lectures/private/</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/check_context.py; echo "exit=$?"</span>
+checked 4 files (15 commands, 12 paths, 11 symbols): 0 problem(s)
+<span class="ok">exit=0</span></pre>
+<div class="cap">реальний вивід · 15.10.2026 · 208 рядків, 0,05 с на прогін</div></div>
+<p>Каталоги з персональними даними слухачів і чужими лекціями закриті для агентів у <code>.claude/settings.json</code> (урок 3.3), але <b>не були в <code>.gitignore</code></b>: <code>git add -A</code> поклав би їх у репозиторій. Правило «шлях, якого немає навмисно, має бути в <code>.gitignore</code>» перетворило недолік перевірки на перевірку політики даних.</p>
+<p>Підключення до CI — один крок. Для GitHub Actions:</p>
+<pre class="code" data-lang="yaml"><span class="cm"># .github/workflows/context.yml</span>
+<span class="k">name:</span> context
+<span class="k">on:</span> [pull_request]
+<span class="k">jobs:</span>
+  <span class="k">check:</span>
+    <span class="k">runs-on:</span> ubuntu-latest
+    <span class="k">steps:</span>
+      - <span class="k">uses:</span> actions/checkout@v7
+      - <span class="k">uses:</span> actions/setup-python@v7
+        <span class="k">with:</span> { <span class="k">python-version:</span> <span class="s">"3.12"</span> }
+      - <span class="k">run:</span> python scripts/check_context.py</pre>
+<p class="cap">Workflow складено за документацією GitHub Actions (checkout і setup-python v7 — останні мажорні версії на 15.10.2026) · у цьому уроці не запускався.</p>
+<div class="note tip"><span class="lbl">Межа скрипта</span>
+<p>Регулярні вирази перевірки — теж код, який старіє разом із форматом документів. Тримайте в документах команди в <code>```bash</code>-блоках чи inline-коді, а не в прозі, і додайте <code>check_context.py</code> у власну перевірку: скрипт, який нічого не знаходить, бо перестав парсити, — та сама пастка, що й порожня таблиця специфікації. Лічильники в останньому рядку («15 commands, 12 paths») — найпростіший запобіжник: різке падіння видно одразу.</p>
+</div>
+</section>
+
+<section class="sec" id="agent-sync">
+<div class="sec-h"><span class="num">07</span><h2>Агент оновлює контекст<span class="sub">Пропонує він, вирішуєте ви</span></h2></div>
+<p>Скрипт не побачив хибного «<code>FakeClient</code> у <code>tests/test_agent_api.py</code>». Тут потрібне розуміння diff, тобто модель. Промпт після злиття — <code>prompts/sync-context.txt</code>:</p>
+<pre class="code" data-lang="text">Після злиття зміни звір файли контексту з кодом.
+1. Подивись `git log -3 --oneline` і `git diff HEAD~2 -- src tests scripts`.
+2. Онови лише .claude/CLAUDE.md, .claude/rules/*.md, README.md і prompt.txt, і лише там,
+   де текст тепер неправдивий: мінімальні правки, без переписування й нових розділів.
+3. docs/adr/ не редагуй: ADR — історія рішень. Якщо зміна суперечить прийнятому ADR,
+   напиши про це у відповіді.
+4. Запусти `.venv/bin/python scripts/check_context.py`; він має завершитися з кодом 0.
+Відповідь: кожна правка одним рядком (файл: було → стало) і останній рядок виводу перевірки.</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat prompts/sync-context.txt)" --model haiku --setting-sources project --strict-mcp-config --permission-mode dontAsk --tools "Bash,Read,Edit,Glob,Grep" --allowedTools "Read" "Edit" "Glob" "Grep" "Bash(git log *)" "Bash(git diff *)" "Bash(.venv/bin/python scripts/check_context.py)" --max-budget-usd 0.5</span></pre>
+<div class="cap">реальний запуск · Claude Code 2.1.300 · claude-haiku-5-5 · 15.10.2026 · у демо файл промпту лежав поза репозиторієм, тут — шлях після злиття</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>відповідь агента — скорочено</span></div>
+<pre><span class="c">Зроблено не все: одну правку внесено, три відхилено, перевірку не запущено.
+Внесено:
+- prompt.txt:4: --quote "&lt;quote&gt;" → --text "&lt;quote&gt;"
+Не внесено (Edit відхилено режимом доступу, "don't ask"):
+- .claude/CLAUDE.md:12: --quote "&lt;exact text&gt;" → --text "&lt;exact text&gt;"
+- .claude/CLAUDE.md:21: FakeClient in tests/test_agent_api.py → FakeClient in tests/fakes.py
+- .claude/rules/tests.md:7: FakeClient in tests/test_agent_api.py → FakeClient in tests/fakes.py
+ADR: суперечностей з прийнятими ADR не знайдено. docs/adr/ не змінював. У 0003 згадується
+FakeClient без вказання файлу, тож правка там не потрібна.
+Поза списком, без змін: docs/plans/lectern-check-buzzing-hammock.md:45 теж згадує --quote.
+Це план, а не файл контексту з переліку, тому не чіпав.</span>
+<span class="d">result · num_turns 14 · 30,6 с · $0.0088</span></pre>
+<div class="cap">реальний вивід · 15.10.2026 · повний потік — console/runs/07-sync.jsonl</div></div>
+<p>Що тут сталося, по пунктах:</p>
+<ol class="steps">
+<li><b>Агент знайшов усі три розбіжності</b>, зокрема ту, яку пропустив скрипт, і не чіпав ADR і план — це історичні документи, які не мусять відповідати сьогоднішньому коду.</li>
+<li><b>Правки в <code>.claude/</code> заблокувала сама Claude Code</b>, хоча <code>Edit</code> був у <code>--allowedTools</code>. <code>.claude</code> — захищений шлях: у режимі <code>dontAsk</code> запис туди відхиляється, в <code>acceptEdits</code> і <code>default</code> — питає, а правила <code>permissions.allow</code> його не дозволяють. До цього ж списку входять <code>.git</code>, <code>.husky</code> і <code>.pre-commit-config.yaml</code>.</li>
+<li><b>Перевірку агент не запустив</b>: він дописав <code>; echo "exit=$?"</code>, а дозвіл стосувався рівно команди без хвоста. Фінальну перевірку все одно робить CI, не агент.</li>
+</ol>
+<p>Захист <code>.claude/</code> — не завада, а потрібна властивість: ін'єкція в лекції чи в issue не може через агента переписати його ж правила. Звідси схема: <b>агент пропонує diff, CI перевіряє, людина зливає</b>. Три правки, які агент запропонував, ми переглянули й застосували самі:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>git diff — після рев'ю</span></div>
+<pre><span class="d">--- a/.claude/CLAUDE.md</span>
+<span class="er">-- check one quote: `.venv/bin/lectern check samples/lecture.txt --quote "&lt;exact text&gt;"`</span>
+<span class="ok">+- check one quote: `.venv/bin/lectern check samples/lecture.txt --text "&lt;exact text&gt;"`</span>
+<span class="er">-- `tests/`: model calls are faked (`FakeClient` in `tests/test_agent_api.py`).</span>
+<span class="ok">+- `tests/`: model calls are faked (`FakeClient` in `tests/fakes.py`).</span>
+<span class="d">--- a/.claude/rules/tests.md</span>
+<span class="er">-- No network and no real model: fake the client like `FakeClient` in `tests/test_agent_api.py`.</span>
+<span class="ok">+- No network and no real model: fake the client like `FakeClient` in `tests/fakes.py`.</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/check_context.py; echo "exit=$?"</span>
+checked 4 files (15 commands, 12 paths, 11 symbols): 0 problem(s)
+<span class="ok">exit=0</span></pre>
+<div class="cap">реальний diff · 15.10.2026 · console/runs/08-sync.diff</div></div>
+<p>Той самий промпт годиться і для розкладу: раз на тиждень у CI з виходом у PR. Як запускати агентів за розкладом і в CI безпечно — урок 15.4. Аудит змісту без diff — <code>/doctor prompt-audit</code> з уроку 4.2: документація прямо називає серед його знахідок посилання на файли й команди, яких не існує, і файли, що суперечать один одному.</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Прогін коштує менше цента, рев'ю трьох рядків — хвилину. Зіпсована інструкція коштує в кожній сесії кожного розробника: зайві ходи, хибні висновки, а в гіршому разі — правило, якого агент сумлінно дотримується, хоча воно вже шкодить. Ця асиметрія виправдовує обидва механізми, навіть якщо зміни в контексті трапляються раз на тиждень.</p>
+</div>
+</section>
+
+<section class="sec" id="reload">
+<div class="sec-h"><span class="num">08</span><h2>Коли агент побачить зміну<span class="sub">Claude Code · Codex · Cursor</span></h2></div>
+<p>Оновлений файл корисний лише тоді, коли його прочитають. Механізм завантаження розібрано в уроках 4.2 і 4.5; тут — що це означає для щойно злитої правки.</p>
+<div class="tabs">
+<input type="radio" name="rl-t" id="rl-t1" checked><input type="radio" name="rl-t" id="rl-t2"><input type="radio" name="rl-t" id="rl-t3">
+<div class="tab-l"><label for="rl-t1">Claude Code</label><label for="rl-t2">Codex CLI</label><label for="rl-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Кореневі <code>CLAUDE.md</code> завантажуються на старті, вкладені — коли агент уперше торкається файла в їхній теці; після <code>/compact</code> кореневий файл перечитується з диска. Що буде з правкою посеред сесії, ми перевірили: <code>CLAUDE.md</code> каже «кодова назва ORION», ми змінюємо файл і питаємо знову, заборонивши читати файли.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/reload</span></div>
+<pre><span class="d"># A: нова сесія, у файлі ORION</span>
+A fresh: ORION
+<span class="d"># sed ORION → VEGA; B: claude -p --resume тієї ж сесії; C: нова сесія</span>
+B resumed after edit: <span class="ok">VEGA</span>
+C new session: <span class="ok">VEGA</span>
+<span class="d"># D: усередині однієї сесії агент сам виконує sed VEGA → LYRA і відповідає з пам'яті</span>
+<span class="c">codename=VEGA
+… The project instructions in my context still say VEGA, which is the version I loaded at
+the start of this session, so I did not see them change.</span></pre>
+<div class="cap">реальні запуски · Claude Code 2.1.300 · claude-haiku-5-5 · 15.10.2026 · A–C — поле result з --output-format json, D — відповідь агента, скорочено; D повторено двічі, обидва рази VEGA</div></div>
+<p>Висновок для команди: після злиття правки в контексті <b>перезапустіть довгі сесії</b> або продовжте їх через <code>--resume</code> — новий процес перечитує файли. Агент, який сам щойно відредагував CLAUDE.md, далі працює за старою версією, доки не перечитає файл.</p>
+</div>
+<div class="tab-p">
+<p>Документація Codex: ланцюжок інструкцій будується <b>один раз при старті</b> — «once per run; in the TUI this usually means once per launched session». Якщо інструкції здаються застарілими, порада одна: перезапустити Codex у потрібній теці; кешу, який треба чистити, немає. Сумарний розмір обмежує <code>project_doc_max_bytes</code> (32 KiB за замовчуванням), тож розрослий <code>AGENTS.md</code> обрізається мовчки — ще одна причина виносити причини в ADR.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex --ask-for-approval never "Summarize the current instructions."</span>
+<span class="ps">$ </span><span class="c">codex exec --sandbox workspace-write "$(cat prompts/sync-context.txt)"</span></pre>
+<div class="cap">команди з офіційної документації Codex · не запускались у цьому уроці</div></div>
+<p>Перша команда — рекомендована документацією перевірка, що інструкції завантажились; друга — той самий промпт синхронізації в неінтерактивному режимі.</p>
+</div>
+<div class="tab-p">
+<p>Cursor включає правила <b>на початку контексту моделі</b>; <code>AGENTS.md</code> читається в корені й у підтеках, вкладені доповнюють батьківські. Коли саме набирає чинності правка правила посеред чату, документація не каже — надійно перевіряти в новому чаті. Поради з неї ж: оновлювати правило, коли агент помилився; тримати правила до 500 рядків; <b>посилатися на файли, а не копіювати їхній вміст</b> — те саме правило «один факт в одному місці». <code>/create-rule</code> у чаті генерує файл правила в <code>.cursor/rules</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">agent -p --force "$(cat prompts/sync-context.txt)"</span></pre>
+<div class="cap">команда з офіційної документації Cursor CLI · не запускалась у цьому уроці · без <code>--force</code> агент лише пропонує зміни</div></div>
+</div>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: ADR, специфікація і перевірка контексту</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 5.4 · ADR і перевірка контексту</div><div class="pb">
+<p>Після кроку в репозиторії додається:</p>
+<pre class="code" data-lang="text">lectern/
+├── .claude/CLAUDE.md  # + ADR 0004
+├── .gitignore         # + 2 теки
+├── docs/adr/          # 0001–0006
+├── docs/spec/quotes.md
+├── prompts/sync-context.txt
+├── scripts/check_context.py
+└── tests/test_spec_quotes.py</pre>
+<p><code>CLAUDE.md</code> отримує посилання «why: <code>docs/adr/0004-quote-check-in-code.md</code>» біля правила про цитати; <code>.gitignore</code> — теки <code>data/learners/</code> і <code>lectures/private/</code>; <code>docs/adr/README.md</code> — індекс, який генерує <code>check_context.py --write-index</code>.</p>
+<p>Стан: <code>pytest -q</code> — 44 passed, <code>ruff check src tests</code> чистий, <code>check_context.py</code> — 0 problems. Файли кроку — у <code>console/lectern-5.4/</code>, усі прогони — у <code>console/runs/</code>.</p>
+<p><b>Ваш крок.</b> Перенесіть файли у свою копію Lectern і переконайтеся, що перевірка зелена. Потім зламайте її трьома способами: перейменуйте прапорець у <code>cli.py</code>, видаліть <code>docs/adr/README.md</code>, допишіть у CLAUDE.md рядок про неіснуючий <code>Session.render()</code>. Кожен має дати окремий рядок у виводі й код виходу 1. Додайте в ADR 0006 рядок «Прийнято» з датою, коли підключите перевірку до CI, і перегенеруйте індекс.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">10</span><h2>Типові помилки<span class="sub">Симптом → причина → що робити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що робити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">CLAUDE.md на 400 рядків, половина — опис модулів</td><td data-th="Причина">Інструкція копіює код</td><td data-th="Що робити">Лишити команди, межі, заборони; решту агент знайде сам</td></tr>
+<tr><td data-th="Симптом">ADR «оновлюють», щоб відповідав коду</td><td data-th="Причина">ADR сприймають як документацію</td><td data-th="Що робити">Новий ADR зі статусом «замінює N»; старий — лише рядок статусу</td></tr>
+<tr><td data-th="Симптом">Причина рішення є лише в треді PR чи чаті</td><td data-th="Причина">Немає місця для «чому»</td><td data-th="Що робити">ADR, а в CLAUDE.md — посилання</td></tr>
+<tr><td data-th="Симптом">Скрипт перевірки роками зелений</td><td data-th="Причина">Перестав парсити документи</td><td data-th="Що робити">Лічильники у виводі; тест на мінімум знайденого</td></tr>
+<tr><td data-th="Симптом">Нічний агент «тихо» переписує правила</td><td data-th="Причина">Йому дали запис у файли власних інструкцій</td><td data-th="Що робити">Агент віддає diff у PR; людина зливає</td></tr>
+<tr><td data-th="Симптом">Правку контексту злито, а команда ще годину працює по-старому</td><td data-th="Причина">Довгі сесії тримають завантажену версію</td><td data-th="Що робити">Перезапуск або <code>--resume</code> після злиття змін у контексті</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">11</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Прапорець змінено, тести зелені</span><span class="h">хто помітить застарілий CLAUDE.md?</span></span><span class="b"><span class="t">Скрипт контексту в CI</span><span class="d">звіряє прапорці з AST <code>cli.py</code>, без запуску коду</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Рішення скасовано</span><span class="h">що з ADR?</span></span><span class="b"><span class="t">Новий ADR, старий — superseded</span><span class="d">текст старого не змінюється, лише статус і посилання на новий</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Шлях відсутній навмисно</span><span class="h">як скрипту не дати хибну тривогу?</span></span><span class="b"><span class="t">Шлях — у .gitignore</span><span class="d">так перевірка контексту заодно перевіряє, що приватне не потрапить у git</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Нічний агент не пише в .claude</span><span class="h">чому, і що робити?</span></span><span class="b"><span class="t">Захищений шлях</span><span class="d">у dontAsk запис відхиляється, allow-правила не допомагають — віддавайте diff у PR</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Таблиця специфікації: +1 стовпець</span><span class="h">що покаже pytest?</span></span><span class="b"><span class="t">1 skipped, код 0</span><span class="d">порожній parametrize пропускається; ловить лише окремий тест-запобіжник</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">CLAUDE.md змінено посеред сесії</span><span class="h">коли агент це побачить?</span></span><span class="b"><span class="t">У новому процесі</span><span class="d">нова сесія або <code>--resume</code>; поточна тримає завантажену версію</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">12</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Після злиття PR тести зелені, а агент у кожній новій сесії спершу запускає <code>lectern check --help</code> і лише потім саму перевірку. Що це найімовірніше означає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Нова модель обережніша й перестраховується перед кожною командою CLI</span></label><label class="opt ok"><input type="radio" name="q1"><span>Команда в CLAUDE.md розійшлася з кодом, і агент щоразу платить ходом</span></label><label class="opt"><input type="radio" name="q1"><span>Дозвіл у settings.json покриває лише <code>--help</code>, а не саму команду</span></label></div>
+    <div class="why yes">Так. У нашому прогоні всі три сесії Haiku з застарілим прапорцем почали з <code>--help</code>. Тести це не ловлять — потрібна перевірка контексту.</div>
+    <div class="why no">Відхилена дозволом команда дала б відмову, а не виклик <code>--help</code>. Типовий сигнал — розбіжність CLAUDE.md з кодом: агент компенсує її дослідженням, і кожна сесія платить ходами.</div></div>
+  <div class="q"><div class="qt">2. Команда хоче, щоб агент знав, <b>чому</b> парафраз цитати завжди відхиляється, і не «спрощував» перевірку. Куди записати пояснення?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>В ADR, а в CLAUDE.md — одне правило з посиланням на нього</span></label><label class="opt"><input type="radio" name="q2"><span>Повністю в CLAUDE.md, щоб агент бачив причину в кожній сесії</span></label><label class="opt"><input type="radio" name="q2"><span>У повідомлення коміту з перевіркою: його покаже git blame</span></label></div>
+    <div class="why yes">Так. Правило потрібне в кожній сесії, причина — лише коли агент збирається правило чіпати. Посилання коштує десяток токенів, повний ADR читається на вимогу.</div>
+    <div class="why no">Повний текст у CLAUDE.md платить контекстом у кожній сесії і старіє разом з файлом. Коміт ніхто не прочитає, доки не шукає саме його. «Чому» живе в ADR, правило з посиланням — в інструкціях.</div></div>
+  <div class="q"><div class="qt">3. Рішення з ADR 0002 скасовано: квіз тепер генерує агент, а не фіксований workflow. Що робити з файлом 0002?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Переписати «Рішення» під нову архітектуру й оновити дату статусу</span></label><label class="opt"><input type="radio" name="q3"><span>Видалити файл, а номер 0002 віддати новому рішенню без дірок</span></label><label class="opt ok"><input type="radio" name="q3"><span>Лишити текст, статус — «замінено рішенням 0003», нове — у 0003</span></label></div>
+    <div class="why yes">Так. За Найгардом номери не використовуються повторно, а скасоване рішення лишається з позначкою superseded: важливо знати, що воно було рішенням, хоча вже ним не є.</div>
+    <div class="why no">ADR — історія рішень на дату прийняття. Переписаний чи видалений ADR знищує саме те, заради чого його писали: чому колись вирішили інакше і що це рішення зламало.</div></div>
+  <div class="q"><div class="qt">4. <code>check_context.py</code> зелений, але CLAUDE.md каже «<code>FakeClient</code> у <code>tests/test_agent_api.py</code>», а клас переїхав у <code>tests/fakes.py</code>. Чому скрипт не помітив?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Скрипт не читає <code>.claude/rules/</code>, а хибний рядок лежить саме там</span></label><label class="opt ok"><input type="radio" name="q4"><span>Обидві назви існують, хибний лише зв'язок, а скрипт звіряє існування</span></label><label class="opt"><input type="radio" name="q4"><span>Символи з <code>tests/</code> скрипт не індексує, лише визначення з <code>src/</code></span></label></div>
+    <div class="why yes">Так. Файл є, клас є, неправдиве лише «лежить у». Такі розбіжності знаходить модель, яка читає diff: у нашому прогоні Haiku знайшов саме цей рядок.</div>
+    <div class="why no">Скрипт читає і правила, і символи з <code>tests/</code>. Він перевіряє, що назва існує, а не що твердження про неї правдиве — це межа будь-якої перевірки рядком.</div></div>
+  <div class="q"><div class="qt">5. У таблицю <code>docs/spec/quotes.md</code> додали п'ятий стовпець «Примітка», а тест-запобіжника <code>test_spec_has_examples</code> немає. Що покаже CI?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Рядків не знайдеться, pytest пропустить тест, і CI лишиться зеленим</span></label><label class="opt"><input type="radio" name="q5"><span>pytest зупиниться з помилкою збору: parametrize не приймає порожнього</span></label><label class="opt"><input type="radio" name="q5"><span>Упадуть усі рядки, бо вердикт опиниться в сусідній клітинці таблиці</span></label></div>
+    <div class="why yes">Так, ми це відтворили: «got empty parameter set», <code>1 skipped</code>, код виходу 0. Тому тест, що читає документ, повинен окремо вимагати мінімум прикладів.</div>
+    <div class="why no">Порожній список у <code>parametrize</code> pytest типово пропускає, а не падає; парсер із фільтром на чотири клітинки просто не знаходить рядків. Зелений CI тут — найгірший результат.</div></div>
+  <div class="q"><div class="qt">6. Ви хочете нічну задачу в CI: <code>claude -p</code> у режимі <code>dontAsk</code> сам оновлює <code>.claude/CLAUDE.md</code> після змін за день. Що буде?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Спрацює, якщо додати <code>Edit(.claude/**)</code> у <code>permissions.allow</code> проєкту</span></label><label class="opt"><input type="radio" name="q6"><span>Спрацює з <code>--permission-mode acceptEdits</code>: правки приймуться самі</span></label><label class="opt ok"><input type="radio" name="q6"><span>Запис у <code>.claude/</code> відхилять; хай агент віддає diff у PR на рев'ю</span></label></div>
+    <div class="why yes">Так. <code>.claude</code> — захищений шлях: у <code>dontAsk</code> запис відхиляється, в <code>acceptEdits</code> — питає, і allow-правила цього не змінюють. Схема «агент пропонує, CI перевіряє, людина зливає».</div>
+    <div class="why no">Документація прямо каже: allow-правила не дозволяють запис у захищені шляхи, а <code>acceptEdits</code> для них питає. Саме це ми бачили в прогоні: правка <code>prompt.txt</code> пройшла, правки в <code>.claude/</code> — ні.</div></div>
+  <div class="q"><div class="qt">7. Колега злив правку в CLAUDE.md, поки у вас відкрита сесія Claude Code. Коли ваш агент її побачить?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Одразу: Claude Code стежить за файлом і підвантажує його в ту ж сесію</span></label><label class="opt ok"><input type="radio" name="q7"><span>У новій сесії чи після <code>--resume</code>; поточна тримає завантажену версію</span></label><label class="opt"><input type="radio" name="q7"><span>Лише після <code>/memory</code>: команда перечитує всі файли пам'яті з диска</span></label></div>
+    <div class="why yes">Так. У нашому експерименті сесія, яка сама змінила файл, відповідала за старою версією, а <code>--resume</code> і нова сесія — за новою. Кореневий CLAUDE.md перечитується ще й після <code>/compact</code>.</div>
+    <div class="why no">Файл читається на старті процесу. <code>/memory</code> відкриває файли для редагування, а не перезавантажує контекст. Перевірено: усередині сесії відповідь лишилась старою.</div></div>
+  <div class="q"><div class="qt">8. Що з цього <b>не</b> варто тримати в CLAUDE.md?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Опис кожного модуля й файла: агент прочитає це в коді сам</span></label><label class="opt"><input type="radio" name="q8"><span>Команду тестів через venv, бо системний python3 старіший за 3.12</span></label><label class="opt"><input type="radio" name="q8"><span>Заборону послаблювати <code>check_quote</code> з посиланням на ADR 0004</span></label></div>
+    <div class="why yes">Так. Опис файлів дублює код, часто змінюється і не має перевірки — ідеальний кандидат на застарілість. Документація Claude Code відносить його до того, що варто виключити.</div>
+    <div class="why no">Команду з пасткою середовища агент не вгадає, а заборона з посиланням коротка і захищає продуктову гарантію. Виключати треба те, що агент знайде в коді сам.</div></div>
+  <div class="q"><div class="qt">9. Новий учасник питає: «Чому квіз генерує агент, а не простий workflow?» Де відповідь?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>У CHANGELOG: там записана версія, у якій з'явився агентний цикл</span></label><label class="opt"><input type="radio" name="q9"><span>У README: розділ про архітектуру пояснює, як влаштована генерація</span></label><label class="opt ok"><input type="radio" name="q9"><span>В ADR 0002 і 0003: що вирішили, чому і що зламало старе рішення</span></label></div>
+    <div class="why yes">Так. Changelog каже, що змінилося у версії; decision log — чому. Пара «замінене рішення → нове» зберігає саме аргумент проти простішого варіанта.</div>
+    <div class="why no">CHANGELOG відповідає на «що змінилося і коли», README — на «як користуватися». Причину і відкинуту альтернативу зберігає лише журнал рішень.</div></div>
+  <div class="q"><div class="qt">10. Що з цього варто доручити агентові, а не скрипту в CI?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Перевірку, що кожен прапорець <code>lectern</code> із CLAUDE.md існує в <code>cli.py</code></span></label><label class="opt ok"><input type="radio" name="q10"><span>Пошук правила, що суперечить новому ADR, хоча назви в ньому правильні</span></label><label class="opt"><input type="radio" name="q10"><span>Перевірку, що <code>docs/adr/README.md</code> збігається зі списком ADR</span></label></div>
+    <div class="why yes">Так. Суперечність за змістом вимагає розуміння; прапорці й індекс звіряються детерміновано, за 0,05 с і без моделі.</div>
+    <div class="why no">Що можна звірити рядком, дешевше і надійніше звіряє код: без розкиду, без вартості, з кодом виходу. Модель потрібна там, де назви правильні, а зміст — ні.</div></div>
+  <div class="q"><div class="qt">11. Ви оновили <code>AGENTS.md</code>, а Codex у відкритій TUI-сесії поводиться по-старому. Що каже документація Codex?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q11"><span>Ланцюжок інструкцій будується при старті; перезапустіть Codex у цій теці</span></label><label class="opt"><input type="radio" name="q11"><span>Codex перечитує <code>AGENTS.md</code> перед кожною відповіддю, тож зміна вже діє</span></label><label class="opt"><input type="radio" name="q11"><span>Треба очистити кеш інструкцій окремим ключем у <code>config.toml</code></span></label></div>
+    <div class="why yes">Так: «once per run; in the TUI this usually means once per launched session», і порада — перезапуск у цільовій теці.</div>
+    <div class="why no">Codex не перечитує файли на кожну відповідь і не тримає кешу, який треба чистити: ланцюжок будується заново на кожному запуску.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">13</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>ADR</td><td>Architecture decision record: короткий файл про одне архітектурне рішення: контекст, рішення, статус, наслідки.</td></tr>
+<tr><td>статус ADR</td><td>proposed → accepted → deprecated або superseded; змінюється лише цей рядок, текст — ні.</td></tr>
+<tr><td>формат<br>Найгарда</td><td>Назва, контекст, рішення, статус, наслідки; одна-дві сторінки; номери не використовуються повторно.</td></tr>
+<tr><td>індекс ADR</td><td>Згенерований перелік ADR зі статусами; перевіряється на збіг із файлами.</td></tr>
+<tr><td>decision log<br>vs changelog</td><td>Журнал рішень пояснює, чому; changelog перелічує, що змінилося в кожній версії.</td></tr>
+<tr><td>жива<br>специфікація</td><td>Опис поведінки, що перевіряється автоматично і тому не розходиться з кодом.</td></tr>
+<tr><td>виконувана<br>специфікація</td><td>Специфікація, яку запускає тест: рядок таблиці або сценарій Given/When/Then = тестовий випадок.</td></tr>
+<tr><td>docs drift</td><td>Розходження документації чи інструкцій з кодом, яке не ламає збірку.</td></tr>
+<tr><td>перевірка<br>контексту в CI</td><td>Скрипт, що звіряє команди, шляхи й символи з інструкцій агента з репозиторієм і падає при розбіжності.</td></tr>
+<tr><td>правило того<br>самого PR</td><td>Зміна команди, шляху, поведінки чи рішення оновлює контекст і ADR у тому ж PR.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">14</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Аудит контексту вашого репозиторію</h3>
+<p>Розкладіть знання свого проєкту (або Lectern) по п'яти шарах, знайдіть щонайменше три розбіжності між інструкціями й кодом — частину скриптом, частину вручну чи агентом, — і запишіть два ADR, один з яких замінює інший. Звіт — у полі домашнього завдання.</p>
+<h3>2. Виконувана специфікація для одного правила</h3>
+<p>Оберіть правило, яке задається прикладами, опишіть його таблицею в markdown, напишіть тест, що її виконує, і покажіть два червоні прогони: від зміни документа і від зміни коду. Плюс запобіжник від порожньої таблиці.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">15</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions" target="_blank" rel="noopener">Michael Nygard — Documenting Architecture Decisions</a><span>15.11.2011 · формат ADR: назва, контекст, рішення, статус, наслідки; superseded замість видалення</span></li>
+<li><a href="https://github.com/npryce/adr-tools" target="_blank" rel="noopener">adr-tools</a><span>CLI для ADR: <code>adr init</code>, <code>adr new -s</code>, <code>adr generate toc</code>; останній коміт — березень 2020</span></li>
+<li><a href="https://adr.github.io/" target="_blank" rel="noopener">Architectural Decision Records (adr.github.io)</a><span>огляд практики ADR, шаблони й інструменти; колекція ADR проєкту — його decision log</span></li>
+<li><a href="https://www.thoughtworks.com/radar/techniques/lightweight-architecture-decision-records" target="_blank" rel="noopener">Thoughtworks Technology Radar — Lightweight ADR</a><span>Adopt у 2017–2018; ADR у репозиторії, а не у вікі</span></li>
+<li><a href="https://martinfowler.com/bliki/GivenWhenThen.html" target="_blank" rel="noopener">Martin Fowler — GivenWhenThen</a><span>21.08.2013 · сценарії BDD: given, when, then</span></li>
+<li><a href="https://docs.pytest.org/en/stable/how-to/parametrize.html" target="_blank" rel="noopener">pytest — How to parametrize fixtures and test functions</a><span>офіційна документація; поведінку на порожньому наборі задає <code>empty_parameter_set_mark</code></span></li>
+<li><a href="https://keepachangelog.com/en/1.1.0/" target="_blank" rel="noopener">Keep a Changelog 1.1.0</a><span>changelog як курований хронологічний перелік змін за версіями; розділ Unreleased</span></li>
+<li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Claude Code — Best practices</a><span>«Treat CLAUDE.md like code»; що включати й виключати</span></li>
+<li><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code — How Claude remembers your project</a><span>коли завантажуються CLAUDE.md, перечитування після /compact, <code>/doctor prompt-audit</code></span></li>
+<li><a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">Claude Code — Permission modes</a><span>захищені шляхи (<code>.claude</code>, <code>.git</code>, <code>.husky</code>…) у кожному режимі</span></li>
+<li><a href="https://code.claude.com/docs/en/context-window" target="_blank" rel="noopener">Claude Code — Explore the context window</a><span>що завантажується на старті, зокрема git status і останні коміти</span></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md" target="_blank" rel="noopener">Codex — AGENTS.md</a><span>ланцюжок інструкцій будується раз на запуск; <code>project_doc_max_bytes</code> 32 KiB</span></li>
+<li><a href="https://cursor.com/docs/context/rules" target="_blank" rel="noopener">Cursor — Rules</a><span>типи правил, AGENTS.md у підтеках, до 500 рядків, посилання замість копіювання</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 5.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 5.4 · Senomi<br><br><a href="lesson-26.html">← Урок 5.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-28.html">Урок 5.5 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

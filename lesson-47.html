@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 9.5. Продуктове мислення: метрика успіху AI-фічі і ціна помилки</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 9.5 · Модуль 9</div>
+<h1>Продуктове мислення: метрика успіху AI-фічі і ціна помилки</h1>
+<p class="lead">AI-фіча — це розподіл результатів з довгим хвостом, тож «98% правильних ключів» означає хибний ключ у 91% курсів. Будуємо стек метрик, рахуємо очікувану ціну помилок за класами серйозності, виводимо з неї пороги, рев'ю й автономію і вимірюємо детектор хибних ключів квізу на 1 800 симульованих квізах.</p>
+<div class="hero-meta"><span class="chip">Архітектура AI-систем і архітектурне мислення</span><span class="chip t">≈ 65 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Прості рішення про запуск бувають лише тоді, коли всі метрики покращуються (або принаймні не погіршуються).</p><cite>Martin Zinkevich, Google, «Rules of Machine Learning», правило 39 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Розподіл, а не середнє</a><a href="#stack"><b>02</b>Стек метрик</a><a href="#cost"><b>03</b>Ціна помилки</a><a href="#expected"><b>04</b>Очікувана ціна</a><a href="#measure"><b>05</b>Як міряти</a><a href="#analysis"><b>06</b>Справжній аналіз</a><a href="#decide"><b>07</b>Рішення</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>описати якість AI-фічі як розподіл результатів і перевести «98% правильних» у ризик для курсу чи користувача;</li>
+    <li>побудувати стек метрик: цінність → офлайн task success → онлайн-проксі → guardrails → бізнес-результат;</li>
+    <li>розкласти помилки на класи серйозності, порахувати очікувану ціну і вивести з неї пороги, рев'ю й рівень автономії;</li>
+    <li>спланувати вимір: golden set, онлайн-сигнали, вибірку для рев'ю за правилом трьох, A/B на рівні елемента;</li>
+    <li>знайти хибні ключі квізу за відповідями слухачів через індекс дискримінації і виміряти precision/recall детектора;</li>
+    <li>сформулювати правила ship / людський gate / kill і пояснити, чому довіра витрачається швидше, ніж накопичується.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Розподіл, а не середнє<span class="sub">Чому AI-фічі потрібні інші метрики</span></h2></div>
+<p>Звичайна фіча детермінована: кнопка «експорт» або працює, або має баг, який відтворюється. AI-фіча на тому самому вході дає різні результати, і її якість — це <b>розподіл</b>: більшість виходів добрі, а кілька відсотків помилкові, причому заздалегідь не відомо які. Тому метрика «точність 98%» нічого не каже, доки не з'ясовано, <b>скільки разів користувач стикається з фічею</b> і <b>що коштує кожна помилка</b>.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Одиниця досвіду</th><th>Питань</th><th>P(хоч один хибний ключ) при 2% на питання</th></tr></thead>
+<tbody>
+<tr><td data-th="Одиниця досвіду">Одне питання</td><td data-th="Питань">1</td><td data-th="P(хоч один хибний ключ) при 2% на питання">2%</td></tr>
+<tr><td data-th="Одиниця досвіду">Квіз уроку</td><td data-th="Питань">12</td><td data-th="P(хоч один хибний ключ) при 2% на питання">21,5%</td></tr>
+<tr><td data-th="Одиниця досвіду">Курс Lectern (10 модулів × 12)</td><td data-th="Питань">120</td><td data-th="P(хоч один хибний ключ) при 2% на питання"><b>91,1%</b></td></tr>
+</tbody></table></div>
+<p>1 − 0,98<sup>n</sup>; розрахунок — <code>console/costs.py</code>. Слухач курсу майже напевно натрапить на хибний ключ, а автор — на скаргу. Середнє «98%» правдиве, і саме тому воно оманливе: воно описує питання, а користувач переживає курс.</p>
+<p>Друга відмінність — <b>довгий хвіст</b>: друкарська помилка й вигадана «цитата» лектора — однакові одиниці в метриці «частка правильних», але різні за наслідками на порядки. Документація Anthropic вбудовує це в критерій успіху:</p>
+<blockquote class="q-src">
+<p>Більшість застосувань потребують багатовимірної оцінки за кількома критеріями успіху. […] 90% помилок мають спричиняти незручність, а не грубу помилку*. […] *На практиці ви також визначили б, що означають «незручність» і «груба помилка».</p>
+<p class="orig">“Most use cases need multidimensional evaluation along several success criteria. … 90% of errors would cause inconvenience, not egregious error* … *In reality, you would also define what "inconvenience" and "egregious" mean.”</p>
+<cite>Anthropic, «Define success criteria and build evaluations» · перевірено 15.10.2026</cite>
+</blockquote>
+<p>Критерій — про <b>структуру</b> помилок, а не їхню частоту; визначити «незручність» і «грубу помилку» для Lectern — робота розділу «Ціна помилки».</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Урок 0.2 дав Lectern North Star, основні й guardrail-метрики з цілями-гіпотезами. Тут три кроки далі: як шари метрик пов'язані між собою, як ціна помилки перетворюється на пороги й рішення про автономію, і як знайти найпідступнішу помилку квізу — хибний ключ — без моделі, з відповідей слухачів.</p>
+</div>
+</section>
+
+<section class="sec" id="stack">
+<div class="sec-h"><span class="num">02</span><h2>Стек метрик<span class="sub">П'ять шарів і зв'язки між ними</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 540" role="img" aria-label="Стек метрик AI-фічі: цінність, офлайн task success, онлайн-проксі, guardrails, бізнес-результат">
+  <defs>
+    <marker id="m47a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="m47b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="40" y="8" width="312" height="78" rx="10" class="bx a"/>
+  <text x="54" y="30" class="tx b a">1 · Цінність для користувача</text>
+  <text x="54" y="50" class="tx s">що обіцяємо: модуль за вечір,</text>
+  <text x="54" y="66" class="tx s">якому автор довіряє без звірки</text>
+  <rect x="270" y="18" width="74" height="20" rx="10" class="bx"/>
+  <text x="307" y="32" text-anchor="middle" class="tx s">визначає</text>
+  <path d="M196 86 V 104" class="ln a" marker-end="url(#m47a)"/>
+  <rect x="40" y="108" width="312" height="78" rx="10" class="bx t"/>
+  <text x="54" y="130" class="tx b">2 · Task success (офлайн)</text>
+  <text x="54" y="150" class="tx s">golden set: цитата дослівна, ключ</text>
+  <text x="54" y="166" class="tx s">збігся з еталоном, один правильний</text>
+  <rect x="262" y="118" width="82" height="20" rx="10" class="bx"/>
+  <text x="303" y="132" text-anchor="middle" class="tx s">до релізу</text>
+  <path d="M196 186 V 204" class="ln a" marker-end="url(#m47a)"/>
+  <rect x="40" y="208" width="312" height="78" rx="10" class="bx t"/>
+  <text x="54" y="230" class="tx b">3 · Проксі якості (онлайн)</text>
+  <text x="54" y="250" class="tx s">key error rate, скарги на 1000</text>
+  <text x="54" y="266" class="tx s">відповідей, індекс дискримінації</text>
+  <rect x="254" y="218" width="90" height="20" rx="10" class="bx"/>
+  <text x="299" y="232" text-anchor="middle" class="tx s">після релізу</text>
+  <path d="M196 286 V 304" class="ln a" marker-end="url(#m47a)"/>
+  <rect x="40" y="308" width="312" height="78" rx="10" class="bx p"/>
+  <text x="54" y="330" class="tx b">4 · Guardrails</text>
+  <text x="54" y="350" class="tx s">S2 = 0, вартість модуля ≤ бюджету,</text>
+  <text x="54" y="366" class="tx s">p95 генерації ≤ 10 хв</text>
+  <rect x="278" y="318" width="66" height="20" rx="10" class="bx"/>
+  <text x="311" y="332" text-anchor="middle" class="tx s">завжди</text>
+  <path d="M196 386 V 404" class="ln a" marker-end="url(#m47a)"/>
+  <rect x="40" y="408" width="312" height="78" rx="10" class="bx m"/>
+  <text x="54" y="430" class="tx b">5 · Бізнес-результат</text>
+  <text x="54" y="450" class="tx s">модулі за тиждень (North Star),</text>
+  <text x="54" y="466" class="tx s">утримання автора 90 днів</text>
+  <rect x="252" y="418" width="92" height="20" rx="10" class="bx"/>
+  <text x="298" y="432" text-anchor="middle" class="tx s">тижні–місяці</text>
+  <path d="M30 446 C 10 446, 10 48, 36 48" class="ln d" marker-end="url(#m47b)"/>
+  <text x="180" y="512" text-anchor="middle" class="tx s">пунктир: кожен нижній шар перевіряють</text>
+  <text x="180" y="528" text-anchor="middle" class="tx s">кореляцією з верхнім, інакше це шум</text>
+</svg>
+<figcaption>Стек метрик AI-фічі на прикладі квізу Lectern. Шари 2–3 — leading-індикатори: їх видно за години. Шар 5 — lagging: його видно за місяці, коли виправляти пізно. Guardrails не оптимізують, а лише не порушують.</figcaption>
+</figure>
+<p>Зв'язок між шарами — гіпотеза. Правило 13 Rules of ML радить обирати першу метрику простою, спостережуваною і атрибутованою, бо вона лише <b>проксі «справжньої» мети</b>:</p>
+<blockquote class="q-src">
+<p>Метрика, яку оптимізує ML, має легко вимірюватися і бути проксі для «справжньої» мети. Насправді «справжньої» мети часто немає.</p>
+<p class="orig">“The ML objective should be something that is easy to measure and is a proxy for the "true" objective. In fact, there is often no "true" objective.”</p>
+<cite>Martin Zinkevich, Google, «Rules of Machine Learning», правило 13</cite>
+</blockquote>
+<p>Як виглядає перевірка проксі, показала команда GitHub Copilot (Ziegler et al., 2022): вони опитали користувачів про продуктивність і шукали, яка з подій у телеметрії найкраще пояснює відповіді. Переміг не складний показник «скільки згенерованого коду дожило в репозиторії», а простий <b>acceptance rate</b> — частка показаних підказок, які прийняли. Для Lectern аналог — частка питань, прийнятих автором без правок; онлайн-проксі на кшталт скарг слухачів має з нею корелювати, інакше його не оптимізують.</p>
+<div class="note warn"><span class="lbl">Пастка</span>
+<p>Шар 2 і шар 3 міряють <b>різні розподіли</b>. Golden set — те, що ви вважали важливим, коли його складали; продакшн — те, що автори справді завантажують. Розрив між ними — найкорисніший сигнал: кожна онлайн-помилка, якої немає в golden set, стає новим його прикладом (модуль 12).</p>
+</div>
+</section>
+
+<section class="sec" id="cost">
+<div class="sec-h"><span class="num">03</span><h2>Ціна помилки<span class="sub">Асиметрія і класи серйозності</span></h2></div>
+<p>Кожен детектор і кожен gate помиляються у два боки: <b>false positive</b> (зайвий прапорець, зайва зупинка) і <b>false negative</b> (пропущена помилка). Ціни цих двох помилок майже ніколи не рівні:</p>
+<blockquote class="q-src">
+<p>Спокусливо за замовчуванням зважити обидва типи однаково. Проте це навряд чи відповідає реальним наслідкам для користувачів. Наприклад, що гірше: хибна тривога чи сигналізація, яка мовчить під час пожежі? Обидва варіанти помилкові, але один набагато небезпечніший.</p>
+<p class="orig">“It is tempting to weigh both equally by default. However, that’s not likely to match the consequences in real life for users. For example, is a false alarm worse than one that doesn’t go off when there’s a fire? Both are incorrect, but one is much more dangerous.”</p>
+<cite>Google PAIR, People + AI Guidebook, «User Needs + Defining Success»</cite>
+</blockquote>
+<p>Асиметрія напряму задає поріг. Якщо перевірка прапорця коштує <code>C_FP</code>, а пропущена помилка — <code>C_FN</code>, прапорець вигідно піднімати, щойно ймовірність помилки перевищує <code>p* = C_FP / (C_FP + C_FN)</code> (рамка cost-sensitive learning, Elkan, 2001). Для хибного ключа в Lectern перевірка автором — 2 хвилини (1,33 дол.), пропуск — 32,67 дол. (розрахунок нижче), тож <b>p* ≈ 0,04</b>: детектор, який має рацію лише в одному випадку з десяти, усе одно окупається. Навпаки, для друкарських помилок поріг високий — там шум прапорців дорожчий за самі помилки.</p>
+<h3>Класи серйозності</h3>
+<div class="levels">
+  <div class="lvl"><span class="no">S0</span><div><b>Косметична</b><span class="m">Користувач бачить, сам розуміє і не втрачає нічого, крім секунди. Ціна — хвилина на виправлення.</span><div class="ex">Lectern: друкарська помилка у варіанті; зайвий пробіл у цитаті</div></div></div>
+  <div class="lvl"><span class="no">S1</span><div><b>Оманлива</b><span class="m">Виглядає правильно, тож користувач діє на її основі; шкода оборотна, але її помічають не одразу і не всі.</span><div class="ex">Lectern: хибний ключ — правильна відповідь слухача зарахована як помилка, а неправильна закріплена</div></div></div>
+  <div class="lvl"><span class="no">S2</span><div><b>Шкідлива</b><span class="m">Шкода репутації, грошам, безпеці чи праву; часто незворотна після публікації.</span><div class="ex">Lectern: вигадана цитата, приписана лектору під його іменем</div></div></div>
+</div>
+<p>Клас визначає не частота і не те, наскільки помилка «помітна», а <b>що станеться з людиною, яка їй повірила</b>. Друкарська помилка найчастіша і найпомітніша, але найдешевша; хибний ключ рідший і непомітний, тому дорогий; вигадана цитата найрідша (за умови перевірки) і найдорожча.</p>
+<div class="note arch"><span class="lbl">Архітектура · клас задає автономію</span>
+<p>Класи серйозності продовжують рівні процесу з уроку 8.4, тільки для <b>виходу фічі</b>, а не для зміни коду. S0 — агент виправляє і публікує сам (L4–L5, вибіркова перевірка). S1 — людський gate перед публікацією, а після неї — автоматичний детектор. S2 — 100% автоматичний gate у коді (<code>check_quote</code>, ADR 0004), а логіку цього gate змінює лише власник (P2, «лише власник» у <code>docs/process.md</code>).</p>
+</div>
+</section>
+
+<section class="sec" id="expected">
+<div class="sec-h"><span class="num">04</span><h2>Очікувана ціна<span class="sub">Розрахунок для Lectern</span></h2></div>
+<p><b>E[ціна] = P(помилка на одиницю) × ціна однієї помилки × обсяг.</b> Формула тривіальна; цінність у тому, що вона змушує записати кожне припущення числом, яке можна заперечити. Наші припущення — гіпотези, не дані:</p>
+<ol class="steps">
+<li><b>H1</b> курс = 120 питань; <b>H2</b> час автора — 40 дол./год; <b>H3</b> LTV автора — 600 дол.; <b>H4</b> допустима очікувана втрата — 20 дол. на курс.</li>
+<li><b>H5</b> рев'ю одного питання — 30 с (0,33 дол.); <b>H6</b> рев'ю ловить 80% помилок.</li>
+<li><b>H7</b> частота на питання: друкарська 3%, хибний ключ 2%, вигадана цитата 1% (без перевірки цитат).</li>
+<li><b>H8</b> ймовірність, що автор піде, коли помилку побачили слухачі: 0 / 5% / 30%.</li>
+</ol>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — console/</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 costs.py</span>
+review of one item: $0.33
+<span class="d">… таблиця класів — нижче …</span>
+P(at least one wrong key in one 12-item quiz) at 2%/item: 21.5%
+P(at least one wrong key in one 120-item course) at 2%/item: 91.1%
+<span class="d">…</span>
+flag threshold for a key error: 0.039 (C_check $1.33, C_miss $32.67)</pre>
+<div class="cap">реальний вивід · console/costs.py · 15.10.2026 · таблицю класів перенесено в HTML для телефона (повний вивід — console/costs.txt)</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Клас</th><th>Ціна помилки</th><th>E[помилок]/курс</th><th>E[дол.]/курс</th><th>P max</th><th>n без помилок</th></tr></thead>
+<tbody>
+<tr><td data-th="Клас">S0 друкарська</td><td data-th="Ціна помилки">0,67</td><td data-th="E[помилок]/курс">3,6</td><td data-th="E[дол.]/курс">2,40</td><td data-th="P max">25%</td><td data-th="n без помилок">12</td></tr>
+<tr><td data-th="Клас">S1 хибний ключ</td><td data-th="Ціна помилки">32,67</td><td data-th="E[помилок]/курс">2,4</td><td data-th="E[дол.]/курс">78,40</td><td data-th="P max">0,51%</td><td data-th="n без помилок">588</td></tr>
+<tr><td data-th="Клас">S2 вигадана цитата (без gate)</td><td data-th="Ціна помилки">185,33</td><td data-th="E[помилок]/курс">1,2</td><td data-th="E[дол.]/курс">222,40</td><td data-th="P max">0,09%</td><td data-th="n без помилок">3 336</td></tr>
+</tbody></table></div>
+<p>Ціна помилки = хвилини автора × 40 дол./год + ймовірність відтоку × LTV. Шкоду слухачам у доларах не оцінено, тож це <b>нижня межа</b>. Що з таблиці випливає:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Клас</th><th>Висновок</th><th>Рішення</th></tr></thead>
+<tbody>
+<tr><td data-th="Клас">S0, 2,40 дол./курс</td><td data-th="Висновок">Найчастіша помилка дає найменшу шкоду; P max 25% нічого не обмежує. Рев'ю заради неї: 3% × 0,67 × 0,8 = 0,016 дол. на питання проти 0,33 дол. витрат</td><td data-th="Рішення">Без gate; вибірка 5% питань на реліз лише для тренду</td></tr>
+<tr><td data-th="Клас">S1, 78,40 дол./курс</td><td data-th="Висновок">Утричі більше за допустиму втрату; щоб уміститися в 20 дол., частота має бути ≤ 0,51%, а маємо 2%. Рев'ю окупається: 2% × 32,67 × 0,8 = 0,52 &gt; 0,33</td><td data-th="Рішення">Обов'язкове рев'ю автора до публікації + детектор хибних ключів після</td></tr>
+<tr><td data-th="Клас">S2, 222,40 дол./курс</td><td data-th="Висновок">Допустима частота 0,09%; довести її вибіркою — 3 336 питань без жодної помилки (правило трьох нижче)</td><td data-th="Рішення">100% автоматичний gate на кожну цитату; вибірка лише для перевірки самого gate</td></tr>
+</tbody></table></div>
+<p>Цей розрахунок пояснює рішення, які урок 0.2 ухвалив інтуїтивно: «цитата без збігу блокує публікацію» — бо S2 неможливо контролювати вибіркою; «обов'язкове рев'ю автора» — бо для S1 воно дешевше за очікувану шкоду. Тепер обидва рішення мають число, і їх можна переглянути, коли зміниться число.</p>
+<div class="note tip"><span class="lbl">Стійкість до припущень</span>
+<p>Зменшіть LTV удесятеро (60 дол.): S1 = 0,02 × 120 × (2,67 + 3) = 13,6 дол./курс — у межах бюджету, а рев'ю вже не окупається (0,02 × 5,67 × 0,8 = 0,09 &lt; 0,33). Тому гіпотези в <code>docs/metrics.md</code> пронумеровано: факт з пілоту змінює одну клітинку, а не документ.</p>
+</div>
+</section>
+
+<section class="sec" id="measure">
+<div class="sec-h"><span class="num">05</span><h2>Як міряти<span class="sub">Офлайн, онлайн і вибірка</span></h2></div>
+<h3>Офлайн: golden set до релізу</h3>
+<p>Task success рахують на фіксованому наборі лекцій з еталонними ключами й цитатами на кожну зміну промпту чи моделі; техніку розбирає урок 12.3. Продуктове рішення одне: <b>golden set містить приклади кожного класу серйозності</b>, інакше «100% офлайн» означає лише, що ви не перевіряли.</p>
+<h3>Онлайн: сигнали від слухачів</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сигнал</th><th>Що ловить</th><th>Коли з'являється</th></tr></thead>
+<tbody>
+<tr><td data-th="Сигнал">Сильні слухачі обирають не ключ (індекс дискримінації, розділ нижче)</td><td data-th="Що ловить">Хибний ключ, S1</td><td data-th="Коли з&#x27;являється">Після ~30 відповідей на питання</td></tr>
+<tr><td data-th="Сигнал">Кнопка «питання некоректне» на 1000 відповідей</td><td data-th="Що ловить">Хибний ключ, двозначність, S0 — шумно, але без порогу за кількістю</td><td data-th="Коли з&#x27;являється">З першої скарги</td></tr>
+<tr><td data-th="Сигнал">Медіанний час відповіді вдвічі вищий за квіз при низькому D</td><td data-th="Що ловить">Двозначне формулювання</td><td data-th="Коли з&#x27;являється">Після ~30 відповідей</td></tr>
+<tr><td data-th="Сигнал">p &gt; 0,95 і медіана &lt; 3 с</td><td data-th="Що ловить">Ключ вгадується з форми варіантів (B4 з уроку 6.2)</td><td data-th="Коли з&#x27;являється">Після ~30 відповідей</td></tr>
+<tr><td data-th="Сигнал">Правки автора до публікації</td><td data-th="Що ловить">Усі класи, але лише ті, які автор помітив</td><td data-th="Коли з&#x27;являється">До публікації — найраніший сигнал цінності</td></tr>
+</tbody></table></div>
+<p>Перші чотири — <b>leading</b>: видно за години після публікації. Відтік авторів і модулі за тиждень — <b>lagging</b>: коли вони зрушили, курси з помилками вже пройшли сотні слухачів. Рішення ухвалюють за leading, а lagging перевіряють, чи були ці рішення правильними.</p>
+<h3>Вибірка для рев'ю: правило трьох</h3>
+<p>Якщо людина перевірила <code>n</code> випадкових одиниць і не знайшла жодної помилки, 95% верхня межа частоти помилок — <code>1 − 0,05<sup>1/n</sup> ≈ 3/n</code> (правило трьох, Hanley і Lippman-Hand, 1983). Межа з нуля помилок, а не «0%»:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Перевірено без помилок</th><th>95% верхня межа (точно)</th><th>3/n</th></tr></thead>
+<tbody>
+<tr><td data-th="Перевірено без помилок">30</td><td data-th="95% верхня межа (точно)">9,50%</td><td data-th="3/n">10%</td></tr>
+<tr><td data-th="Перевірено без помилок">120 (один курс)</td><td data-th="95% верхня межа (точно)">2,47%</td><td data-th="3/n">2,5%</td></tr>
+<tr><td data-th="Перевірено без помилок">300</td><td data-th="95% верхня межа (точно)">0,99%</td><td data-th="3/n">1%</td></tr>
+<tr><td data-th="Перевірено без помилок">600</td><td data-th="95% верхня межа (точно)">0,50%</td><td data-th="3/n">0,5%</td></tr>
+</tbody></table></div>
+<p>Звідси <b>частка вибіркового рев'ю за ризиком</b>: для S1 з порогом 0,51% потрібно ~590 питань без жодного хибного ключа — більше, ніж є в курсі. Вибірка з одного релізу цього не доведе ніколи; тому S1 закриває 100% рев'ю автора плюс онлайн-детектор, а вибірка рахує накопичено між релізами. Для S0 вибірка 5% — це спостереження за трендом, а не доказ. Для S2 вибірка перевіряє не цитати, а <b>сам gate</b>: що він не пропускає перекручених цитат (модуль 12).</p>
+<h3>A/B, коли користувачів мало</h3>
+<p>Класичний A/B-тест рандомізує користувачів (стандарт практики — книга Kohavi, Tang і Xu, 2020). У Lectern одиниця «автор» не працює: авторів десятки, а різниця між версіями промпту — частки відсотка. Робоча схема — <b>рандомізація на рівні питання</b>: в одному квізі частина питань від промпту A, частина від B, і кожен слухач бачить обидві. Різницю в здібностях слухачів це прибирає з порівняння, бо кожен слухач сам собі контроль. Ідея та сама, що в <b>interleaving</b> для пошуку, де два ранжування змішують в одній видачі; Chapelle та співавтори (2012) перевірили його на двох комерційних пошукових системах. Метрики для порівняння: key error rate, медіанний D і скарги на 1000 відповідей; метрики автора (правки) — лише офлайн.</p>
+</section>
+
+<section class="sec" id="analysis">
+<div class="sec-h"><span class="num">06</span><h2>Справжній аналіз<span class="sub">Хибні ключі з відповідей слухачів</span></h2></div>
+<p>Хибний ключ (S1) не видно в тексті квізу — він виглядає так само впевнено, як правильний. Але його видно в <b>поведінці</b> слухачів, і для цього не потрібна модель: класична теорія тестів має готовий інструмент.</p>
+<ul>
+<li><b>Індекс дискримінації</b> <code>D = p<sub>верх</sub> − p<sub>низ</sub></code>: частка правильних (за ключем) відповідей у 27% слухачів з найвищим балом мінус та сама частка в 27% з найнижчим. Поділ 27/27 — конвенція, яку зазвичай ведуть від Kelley (1939). Добре питання має D &gt; 0: ті, хто знає матеріал, частіше відповідають правильно.</li>
+<li>Варіант — <b>кореляція «питання — решта тесту»</b> (point-biserial) по всіх слухачах.</li>
+</ul>
+<blockquote class="q-src">
+<p>Питання з від'ємними індексами слід розглянути, щоб з'ясувати, звідки від'ємне значення. Наприклад, від'ємне значення може означати, що питанню призначено хибний ключ, тож студенти, які знали матеріал, обирали правильний варіант, не позначений ключем.</p>
+<p class="orig">“Items with negative indices should be examined to determine why a negative value was obtained. For example, a negative value may indicate that the item was mis-keyed, so that students who knew the material tended to choose an unkeyed, but correct, response option.”</p>
+<cite>University of Washington, Office of Educational Assessment, «Understanding Item Analyses» · перевірено 15.10.2026</cite>
+</blockquote>
+<p>Там само застереження: дані аналізу питань «попередні» і залежать від кількості й типу студентів. Тому ми не вірили правилу на слово, а виміряли його.</p>
+<h3>Симуляція</h3>
+<p><code>console/simulate.py</code>, лише stdlib, seed 47. Квіз із 30 питань по 4 варіанти. Здібність слухача θ ~ N(0, 1); ймовірність правильної відповіді — 0,2 + 0,8 / (1 + e<sup>−1,7a(θ−b)</sup>), де a — розрізнювальна сила питання, b — складність. Хто помилився, обирає дистрактор за «привабливістю», один із трьох утричі привабливіший; 5% відповідей пропущено. Засіяно дві групи:</p>
+<ul>
+<li><b>3 хибні ключі</b> (питання 4, 13, 22): ключ указує на найпривабливіший дистрактор, а слухачі відповідають за справжньою правильною відповіддю;</li>
+<li><b>3 пастки</b> (8, 17, 26): ключ правильний, але питання дуже складне, а один дистрактор увосьмеро привабливіший. Більшість обирає неправильний варіант — це чесна перешкода для детектора, бо саме так виглядає складне питання з поширеною помилкою.</li>
+</ul>
+<p>Чотири правила-кандидати: <b>A</b> — найпопулярніший варіант ≠ ключ; <b>B</b> — найпопулярніший у верхній групі ≠ ключ; <b>C</b> — D ключа &lt; 0; <b>D</b> — правило <code>scripts/item_analysis.py</code>: верхня група обирає інший варіант частіше, ніж ключ, <b>і цей варіант сам розрізняє</b> (його D ≥ 0,10). Кожен розмір вибірки — 300 прогонів.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — sim/</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 simulate.py --lectern ../lectern --reps 300</span>
+30 items, miskeyed [4, 13, 22], traps [8, 17, 26], reps 300, seed 47
+<span class="d">… таблиця — нижче …</span>
+ 100 D of miskeyed items: median -0.26, share &lt; 0: 0.98
+no detector at all: 98.10 $/run</pre>
+<div class="cap">реальний вивід · Python 3.12 · 16 с · таблицю перенесено в HTML для телефона, N = 20, 50, 500 пропущено (повний вивід — console/sim-300.txt)</div></div>
+<div class="tbl-wrap"><table class="tbl nostack">
+<thead><tr><th>Правило</th><th>30 слухачів</th><th>100</th><th>200</th></tr></thead>
+<tbody>
+<tr><td>A · більшість</td><td>0,26 / 0,82<br>7,08 · 27,07</td><td>0,27 / 0,83<br>6,88 · 25,83</td><td>0,27 / 0,83<br>6,89 · 25,95</td></tr>
+<tr><td>B · верх. група</td><td>0,46 / 0,95<br>3,32 · <b>9,21</b></td><td>0,50 / 0,98<br>2,90 · 5,49</td><td>0,54 / 1,00<br>2,59 · 3,77</td></tr>
+<tr><td>C · D &lt; 0</td><td>0,69 / 0,87<br>1,18 · 14,65</td><td>0,87 / 0,98<br>0,45 · <b>2,23</b></td><td>0,92 / 1,00<br>0,26 · <b>0,56</b></td></tr>
+<tr><td>D · скрипт</td><td>0,74 / 0,90<br>0,96 · 11,30</td><td>0,94 / 0,98<br>0,19 · 2,43</td><td>0,97 / 0,99<br>0,08 · 0,65</td></tr>
+</tbody></table></div>
+<p>У клітинці: precision / recall, далі хибні прапорці на квіз · очікувана ціна квізу в дол. (хибні прапорці × 1,33 + пропуски × 32,67); жирне — найдешевше правило для цього N. Запропонований правилом D ключ збігся зі справжнім у 99–100% спіймань.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar p"><span class="k">A · більшість ≠ ключ</span><span class="tr"><i style="--v:27%"></i><b style="--v:27%">precision 0,27</b></span></div>
+  <div class="bar m"><span class="k">B · більшість верхньої групи</span><span class="tr"><i style="--v:50%"></i><b style="--v:50%">0,50</b></span></div>
+  <div class="bar"><span class="k">C · D ключа &lt; 0</span><span class="tr"><i style="--v:87%"></i><b class="in" style="--v:87%">0,87</b></span></div>
+  <div class="bar t"><span class="k">D · item_analysis.py</span><span class="tr"><i style="--v:94%"></i><b class="in" style="--v:94%">0,94</b></span></div>
+</div>
+<figcaption>Precision чотирьох правил на 100 слухачах (300 симульованих квізів). Recall: 0,83 / 0,98 / 0,98 / 0,98. Синтетичні дані з моделлю 3PL — перевірка логіки детектора, не оцінка реальних курсів.</figcaption>
+</figure>
+<ol class="steps">
+<li><b>Наївне правило не виправляє обсяг даних.</b> Правило A має precision 0,27 і на 30, і на 500 слухачах: його хибні прапорці — не шум, а систематична помилка (складні питання, усі 3 пастки при N ≥ 200). Більше даних лише впевненіше підтверджують хибний висновок.</li>
+<li><b>Найкраще правило залежить від N і від ціни помилок.</b> На 30 слухачах найдешевше шумне правило B (9,21 дол.), бо пропуск хибного ключа в 25 разів дорожчий за зайву перевірку. Від 100 слухачів C і D у 2–6 разів дешевші за B; між собою вони рівні в межах шуму, але D ще й підказує правильний ключ — у 99–100% спіймань.</li>
+<li><b>Будь-який детектор кращий, ніж жодного:</b> 98,10 дол. на квіз без детектора проти 0,65 з ним на 200 слухачах.</li>
+<li><b>Хибний ключ справді дає від'ємний D:</b> медіана −0,26 на 100 слухачах, частка D &lt; 0 зростає з 0,79 (20 слухачів) до 1,00 (200).</li>
+</ol>
+<p>Тому в <code>item_analysis.py</code> поріг <code>MIN_LEARNERS = 30</code>: на 20 слухачах recall правила D лише 0,84, а на 30 воно вже 0,90 і дешевше за C (11,30 проти 14,65 дол.). Калібрування на реальній когорті — пункт B32 у backlog.</p>
+<h3>Той самий скрипт на одному квізі</h3>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — sim/</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 simulate.py --lectern ../lectern --dump 100</span>
+wrote run-100/ quiz.json responses.jsonl truth.json
+<span class="ps">$ </span><span class="c">python3 ../lectern/scripts/item_analysis.py run-100/quiz.json run-100/responses.jsonl; echo "exit $?"</span>
+items: 30  analyzed: 30  key_suspect: [4, 13, 22]
+item 4: n=97 p=0.062 D=-0.152 r=-0.288 key=2 upper=[1.0, 0.0, 0.0, 0.0] <span class="er">key_suspect -&gt; suggested 0</span>
+item 13: n=97 p=0.258 D=-0.467 r=-0.4 key=3 upper=[0.0, 0.0, 1.0, 0.0] <span class="er">key_suspect -&gt; suggested 2</span>
+item 17: n=95 p=0.368 D=-0.022 r=0.089 key=1 upper=[0.107, 0.357, 0.464, 0.071] <span class="y">negative_D</span>
+item 22: n=96 p=0.135 D=-0.184 r=-0.201 key=3 upper=[0.962, 0.0, 0.0, 0.038] <span class="er">key_suspect -&gt; suggested 0</span>
+exit 1</pre>
+<div class="cap">реальний вивід · 15.10.2026 · справжні ключі (truth.json): 4 → 0, 13 → 2, 22 → 0 — усі три вгадано</div></div>
+<p>Питання 17 — пастка, і на ньому видно, навіщо умова «варіант сам розрізняє». Верхня група обирає варіант 2 (46%) частіше, ніж ключ 1 (36%), тож правило B його позначило б. Але нижня група обирає варіант 2 ще частіше (52%), тобто це поширена помилка, а не знання. Скрипт ставить лише інформаційний <code>negative_D</code> і код виходу від нього не залежить.</p>
+<h3>Тріаж прапорців моделлю</h3>
+<p>Статистика каже «тут щось не так», але не каже що: хибний ключ, двозначне питання чи просто складне. Ми дали <code>claude -p</code> на Haiku лекцію <code>samples/lecture.txt</code>, статистику з прогону вище і текст чотирьох позначених питань. Синтетичний квіз тексту не має, тож позиціям 4, 13, 17, 22 ми дали питання з лекції про хеш-таблиці з тією самою схемою ключів; цитати перевірено на дослівність.</p>
+<div class="tabs">
+<input type="radio" name="tri-t" id="tri-t1" checked><input type="radio" name="tri-t" id="tri-t2"><input type="radio" name="tri-t" id="tri-t3">
+<div class="tab-l"><label for="tri-t1">Claude Code</label><label for="tri-t2">Codex CLI</label><label for="tri-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — triage/</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p --model haiku --tools "" --setting-sources project --strict-mcp-config --no-session-persistence --max-budget-usd 0.10 --json-schema "$SCHEMA" --output-format json &lt; prompt.txt &gt; triage.json</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.300 · 15.10.2026 · порожній список інструментів: модель працює лише з текстом</div></div>
+</div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — triage/</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec "$(cat prompt.txt)"</span></pre>
+<div class="cap">команда з офіційної документації Codex · не запускалась у цьому уроці</div></div>
+<p>Типова пісочниця <code>codex exec</code> — лише читання, і для тріажу більшого не треба.</p>
+</div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — triage/</span></div>
+<pre><span class="ps">$ </span><span class="c">agent -p "$(cat prompt.txt)"</span></pre>
+<div class="cap">команда з офіційної документації Cursor · не запускалась у цьому уроці</div></div>
+<p>Без <code>--force</code> Cursor CLI нічого не записує — для тріажу саме те.</p>
+</div>
+</div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>triage.json — structured_output</span></div>
+<pre><span class="y">4</span> · <span class="er">key_wrong</span> · correct 0
+…(«остача від ділення цього числа на розмір масиву дає номер комірки»), тож правильний варіант 0, а ключ 2 суперечить тексту…
+
+<span class="y">13</span> · <span class="er">key_wrong</span> · correct 2
+«У словниках CPython поріг дорівнює двом третинам»…
+
+<span class="y">17</span> · <span class="ok">item_ok</span> · correct 1
+«Коли він зростає, колізій стає більше, і сталий час поступово перетворюється на лінійний»; … від'ємний D пояснюється привабливістю дистрактора 2 для сильних слухачів, а не неточністю ключа.
+
+<span class="y">22</span> · <span class="er">key_wrong</span> · correct 0
+…ключ 3 суперечить тексту, бо лекція прямо каже, що для звичайної таблиці криптографічна стійкість не потрібна.
+
+<span class="d">is_error false · num_turns 2 · 8,9 с
+total_cost_usd 0.0029 · claude-haiku-5-5</span></pre>
+<div class="cap">реальний вивід, переформатований з JSON; причини скорочено · повний файл — console/triage/triage.json</div></div>
+<p>Три хибні ключі модель підтвердила з правильними індексами і цитатою з лекції — за 0,0029 дол. А в питанні 17 видно межу автоматичного тріажу. Ключ справді правильний, але дистрактор 2 («таблиця одразу стає вдвічі більшою») <b>частково правдивий</b>: лекція каже, що таблиця подвоюється після порогу. Чесний вердикт тут <code>item_flawed</code>. Модель обрала <code>item_ok</code>, ще й пояснила це «привабливістю для сильних слухачів», хоча дані кажуть протилежне: варіант 2 частіше обирали слабкі. Тому тріаж лише сортує чергу автора, а ключ змінює автор.</p>
+</section>
+
+<section class="sec" id="decide">
+<div class="sec-h"><span class="num">07</span><h2>Рішення<span class="sub">Ship, людський gate, kill і бюджет довіри</span></h2></div>
+<p>Пороги записують <b>до</b> результату, інакше їх підганяють під реліз, який хочеться випустити. Пороги Lectern виведено з таблиці очікуваної ціни:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рішення</th><th>Умова</th><th>Чому саме так</th></tr></thead>
+<tbody>
+<tr><td data-th="Рішення"><b>Ship</b></td><td data-th="Умова">Task success ≥ 95% на golden set; S2 в опублікованому = 0; 95% межа key error rate ≤ 0,51% на накопичених питаннях</td><td data-th="Чому саме так">0,51% — частота S1, за якої очікувана втрата ≤ 20 дол./курс</td></tr>
+<tr><td data-th="Рішення"><b>Ship з людським gate</b></td><td data-th="Умова">S1 вище порогу, але рев'ю окупається: P × C × 0,8 &gt; 0,33 дол.</td><td data-th="Чому саме так">Людина дешевша за очікувану шкоду; так для Lectern зараз</td></tr>
+<tr><td data-th="Рішення"><b>Hold</b></td><td data-th="Умова">Порушено guardrail або скарги &gt; 5 на 1000 відповідей два релізи поспіль (H)</td><td data-th="Чому саме так">Guardrail не обмінюють на основні метрики</td></tr>
+<tr><td data-th="Рішення"><b>Kill</b></td><td data-th="Умова">Після двох ітерацій key error rate &gt; 2 × поріг навіть з рев'ю, або автор правив &gt; 50% питань (H)</td><td data-th="Чому саме так">Фіча не економить авторові часу — головної обіцянки PRD</td></tr>
+</tbody></table></div>
+<p>У того самого правила 39 Rules of ML, з якого епіграф, є жорстке продовження: якщо простий евристичний метод кращий за складну ML-систему за всіма метриками, команда має обрати евристику (<i>«if the simple heuristic does a better job on all these metrics, it should choose the heuristic»</i>). Для AI-фічі це критерій kill, який варто записати заздалегідь: шаблон квізу, який автор заповнює сам за 20 хвилин, — теж конкурент генератора.</p>
+<h3>Бюджет довіри</h3>
+<p>Помилки й успіхи не важать однаково. Найближче до цього підходить дослідження Dietvorst, Simmons і Massey (2015): у п'яти експериментах учасники, які бачили, як алгоритм прогнозує, рідше обирали його, ніж гіршого прогнозиста-людину, — навіть ті, хто бачив, що алгоритм точніший.</p>
+<blockquote class="q-src">
+<p>Люди швидше втрачають довіру до алгоритмічних прогнозистів, ніж до людей, побачивши, як ті роблять ту саму помилку.</p>
+<p class="orig">“people more quickly lose confidence in algorithmic than human forecasters after seeing them make the same mistake.”</p>
+<cite>Dietvorst, Simmons, Massey, «Algorithm Aversion», Journal of Experimental Psychology: General, 2015</cite>
+</blockquote>
+<p>Продовження (Management Science, 2018): люди значно охочіше користуються недосконалим алгоритмом, якщо можуть <b>хоч трохи його змінити</b>, навіть у жорстко обмежених межах. Обидва дослідження стосуються прогнозів, а не квізів, тож перенесення на Lectern — <b>гіпотеза</b>. Але з неї випливають перевірювані рішення:</p>
+<ol class="steps">
+<li><b>Перша помилка дорожча за середню.</b> Автор, який на першому курсі отримав скаргу на хибний ключ, судитиме про Lectern за нею, а не за 98%. Тому поріг S1 жорсткіший для нових авторів (рев'ю 100% у перших курсах), а частку вибірки знижують, коли накопичено історію.</li>
+<li><b>Контроль замість обіцянки точності.</b> Редагування кожного питання, джерело біля кожного ключа і позначка «сумнівне» — не косметика UX, а механізм, який за даними 2018 року повертає готовність користуватися системою.</li>
+<li><b>Вимірюйте довіру поведінкою.</b> Частка питань, які автор перевіряє вручну після прапорця, і час рев'ю на питання: якщо після інциденту автор починає перевіряти все, довіру втрачено, хоч він і не пішов.</li>
+</ol>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: метрики і детектор хибних ключів</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 9.5 · метрики і детектор</div><div class="pb">
+<p>Зміни зроблено на копії канонічного <code>lectern/</code>, повний diff — <code>console/lectern.diff</code>:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git diff --cached --stat=44</span>
+ BACKLOG.md                  |   2 +
+ CHANGELOG.md                |   3 +-
+ docs/metrics.md             |  79 +++
+ dot-claude/CLAUDE.kit.md    |   3 +
+ scripts/item_analysis.py    | 186 ++++++++
+ tests/test_item_analysis.py | 149 ++++++
+ 6 files changed, 421 insertions(+), 1 deletion(-)
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q</span>
+160 passed
+<span class="ps">$ </span><span class="c">.venv/bin/ruff check .</span>
+All checks passed!
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/check_context.py</span>
+checked 9 files (32 commands, 38 paths, 16 symbols): 0 problem(s)</pre>
+<div class="cap">реальний вивід · Python 3.12 · 15.10.2026 · час виконання прибрано</div></div>
+<ul>
+<li><b><code>docs/metrics.md</code></b>: дерево метрик із типом leading/lagging, класи S0–S2 з очікуваною ціною і гіпотезами H1–H8, визначення key error rate (з 95% межею), пороги ship / gate / hold / kill, план вибірки за ризиком, онлайн-сигнали і схема A/B на рівні питання.</li>
+<li><b><code>scripts/item_analysis.py</code></b>, лише stdlib, без моделі: p, D (групи 27% за балом за рештою питань; рівні бали на межі групи входять усі, інакше D залежав би від порядку імен слухачів — цей баг знайшов тест), кореляція «питання — решта», прапорці <code>key_suspect</code> із запропонованим ключем, <code>negative_D</code>, <code>insufficient_data</code>; <code>--json</code>; код виходу 1, якщо є підозра на ключ.</li>
+<li><b>14 тестів</b>: хибний ключ знайдено разом із правильним варіантом; пастка, яку правила «більшість» і «більшість верхньої групи» позначили б, не позначена; D = верх − низ; незалежність від імен; поріг слухачів; пропуски; CLI 0/1/2 без трасування.</li>
+<li><b>CLAUDE.kit.md</b>: команда і правило «прапорець — сигнал для автора; ключ сам не змінюй».</li>
+<li><b>Backlog:</b> B31 — подія відповіді слухача і скарги, без яких онлайн-метрик немає; B32 — калібрування порогів на першій реальній когорті.</li>
+</ul>
+<p><b>Ваш крок:</b> перенесіть <code>docs/metrics.md</code> у свій Lectern і замініть H1–H8 своїми числами. Потім запустіть <code>console/costs.py</code> зі своїми гіпотезами і перевірте, чи не змінився хоч один висновок у колонці «Рішення».</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">«Точність 98%», а скарг більше, ніж очікували</td><td data-th="Причина">Метрику порахували на одиницю, а користувач переживає сесію чи курс</td><td data-th="Що зробити">Рахуйте 1 − (1 − p)<sup>n</sup> на одиницю досвіду користувача</td></tr>
+<tr><td data-th="Симптом">Детектор позначає складні питання</td><td data-th="Причина">Правило «більшість ≠ ключ» плутає складність з помилкою; більше даних цього не виправить</td><td data-th="Що зробити">Дивіться на верхню групу і на те, чи розрізняє сам варіант</td></tr>
+<tr><td data-th="Симптом">Поріг детектора «щоб precision ≥ 90%»</td><td data-th="Причина">Однакові ваги FP і FN</td><td data-th="Що зробити">Поріг p* = C<sub>FP</sub> / (C<sub>FP</sub> + C<sub>FN</sub>); для хибного ключа ≈ 0,04</td></tr>
+<tr><td data-th="Симптом">«Перевірили 100 питань, помилок нуль — частота 0%»</td><td data-th="Причина">Нуль у вибірці ≠ нуль у генеральній сукупності</td><td data-th="Що зробити">Звітуйте 95% межу ≈ 3/n; для порогу p потрібно n ≈ 3/p</td></tr>
+<tr><td data-th="Симптом">Онлайн-проксі росте, а цінність ні</td><td data-th="Причина">Проксі не перевірили на зв'язок із верхнім шаром</td><td data-th="Що зробити">Щоквартальна перевірка кореляції; проксі без зв'язку — прибрати</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">98% на питання</span><span class="h">що це для курсу зі 120?</span></span><span class="b"><span class="t">91% курсів з помилкою</span><span class="d">1 − 0,98<sup>120</sup> ≈ 0,911</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">p* для прапорця</span><span class="h">C<sub>FP</sub> = 1,33, C<sub>FN</sub> = 32,67</span></span><span class="b"><span class="t">≈ 0,04</span><span class="d">прапорець вигідний, навіть коли правий у 1 випадку з 10</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">0 помилок у 300</span><span class="h">95% верхня межа?</span></span><span class="b"><span class="t">≈ 1%</span><span class="d">правило трьох: 3/n</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">D = −0,26</span><span class="h">що це означає?</span></span><span class="b"><span class="t">Нижня група праворуч частіше</span><span class="d">типова ознака хибного ключа — перевірити варіант верхньої групи</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">S2 при P max 0,09%</span><span class="h">вибірка чи gate?</span></span><span class="b"><span class="t">Gate на кожну одиницю</span><span class="d">вибірці потрібно 3 336 одиниць без жодної помилки</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">leading чи lagging?</span><span class="h">утримання автора 90 днів</span></span><span class="b"><span class="t">Lagging</span><span class="d">підтверджує рішення, але ухвалюють їх за leading</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 рішень із числами</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Хибний ключ трапляється в 1% питань, квіз уроку має 12 питань. Продакт-менеджер: «99% — можна запускати без рев'ю». Яка частка квізів матиме хоч один хибний ключ?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Близько 1%: помилки незалежні, тож частка квізів з помилкою дорівнює частці питань</span></label><label class="opt ok"><input type="radio" name="q1"><span>Близько 11%: 1 − 0,99¹², тобто приблизно кожен дев'ятий квіз має хоч одну помилку</span></label><label class="opt"><input type="radio" name="q1"><span>Близько 50%: на дванадцяти питаннях хоч одна помилка з'являється майже напевно</span></label></div>
+    <div class="why yes">Так. Метрику рахують на одиницю досвіду користувача: слухач проходить квіз, а не питання.</div>
+    <div class="why no">Ймовірність хоч однієї помилки серед n незалежних одиниць — 1 − (1 − p)<sup>n</sup> = 1 − 0,99¹² ≈ 11,4%. Це не 1% (так було б, якби квіз мав одне питання) і не 50% (до цього потрібно ~69 питань).</div></div>
+  <div class="q"><div class="qt">2. Перевірка одного прапорця коштує автору 2 дол., пропущений хибний ключ — 50 дол. З якої ймовірності помилки прапорець варто піднімати?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Приблизно з 4%: p* = 2 / (2 + 50), бо пропуск у 25 разів дорожчий за перевірку</span></label><label class="opt"><input type="radio" name="q2"><span>З 50%: інакше більшість прапорців буде марною роботою автора, і він перестане їх читати</span></label><label class="opt"><input type="radio" name="q2"><span>Приблизно з 96%: щоб сумарна ціна хибних прапорців не перевищила ціну пропусків</span></label></div>
+    <div class="why yes">Так. За асиметричних цін поріг зміщується в бік повноти: навіть детектор з точністю 10% окупається.</div>
+    <div class="why no">Очікувана вигода прапорця додатна, коли P × C<sub>FN</sub> більше за C<sub>FP</sub>, тобто P &gt; C<sub>FP</sub> / (C<sub>FP</sub> + C<sub>FN</sub>) ≈ 0,04. Поріг 50% мовчки вважає ціни рівними; 96% — та сама помилка з протилежним знаком.</div></div>
+  <div class="q"><div class="qt">3. Рецензент перевірив 200 випадкових питань і не знайшов жодного хибного ключа. Поріг ship для S1 — 0,5%. Чи можна запускати за цим доказом?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Так: нуль помилок у 200 питаннях означає, що оцінка частоти — 0%, і це нижче за поріг</span></label><label class="opt"><input type="radio" name="q3"><span>Так, якщо питання вибрано випадково: тоді 200 питань репрезентують увесь банк питань</span></label><label class="opt ok"><input type="radio" name="q3"><span>Ні: 95% верхня межа ≈ 3/200 = 1,5%, а для 0,5% треба ~600 питань без помилок</span></label></div>
+    <div class="why yes">Так. Нуль у вибірці дає межу, а не нуль; правило трьох каже, скільки одиниць потрібно для порогу.</div>
+    <div class="why no">Випадковість вибірки потрібна, але не достатня: з 200 питань без помилок справжня частота може бути до ~1,5% з 95% довірою. Щоб межа опустилася до 0,5%, потрібно n ≈ 3/0,005 = 600.</div></div>
+  <div class="q"><div class="qt">4. Правило «найпопулярніший варіант ≠ ключ» на 500 слухачах дає ~7 прапорців на квіз із 30 питань, з них правильних менше третини. Колега: «зберемо 2000 слухачів, і шум зникне». Що відповісти?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Погодитися: точність правила росте з вибіркою, на 2000 слухачів хибних прапорців буде вчетверо менше</span></label><label class="opt ok"><input type="radio" name="q4"><span>Не допоможе: правило плутає складні питання з хибним ключем, і більше даних лише впевненіше це підтвердить</span></label><label class="opt"><input type="radio" name="q4"><span>Підняти поріг: позначати питання, лише якщо популярний варіант обрали понад 70% слухачів</span></label></div>
+    <div class="why yes">Так. У симуляції precision правила A — 0,26–0,27 і на 30, і на 500 слухачах: це систематична помилка, а не шум.</div>
+    <div class="why no">Шум зменшується з вибіркою, систематична помилка — ні: на складному питанні з популярною помилкою більшість справді обирає не ключ. Вищий поріг відсіє і частину справжніх хибних ключів. Допомагає інша ознака: що обирають сильні слухачі і чи розрізняє цей варіант.</div></div>
+  <div class="q"><div class="qt">5. Три класи помилок: друкарська (ціна 0,67 дол.), хибний ключ (32,67), вигадана цитата (185,33). Яку з них розумно контролювати лише вибіркою 5% питань на реліз?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Вигадану цитату: вона трапляється найрідше, тож 5% вибірки вистачить, щоб вчасно помітити зміну тренду</span></label><label class="opt"><input type="radio" name="q5"><span>Хибний ключ: його однаково ловлять слухачі, тож вибірка лише підтвердить їхні скарги</span></label><label class="opt ok"><input type="radio" name="q5"><span>Друкарську: рев'ю заради неї коштує більше, ніж очікувана шкода, і вибірка лише стежить за трендом</span></label></div>
+    <div class="why yes">Так. 3% × 0,67 × 0,8 = 0,016 дол. на питання проти 0,33 дол. на рев'ю: окреме рев'ю не окупається.</div>
+    <div class="why no">Рідкісна, але дорога вигадана цитата потребує межі 0,09%, а її вибіркою не довести: потрібні 3 336 одиниць без помилки, тож лишається gate на кожну цитату. Хибний ключ, знайдений слухачем, — це вже понесена шкода, тому для нього рев'ю до публікації плюс детектор.</div></div>
+  <div class="q"><div class="qt">6. Пілот показав, що LTV автора — 60 дол., а не 600. Як це змінює обов'язкове рев'ю ключів (решта гіпотез ті самі)?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Рев'ю перестає окупатися (0,09 &lt; 0,33 дол. на питання) — його переглядають на користь детектора</span></label><label class="opt"><input type="radio" name="q6"><span>Нічого не змінює: рев'ю ключів обов'язкове за PRD, тож економіка тут не аргумент</span></label><label class="opt"><input type="radio" name="q6"><span>Рев'ю стає ще важливішим: з дешевшим автором кожна втрата відносно відчутніша</span></label></div>
+    <div class="why yes">Так. Ціна помилки падає до 2,67 + 0,05 × 60 = 5,67 дол., а 2% × 5,67 × 0,8 = 0,09 дол. — менше за 0,33 дол. ціни рев'ю.</div>
+    <div class="why no">Рішення в PRD мали обґрунтування числами, і коли числа змінюються, рішення переглядають, а не захищають. Дешевший автор зменшує ціну помилки, а з нею і вигоду від рев'ю. Саме тому гіпотези в <code>docs/metrics.md</code> пронумеровано.</div></div>
+  <div class="q"><div class="qt">7. Питання: p = 0,37, D ключа = −0,02. Верхня група обирає варіант 2 частіше (46%), ніж ключ 1 (36%), але нижня обирає варіант 2 ще частіше (52%). Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Змінити ключ на 2: верхня група обирає його частіше, ніж поточний ключ, а D від'ємний</span></label><label class="opt ok"><input type="radio" name="q7"><span>Ключ не чіпати, перевірити формулювання: варіант 2 — поширена помилка, можливо частково правдива</span></label><label class="opt"><input type="radio" name="q7"><span>Видалити питання: від'ємний D за класичною теорією тестів означає, що питання непридатне</span></label></div>
+    <div class="why yes">Так. Варіант, який слабкі обирають частіше за сильних, сам не розрізняє — це ознака поширеної помилки, а не знання. Так виглядало питання 17 у прогоні.</div>
+    <div class="why no">Від'ємний D — привід розглянути питання, а не вирок: Університет Вашингтона пише саме «should be examined». Хибний ключ означав би, що варіант обирають насамперед сильні, а тут нижня група обирає його більше (52% проти 46%).</div></div>
+  <div class="q"><div class="qt">8. Дві версії промпту генератора, 25 авторів і 4000 слухачів. Як порівняти версії онлайн?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Розділити авторів навпіл і порівняти частку питань, прийнятих без правок</span></label><label class="opt"><input type="radio" name="q8"><span>Розділити слухачів навпіл: половина бачить квізи версії A, а друга половина — квізи версії B</span></label><label class="opt ok"><input type="radio" name="q8"><span>Змішати питання обох версій в одному квізі й порівняти key error rate, D і скарги</span></label></div>
+    <div class="why yes">Так. Кожен слухач бачить обидві версії, тож різниця в здібностях не потрапляє в порівняння; авторські метрики — лише офлайн.</div>
+    <div class="why no">Двох груп по 12–13 авторів замало для різниці в частки відсотка. Поділ слухачів працює, але кожен бачить лише одну версію, і різниця в здібностях груп додає шум. Змішування в одному квізі — та сама ідея, що interleaving у пошуку.</div></div>
+  <div class="q"><div class="qt">9. Новий автор публікує перший курс. Яку частку його питань перевіряти вручну, якщо зважати на дослідження про «відразу до алгоритмів»?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Усі питання перших курсів, а частку знижувати з історією: перша помилка важить більше за середню</span></label><label class="opt"><input type="radio" name="q9"><span>Як для всіх авторів: частота помилок генератора ніяк не залежить від того, скільки курсів уже має автор</span></label><label class="opt"><input type="radio" name="q9"><span>Мінімальну: новачка не варто відлякувати перевірками, довіру будують швидкими результатами</span></label></div>
+    <div class="why yes">Так. За Dietvorst та ін. (2015) довіру до алгоритму після помилки втрачають швидше, ніж до людини; перенесення на Lectern — гіпотеза, яку перевіряють поведінкою автора.</div>
+    <div class="why no">Частота помилок справді однакова, але ціна першої помилки — ні: вона формує судження про систему. Тому порогом керує ціна, а не частота, і для нових авторів вона вища.</div></div>
+  <div class="q"><div class="qt">10. Рішення про реліз нової моделі — завтра. Яку метрику брати як головну?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Утримання авторів за 90 днів: вона найближча до бізнесу і найменше залежить від проксі</span></label><label class="opt ok"><input type="radio" name="q10"><span>Task success на golden set і guardrails, а після релізу — ранні онлайн-проксі</span></label><label class="opt"><input type="radio" name="q10"><span>Модулі, опубліковані за тиждень: це North Star, і за нею ухвалюють усі рішення</span></label></div>
+    <div class="why yes">Так. Рішення ухвалюють за leading-індикаторами, а lagging перевіряють, чи вони були правильними.</div>
+    <div class="why no">Утримання за 90 днів і North Star — lagging: вони зрушать через тижні, коли курси з помилками вже пройдуть слухачі. Для рішення «завтра» є лише офлайн task success, guardrails і перші онлайн-сигнали.</div></div>
+  <div class="q"><div class="qt">11. Після редизайну плеєра скарг «питання некоректне» на 1000 відповідей стало на 40% менше. Що висновувати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Якість квізів зросла приблизно на 40%, і це можна чесно вказати в нотатці релізу як головний результат зміни</span></label><label class="opt"><input type="radio" name="q11"><span>Нічого: скарги — шумна метрика, її варто прибрати з дерева метрик як непридатну</span></label><label class="opt ok"><input type="radio" name="q11"><span>Перевірити, чи не змінилася сама подія: якщо key error rate і правки ті самі, змінився проксі, а не якість</span></label></div>
+    <div class="why yes">Так. Проксі тримається лише на зв'язку з якістю; редизайн міг сховати кнопку, і падіння скарг означає лише, що їх важче залишити.</div>
+    <div class="why no">Проксі змінюється і від якості, і від того, як подію збирають. Перш ніж радіти чи викидати метрику, порівняйте її з незалежними сигналами того самого шару (key error rate) і з верхнім шаром (правки автора).</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>стек метрик</td><td>Цінність → офлайн task success → онлайн-проксі → guardrails → бізнес-результат; нижчі шари перевіряють кореляцією з вищими.</td></tr>
+<tr><td>task success</td><td>Частка еталонних прикладів golden set, на яких система виконала задачу за всіма перевірками, до релізу.</td></tr>
+<tr><td>онлайн-проксі</td><td>Швидкий сигнал з продакшну (скарги, acceptance rate, key error rate), що замінює повільну метрику цінності, якщо з нею корелює.</td></tr>
+<tr><td>асиметрія ціни</td><td>Різна ціна false positive і false negative; задає поріг p* = C<sub>FP</sub> / (C<sub>FP</sub> + C<sub>FN</sub>).</td></tr>
+<tr><td>класи S0–S2</td><td>S0 косметична, S1 оманлива, S2 шкідлива — за тим, що станеться з людиною, яка повірила виходу.</td></tr>
+<tr><td>очікувана ціна</td><td>P(помилка на одиницю) × ціна помилки × обсяг; з неї виводять пороги, рев'ю й автономію.</td></tr>
+<tr><td>вибірка рев'ю</td><td>Яку частку виходу перевіряє людина; для порогу p без знайдених помилок потрібно n ≈ 3/p (правило трьох).</td></tr>
+<tr><td>індекс D</td><td>D = p<sub>верх</sub> − p<sub>низ</sub> за 27% групами; від'ємний D — привід шукати хибний ключ.</td></tr>
+<tr><td>key error rate</td><td>Частка опублікованих питань квізу з підтвердженим хибним ключем, з 95% верхньою межею.</td></tr>
+<tr><td>ship / kill</td><td>Записані до релізу умови: запустити, запустити з людським gate, зупинити або закрити фічу.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Метрики і ціна помилки вашої AI-фічі</h3>
+<p>Стек метрик з п'яти шарів, три класи помилок з очікуваною ціною і гіпотезами, пороги ship / gate / kill і план вибірки — для Lectern або своєї фічі.</p>
+<h3>2. Розбір кейсу: детектор, який «працює»</h3>
+<p>Знайдіть помилки в звіті команди про детектор хибних ключів і перепишіть висновки та пороги за числами з уроку.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests" target="_blank" rel="noopener">Anthropic — Define success criteria and build evaluations</a><span>документація Claude · багатовимірні критерії, «90% помилок — незручність, а не груба помилка»</span></li>
+<li><a href="https://developers.google.com/machine-learning/guides/rules-of-ml" target="_blank" rel="noopener">Martin Zinkevich — Rules of Machine Learning</a><span>Google · правила 2, 13, 39: метрики до моделі, проксі «справжньої» мети, рішення про запуск</span></li>
+<li><a href="https://pair.withgoogle.com/chapter/user-needs/" target="_blank" rel="noopener">Google PAIR — User Needs + Defining Success</a><span>People + AI Guidebook · ціна false positive і false negative, precision проти recall</span></li>
+<li><a href="https://pair.withgoogle.com/chapter/errors-failing/" target="_blank" rel="noopener">Google PAIR — Errors + Graceful Failure</a><span>People + AI Guidebook · частота і серйозність помилок, калібрування довіри</span></li>
+<li><a href="https://cseweb.ucsd.edu/~elkan/rescale.pdf" target="_blank" rel="noopener">Charles Elkan — The Foundations of Cost-Sensitive Learning</a><span>IJCAI 2001 · поріг рішення з матриці цін помилок</span></li>
+<li><a href="https://www.washington.edu/assessment/scanning-scoring/scoring/reports/item-analysis/" target="_blank" rel="noopener">University of Washington — Understanding Item Analyses</a><span>індекс дискримінації, від'ємні значення і хибні ключі, аналіз варіантів</span></li>
+<li><a href="https://faculty.wharton.upenn.edu/wp-content/uploads/2016/11/20-Dietvorst-Simmons-Massey-2015.pdf" target="_blank" rel="noopener">Dietvorst, Simmons, Massey — Algorithm Aversion</a><span>Journal of Experimental Psychology: General, 2015 · довіра до алгоритму після помилки</span></li>
+<li><a href="https://ideas.repec.org/a/inm/ormnsc/v64y2018i3p1155-1170.html" target="_blank" rel="noopener">Dietvorst, Simmons, Massey — Overcoming Algorithm Aversion</a><span>Management Science, 2018 · контроль над недосконалим алгоритмом повертає готовність ним користуватися</span></li>
+<li><a href="https://arxiv.org/abs/2205.06537" target="_blank" rel="noopener">Ziegler et al. — Productivity Assessment of Neural Code Completion</a><span>2022 · acceptance rate як проксі продуктивності GitHub Copilot</span></li>
+<li><a href="https://experimentguide.com/" target="_blank" rel="noopener">Kohavi, Tang, Xu — Trustworthy Online Controlled Experiments</a><span>Cambridge University Press, 2020 · A/B-тести, OEC</span></li>
+<li><a href="https://authors.library.caltech.edu/records/r3zrn-kd453" target="_blank" rel="noopener">Chapelle, Joachims, Radlinski, Yue — Large-scale validation and analysis of interleaved search evaluation</a><span>ACM TOIS, 2012 · interleaving на даних комерційних пошукових систем</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run Claude Code programmatically</a><span>офіційна документація · <code>claude -p</code>, <code>--json-schema</code>, <code>--output-format json</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">Codex — non-interactive mode</a><span>офіційна документація · <code>codex exec</code>, типова пісочниця лише для читання</span></li>
+<li><a href="https://cursor.com/docs/cli/headless" target="_blank" rel="noopener">Cursor CLI — headless</a><span>офіційна документація · <code>agent -p</code>, без <code>--force</code> зміни лише пропонуються</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 9.5 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 9.5 · Senomi<br><br><a href="lesson-46.html">← Урок 9.4</a> · <a href="index.html">Зміст курсу</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

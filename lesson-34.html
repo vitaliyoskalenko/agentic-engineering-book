@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 7.1. Model Context Protocol: tools, resources, prompts, транспорти</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 7.1 · Модуль 7</div>
+<h1>Model Context Protocol: tools, resources, prompts, транспорти</h1>
+<p class="lead">Розбираємо MCP за поточною ревізією 2026-07-28, яка прибрала handshake і сесії: хто такі host, client і server, чим tool відрізняється від resource і prompt, як працюють stdio, Streamable HTTP та OAuth. Пишемо сервер на 46 рядків і читаємо сирий JSON-RPC від власного клієнта, Claude Code та MCP Inspector.</p>
+<div class="hero-meta"><span class="chip">MCP та інтеграції</span><span class="chip t">≈ 75 хв</span><span class="chip a">13 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>MCP — протокол без стану: уся інформація, потрібна для обробки запиту, міститься в самому запиті.</p><cite>Специфікація MCP 2026-07-28, «Statelessness» · переклад, перевірено 15.10.2026</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Навіщо протокол</a><a href="#arch"><b>02</b>Архітектура</a><a href="#primitives"><b>03</b>Примітиви сервера</a><a href="#client"><b>04</b>Можливості клієнта й утиліти</a><a href="#transports"><b>05</b>Транспорти й автентифікація</a><a href="#wire"><b>06</b>Протокол на дроті</a><a href="#claude-code"><b>07</b>MCP у Claude Code</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розкласти будь-яку MCP-інтеграцію на host, client і server і сказати, хто з них бачить розмову, модель і дані;</li>
+    <li>для кожної можливості системи вирішити, чим вона стане: tool, resource чи prompt, — за тим, хто вирішує про її використання;</li>
+    <li>читати MCP-трафік на дроті: <code>server/discover</code>, <code>_meta</code>, <code>resultType</code>, коди помилок, і відрізняти ревізію 2026-07-28 від старого handshake з <code>initialize</code>;</li>
+    <li>обрати транспорт і модель автентифікації: stdio з секретами в оточенні чи Streamable HTTP з OAuth 2.1;</li>
+    <li>підключити сервер до Claude Code у потрібній області (local / project / user), а також до Codex і Cursor, і перевірити його без моделі — сирим клієнтом або MCP Inspector.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Навіщо протокол<span class="sub">M + N замість M × N</span></h2></div>
+<p>Без спільного протоколу кожен AI-застосунок пише свій адаптер до кожної системи: 3 хости × 10 інтеграцій = 30 адаптерів з різними схемами, авторизацією й помилками. MCP робить це <b>M + N</b>: сервер Lectern пишеться один раз і працює в Claude Code, Codex, Cursor і через MCP connector у Claude API. Anthropic відкрила протокол 25.11.2024 (урок 0.1); відтоді специфікація має п'ять ревізій, і онлайн-туторіали описують різні з них.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ревізія</th><th>Що змінила</th><th>Що це означає сьогодні</th></tr></thead>
+<tbody>
+<tr><td data-th="Ревізія">2024-11-05</td><td data-th="Що змінила">Перша: handshake <code>initialize</code>, транспорти stdio і HTTP+SSE</td><td data-th="Що це означає сьогодні">HTTP+SSE застарів, але ще трапляється у старих серверах</td></tr>
+<tr><td data-th="Ревізія">2025-03-26</td><td data-th="Що змінила">Streamable HTTP замість HTTP+SSE; авторизація на OAuth 2.1; анотації інструментів</td><td data-th="Що це означає сьогодні">Від неї рахується «сучасний» віддалений сервер</td></tr>
+<tr><td data-th="Ревізія">2025-06-18</td><td data-th="Що змінила">Структурований вивід інструментів (<code>outputSchema</code>), elicitation, resource links, RFC 8707; прибрано JSON-RPC batching</td><td data-th="Що це означає сьогодні">Сервер — OAuth resource server, токен прив'язаний до конкретного сервера</td></tr>
+<tr><td data-th="Ревізія">2025-11-25</td><td data-th="Що змінила">URL-режим elicitation, Client ID Metadata Documents, експериментальні tasks, іконки</td><td data-th="Що це означає сьогодні">Остання ревізія з <code>initialize</code> і сесіями</td></tr>
+<tr><td data-th="Ревізія"><b>2026-07-28</b></td><td data-th="Що змінила"><b>Протокол без стану</b>: ні <code>initialize</code>, ні сесій; <code>server/discover</code>; запити до клієнта через MRTR; sampling, roots і logging застаріли</td><td data-th="Що це означає сьогодні">Поточна версія; клієнти й SDK підтримують обидві «ери»</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 15.10.2026</span>
+<p>Поточна (current) версія специфікації — <b>2026-07-28</b>: реліз у репозиторії специфікації опубліковано 28.07.2026, кандидат (RC) — 29.05.2026. Python SDK <code>mcp</code> 2.0.0 вийшов того ж дня; ми працюємо з <code>mcp</code> 2.3.0 (02.10.2026). Claude Code 2.1.300 у наших прогонах говорив саме 2026-07-28.</p>
+</div>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Більшість статей і відповідей моделей про MCP описують «legacy-еру»: <code>initialize</code>, <code>Mcp-Session-Id</code>, sampling. Такий сервер і далі працює з клієнтами, що знають обидві ери, але <b>нову інтеграцію проєктуйте під 2026-07-28</b>: стан — явні ідентифікатори в аргументах, будь-який екземпляр обробляє будь-який запит, і віддалений сервер масштабується звичайним балансувальником без sticky-сесій.</p>
+</div>
+</section>
+
+<section class="sec" id="arch">
+<div class="sec-h"><span class="num">02</span><h2>Архітектура<span class="sub">Host, client, server і що кожен бачить</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 500" role="img" aria-label="Host містить модель і три MCP-клієнти; кожен клієнт з'єднаний рівно з одним сервером: локальним через stdio або віддаленим через Streamable HTTP">
+  <defs>
+    <marker id="l34a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="l34b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar t"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="226" rx="12" class="bx m"/>
+  <text x="20" y="30" class="tx b">Host · Claude Code, Cursor, Codex</text>
+  <text x="20" y="47" class="tx s">модель, розмова, дозволи, згода користувача</text>
+  <rect x="96" y="60" width="168" height="50" rx="10" class="bx a"/>
+  <text x="180" y="82" text-anchor="middle" class="tx b">LLM</text>
+  <text x="180" y="99" text-anchor="middle" class="tx s">бачить лише схеми й результати</text>
+  <path d="M130 110 L 64 152" class="ln a" marker-end="url(#l34a)"/>
+  <path d="M180 110 V 152" class="ln a" marker-end="url(#l34a)"/>
+  <path d="M230 110 L 296 152" class="ln a" marker-end="url(#l34a)"/>
+  <rect x="16" y="156" width="104" height="66" rx="10" class="bx t"/>
+  <text x="68" y="180" text-anchor="middle" class="tx b">client 1</text>
+  <text x="68" y="198" text-anchor="middle" class="tx s">1 : 1</text>
+  <rect x="128" y="156" width="104" height="66" rx="10" class="bx t"/>
+  <text x="180" y="180" text-anchor="middle" class="tx b">client 2</text>
+  <text x="180" y="198" text-anchor="middle" class="tx s">1 : 1</text>
+  <rect x="240" y="156" width="104" height="66" rx="10" class="bx t"/>
+  <text x="292" y="180" text-anchor="middle" class="tx b">client 3</text>
+  <text x="292" y="198" text-anchor="middle" class="tx s">1 : 1</text>
+  <path d="M68 222 V 300" class="ln t" marker-end="url(#l34b)"/>
+  <path d="M180 222 V 300" class="ln t" marker-end="url(#l34b)"/>
+  <path d="M292 222 V 300" class="ln d" marker-end="url(#l34b)"/>
+  <text x="74" y="258" class="tx s">stdio</text>
+  <text x="186" y="258" class="tx s">stdio</text>
+  <text x="298" y="250" class="tx s">HTTPS</text>
+  <text x="298" y="266" class="tx s">+ OAuth</text>
+  <rect x="16" y="304" width="104" height="70" rx="10" class="bx p"/>
+  <text x="68" y="328" text-anchor="middle" class="tx b">lectern</text>
+  <text x="68" y="346" text-anchor="middle" class="tx s">підпроцес</text>
+  <text x="68" y="362" text-anchor="middle" class="tx s">на вашій машині</text>
+  <rect x="128" y="304" width="104" height="70" rx="10" class="bx p"/>
+  <text x="180" y="328" text-anchor="middle" class="tx b">postgres</text>
+  <text x="180" y="346" text-anchor="middle" class="tx s">підпроцес,</text>
+  <text x="180" y="362" text-anchor="middle" class="tx s">ключ з env</text>
+  <rect x="240" y="304" width="104" height="70" rx="10" class="bx p"/>
+  <text x="292" y="328" text-anchor="middle" class="tx b">GitHub</text>
+  <text x="292" y="346" text-anchor="middle" class="tx s">віддалений</text>
+  <text x="292" y="362" text-anchor="middle" class="tx s">сервіс</text>
+  <path d="M68 374 V 410" class="ln d"/>
+  <path d="M180 374 V 410" class="ln d"/>
+  <path d="M292 374 V 410" class="ln d"/>
+  <rect x="16" y="412" width="328" height="76" rx="10" class="bx"/>
+  <text x="180" y="436" text-anchor="middle" class="tx b">Дані й дії</text>
+  <text x="180" y="455" text-anchor="middle" class="tx s">PDF лекцій · таблиці БД · issues і PR</text>
+  <text x="180" y="473" text-anchor="middle" class="tx s">сервер не бачить ні розмови, ні інших серверів</text>
+</svg>
+<figcaption>Host створює окремий клієнт на кожен сервер. Модель бачить лише те, що host вирішив їй показати: схеми інструментів і результати викликів. Сервер отримує лише запити свого клієнта: JSON-RPC 2.0, кожен з версією протоколу в <code>_meta</code>.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Роль</th><th>Відповідає за</th><th>Чого не робить</th></tr></thead>
+<tbody>
+<tr><td data-th="Роль"><b>Host</b></td><td data-th="Відповідає за">Модель, розмова, дозволи, згода користувача; вирішує, що показати моделі й чи виконати виклик</td><td data-th="Чого не робить">Доменної логіки інтеграцій</td></tr>
+<tr><td data-th="Роль"><b>Client</b></td><td data-th="Відповідає за">Одне з'єднання з одним сервером: версія й можливості в кожному запиті, підписки</td><td data-th="Чого не робить">Не змішує сервери: межа безпеки — між клієнтами</td></tr>
+<tr><td data-th="Роль"><b>Server</b></td><td data-th="Відповідає за">Tools, resources, prompts над своєю системою</td><td data-th="Чого не робить">Не читає всю розмову й «не бачить» інших серверів (принцип специфікації)</td></tr>
+</tbody></table></div>
+<p>Повідомлення — <b>JSON-RPC 2.0</b>: request (з <code>id</code>, який не може бути <code>null</code>), result або error у відповідь, notification без <code>id</code> і без відповіді. Ревізія 2026-07-28 додала три обов'язкові речі: кожен результат має <code>resultType</code> (<code>"complete"</code> або <code>"input_required"</code>), кожен запит несе в <code>params._meta</code> версію протоколу і можливості клієнта, а сервер <b>не має права</b> виводити щось із попередніх запитів того самого з'єднання.</p>
+<h3>Узгодження можливостей: тоді й тепер</h3>
+<div class="cols">
+<div class="cmp bad"><h4>legacy · до 2025-11-25</h4><ul>
+<li>перший запит — <code>initialize</code> з версією і capabilities обох сторін;</li>
+<li>далі <code>notifications/initialized</code>, і з'єднання стає сесією;</li>
+<li>на HTTP сервер видає <code>Mcp-Session-Id</code>, тож запити мусять іти на той самий екземпляр.</li>
+</ul></div>
+<div class="cmp good"><h4>modern · 2026-07-28</h4><ul>
+<li>handshake немає: версія, <code>clientCapabilities</code> і <code>clientInfo</code> їдуть у <code>_meta</code> кожного запиту;</li>
+<li><code>server/discover</code> (сервер зобов'язаний його мати) одним запитом повертає версії, capabilities та <code>instructions</code>;</li>
+<li>непідтримана версія → <code>-32022 UnsupportedProtocolVersion</code> зі списком <code>supported</code>, клієнт повторює запит.</li>
+</ul></div>
+</div>
+<p>Клієнт, що знає обидві ери, на stdio спершу шле <code>server/discover</code>: <code>DiscoverResult</code> або сучасна помилка означає modern-сервер, інша помилка чи тайм-аут — legacy, і тоді <code>initialize</code>.</p>
+<div class="note warn"><span class="lbl">Пастка</span>
+<p>Legacy-клієнт із сервером, що вміє лише 2026-07-28, <b>не працює взагалі</b>: механізму «перейти вперед» у нього немає. Поки користувачі сидять на різних версіях клієнтів, тримайте сервер <b>dual-era</b>; Python SDK 2.x так і працює за замовчуванням (видно нижче на дроті).</p>
+</div>
+</section>
+
+<section class="sec" id="primitives">
+<div class="sec-h"><span class="num">03</span><h2>Примітиви сервера<span class="sub">Tool, resource, prompt: хто вирішує</span></h2></div>
+<p>Примітиви відрізняються не форматом даних, а тим, <b>хто вирішує, коли їх використати</b>; від цього залежить, де примітив з'явиться в інтерфейсі хоста.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Примітив</th><th>Хто вирішує</th><th>Методи</th><th>Де це в Claude Code</th></tr></thead>
+<tbody>
+<tr><td data-th="Примітив"><b>Tool</b></td><td data-th="Хто вирішує">Модель (model-controlled), людина підтверджує виклик</td><td data-th="Методи"><code>tools/list</code>, <code>tools/call</code></td><td data-th="Де це в Claude Code">Інструмент <code>mcp__сервер__інструмент</code>, правила дозволів</td></tr>
+<tr><td data-th="Примітив"><b>Resource</b></td><td data-th="Хто вирішує">Застосунок (application-driven): host або користувач обирає, що додати в контекст</td><td data-th="Методи"><code>resources/list</code>, <code>resources/templates/list</code>, <code>resources/read</code></td><td data-th="Де це в Claude Code"><code>@сервер:uri</code> у промпті; модель — через ListMcpResourcesTool / ReadMcpResourceTool</td></tr>
+<tr><td data-th="Примітив"><b>Prompt</b></td><td data-th="Хто вирішує">Користувач (user-controlled): явно обирає шаблон</td><td data-th="Методи"><code>prompts/list</code>, <code>prompts/get</code></td><td data-th="Де це в Claude Code">Команда <code>/mcp__сервер__промпт</code> (у меню — <code>/сервер:промпт (MCP)</code>)</td></tr>
+</tbody></table></div>
+<h3>Tool</h3>
+<p>Визначення: <code>name</code> (1–128 символів, <code>A-Z a-z 0-9 _ - .</code>), <code>description</code>, <code>inputSchema</code> (JSON Schema, за замовчуванням діалект 2020-12, не може бути <code>null</code>), необов'язкові <code>outputSchema</code>, <code>title</code>, <code>annotations</code>. Якщо є <code>outputSchema</code>, сервер <b>зобов'язаний</b> повертати <code>structuredContent</code>, що їй відповідає, а для сумісності має дублювати його серіалізованим JSON у текстовому блоці <code>content</code>. Це дані для коду клієнта; зі «structured outputs» моделі (урок 2.1) вони не пов'язані.</p>
+<p>Помилки бувають двох видів, і модель бачить їх по-різному:</p>
+<ul>
+<li><b>протокольна</b> (JSON-RPC <code>error</code>): невідомий інструмент, запит не за схемою, збій сервера. Клієнт <i>може</i> показати її моделі, але виправити таке вона здебільшого не здатна;</li>
+<li><b>помилка виконання</b> (<code>result</code> з <code>isError: true</code>): невалідна дата, відмова API, бізнес-правило. Клієнт <i>має</i> віддати її моделі, щоб вона виправила аргументи. З 2025-11-25 помилки валідації вхідних даних належать саме сюди.</li>
+</ul>
+<p>Анотації (<code>readOnlyHint</code>, <code>destructiveHint</code> тощо) — підказки, а не гарантії: специфікація вимагає вважати їх недовіреними, якщо сервер не довірений. Дизайн інструментів і їхня безпека — урок 7.4.</p>
+<h3>Resource</h3>
+<p>Дані, ідентифіковані URI: <code>file://</code>, <code>git://</code>, <code>https://</code> (лише якщо клієнт може завантажити його сам, без сервера) або власна схема, як <code>lecture://</code>. <b>Шаблон</b> (<code>uriTemplate</code> за RFC 6570, наприклад <code>lecture://{lecture_id}</code>) описує цілий простір ресурсів, яких немає в <code>resources/list</code>. Неіснуючий ресурс — помилка <code>-32602</code> (раніше <code>-32002</code>), а не порожній <code>contents</code>: порожній масив неможливо відрізнити від порожнього файлу. Анотації <code>audience</code>, <code>priority</code> (0–1) і <code>lastModified</code> підказують хосту, що включати в контекст першим.</p>
+<p>Підписки на зміни в 2026-07-28 переїхали з <code>resources/subscribe</code> у загальний <code>subscriptions/listen</code>: один довгий запит, у якому клієнт вмикає <code>toolsListChanged</code>, <code>promptsListChanged</code>, <code>resourcesListChanged</code> і <code>resourceSubscriptions</code> для конкретних URI.</p>
+<h3>Prompt</h3>
+<p>Шаблон повідомлень для перевіреного сценарію, який користувач запускає однією командою: <code>prompts/get</code> повертає <code>messages</code> (<code>role</code> user/assistant; текст, зображення, аудіо, resource link або вбудований ресурс). Аргументи за схемою — <b>лише рядки</b> (<code>{[key]: string}</code>): у нашому прогоні Claude Code передав <code>"n": "2"</code>, і перетворення в число зробив SDK сервера.</p>
+<div class="key"><h4>Правило вибору</h4>
+<p>Модель має сама вирішити, коли це робити → <b>tool</b>. Це дані, які користувач чи застосунок прикріплює до контексту → <b>resource</b>. Це сценарій, який людина запускає свідомо → <b>prompt</b>. Якщо ж модель має сама дістати дані в <i>будь-якому</i> клієнті, дайте ще й tool: MCP connector у Claude API підтримує лише інструменти.</p>
+</div>
+</section>
+
+<section class="sec" id="client">
+<div class="sec-h"><span class="num">04</span><h2>Можливості клієнта й утиліти<span class="sub">Elicitation, MRTR і що застаріло</span></h2></div>
+<p>Іноді серверу для завершення запиту потрібен клієнт: підтвердження користувача, токен до сторонньої системи, відповідь моделі. До 2025-11-25 сервер надсилав клієнту власний JSON-RPC-запит (<code>elicitation/create</code>, <code>sampling/createMessage</code>, <code>roots/list</code>). У 2026-07-28 сервер <b>не ініціює запитів</b>, і їх замінив патерн <b>Multi Round-Trip Requests (MRTR)</b>:</p>
+<ol class="steps">
+<li>Клієнт надсилає <code>tools/call</code>, <code>resources/read</code> або <code>prompts/get</code> (лише ці три методи).</li>
+<li>Сервер відповідає <code>resultType: "input_required"</code>: <code>inputRequests</code> — мапа запитів до клієнта, і непрозорий <code>requestState</code>.</li>
+<li>Клієнт збирає відповіді й <b>повторює початковий запит з новим <code>id</code></b>, додавши <code>inputResponses</code> і той самий <code>requestState</code>.</li>
+<li>Сервер відновлює стан із <code>requestState</code> і повертає результат. Ні спільного сховища, ні sticky-сесії не потрібно.</li>
+</ol>
+<p><code>requestState</code> проходить через клієнта, тож специфікація вважає його контрольованим атакувальником: якщо від нього залежать права чи бізнес-логіка — HMAC або AEAD, прив'язка до користувача й запиту, короткий TTL.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Можливість</th><th>Що робить</th><th>Статус у 2026-07-28</th></tr></thead>
+<tbody>
+<tr><td data-th="Можливість"><b>Elicitation</b></td><td data-th="Що робить">Сервер просить у користувача дані. <code>form</code>: плоска схема з примітивів (рядок, число, boolean, enum); <code>url</code>: користувач іде на сторінку сервера, і дані не проходять через клієнт. Відповідь: <code>accept</code> / <code>decline</code> / <code>cancel</code></td><td data-th="Статус у 2026-07-28">Активна. Паролі, API-ключі й платіжні дані — <b>лише</b> URL-режимом</td></tr>
+<tr><td data-th="Можливість"><b>Sampling</b></td><td data-th="Що робить">Сервер просить модель хоста згенерувати відповідь (без власного API-ключа)</td><td data-th="Статус у 2026-07-28">Застаріла: інтегруйтеся з API провайдера напряму</td></tr>
+<tr><td data-th="Можливість"><b>Roots</b></td><td data-th="Що робить">Клієнт повідомляє межі файлової системи, з якими працює сервер</td><td data-th="Статус у 2026-07-28">Застаріла: передавайте шляхи аргументами інструментів, URI ресурсів або конфігурацією</td></tr>
+<tr><td data-th="Можливість">Logging</td><td data-th="Що робить"><code>notifications/message</code>; рівень тепер задає <code>_meta.io.modelcontextprotocol/logLevel</code> у самому запиті</td><td data-th="Статус у 2026-07-28">Застаріла: stderr для stdio, OpenTelemetry для решти</td></tr>
+<tr><td data-th="Можливість">Progress</td><td data-th="Що робить">Запит з <code>_meta.progressToken</code> отримує <code>notifications/progress</code></td><td data-th="Статус у 2026-07-28">Активна; Claude Code додає <code>progressToken</code> до кожного <code>tools/call</code></td></tr>
+<tr><td data-th="Можливість">Cancellation</td><td data-th="Що робить">stdio: <code>notifications/cancelled</code> з <code>id</code>; HTTP: клієнт закриває потік відповіді</td><td data-th="Статус у 2026-07-28">Активна</td></tr>
+<tr><td data-th="Можливість">Pagination, caching</td><td data-th="Що робить">Списки віддаються сторінками за <code>cursor</code>; результати списків і <code>resources/read</code> несуть <code>ttlMs</code> і <code>cacheScope</code></td><td data-th="Статус у 2026-07-28"><code>ttlMs</code>/<code>cacheScope</code> нові й обов'язкові</td></tr>
+</tbody></table></div>
+<p>Застаріле живе щонайменше 12 місяців: sampling, roots, logging і Dynamic Client Registration можна прибрати не раніше першої ревізії від 28.07.2027. Claude Code 2.1.300 досі шле в кожному запиті <code>"roots": {"listChanged": true}</code> поряд з <code>"elicitation": {"form": {}, "url": {}}</code>.</p>
+<div class="note arch"><span class="lbl">Чому їх прибирають</span>
+<p>Обґрунтування SEP-2577: мало хто з клієнтів це реалізував, а складність висока. Sampling вимагає людини в циклі, вибору моделі й захисту від зловживань; roots мають розмиту семантику і дублюють параметри інструментів; logging дублює stderr і OpenTelemetry. Висновок для дизайну: <b>не будуйте новий сервер на sampling</b>. Якщо серверу потрібна LLM, він кличе API провайдера сам і сам контролює модель, бюджет і логи.</p>
+</div>
+</section>
+
+<section class="sec" id="transports">
+<div class="sec-h"><span class="num">05</span><h2>Транспорти й автентифікація<span class="sub">stdio, Streamable HTTP, OAuth 2.1</span></h2></div>
+<p>Транспорт визначає лише доставку: кадрування, метадані, скасування. Семантика повідомлень однакова скрізь.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th></th><th>stdio</th><th>Streamable HTTP</th></tr></thead>
+<tbody>
+<tr><td>Хто запускає сервер</td><td data-th="stdio">Клієнт, як підпроцес</td><td data-th="Streamable HTTP">Сервер працює сам, обслуговує багатьох клієнтів</td></tr>
+<tr><td>Кадрування</td><td data-th="stdio">Один JSON-RPC на рядок, без вкладених <code>\n</code>; stdout — лише MCP-повідомлення, логи — у stderr</td><td data-th="Streamable HTTP">Кожне повідомлення — окремий <code>POST</code> на один endpoint (<code>/mcp</code>); відповідь — JSON або SSE-потік саме цього запиту</td></tr>
+<tr><td>Метадані</td><td data-th="stdio">Лише в <code>_meta</code> тіла</td><td data-th="Streamable HTTP"><code>_meta</code> + дзеркальні заголовки <code>MCP-Protocol-Version</code>, <code>Mcp-Method</code>, <code>Mcp-Name</code>; розбіжність з тілом → <code>400</code> і <code>-32020 HeaderMismatch</code></td></tr>
+<tr><td>Скасування</td><td data-th="stdio"><code>notifications/cancelled</code></td><td data-th="Streamable HTTP">Клієнт закриває потік відповіді</td></tr>
+<tr><td>Секрети</td><td data-th="stdio">З оточення процесу (<code>env</code> у конфігурації)</td><td data-th="Streamable HTTP">OAuth 2.1, <code>Authorization: Bearer</code> у <b>кожному</b> запиті, ніколи в query string</td></tr>
+<tr><td>Типовий випадок</td><td data-th="stdio">Локальні файли, CLI-утиліти, БД розробника</td><td data-th="Streamable HTTP">SaaS: GitHub, Sentry, Linear; командний сервер Lectern</td></tr>
+</tbody></table></div>
+<p>Заголовки <code>Mcp-Method</code> і <code>Mcp-Name</code> (нові в 2026-07-28) дають балансувальникам і WAF маршрутизувати <code>tools/call execute_sql</code> без розбору JSON; звірка з тілом не дає проксі й серверу спиратися на різні джерела правди.</p>
+<div class="note warn"><span class="lbl">Локальний HTTP-сервер</span>
+<p>Специфікація вимагає перевіряти заголовок <code>Origin</code> (невалідний → <code>403</code>) і радить слухати лише <code>127.0.0.1</code>, а не <code>0.0.0.0</code>. Без цього будь-який сайт у браузері розробника через DNS rebinding може звернутися до MCP-сервера на його машині.</p>
+</div>
+<h3>Що прибрано і що застаріло</h3>
+<ul>
+<li><b>HTTP+SSE</b> (2024-11-05: GET-потік і окремий POST-endpoint) застарів ще в 2025-03-26. Claude Code позначає <code>--transport sse</code> як deprecated, а з v2.1.265 <code>--transport http</code> сам переходить на SSE, якщо сервер не приймає HTTP.</li>
+<li><b><code>Mcp-Session-Id</code></b> (2025-03-26…2025-11-25) прибрано разом із GET-потоком і відновленням через <code>Last-Event-ID</code>. Сервер лише нової ревізії ігнорує цей заголовок, а на GET і DELETE відповідає <code>405</code>. Обірваний потік означає, що запит втрачено, і клієнт повторює його з новим <code>id</code>. Стан між викликами тепер передають явні дескриптори в аргументах, наприклад <code>basket_id</code>, які сервер щоразу перевіряє на права.</li>
+</ul>
+<h3>Автентифікація віддаленого сервера</h3>
+<p>Авторизація в MCP необов'язкова і стосується лише HTTP; stdio-сервер <b>не повинен</b> її реалізовувати й бере ключі з оточення. Якщо ж сервер захищений:</p>
+<ol class="steps">
+<li>Запит без токена → <code>401</code> з <code>WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource", scope="…"</code>.</li>
+<li>Клієнт читає Protected Resource Metadata (RFC 9728), знаходить authorization server і його метадані (RFC 8414 або OpenID Connect Discovery).</li>
+<li>Реєстрація клієнта: Client ID Metadata Document (рекомендовано; <code>client_id</code> — HTTPS-URL), заздалегідь виданий <code>client_id</code> або Dynamic Client Registration, яку 2026-07-28 оголосила застарілою.</li>
+<li>OAuth 2.1 з PKCE; параметр <code>resource</code> (RFC 8707) з канонічним URI сервера обов'язковий і в authorization-, і в token-запиті. Відповідь сервера авторизації клієнт перевіряє за <code>iss</code> (RFC 9207).</li>
+<li>Сервер приймає лише токени, видані <b>для нього</b> (перевірка audience), і не передає їх далі. Брак прав → <code>403 insufficient_scope</code> з потрібними scope, і клієнт робить step-up.</li>
+</ol>
+<p>Атаки, від яких захищають RFC 8707 і заборона token passthrough, — урок 7.4.</p>
+</section>
+
+<section class="sec" id="wire">
+<div class="sec-h"><span class="num">06</span><h2>Протокол на дроті<span class="sub">46 рядків сервера і сирий JSON-RPC</span></h2></div>
+<p>Щоб бачити протокол, а не SDK, пишемо мінімальний сервер Lectern з одним інструментом, одним шаблоном ресурсу й одним промптом, а потім говоримо з ним голим JSON через stdin/stdout. Python SDK 2.x перейменував <code>FastMCP</code> на <code>MCPServer</code>: імпорт <code>mcp.server.fastmcp</code> у 2.x падає з <code>ModuleNotFoundError</code>, у якому є посилання на гайд міграції. Повноцінний сервер Lectern з пошуком збираємо в уроці 7.3.</p>
+<pre class="code" data-lang="python"><span class="cm"># lectern_mcp.py — мінімальний stdio MCP-сервер: 1 tool, 1 resource, 1 prompt</span>
+<span class="k">import</span> sys
+<span class="k">from</span> pydantic <span class="k">import</span> BaseModel
+<span class="k">from</span> mcp.server.mcpserver <span class="k">import</span> MCPServer
+<span class="k">from</span> mcp.server.mcpserver.exceptions <span class="k">import</span> ResourceNotFoundError
+
+LECTURES = {
+    <span class="s">"l01"</span>: <span class="s">"Сократ нічого не писав. Його вчення відоме з діалогів Платона "</span>
+           <span class="s">"і спогадів Ксенофонта."</span>,
+}
+
+mcp = MCPServer(<span class="s">"lectern"</span>, version=<span class="s">"0.1"</span>, instructions=<span class="s">"Матеріали курсу Lectern: лекції й перевірка цитат."</span>)
+
+
+<span class="k">class</span> QuoteCheck(BaseModel):
+    found: bool
+    lecture_id: str
+    position: int | <span class="k">None</span>
+
+
+@mcp.tool()
+<span class="k">def</span> check_quote(lecture_id: str, quote: str) -&gt; QuoteCheck:
+    <span class="s">"""Перевіряє, чи цитата дослівно є в тексті лекції. Повертає позицію або found=false."""</span>
+    text = LECTURES.get(lecture_id, <span class="s">""</span>)
+    pos = text.find(quote)
+    print(<span class="s">f"check_quote {lecture_id!r} -&gt; {pos}"</span>, file=sys.stderr)  <span class="cm"># stdout зайнятий протоколом</span>
+    <span class="k">return</span> QuoteCheck(found=pos &gt;= <span class="n">0</span>, lecture_id=lecture_id, position=pos <span class="k">if</span> pos &gt;= <span class="n">0</span> <span class="k">else</span> <span class="k">None</span>)
+
+
+@mcp.resource(<span class="s">"lecture://{lecture_id}"</span>, mime_type=<span class="s">"text/plain"</span>)
+<span class="k">def</span> lecture(lecture_id: str) -&gt; str:
+    <span class="s">"""Повний текст лекції за її id."""</span>
+    <span class="k">if</span> lecture_id <span class="k">not in</span> LECTURES:
+        <span class="k">raise</span> ResourceNotFoundError(<span class="s">f"немає лекції {lecture_id}"</span>)  <span class="cm"># → -32602</span>
+    <span class="k">return</span> LECTURES[lecture_id]
+
+
+@mcp.prompt()
+<span class="k">def</span> make_quiz(lecture_id: str, n: int = <span class="n">3</span>) -&gt; str:
+    <span class="s">"""Шаблон: n питань квізу за лекцією, кожне з дослівною цитатою."""</span>
+    <span class="k">return</span> (<span class="s">f"Склади {n} питань з 4 варіантами за лекцією lecture://{lecture_id}. "</span>
+            <span class="s">"До кожного додай дослівну цитату і перевір її інструментом check_quote."</span>)
+
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    mcp.run()  <span class="cm"># transport="stdio" за замовчуванням</span></pre>
+<p>Клієнт без SDK — 46 рядків: <code>subprocess.Popen</code>, кожне повідомлення — рядок JSON у stdin, відповідь — рядок зі stdout. До кожного запиту він додає <code>_meta</code> з <code>protocolVersion: "2026-07-28"</code>, <code>clientInfo</code> і порожніми <code>clientCapabilities</code> (повний код — у <code>console/raw_client.py</code>).</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>raw_client.py modern — stdio, ревізія 2026-07-28</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python raw_client.py modern</span>
+<span class="y">→</span> {"method": "server/discover", "params": {"_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28", …}}, "id": 1}
+<span class="d">←</span> {"id":1,"result":{"cacheScope":"private","capabilities":{"prompts":{"listChanged":true},"resources":{"listChanged":true,"subscribe":true},"tools":{"listChanged":true}},"instructions":"Матеріали курсу Lectern: лекції й перевірка цитат.","resultType":"complete","supportedVersions":["2026-07-28"],"ttlMs":0,"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"lectern","version":"0.1"}}}}
+<span class="y">→</span> {"method": "tools/list", …, "id": 2}
+<span class="d">←</span> {"id":2,"result":{"tools":[{"name":"check_quote","description":"Перевіряє, чи цитата дослівно є в тексті лекції. …","inputSchema":{"type":"object","properties":{"lecture_id":{"title":"Lecture Id","type":"string"},"quote":{"title":"Quote","type":"string"}},"required":["lecture_id","quote"],…},"outputSchema":{"properties":{"found":{…"type":"boolean"},"lecture_id":{…},"position":{"anyOf":[{"type":"integer"},{"type":"null"}],…}},"required":["found","lecture_id","position"],…}}],"resultType":"complete",…}}
+<span class="y">→</span> {"method": "tools/call", "params": {"name": "check_quote", "arguments": {"lecture_id": "l01", "quote": "Сократ нічого не писав"}, "_meta": {…}}, "id": 3}
+<span class="d">←</span> {"id":3,"result":{"content":[{"text":"{\n  \"found\": true,\n  \"lecture_id\": \"l01\",\n  \"position\": 0\n}","type":"text"}],"isError":false,"resultType":"complete","structuredContent":{"found":true,"lecture_id":"l01","position":0},…}}
+<span class="y">→</span> {"method": "resources/templates/list", …, "id": 4}
+<span class="d">←</span> {"id":4,"result":{"resourceTemplates":[{"description":"Повний текст лекції за її id.","mimeType":"text/plain","name":"lecture","uriTemplate":"lecture://{lecture_id}"}],…}}
+<span class="y">→</span> {"method": "resources/read", "params": {"uri": "lecture://l01", …}, "id": 5}
+<span class="d">←</span> {"id":5,"result":{"contents":[{"mimeType":"text/plain","text":"Сократ нічого не писав. Його вчення відоме з діалогів Платона і спогадів Ксенофонта.","uri":"lecture://l01"}],"resultType":"complete",…}}
+<span class="y">→</span> {"method": "prompts/get", "params": {"name": "make_quiz", "arguments": {"lecture_id": "l01", "n": "2"}, …}, "id": 6}
+<span class="d">←</span> {"id":6,"result":{"messages":[{"content":{"text":"Склади 2 питань з 4 варіантами за лекцією lecture://l01. До кожного додай дослівну цитату і перевір її інструментом check_quote.","type":"text"},"role":"user"}],"resultType":"complete",…}}
+<span class="y">→</span> {"method": "resources/read", "params": {"uri": "lecture://l99", …}, "id": 7}
+<span class="er">←</span> {"id":7,"error":{"code":-32602,"message":"немає лекції l99","data":{"uri":"lecture://l99"}}}</pre>
+<div class="cap">реальний вивід · mcp 2.3.0 · Python 3.12 · 15.10.2026 · повторювані _meta, "jsonrpc":"2.0" і частину полів замінено на «…»</div></div>
+<ol class="steps">
+<li><b>Жодного <code>initialize</code>.</b> Сервер відповідає на перший же запит; <code>server/discover</code> можна було пропустити й одразу слати <code>tools/call</code>.</li>
+<li><b>Інструмент повертає дані двічі:</b> <code>structuredContent</code> для коду й той самий JSON текстом для старих клієнтів. SDK вивів <code>outputSchema</code> з типу <code>QuoteCheck</code>, а <code>inputSchema</code> — із сигнатури функції.</li>
+<li><b>Шаблон ресурсу не з'являється в <code>resources/list</code></b> (Claude Code нижче отримає там <code>[]</code>), але <code>resources/read</code> за конкретним URI працює.</li>
+<li><b>Аргумент промпту — рядок</b> <code>"2"</code>: так вимагає схема протоколу.</li>
+</ol>
+<div class="note warn"><span class="lbl">Що знайшов живий прогін</span>
+<p>У першій версії сервера <code>lecture()</code> просто робив <code>LECTURES[lecture_id]</code>. Для <code>lecture://l99</code> SDK перетворив <code>KeyError</code> на <code>-32603</code> «Error creating resource from template» (внутрішня помилка), хоча специфікація для неіснуючого ресурсу вимагає <code>-32602</code>. Клієнт і модель не відрізнили б «немає такої лекції» від «сервер упав». Виправлення — явний <code>ResourceNotFoundError</code>. SDK не вгадує доменну семантику помилок, тож це рішення лишається за автором сервера.</p>
+</div>
+<p>Той самий сервер у режимі legacy-клієнта і з запитом без версії:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>raw_client.py legacy · noversion</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python raw_client.py legacy</span>
+<span class="y">→</span> {"jsonrpc": "2.0", "method": "initialize", "params": {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "raw-client", "version": "0.1"}}, "id": 1}
+<span class="d">←</span> {"jsonrpc":"2.0","id":1,"result":{"capabilities":{"prompts":{"listChanged":false},"resources":{"listChanged":false,"subscribe":false},"tools":{"listChanged":false}},"instructions":"Матеріали курсу Lectern: лекції й перевірка цитат.","protocolVersion":"2025-11-25","serverInfo":{"name":"lectern","version":"0.1"}}}
+<span class="y">→</span> {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}
+<span class="y">→</span> {"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2}
+<span class="d">←</span> {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"check_quote", …}]}}
+<span class="ps">$ </span><span class="c">.venv/bin/python raw_client.py noversion</span>
+<span class="y">→</span> {"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1}
+<span class="er">←</span> {"jsonrpc":"2.0","id":1,"error":{"code":-32602,"message":"Invalid request parameters","data":""}}</pre>
+<div class="cap">реальний вивід · той самий процес-сервер, mcp 2.3.0 · 15.10.2026</div></div>
+<p>SDK обслуговує обидві ери: на <code>initialize</code> відповідає за правилами 2025-11-25 (без <code>resultType</code>, <code>ttlMs</code>, <code>_meta</code>; усі <code>listChanged</code> — <code>false</code>), а запит без <code>_meta</code> і без <code>initialize</code> відхиляє як малформований (<code>-32602</code>).</p>
+<h3>Перевірка без моделі: MCP Inspector</h3>
+<p>Офіційний Inspector має CLI-режим без браузера, і ним зручно перевіряти сервер у CI до того, як його побачить агент:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern-mcp</span></div>
+<pre><span class="ps">$ </span><span class="c">npx -y @modelcontextprotocol/inspector@2.11.0 --cli .venv/bin/python lectern_mcp.py --method tools/call --tool-name check_quote --tool-arg lecture_id=l01 --tool-arg "quote=Платона"</span>
+<span class="d">check_quote 'l01' -&gt; 54</span>
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"found\": true,\n  \"lecture_id\": \"l01\",\n  \"position\": 54\n}"
+    }
+  ],
+  "structuredContent": {
+    "found": true,
+    "lecture_id": "l01",
+    "position": 54
+  },
+  "isError": false
+}</pre>
+<div class="cap">реальний вивід · Inspector 2.11.0 · 15.10.2026 · перший рядок — stderr сервера, Inspector його пересилає</div></div>
+<p>Той самий CLI приймає <code>--method tools/list</code>, <code>resources/read --uri …</code>, <code>prompts/get --prompt-name … --prompt-args k=v</code>, а для віддаленого сервера — URL і <code>--header</code>. Рядок діагностики сервер пише в stderr, бо stdout за специфікацією належить лише MCP-повідомленням. Ми перевірили й порушення: варіант сервера з <code>print()</code> без <code>file=sys.stderr</code> і Inspector, і Claude Code відпрацювали без помилок, а в лозі проксі цього рядка немає. Python SDK 2.3.0 сам перенаправляє дескриптор 1 на stderr і веде протокол через приватну копію. Покладатися на це не варто: сервер на іншому SDK чи без SDK може такого захисту не мати.</p>
+</section>
+
+<section class="sec" id="claude-code">
+<div class="sec-h"><span class="num">07</span><h2>MCP у Claude Code<span class="sub">Області, .mcp.json, ресурси, промпти</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Область (<code>-s</code>)</th><th>Де зберігається</th><th>Для кого</th></tr></thead>
+<tbody>
+<tr><td data-th="Область (-s)"><code>local</code> (за замовчуванням)</td><td data-th="Де зберігається"><code>~/.claude.json</code>, прив'язано до цього проєкту</td><td data-th="Для кого">Лише ви, лише цей проєкт: особисті токени, експерименти</td></tr>
+<tr><td data-th="Область (-s)"><code>project</code></td><td data-th="Де зберігається"><code>.mcp.json</code> у корені репозиторію</td><td data-th="Для кого">Уся команда через git; перед першим використанням кожен підтверджує сервер</td></tr>
+<tr><td data-th="Область (-s)"><code>user</code></td><td data-th="Де зберігається"><code>~/.claude.json</code></td><td data-th="Для кого">Лише ви, у всіх проєктах</td></tr>
+</tbody></table></div>
+<p>Якщо одне ім'я визначено в кількох місцях, перемагає весь запис з найвищого джерела, без злиття полів: local → project → user → плагіни → конектори claude.ai; над усіма — <code>managedMcpServers</code> організації. Опції Claude Code йдуть до <code>--</code>, команда сервера — після нього; інакше прапорець сервера на кшталт <code>--port</code> Claude Code сприйме як свій.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern-mcp/proj (тимчасовий git-репозиторій)</span></div>
+<pre><span class="ps">$ </span><span class="c">claude mcp add -s project lectern -- ../.venv/bin/python lectern_mcp.py</span>
+Added stdio MCP server lectern with command: ../.venv/bin/python lectern_mcp.py to project config
+File modified: …/proj/.mcp.json
+<span class="ps">$ </span><span class="c">cat .mcp.json</span>
+{
+  "mcpServers": {
+    "lectern": {
+      "type": "stdio",
+      "command": "../.venv/bin/python",
+      "args": [
+        "lectern_mcp.py"
+      ],
+      "env": {}
+    }
+  }
+}
+<span class="ps">$ </span><span class="c">claude mcp get lectern</span>
+lectern:
+  Scope: Project config (shared via .mcp.json)
+  Status: <span class="y">⏸ Pending approval (run `claude` to approve)</span>
+  Type: stdio
+  Command: ../.venv/bin/python
+  Args: lectern_mcp.py</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.300 · 15.10.2026 · шлях скорочено; рядки інших налаштованих серверів прибрано</div></div>
+<p>У <code>.mcp.json</code> працюють <code>${VAR}</code> і <code>${VAR:-default}</code> (у <code>command</code>, <code>args</code>, <code>env</code>, <code>url</code>, <code>headers</code>), тож токен лишається в оточенні розробника, а не в git. Невизначена змінна без default не ламає конфігурацію, але підставляється буквально як <code>${VAR}</code>.</p>
+<div class="note warn"><span class="lbl">Схвалення діє лише в інтерактивній сесії</span>
+<p>Запит на підтвердження project-сервера показує лише інтерактивний Claude Code. У <code>claude -p</code>, Agent SDK і хмарних сесіях сервери з <code>.mcp.json</code> <b>вантажаться без запиту</b>. Для CI в чужому репозиторії це запуск довільної команди з його <code>.mcp.json</code>, тож блокуйте їх через <code>--strict-mcp-config</code>, <code>--setting-sources</code> або <code>disabledMcpjsonServers</code> (урок 3.4). Скинути свої рішення про схвалення: <code>claude mcp reset-project-choices</code>.</p>
+</div>
+<h3>Що Claude Code робить на дроті</h3>
+<p>Підключаємо сервер через прозорий проксі <code>tap.py</code>, який пише кожен рядок stdin/stdout у лог, і запускаємо headless-сесію лише з цим сервером:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern-mcp/proj</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Прочитай MCP-ресурс lecture://l01 сервера lectern, потім інструментом check_quote перевір, чи є в лекції цитата «Сократ нічого не писав» і цитата «Сократ написав Апологію». Відповідь — два рядки українською." --model haiku --setting-sources project --strict-mcp-config --mcp-config mcp-config.json --allowedTools "mcp__lectern__check_quote" "ReadMcpResourceTool" "ListMcpResourcesTool" --output-format stream-json --verbose &gt; run.jsonl</span></pre>
+<div class="cap">реальна сесія · 15.10.2026 · модель claude-haiku-5-5</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>wire.log — Claude Code 2.1.300 ↔ lectern</span></div>
+<pre><span class="y">→</span> {"id":"server-discover-probe-1","method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"claude-code","title":"Claude Code","version":"2.1.300",…},"io.modelcontextprotocol/clientCapabilities":{"roots":{"listChanged":true},"elicitation":{"form":{},"url":{}}}}}}
+<span class="d">←</span> {"id":"server-discover-probe-1","result":{…"supportedVersions":["2026-07-28"],…}}
+<span class="y">→</span> {"id":"listen:0","method":"subscriptions/listen","params":{"_meta":{…},"notifications":{"toolsListChanged":true,"promptsListChanged":true,"resourcesListChanged":true}}}
+<span class="d">←</span> {"method":"notifications/subscriptions/acknowledged","params":{"_meta":{"io.modelcontextprotocol/subscriptionId":"listen:0"},…}}
+<span class="y">→</span> {"method":"server/discover","id":0,…}
+<span class="y">→</span> {"method":"prompts/list","id":1,…}   <span class="y">→</span> {"method":"resources/list","id":2,…}   <span class="y">→</span> {"method":"tools/list","id":3,…}
+<span class="d">←</span> prompts: [make_quiz] · resources: [] · tools: [check_quote]
+<span class="y">→</span> {"method":"resources/read","params":{"uri":"lecture://l01",…},"id":4}
+<span class="y">→</span> {"method":"tools/call","params":{"name":"check_quote","arguments":{"lecture_id":"l01","quote":"Сократ нічого не писав"},"_meta":{…,"claudecode/toolUseId":"toolu_01VTtAjMxeN1TQ4fMR8tB8Tz","progressToken":5}},"id":5}
+<span class="d">←</span> {"id":5,"result":{…"structuredContent":{"found":true,"lecture_id":"l01","position":0}…}}
+<span class="y">→</span> {"method":"tools/call","params":{"name":"check_quote","arguments":{"lecture_id":"l01","quote":"Сократ написав Апологію"},…},"id":6}
+<span class="d">←</span> {"id":6,"result":{…"structuredContent":{"found":false,"lecture_id":"l01","position":null}…}}</pre>
+<div class="cap">реальний лог проксі · 15.10.2026 · відповіді на */list згорнуто в один рядок, решту полів замінено на «…»</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run.jsonl — кроки агента</span></div>
+<pre><span class="y">● ToolSearch</span>  select:ReadMcpResourceTool,mcp__lectern__check_quote
+<span class="d">  ⎿ 2 з 20 відкладених інструментів</span>
+<span class="y">● ReadMcpResourceTool</span>  {"server": "lectern", "uri": "lecture://l01"}
+<span class="d">  ⎿ {"contents":[{"uri":"lecture://l01","mimeType":"text/plain","text":"Сократ нічого не писав. …"}]}</span>
+<span class="y">● mcp__lectern__check_quote</span>  {"lecture_id": "l01", "quote": "Сократ нічого не писав"}
+<span class="d">  ⎿ {"found":true,"lecture_id":"l01","position":0}</span>
+<span class="y">● mcp__lectern__check_quote</span>  {"lecture_id": "l01", "quote": "Сократ написав Апологію"}
+<span class="d">  ⎿ {"found":false,"lecture_id":"l01","position":null}</span>
+
+<span class="c">Цитата «Сократ нічого не писав» є в лекції l01 (позиція 0).
+Цитати «Сократ написав Апологію» в лекції l01 немає (found=false).</span>
+
+<span class="d">result · num_turns 5 · duration 5,5 с · $0,0036 · is_error false</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.300 · 15.10.2026 · події system прибрано</div></div>
+<ol class="steps">
+<li><b>Проба ери</b>: <code>server/discover</code> з окремим id, як радить специфікація для stdio; далі <code>subscriptions/listen</code> і три <code>*/list</code> паралельно.</li>
+<li><b>Ресурс прочитано інструментом</b> <code>ReadMcpResourceTool</code>: шаблону в списку немає, URI модель взяла з промпту. Схеми інструментів спершу були відкладені (<code>ToolSearch</code>, урок 5.2).</li>
+<li><b>Модель отримала <code>structuredContent</code></b>, а не текстовий блок: у <code>tool_result</code> компактний JSON без відступів сервера.</li>
+<li><b>Службові поля</b> в <code>_meta</code>: <code>claudecode/toolUseId</code> (id <code>tool_use</code> з уроку 2.1) і <code>progressToken</code>: сервер може звітувати про прогрес і зв'язати виклик з логом агента.</li>
+</ol>
+<p>MCP-промпт як команда. Вже в <code>init</code> серед <code>slash_commands</code> з'явився <code>mcp__lectern__make_quiz</code>:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern-mcp/proj</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "/mcp__lectern__make_quiz l01 2" --model haiku --setting-sources project --strict-mcp-config --mcp-config mcp-config.json --allowedTools "mcp__lectern__check_quote" "ReadMcpResourceTool" --output-format stream-json --verbose &gt; run2.jsonl</span>
+<span class="d"># у wire.log:</span>
+<span class="y">→</span> {"method":"prompts/get","params":{"name":"make_quiz","arguments":{"lecture_id":"l01","n":"2"},"_meta":{…}},"id":4}
+<span class="d"># далі агент: ReadMcpResourceTool lecture://l01 → check_quote ×2 (found, позиції 0 і 24) → 2 питання з цитатами</span>
+<span class="d">result · num_turns 6 · duration 12,4 с · $0,0044 · is_error false</span></pre>
+<div class="cap">реальна сесія · 15.10.2026 · модель claude-haiku-5-5 · вивід скорочено</div></div>
+<p>Аргументи команди розбиваються за пробілами; текст із <code>prompts/get</code> стає повідомленням користувача. В інтерактивній сесії є ще <code>/mcp</code> (статус, OAuth-вхід, reconnect, вимкнення) і згадка <code>@сервер:протокол://шлях</code>: ресурс підтягується вкладенням без участі моделі. Це шлях «вирішує користувач», а <code>ReadMcpResourceTool</code> — «вирішує модель».</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ліміт Claude Code</th><th>Значення</th><th>Що з цього випливає для автора сервера</th></tr></thead>
+<tbody>
+<tr><td data-th="Ліміт Claude Code">Вивід інструмента (урок 2.1)</td><td data-th="Значення">попередження на 10 000 токенів, стеля 25 000 (<code>MAX_MCP_OUTPUT_TOKENS</code>)</td><td data-th="Що з цього випливає для автора сервера">Пагінація й фільтри; більше — у файл</td></tr>
+<tr><td data-th="Ліміт Claude Code">Текст понад 50 000 символів</td><td data-th="Значення">зберігається у файл; <code>_meta["anthropic/maxResultSizeChars"]</code> піднімає поріг до 500 000</td><td data-th="Що з цього випливає для автора сервера">Лише для схем БД, дерева файлів</td></tr>
+<tr><td data-th="Ліміт Claude Code">Опис інструмента й <code>instructions</code> сервера</td><td data-th="Значення">4 096 символів, якщо вантажиться одразу; 16 384, якщо через tool search</td><td data-th="Що з цього випливає для автора сервера">Ключові слова для пошуку — на початок опису</td></tr>
+<tr><td data-th="Ліміт Claude Code">Старт і виклик</td><td data-th="Значення"><code>MCP_TIMEOUT</code> на старт, <code>MCP_TOOL_TIMEOUT</code> або поле <code>timeout</code> сервера на виклик</td><td data-th="Що з цього випливає для автора сервера">Довге — через прогрес або tasks</td></tr>
+</tbody></table></div>
+<p>Протокол обирає клієнтський runtime. Claude Code має два: v1 на MCP TypeScript SDK 1.x і v2 на SDK 2.0, який додає ревізію 2026-07-28. Ручне керування: <code>MCP_SDK_GENERATION=v1|v2</code> і <code>MCP_PROTOCOL_NEGOTIATION=auto|legacy</code>. Із <code>legacy</code> той самий сервер побачив зовсім іншу розмову:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>wire.log — MCP_PROTOCOL_NEGOTIATION=legacy</span></div>
+<pre><span class="y">→</span> {"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"claude-code",…,"version":"2.1.300",…}},"jsonrpc":"2.0","id":0}
+<span class="d">←</span> {"jsonrpc":"2.0","id":0,"result":{…,"protocolVersion":"2025-11-25","serverInfo":{"name":"lectern","version":"0.1"}}}
+<span class="y">→</span> {"jsonrpc":"2.0","method":"notifications/initialized"}
+<span class="y">→</span> {"method":"tools/list","jsonrpc":"2.0","id":1}
+<span class="y">→</span> {"method":"prompts/list","jsonrpc":"2.0","id":2}
+<span class="y">→</span> {"method":"resources/list","jsonrpc":"2.0","id":3}</pre>
+<div class="cap">реальний лог проксі · Claude Code 2.1.300 · 15.10.2026 · запити без _meta: версію задав handshake</div></div>
+
+<h3>Той самий сервер у Codex, Cursor і Claude API</h3>
+<div class="tabs">
+<input type="radio" name="cfg-t" id="cfg-t1" checked><input type="radio" name="cfg-t" id="cfg-t2"><input type="radio" name="cfg-t" id="cfg-t3">
+<div class="tab-l"><label for="cfg-t1">Claude Code</label><label for="cfg-t2">Codex CLI</label><label for="cfg-t3">Cursor</label></div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="ps">$ </span><span class="c">claude mcp add -s project lectern -- .venv/bin/python lectern_mcp.py</span>
+<span class="ps">$ </span><span class="c">claude mcp add --transport http -s user lectern-team https://lectern.example.com/mcp</span>
+<span class="ps">$ </span><span class="c">claude mcp list</span></pre>
+<div class="cap">перша команда запускалась вище; друга — форма з офіційної документації для віддаленого сервера (URL умовний)</div></div>
+<p>Файл команди — <code>.mcp.json</code>; особисті сервери — <code>~/.claude.json</code>. Вхід через OAuth: <code>/mcp</code> або <code>claude mcp login &lt;ім'я&gt;</code>. У <code>-p</code> OAuth-вхід не пройти, тож спершу увійдіть в інтерактивній сесії.</p>
+</div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="ps">$ </span><span class="c">codex mcp add lectern -- .venv/bin/python lectern_mcp.py</span>
+<span class="ps">$ </span><span class="c">codex mcp list</span></pre>
+<div class="cap">команди з офіційної документації Codex · не запускались у цьому уроці</div></div>
+<pre class="code" data-lang="toml"><span class="cm"># ~/.codex/config.toml (або .codex/config.toml довіреного проєкту)</span>
+[mcp_servers.lectern]
+command = <span class="s">".venv/bin/python"</span>
+args = [<span class="s">"lectern_mcp.py"</span>]
+startup_timeout_sec = <span class="n">10</span>      <span class="cm"># за замовчуванням 10</span>
+tool_timeout_sec = <span class="n">60</span>         <span class="cm"># за замовчуванням 60</span>
+enabled_tools = [<span class="s">"check_quote"</span>] <span class="cm"># allowlist; disabled_tools застосовується після нього</span>
+
+[mcp_servers.lectern-team]
+url = <span class="s">"https://lectern.example.com/mcp"</span>
+bearer_token_env_var = <span class="s">"LECTERN_TOKEN"</span></pre>
+<p>Codex підтримує stdio і Streamable HTTP; OAuth-вхід — <code>codex mcp login &lt;ім'я&gt;</code>, у TUI — <code>/mcp</code>.</p>
+</div>
+<div class="tab-p">
+<pre class="code" data-lang="json"><span class="cm">// .cursor/mcp.json (проєкт) або ~/.cursor/mcp.json (глобально)</span>
+{
+  <span class="s">"mcpServers"</span>: {
+    <span class="s">"lectern"</span>: {
+      <span class="s">"command"</span>: <span class="s">"${workspaceFolder}/.venv/bin/python"</span>,
+      <span class="s">"args"</span>: [<span class="s">"lectern_mcp.py"</span>],
+      <span class="s">"env"</span>: { <span class="s">"LECTERN_DATA"</span>: <span class="s">"${env:LECTERN_DATA}"</span> }
+    },
+    <span class="s">"lectern-team"</span>: { <span class="s">"url"</span>: <span class="s">"https://lectern.example.com/mcp"</span> }
+  }
+}</pre>
+<p>Cursor підтримує stdio, SSE і Streamable HTTP, а з можливостей — tools, prompts, resources, roots, elicitation і розширення Apps. За замовчуванням він питає дозволу перед кожним MCP-інструментом. <code>envFile</code> працює лише для stdio-серверів.</p>
+</div>
+</div>
+<p><b>MCP connector у Claude API</b> (бета, заголовок <code>anthropic-beta: mcp-client-2025-11-20</code>) підключає віддалений сервер просто з Messages API, без вашого MCP-клієнта. У запиті є <code>mcp_servers</code> (<code>type: "url"</code>, <code>url</code>, <code>name</code>, <code>authorization_token</code>), а в <code>tools</code> — <code>{"type": "mcp_toolset", "mcp_server_name": …}</code> з allowlist чи denylist інструментів. У відповіді приходять блоки <code>mcp_tool_use</code> і <code>mcp_tool_result</code>. Обмеження: лише <b>tools</b> (без resources і prompts), сервер має бути публічно доступний по HTTP (stdio не підходить), функція не підпадає під ZDR. Виклики виконує Anthropic, тож ваш код їх не бачить і не логує (урок 2.1).</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: що стане tool, resource, prompt</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 7.1 · поверхня MCP-сервера</div><div class="pb">
+<p>У 2.5 і 6.5 інструменти Lectern жили в in-process MCP-сервері Agent SDK, доступному лише нашому агентові. В уроці 7.3 вони стануть окремим сервером для Claude Code, Codex чи Cursor автора курсу. Сьогодні — специфікація цієї поверхні за правилом «хто вирішує»:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Можливість</th><th>Примітив</th><th>Хто вирішує / чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Можливість"><code>check_quote(lecture_id, quote)</code></td><td data-th="Примітив">tool, read-only</td><td data-th="Хто вирішує / чому">Модель, під час генерації. <code>outputSchema</code>: <code>ok</code>, рядок, найближче речення</td></tr>
+<tr><td data-th="Можливість"><code>search_lectures(query, cursor?)</code></td><td data-th="Примітив">tool, read-only</td><td data-th="Хто вирішує / чому">Модель. Головна фіча 7.3; сторінки за <code>cursor</code>, у результаті <code>resource_link</code> на лекцію</td></tr>
+<tr><td data-th="Можливість"><code>read_lecture(lecture_id)</code></td><td data-th="Примітив">tool <b>і</b> resource <code>lecture://{lecture_id}</code></td><td data-th="Хто вирішує / чому">Ресурс — для <code>@</code>-згадки автором; tool — щоб модель читала сама в будь-якому клієнті, бо MCP connector бачить лише tools</td></tr>
+<tr><td data-th="Можливість"><code>save_quiz(quiz_id, items)</code></td><td data-th="Примітив">tool з побічним ефектом</td><td data-th="Хто вирішує / чому">Модель, але повтор з тим самим <code>quiz_id</code> не створює дубліката (ідемпотентність — 7.4)</td></tr>
+<tr><td data-th="Можливість">Список лекцій</td><td data-th="Примітив">resource <code>lectern://lectures</code></td><td data-th="Хто вирішує / чому">Застосунок: показати в пікері, підтягнути в контекст</td></tr>
+<tr><td data-th="Можливість">Схема квізу (<code>quiz.schema.json</code>)</td><td data-th="Примітив">resource <code>lectern://schema/quiz</code></td><td data-th="Хто вирішує / чому">Застосунок і автори клієнтів: контракт формату</td></tr>
+<tr><td data-th="Можливість">«Згенеруй квіз за правилами Lectern»</td><td data-th="Примітив">prompt <code>make_quiz(lecture_id, n)</code></td><td data-th="Хто вирішує / чому">Користувач запускає свідомо; системні правила з <code>tools.SYSTEM</code> перестають бути копіпастом</td></tr>
+<tr><td data-th="Можливість">«Перевір квіз перед публікацією»</td><td data-th="Примітив">prompt <code>review_quiz(quiz_id)</code></td><td data-th="Хто вирішує / чому">Користувач; усередині — виклики <code>check_quote</code> і перевірка балансу ключа</td></tr>
+</tbody></table></div>
+<p>Транспорт: <b>stdio</b> для автора (PDF локальні, ключів не треба), Streamable HTTP з OAuth — коли Lectern стане командним сервісом (модуль 15). Чернетки адресуються явним <code>quiz_id</code>, а не сесією.</p>
+<p><b>Ваш крок:</b> скопіюйте <code>lectern_mcp.py</code> і <code>raw_client.py</code> з <code>console/</code> уроку, додайте до сервера справжній <code>check_quote</code> з <code>lectern.tools</code> і переконайтеся сирим клієнтом, що для неіснуючої лекції tool повертає <code>isError: true</code>, а resource — <code>-32602</code>. Пропозиція в backlog (B14): тест рівня протоколу без моделі, тобто <code>raw_client</code> або <code>inspector --cli</code> у pytest, бо помилку <code>-32603</code> замість <code>-32602</code> модельний прогін не помітив би.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що ламається в перших MCP-серверах</span></h2></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Помилка</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td>Сервер за туторіалом 2025 року: сесії, <code>Mcp-Session-Id</code>, sampling</td><td>Явні дескриптори в аргументах; LLM — через API провайдера</td></tr>
+<tr><td>Усе, що «дані», лише ресурсами</td><td>Те, що модель має дістати сама, дублюйте tool-ом</td></tr>
+<tr><td>Виняток на погані аргументи; <code>-32603</code> чи порожній <code>contents</code> для «не знайдено»</td><td><code>isError: true</code> з підказкою для моделі; <code>-32602</code> для неіснуючого ресурсу</td></tr>
+<tr><td>Токен у <code>.mcp.json</code> у git; віра, що схвалення захищає CI</td><td><code>${VAR}</code>; у CI — <code>--strict-mcp-config</code> з явним <code>--mcp-config</code></td></tr>
+<tr><td>Сервер лише на новій ревізії при користувачах на різних клієнтах</td><td>Dual-era, доки клієнти не оновилися</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">model / app / user</span><span class="h">чий примітив?</span></span><span class="b"><span class="t">tool · resource · prompt</span><span class="d">хто вирішує, коли використати, а не формат даних</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">server/discover</span><span class="h">навіщо, якщо handshake немає?</span></span><span class="b"><span class="t">Версії, можливості, instructions</span><span class="d">одним запитом; на stdio — проба, modern чи legacy сервер</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">resultType</span><span class="h">які значення?</span></span><span class="b"><span class="t">complete · input_required</span><span class="d">друге — MRTR: клієнт збирає inputResponses і повторює запит з новим id</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">isError: true</span><span class="h">проти JSON-RPC error</span></span><span class="b"><span class="t">Помилка виконання</span><span class="d">модель бачить і може виправити аргументи; протокольна — для збою запиту</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">-32602</span><span class="h">для resources/read</span></span><span class="b"><span class="t">Ресурс не знайдено</span><span class="d">з 2026-07-28; раніше -32002, клієнти мають приймати обидва</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">mcp-client-2025-11-20</span><span class="h">що це?</span></span><span class="b"><span class="t">Бета MCP connector</span><span class="d">віддалений сервер з Messages API; лише tools, лише HTTP</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Автори мають прикріплювати текст лекції до розмови в Claude Code через <code>@</code>, а агент на Claude API з MCP connector має сам читати лекції під час генерації. Що виставити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Лише шаблон ресурсу <code>lecture://{id}</code>: модель усе одно прочитає його через ReadMcpResourceTool</span></label><label class="opt ok"><input type="radio" name="q1"><span>Шаблон ресурсу для <code>@</code>-згадок і tool <code>read_lecture</code>, бо connector бачить лише інструменти</span></label><label class="opt"><input type="radio" name="q1"><span>Лише tool <code>read_lecture</code>: ресурси застаріли в 2026-07-28 разом із sampling і roots</span></label></div>
+    <div class="why yes">Так. Resource — шлях «вирішує користувач чи застосунок», tool — «вирішує модель». MCP connector підтримує лише tools, тож без інструмента агент на API лекції не дістане.</div>
+    <div class="why no">ReadMcpResourceTool є лише в Claude Code, а connector у Claude API підтримує тільки tools. Ресурси не застаріли: застаріли roots, sampling і logging. Потрібні обидва примітиви.</div></div>
+  <div class="q"><div class="qt">2. Ваш сервер підтримує лише 2026-07-28. Користувач підключає клієнт, що знає тільки 2025-11-25. Що станеться?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>З'єднання не вийде: сервер відхилить <code>initialize</code>, а legacy-клієнт не вміє перейти на нову ревізію</span></label><label class="opt"><input type="radio" name="q2"><span>Клієнт отримає <code>UnsupportedProtocolVersionError</code> зі списком <code>supported</code> і повторить запит з 2026-07-28</span></label><label class="opt"><input type="radio" name="q2"><span>Сервер сам відповість на <code>initialize</code> у legacy-режимі, бо кожен сервер 2026-07-28 зобов'язаний бути dual-era</span></label></div>
+    <div class="why yes">Так. У матриці сумісності специфікації пара Legacy-клієнт / Modern-сервер позначена «Fails»: механізму переходу вперед у старого клієнта немає.</div>
+    <div class="why no">Повторити запит з новою версією вміє лише клієнт, що знає нову ревізію. Dual-era — право сервера (MAY), а не обов'язок. Legacy-клієнт з modern-only сервером не працює.</div></div>
+  <div class="q"><div class="qt">3. Інструмент <code>book_flight</code> отримав дату в минулому. Як повідомити про це?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>JSON-RPC помилкою <code>-32602</code> Invalid params, бо аргумент не відповідає бізнес-правилу</span></label><label class="opt"><input type="radio" name="q3"><span>Кинути виняток, щоб SDK повернув <code>-32603</code>, а клієнт сам повторив виклик ще раз</span></label><label class="opt ok"><input type="radio" name="q3"><span>Результатом з <code>isError: true</code> і текстом, що дата має бути в майбутньому</span></label></div>
+    <div class="why yes">Так. Помилки валідації й бізнес-логіки — це помилки виконання, і клієнт має показати їх моделі, щоб вона виправила аргументи.</div>
+    <div class="why no">Протокольні помилки призначені для невідомого інструмента, малформованого запиту чи збою сервера; модель здебільшого не може їх виправити. Автоматичного повтору на <code>-32603</code> протокол не передбачає.</div></div>
+  <div class="q"><div class="qt">4. Віддалений сервер за балансувальником має 4 екземпляри. Інструментам кошика потрібен стан між викликами. Як це робиться в 2026-07-28?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Видати <code>Mcp-Session-Id</code> на першому виклику й увімкнути sticky-сесії на балансувальнику</span></label><label class="opt ok"><input type="radio" name="q4"><span><code>create_basket</code> повертає <code>basket_id</code>, наступні виклики приймають його аргументом</span></label><label class="opt"><input type="radio" name="q4"><span>Тримати стан у пам'яті процесу, бо одне з'єднання дорівнює одній розмові користувача</span></label></div>
+    <div class="why yes">Так. Протокольних сесій більше немає; стан адресується явним непрозорим дескриптором, а сервер щоразу перевіряє права на нього.</div>
+    <div class="why no"><code>Mcp-Session-Id</code> прибрано з ревізії 2026-07-28, а специфікація прямо забороняє вважати з'єднання розмовою чи сесією.</div></div>
+  <div class="q"><div class="qt">5. Посеред <code>tools/call</code> серверу потрібен GitHub-токен користувача для стороннього API. Як отримати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Form-elicitation з рядковим полем для токена, а сам токен покласти в <code>requestState</code></span></label><label class="opt"><input type="radio" name="q5"><span>Попросити в клієнта його bearer-токен до MCP-сервера і переслати його в GitHub</span></label><label class="opt ok"><input type="radio" name="q5"><span>URL-elicitation: користувач проходить OAuth на сторінці сервера, і токен не йде через клієнт</span></label></div>
+    <div class="why yes">Так. Секрети й облікові дані специфікація дозволяє збирати лише URL-режимом; сервер зберігає сторонній токен сам, прив'язавши його до користувача.</div>
+    <div class="why no">Form-режим для секретів заборонено, а <code>requestState</code> проходить через клієнта. Пересилати токен клієнта в інший сервіс — token passthrough, теж заборонено (урок 7.4).</div></div>
+  <div class="q"><div class="qt">6. CI запускає <code>claude -p</code> у склонованому репозиторії з PR, де є <code>.mcp.json</code> із сервером. Що станеться і що робити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Сервер завантажиться без запиту на схвалення, тож у команду CI треба додати <code>--strict-mcp-config</code></span></label><label class="opt"><input type="radio" name="q6"><span>Сервер не стартує: project-сервери завжди чекають схвалення в інтерактивній сесії, тож CI захищений</span></label><label class="opt"><input type="radio" name="q6"><span>Сервер стартує, лише якщо він є і в <code>~/.claude.json</code>, бо local-область має пріоритет над project</span></label></div>
+    <div class="why yes">Так. Запит на схвалення показує лише інтерактивний Claude Code; у <code>-p</code>, SDK і хмарі project-сервери вантажаться одразу.</div>
+    <div class="why no">Схвалення — захист інтерактивної сесії, а не CI. Пріоритет областей стосується лише однакових імен, а не того, чи стартує сервер.</div></div>
+  <div class="q"><div class="qt">7. Промпт сервера має аргумент <code>n: int</code>. Що надходить на сервер у <code>prompts/get</code> після команди <code>/mcp__lectern__make_quiz l01 2</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Число <code>2</code>, бо клієнт валідує аргументи за JSON Schema промпту, як <code>inputSchema</code></span></label><label class="opt ok"><input type="radio" name="q7"><span>Рядок <code>"2"</code>: аргументи промптів у схемі протоколу завжди рядки, тип приводить сервер</span></label><label class="opt"><input type="radio" name="q7"><span>Нічого: Claude Code вставляє аргументи в текст повідомлення, а не передає їх серверу</span></label></div>
+    <div class="why yes">Так. У нашому лозі було <code>"arguments":{"lecture_id":"l01","n":"2"}</code>; число з рядка зробив SDK сервера.</div>
+    <div class="why no">У промптів немає <code>inputSchema</code>, лише список аргументів, і схема протоколу задає їх як <code>{[key]: string}</code>. Claude Code викликав <code>prompts/get</code> з обома аргументами.</div></div>
+  <div class="q"><div class="qt">8. Що правда про sampling у ревізії 2026-07-28?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Його видалено: сервер, що надсилає <code>sampling/createMessage</code>, отримує помилку від кожного клієнта</span></label><label class="opt"><input type="radio" name="q8"><span>Він став обов'язковою можливістю клієнта, щоб сервери могли обходитися без власного API-ключа</span></label><label class="opt ok"><input type="radio" name="q8"><span>Застарів, але працює через <code>inputRequests</code>; новим серверам радять кликати API провайдера</span></label></div>
+    <div class="why yes">Так. Sampling позначено Deprecated (SEP-2577): він лишається щонайменше до першої ревізії від 28.07.2027, але приходить через MRTR, а не окремим запитом сервера.</div>
+    <div class="why no">Застаріле не означає видалене: впродовж вікна застарівання функція працює. І обов'язковим sampling ніколи не був, це можливість, яку клієнт оголошує.</div></div>
+  <div class="q"><div class="qt">9. Балансувальник має відправляти <code>tools/call execute_sql</code> в окремий пул, не розбираючи JSON. Що для цього дає Streamable HTTP у 2026-07-28?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Заголовки <code>Mcp-Method</code> і <code>Mcp-Name</code>; розбіжність із тілом сервер відхиляє як <code>-32020</code></span></label><label class="opt"><input type="radio" name="q9"><span>Заголовок <code>Mcp-Session-Id</code>, за яким балансувальник знає, який екземпляр має цей інструмент</span></label><label class="opt"><input type="radio" name="q9"><span>Нічого: усі метадані лише в <code>_meta</code> тіла, а заголовки специфікація забороняє</span></label></div>
+    <div class="why yes">Так. Стандартні заголовки дзеркалять тіло для проміжних вузлів; сервер звіряє їх, щоб проксі й сервер не спиралися на різні джерела правди.</div>
+    <div class="why no">Сесії прибрано, а заголовки не заборонені: їх додано саме для маршрутизації. Джерелом правди лишається тіло.</div></div>
+  <div class="q"><div class="qt">10. На неіснуючу лекцію SDK повернув <code>-32603</code> «Error creating resource from template». Чим це погано?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Нічим: з 2026-07-28 саме <code>-32603</code> — стандартний код для ресурсу, якого не знайдено</span></label><label class="opt ok"><input type="radio" name="q10"><span>Не відрізнити «лекції немає» від збою сервера; для неіснуючого ресурсу потрібен <code>-32602</code></span></label><label class="opt"><input type="radio" name="q10"><span>Краще повернути порожній масив <code>contents</code>: клієнт сам зрозуміє, що такої лекції немає</span></label></div>
+    <div class="why yes">Так. <code>-32603</code> означає внутрішню помилку. Специфікація вимагає <code>-32602</code> для неіснуючого ресурсу і забороняє порожній <code>contents</code>.</div>
+    <div class="why no">Порожній масив неоднозначний: ресурс може існувати й бути порожнім. <code>-32603</code> залишено для внутрішніх збоїв; not found у 2026-07-28 — <code>-32602</code>.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>MCP host, client і server</td><td>Застосунок з моделлю; конектор на одне з'єднання; програма, що дає tools, resources і prompts.</td></tr>
+<tr><td>capability negotiation (MCP)</td><td>Узгодження можливостей: у 2026-07-28 — <code>_meta</code> кожного запиту і <code>server/discover</code>, раніше — <code>initialize</code>.</td></tr>
+<tr><td>MCP tool</td><td>Функція, яку викликає модель: <code>inputSchema</code>, необов'язкова <code>outputSchema</code>, <code>isError</code>.</td></tr>
+<tr><td>MCP resource</td><td>Дані за URI або шаблоном URI (RFC 6570), які додає в контекст застосунок чи користувач.</td></tr>
+<tr><td>MCP prompt</td><td>Шаблон повідомлень з рядковими аргументами, який користувач запускає явно.</td></tr>
+<tr><td>sampling (MCP)</td><td>Запит сервера на генерацію моделлю хоста; застарів у 2026-07-28.</td></tr>
+<tr><td>elicitation (MCP)</td><td>Запит сервера до користувача: form (плоска схема) або url (секрети, OAuth).</td></tr>
+<tr><td>roots (MCP)</td><td>Межі файлової системи, які клієнт повідомляє серверу; застаріли в 2026-07-28.</td></tr>
+<tr><td>stdio transport</td><td>Сервер — підпроцес клієнта; один JSON-RPC на рядок у stdin/stdout, логи в stderr.</td></tr>
+<tr><td>Streamable HTTP</td><td>Кожне повідомлення — POST на один endpoint; відповідь JSON або SSE цього запиту; OAuth 2.1.</td></tr>
+<tr><td>Mcp-Session-Id</td><td>Заголовок сесії Streamable HTTP у 2025-03-26…2025-11-25; у 2026-07-28 прибраний.</td></tr>
+<tr><td>.mcp.json</td><td>Файл project-області Claude Code у корені репозиторію; сервери з нього схвалюють в інтерактивній сесії.</td></tr>
+<tr><td>claude mcp add --scope</td><td><code>local</code> (за замовчуванням), <code>project</code> або <code>user</code>: де зберегти сервер і кому він доступний.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. MCP-поверхня для вашої системи</h3>
+<p>Візьміть систему зі своєї роботи і спроєктуйте для неї MCP-сервер: 6–10 можливостей, кожна з примітивом і обґрунтуванням «хто вирішує», схеми і помилки двох ключових інструментів, транспорт і автентифікація, стан без сесій, область підключення в Claude Code.</p>
+<h3>2. Розбір логу на дроті</h3>
+<p>У завданні є лог обміну клієнта з сервером, у якому сім порушень специфікації 2026-07-28. Знайдіть їх, для кожного назвіть правило і запропонуйте виправлення.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28" target="_blank" rel="noopener">MCP Specification 2026-07-28</a><span>поточна версія; <a href="https://modelcontextprotocol.io/specification/2026-07-28/architecture" target="_blank" rel="noopener">Architecture</a> — host, client, server, принципи дизайну</span></li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog" target="_blank" rel="noopener">Key Changes 2026-07-28</a><span>без стану, <code>server/discover</code>, MRTR, <code>subscriptions/listen</code>, застарілі функції</span></li>
+<li><a href="https://github.com/modelcontextprotocol/modelcontextprotocol/releases/tag/2026-07-28" target="_blank" rel="noopener">Реліз 2026-07-28 на GitHub</a><span>28.07.2026; RC — 29.05.2026</span></li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning" target="_blank" rel="noopener">Versioning and Compatibility</a><span>modern / legacy / dual-era, матриця сумісності</span></li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/server/tools" target="_blank" rel="noopener">Tools</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/server/resources" target="_blank" rel="noopener">Resources</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/server/prompts" target="_blank" rel="noopener">Prompts</a><span>моделі взаємодії, <code>structuredContent</code>, два види помилок, stateful tools через дескриптори</span></li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/mrtr" target="_blank" rel="noopener">Multi Round-Trip Requests</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/client/elicitation" target="_blank" rel="noopener">Elicitation</a><span><code>InputRequiredResult</code>, <code>requestState</code>, form і url</span></li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio" target="_blank" rel="noopener">stdio</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http" target="_blank" rel="noopener">Streamable HTTP</a><span>кадрування, заголовки <code>Mcp-Method</code>/<code>Mcp-Name</code>, Origin, сумісність з HTTP+SSE</span></li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization" target="_blank" rel="noopener">Authorization</a><span>OAuth 2.1, RFC 9728, RFC 8707, CIMD, step-up</span></li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/deprecated" target="_blank" rel="noopener">Deprecated Features</a><span>roots, sampling, logging, DCR, HTTP+SSE і найраніші дати видалення; обґрунтування — <a href="https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2577" target="_blank" rel="noopener">SEP-2577</a></span></li>
+<li><a href="https://code.claude.com/docs/en/mcp" target="_blank" rel="noopener">Claude Code — MCP</a><span>області, <code>.mcp.json</code>, runtime v1/v2, ліміти, <code>@</code>-ресурси, промпти як команди, elicitation</span></li>
+<li><a href="https://learn.chatgpt.com/docs/extend/mcp?surface=cli" target="_blank" rel="noopener">Codex — MCP</a><span><code>codex mcp add</code>, <code>[mcp_servers]</code> у <code>config.toml</code></span></li>
+<li><a href="https://cursor.com/docs/context/mcp" target="_blank" rel="noopener">Cursor — MCP</a><span><code>.cursor/mcp.json</code>, інтерполяція змінних, підтримувані можливості</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/mcp-connector" target="_blank" rel="noopener">Claude API — MCP connector</a><span>бета <code>mcp-client-2025-11-20</code>, лише tools, лише HTTP</span></li>
+<li><a href="https://pypi.org/project/mcp/" target="_blank" rel="noopener">Python SDK <code>mcp</code></a><span>2.3.0, 02.10.2026; <a href="https://py.sdk.modelcontextprotocol.io/v2/migration/" target="_blank" rel="noopener">гайд міграції v1 → v2</a> (<code>FastMCP</code> → <code>MCPServer</code>)</span></li>
+<li><a href="https://github.com/modelcontextprotocol/inspector" target="_blank" rel="noopener">MCP Inspector</a><span>UI і CLI-режим <code>--cli</code> для перевірки сервера без моделі</span></li>
+<li><a href="https://www.jsonrpc.org/specification" target="_blank" rel="noopener">JSON-RPC 2.0 Specification</a><span>формат повідомлень</span></li>
+<li><a href="https://www.rfc-editor.org/rfc/rfc8707.html" target="_blank" rel="noopener">RFC 8707 — Resource Indicators</a> · <a href="https://datatracker.ietf.org/doc/html/rfc9728" target="_blank" rel="noopener">RFC 9728 — Protected Resource Metadata</a><span>основа авторизації віддалених серверів</span></li>
+<li><a href="https://www.anthropic.com/news/model-context-protocol" target="_blank" rel="noopener">Anthropic — Introducing the Model Context Protocol</a><span>25.11.2024</span></li>
+<li><a href="https://anthropic.skilljar.com/introduction-to-model-context-protocol" target="_blank" rel="noopener">Anthropic Academy — Introduction to MCP</a><span>безкоштовний курс; звіряйте з ревізією 2026-07-28</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 7.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 7.1 · Senomi<br><br><a href="lesson-33.html">← Урок 6.5</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-35.html">Урок 7.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

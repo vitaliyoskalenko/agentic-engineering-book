@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 6.1. Slash commands і skills</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 6.1 · Модуль 6</div>
+<h1>Slash commands і skills</h1>
+<p class="lead">Skill — тека з SKILL.md, яку викликаєте ви командою /ім'я, модель за описом або скрипт: одна процедура замість трьох копій промпту. Розбираємо frontmatter, аргументи й підстановку виводу команд, області й пріоритети, переносність між Claude Code, Codex і Cursor — і переносимо промпт квізу Lectern у skill generate-quiz з реальними прогонами.</p>
+<div class="hero-meta"><span class="chip">Розширення: commands, skills, hooks, plugins, Agent SDK</span><span class="chip t">≈ 45 хв</span><span class="chip a">11 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Контекстне вікно — спільне благо. Ваш skill ділить його з усім іншим, що Claude має знати.</p><cite>Anthropic, документація Claude, «Skill authoring best practices» · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Одна процедура, три споживачі</a><a href="#commands"><b>02</b>Що ховається за /</a><a href="#anatomy"><b>03</b>Анатомія skill</a><a href="#invoke"><b>04</b>Хто викликає</a><a href="#scope"><b>05</b>Де лежить і хто перемагає</a><a href="#writing"><b>06</b>Як писати skill, що спрацьовує</a><a href="#project"><b>07</b>Lectern: skill generate-quiz</a><a href="#portable"><b>08</b>Той самий skill у Codex і Cursor</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розрізняти вбудовані команди, bundled skills і власні skills та обирати, куди покласти процедуру: CLAUDE.md, skill, hook чи скрипт;</li>
+    <li>написати SKILL.md з потрібними полями frontmatter, аргументами, підстановкою виводу команд (<code>!`…`</code>) і допоміжними файлами;</li>
+    <li>керувати тим, хто викликає skill (ви, модель чи обидва), і передбачати, яка копія переможе при збігу імен;</li>
+    <li>писати опис, що спрацьовує, і перевіряти це вимірюванням, а не одним вдалим запуском;</li>
+    <li>оцінити, що з skill переживе перенесення в Codex і Cursor, а що там стане звичайним текстом.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Одна процедура, три споживачі<span class="sub">Навіщо Lectern skill</span></h2></div>
+<p>Після модуля 5 промпт квізу Lectern існує в трьох місцях: <code>prompt.txt</code>, куди <code>batch_generate.sh</code> підставляє число питань через <code>sed</code>; розділені <code>system.txt</code> і <code>task.txt</code> з уроку 5.1, з якими на тій самій лекції перевірку пройшли 3 квізи з 3 замість 2, а вхід скоротився з 62–105 тис. до 29–30 тис. токенів; і пам'ять розробника, який в інтерактивній сесії щоразу пише «згенеруй квіз, перевір цитати». Три копії розходяться з першої правки.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Хто</th><th>Як отримує процедуру</th><th>Що з неї бере</th></tr></thead>
+<tbody>
+<tr><td data-th="Хто">Розробник у сесії</td><td data-th="Як отримує процедуру"><code>/generate-quiz samples/x.txt 3</code></td><td data-th="Що з неї бере">правила, задачу, кроки й фінальну перевірку</td></tr>
+<tr><td data-th="Хто">Модель</td><td data-th="Як отримує процедуру">сама, коли запит збігся з описом: «зроби квіз з …»</td><td data-th="Що з неї бере">те саме, не знаючи імені команди</td></tr>
+<tr><td data-th="Хто"><code>batch_generate.sh</code></td><td data-th="Як отримує процедуру"><code>render.py system</code> і <code>render.py task</code></td><td data-th="Що з неї бере">лише правила й задачу: перевірку робить сам скрипт</td></tr>
+</tbody></table></div>
+<p>Skill — тека з <code>SKILL.md</code> і допоміжними файлами. Документація Claude Code радить його, коли ви <b>вдруге вставляєте ті самі інструкції</b> або розділ CLAUDE.md став процедурою замість факту: тіло вантажиться лише під час виклику (рівні й ціна поступового розкриття — урок 5.2).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що це</th><th>Куди</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Що це">Факт, потрібний у кожній сесії: команда тестів, заборонені шляхи</td><td data-th="Куди">CLAUDE.md</td><td data-th="Чому">завантажується завжди, без рішення моделі</td></tr>
+<tr><td data-th="Що це">Процедура з кількох кроків, потрібна іноді</td><td data-th="Куди">skill</td><td data-th="Чому">у контексті лише опис, тіло — на вимогу</td></tr>
+<tr><td data-th="Що це">Правило, що має виконуватися щоразу без винятків</td><td data-th="Куди">hook (урок 6.2)</td><td data-th="Чому">skill модель може не виконати або забути після компакції; hook запускає harness</td></tr>
+<tr><td data-th="Що це">Детерміноване перетворення: підставити змінні, перевірити схему</td><td data-th="Куди">скрипт, який skill викликає</td><td data-th="Чому">у контекст потрапляє лише вивід, а результат однаковий щоразу</td></tr>
+<tr><td data-th="Що це">Дослідження, яке засмітить головне вікно</td><td data-th="Куди">subagent або skill з <code>context: fork</code> (урок 6.4)</td><td data-th="Чому">окреме вікно, у розмову повертається лише підсумок</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="commands">
+<div class="sec-h"><span class="num">02</span><h2>Що ховається за /<span class="sub">Вбудовані команди, bundled skills, ваші skills</span></h2></div>
+<p>Меню <code>/</code> змішує три механізми. <b>Вбудовані команди</b> (<code>/compact</code>, <code>/permissions</code>) виконують фіксовану логіку CLI. <b>Bundled skills</b> (<code>/code-review</code>, <code>/debug</code>) — промпти, що постачаються з Claude Code і працюють як ваші: модель отримує інструкції й виконує їх своїми інструментами. <b>Ваші skills</b> — у <code>.claude/skills/</code>, і старий формат команд злили з ними:</p>
+<blockquote class="q-src">
+<p>Власні команди злиті зі skills. Файл <code>.claude/commands/deploy.md</code> і skill <code>.claude/skills/deploy/SKILL.md</code> обидва створюють <code>/deploy</code> і працюють однаково.</p>
+<p class="orig">“Custom commands have been merged into skills. A file at .claude/commands/deploy.md and a skill at .claude/skills/deploy/SKILL.md both create /deploy and work the same way.”</p>
+<cite>Документація Claude Code, «Extend Claude with skills», перевірено 15.10.2026</cite>
+</blockquote>
+<p>Файл команди приймає той самий frontmatter, крім <code>name</code> і <code>paths</code>, але не має теки для скриптів; при збігу імен перемагає skill. Команди, яких ще не було в курсі:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Команда</th><th>Тип</th><th>Що робить</th></tr></thead>
+<tbody>
+<tr><td data-th="Команда"><code>/code-review [low…max|ultra] [--fix] [--comment] [pr#|branch|path]</code></td><td data-th="Тип">skill</td><td data-th="Що робить">рев'ю diff або PR на баги; <code>--fix</code> застосовує знахідки, <code>--comment</code> публікує в PR, <code>ultra</code> — рев'ю в хмарі; аліас <code>/review</code></td></tr>
+<tr><td data-th="Команда"><code>/simplify [target]</code></td><td data-th="Тип">skill</td><td data-th="Що робить">чотири агенти паралельно: дублі хелперів, зайва складність, неефективність, рівень абстракції; баги не шукає</td></tr>
+<tr><td data-th="Команда"><code>/security-review</code></td><td data-th="Тип">вбудована, доступна моделі через Skill tool</td><td data-th="Що робить">diff гілки проти основної гілки <code>origin</code>: injection, автентифікація, витік даних</td></tr>
+<tr><td data-th="Команда"><code>/run</code>, <code>/verify</code>, <code>/run-skill-generator</code></td><td data-th="Тип">skills</td><td data-th="Що робить">перевірити зміну на запущеному застосунку, а не лише тестами; генератор записує рецепт запуску як project skill</td></tr>
+<tr><td data-th="Команда"><code>/batch &lt;instruction&gt;</code></td><td data-th="Тип">skill</td><td data-th="Що робить">ділить велику зміну на 5–30 частин; після схвалення кожну робить фоновий субагент у своєму worktree</td></tr>
+<tr><td data-th="Команда"><code>/debug [description]</code></td><td data-th="Тип">skill</td><td data-th="Що робить">вмикає debug-лог з цього моменту й аналізує його</td></tr>
+<tr><td data-th="Команда"><code>/fewer-permission-prompts</code></td><td data-th="Тип">skill</td><td data-th="Що робить">з ваших транскриптів складає allowlist частих read-only команд у <code>.claude/settings.json</code></td></tr>
+<tr><td data-th="Команда"><code>/skills</code>, <code>/reload-skills</code></td><td data-th="Тип">вбудовані</td><td data-th="Що робить"><kbd>t</kbd> сортує skills за токенами, <kbd>Space</kbd> перемикає видимість (<code>skillOverrides</code>); <code>/reload-skills</code> підхоплює нову теку без перезапуску</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Неочевидне · v2.1.286+</span>
+<p>Якщо на старті сесії є власний skill <code>verify</code> або <code>simplify</code> (project, personal чи enterprise, не з плагіна), вбудовані інструкції комітів кажуть Claude запускати його <b>перед кожним комітом</b>, крім змін лише в документації чи тестах. Не спрацює, якщо skill має <code>disable-model-invocation</code> або вимкнено <code>includeGitInstructions</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="anatomy">
+<div class="sec-h"><span class="num">03</span><h2>Анатомія skill<span class="sub">Тека, frontmatter, тіло</span></h2></div>
+<pre class="code" data-lang="text">generate-quiz/
+├── SKILL.md           <span class="cm"># метадані + кроки</span>
+├── quiz.system.txt    <span class="cm"># правила</span>
+├── quiz.task.txt      <span class="cm"># шаблон задачі</span>
+└── scripts/render.py  <span class="cm"># виконується</span></pre>
+<p>Ім'я теки — це команда <code>/generate-quiz</code>. Frontmatter — YAML між <code>---</code>; перше <code>---</code> має стояти в першому рядку, інакше весь файл стане текстом skill. Усі поля необов'язкові, але без <code>description</code> модель не знає, коли skill потрібен.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Поле</th><th>Що робить</th><th>Пастка</th></tr></thead>
+<tbody>
+<tr><td data-th="Поле"><code>name</code></td><td data-th="Що робить">команда в меню <code>/</code>; типово — ім'я теки</td><td data-th="Пастка">стандарт: збігається з текою; малі літери, цифри, дефіси, до 64 символів</td></tr>
+<tr><td data-th="Поле"><code>description</code>, <code>when_to_use</code></td><td data-th="Що робить">що робить і коли вживати; за цим текстом модель обирає skill</td><td data-th="Пастка">разом обрізаються на 1&nbsp;536 символах; стандарт обмежує опис 1&nbsp;024</td></tr>
+<tr><td data-th="Поле"><code>argument-hint</code>, <code>arguments</code></td><td data-th="Що робить">підказка в автодоповненні; іменовані аргументи для <code>$lecture</code>, <code>$count</code></td><td data-th="Пастка">лише Claude Code: на claude.ai і в Skills API — помилка завантаження</td></tr>
+<tr><td data-th="Поле"><code>disable-model-invocation</code></td><td data-th="Що робить"><code>true</code> — викликаєте лише ви; опис зникає з контексту</td><td data-th="Пастка">не завантажується в субагентів і не запускається із запланованих задач</td></tr>
+<tr><td data-th="Поле"><code>user-invocable</code></td><td data-th="Що робить"><code>false</code> — лише модель; skill зникає з меню <code>/</code></td><td data-th="Пастка">моделі виклик не забороняє: для цього потрібен <code>disable-model-invocation</code></td></tr>
+<tr><td data-th="Поле"><code>allowed-tools</code></td><td data-th="Що робить">інструменти без запиту дозволу <b>в ході, де skill викликано</b></td><td data-th="Пастка">нічого не забороняє; діє навіть у папці без довіри</td></tr>
+<tr><td data-th="Поле"><code>model</code>, <code>effort</code></td><td data-th="Що робить">модель і рівень зусиль до кінця поточного ходу</td><td data-th="Пастка">наступний запит знову йде на модель сесії</td></tr>
+<tr><td data-th="Поле"><code>context: fork</code> + <code>agent</code></td><td data-th="Що робить">виконати skill в окремому субагенті (урок 6.4)</td><td data-th="Пастка">субагент не бачить розмови; skill-конвенції без задачі дадуть порожній результат</td></tr>
+<tr><td data-th="Поле"><code>paths</code></td><td data-th="Що робить">автоматичне завантаження лише біля файлів, що збігаються з glob</td><td data-th="Пастка">той самий формат, що path-scoped rules (урок 4.2)</td></tr>
+<tr><td data-th="Поле"><code>metadata</code>, <code>license</code>, <code>compatibility</code></td><td data-th="Що робить">поля стандарту; Claude Code їх не використовує</td><td data-th="Пастка">версію зручно тримати в <code>metadata.version</code></td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Мовчазні відмови</span>
+<p>Поле з помилкою в назві (<code>allowed_tools</code>) ігнорується без повідомлення. YAML, що не розбирається, дає skill <b>без полів</b>: <code>/ім'я</code> працює, а модель його ніколи не обере. Перевірка: <code>claude plugin validate .claude/skills</code> (v2.1.233+).</p>
+</div>
+<h3>Підстановки</h3>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Змінна</th><th>Що підставляється</th></tr></thead>
+<tbody>
+<tr><td><code>$ARGUMENTS</code></td><td>увесь рядок після імені. Якщо в тексті немає жодного плейсхолдера, Claude Code дописує в кінець <code>ARGUMENTS: …</code></td></tr>
+<tr><td><code>$ARGUMENTS[N]</code>, <code>$N</code></td><td>N-й аргумент з нуля; лапки як у shell (<code>"hello world"</code> — один аргумент). Аргументу немає — <code>$2</code> лишається в тексті як є</td></tr>
+<tr><td><code>$ім'я</code></td><td>аргумент з <code>arguments: [lecture, count]</code>; аргументу немає — порожній рядок</td></tr>
+<tr><td><code>${CLAUDE_SKILL_DIR}</code><br><code>${CLAUDE_PROJECT_DIR}</code></td><td>тека skill і корінь проєкту; підставляються і в тіло, і в правила <code>Bash(…)</code> у <code>allowed-tools</code></td></tr>
+</tbody></table></div>
+<h3>Підстановка виводу команд</h3>
+<p>Рядок <code>!`команда`</code> (для кількох — блок <code>```!</code>) Claude Code виконує <b>до</b> того, як модель побачить skill, і замінює виводом: модель отримує дані без зайвого ходу.</p>
+<ul>
+<li><code>!</code> — на початку рядка або після пробілу; вивід не сканується вдруге;</li>
+<li>stderr зливається з виводом; ненульовий код <b>скасовує весь виклик</b>, крім коду 1 у <code>grep</code>-подібних командах. Перевірці, що повертає 1, дописуйте <code>|| true</code>;</li>
+<li>дозволу не питають: що не <code>allow</code> (зокрема <code>ask</code>), скасовує виклик, тож команда має бути в <code>allowed-tools</code>;</li>
+<li><code>disableSkillShellExecution</code> вимикає механізм; у skills, синхронізованих з claude.ai, команди не виконуються.</li>
+</ul>
+<p>Відрендерений вміст входить у розмову один раз, і файл більше не перечитується: інструкцію на всю задачу пишіть як постійну («запускай тести після кожної правки»). Що лишається після компакції — урок 5.2.</p>
+</section>
+
+<section class="sec" id="invoke">
+<div class="sec-h"><span class="num">04</span><h2>Хто викликає<span class="sub">User-invoked, model-invoked і шлях виклику</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 476" role="img" aria-label="Шлях виклику skill: список skills, вибір моделлю або команда користувача, рендер, вміст у розмові, кроки">
+  <defs>
+    <marker id="s29a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="s29b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="164" height="58" rx="10" class="bx m"/>
+  <text x="90" y="31" text-anchor="middle" class="tx b">Список skills</text>
+  <text x="90" y="50" text-anchor="middle" class="tx s">name + description, щоходу</text>
+  <path d="M90 66 V 96" class="ln a" marker-end="url(#s29a)"/>
+  <rect x="8" y="100" width="164" height="62" rx="10" class="bx t"/>
+  <text x="90" y="124" text-anchor="middle" class="tx b">Модель обирає</text>
+  <text x="90" y="143" text-anchor="middle" class="tx s">за описом, через Skill tool</text>
+  <rect x="188" y="100" width="164" height="62" rx="10" class="bx t"/>
+  <text x="270" y="124" text-anchor="middle" class="tx b">Ви пишете /ім'я</text>
+  <text x="270" y="143" text-anchor="middle" class="tx s">на початку повідомлення</text>
+  <path d="M90 162 V 192" class="ln a" marker-end="url(#s29a)"/>
+  <path d="M270 162 V 192" class="ln a" marker-end="url(#s29a)"/>
+  <rect x="8" y="196" width="344" height="86" rx="10" class="bx a"/>
+  <text x="180" y="220" text-anchor="middle" class="tx b">Рендер SKILL.md</text>
+  <text x="180" y="241" text-anchor="middle" class="tx s">1 · $ARGUMENTS, $0, $lecture → текст аргументів</text>
+  <text x="180" y="259" text-anchor="middle" class="tx s">2 · !`команда` → перевірка дозволу → її вивід</text>
+  <text x="180" y="274" text-anchor="middle" class="tx s">3 · ${CLAUDE_SKILL_DIR} → абсолютний шлях</text>
+  <path d="M290 282 V 306" class="ln d" marker-end="url(#s29b)"/>
+  <rect x="210" y="310" width="142" height="54" rx="10" class="bx p"/>
+  <text x="281" y="332" text-anchor="middle" class="tx b">Виклик скасовано</text>
+  <text x="281" y="350" text-anchor="middle" class="tx s">помилка або не allow</text>
+  <path d="M100 282 V 306" class="ln a" marker-end="url(#s29a)"/>
+  <rect x="8" y="310" width="188" height="70" rx="10" class="bx t"/>
+  <text x="102" y="334" text-anchor="middle" class="tx b">Вміст у розмові</text>
+  <text x="102" y="352" text-anchor="middle" class="tx s">один раз, до кінця сесії;</text>
+  <text x="102" y="368" text-anchor="middle" class="tx s">allowed-tools — на цей хід</text>
+  <path d="M102 380 V 404" class="ln a" marker-end="url(#s29a)"/>
+  <rect x="8" y="408" width="344" height="58" rx="10" class="bx m"/>
+  <text x="180" y="431" text-anchor="middle" class="tx b">Кроки skill</text>
+  <text x="180" y="450" text-anchor="middle" class="tx s">lectern check → out/*.quiz.json → gate</text>
+</svg>
+<figcaption>Обидва шляхи сходяться на рендері. Модель бачить лише результат рендеру: аргументи вже вставлені, команди вже виконані. Команда, що впала або не має дозволу, зупиняє виклик цілком.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Frontmatter</th><th>Ви</th><th>Модель</th><th>Опис у контексті</th><th>Для чого</th></tr></thead>
+<tbody>
+<tr><td data-th="Frontmatter">типово</td><td data-th="Ви">так</td><td data-th="Модель">так</td><td data-th="Опис у контексті">завжди</td><td data-th="Для чого">процедури, які модель має знайти сама: «зроби квіз»</td></tr>
+<tr><td data-th="Frontmatter"><code>disable-model-invocation: true</code></td><td data-th="Ви">так</td><td data-th="Модель">ні</td><td data-th="Опис у контексті">ні</td><td data-th="Для чого">дії з наслідками: <code>/deploy</code>, <code>/commit</code>, розсилки. Модель не вирішить сама, що час деплоїти</td></tr>
+<tr><td data-th="Frontmatter"><code>user-invocable: false</code></td><td data-th="Ви">ні</td><td data-th="Модель">так</td><td data-th="Опис у контексті">завжди</td><td data-th="Для чого">фонове знання, яке не є дією: як влаштована стара система</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Де стоїть ім'я.</b> <code>/deploy staging</code> на початку повідомлення виконує skill одразу. <code>…а потім /deploy</code> посеред тексту нічого не запускає, а лише дозволяє моделі викликати skill у цій відповіді. Щоб згадати skill без дозволу, пишіть ім'я без слеша.</li>
+<li><b>Кілька skills одразу.</b> <code>/write-tests /fix-issue 123</code> завантажує обидва і передає <code>123</code> кожному; у ланцюжку до шести.</li>
+<li><b>Дозволи.</b> Виклик моделлю — це інструмент Skill, і на нього діють правила: <code>Skill(commit)</code> — точне ім'я, <code>Skill(review-pr *)</code> — з будь-якими аргументами, <code>Skill</code> у deny вимикає всі. У нашому headless-прогоні без такого правила виклик Skill відхилено.</li>
+<li><b>Без Skill tool немає й списку.</b> Короткий запит у Lectern з <code>--tools "Read,Bash"</code> коштував 7&nbsp;818 вхідних токенів, з <code>"Read,Bash,Skill"</code> — 11&nbsp;352: +3,5 тис. на схему інструмента й список skills (bundled плюс наш). Для конвеєра, якому skills не потрібні, це безплатна економія.</li>
+</ul>
+</section>
+
+<section class="sec" id="scope">
+<div class="sec-h"><span class="num">05</span><h2>Де лежить і хто перемагає<span class="sub">Області й пріоритети</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Шлях</th><th>Де діє</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">Enterprise</td><td data-th="Шлях"><code>.claude/skills/</code> у теці managed settings</td><td data-th="Де діє">усі користувачі на машинах організації</td></tr>
+<tr><td data-th="Рівень">Personal</td><td data-th="Шлях"><code>~/.claude/skills/&lt;ім'я&gt;/</code></td><td data-th="Де діє">усі ваші проєкти на цій машині; <b>не</b> хмарні сесії й routines</td></tr>
+<tr><td data-th="Рівень">Project</td><td data-th="Шлях"><code>.claude/skills/&lt;ім'я&gt;/</code></td><td data-th="Де діє">сесії в репозиторії; шукається від поточної теки вгору до кореня</td></tr>
+<tr><td data-th="Рівень">Nested</td><td data-th="Шлях"><code>apps/web/.claude/skills/</code></td><td data-th="Де діє">з'являється, щойно Claude прочитає чи змінить файл у <code>apps/web/</code>; до того його немає в меню</td></tr>
+<tr><td data-th="Рівень">Plugin</td><td data-th="Шлях"><code>&lt;plugin&gt;/skills/&lt;ім'я&gt;/</code></td><td data-th="Де діє">де ввімкнено плагін, як <code>/плагін:ім'я</code> (урок 6.3)</td></tr>
+</tbody></table></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Однакове ім'я в…</th><th>Що виконає <code>/ім'я</code></th></tr></thead>
+<tbody>
+<tr><td>enterprise, personal, project</td><td>enterprise &gt; personal &gt; project. Особистий <code>~/.claude/skills/deploy</code> розробника мовчки перекриває командний <code>.claude/skills/deploy</code></td></tr>
+<tr><td>skill і файл у <code>.claude/commands/</code></td><td>skill</td></tr>
+<tr><td>ваш skill і bundled skill чи вбудована команда</td><td>ваш skill, але не аліаси: project-skill <code>code-review</code> замінює <code>/code-review</code>, а <code>/review</code> далі запускає вбудований</td></tr>
+<tr><td>корінь репозиторію і nested</td><td>обидва: <code>/deploy</code> — кореневий, <code>/apps/web:deploy</code> — вкладений; моделі показано обидва з підказкою брати той, у чиїй теці вона працює</td></tr>
+<tr><td>plugin і будь-який інший рівень</td><td>обидва, бо плагінний має префікс <code>/плагін:ім'я</code></td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Командна процедура з наслідками не має залежати від <code>~/.claude/</code> окремого розробника: ім'я з префіксом проєкту (<code>lectern-release</code>) або розповсюдження через managed settings чи плагін. Хмарні сесії й routines <code>~/.claude/skills/</code> не бачать — що має працювати там, комітьте в репозиторій.</p>
+</div>
+</section>
+
+<section class="sec" id="writing">
+<div class="sec-h"><span class="num">06</span><h2>Як писати skill, що спрацьовує<span class="sub">Опис-тригер, межі, скрипти</span></h2></div>
+<p>Модель обирає skill за одним полем. Anthropic у настановах з написання skills:</p>
+<blockquote class="q-src">
+<p>Опис критично важливий для вибору: Claude використовує його, щоб обрати потрібний skill серед потенційно 100+ доступних.</p>
+<p class="orig">“The description is critical for skill selection: Claude uses it to choose the right Skill from potentially 100+ available Skills.”</p>
+<cite>Anthropic, документація Claude, «Skill authoring best practices»</cite>
+</blockquote>
+<div class="cols">
+<div class="cmp bad"><h4>не спрацює</h4><ul>
+<li><code>description: Lectern helper.</code> — ні дії, ні ситуації;</li>
+<li>«I can help you…»: опис іде в системний промпт, настанови вимагають третьої особи;</li>
+<li>ключова ситуація в кінці довгого опису: при переповненні списку описи відкидаються (Claude Code, урок 5.5) або скорочуються (Codex).</li>
+</ul></div>
+<div class="cmp good"><h4>спрацює</h4><ul>
+<li>що робить + «Use when …» з тими словами, які скаже користувач: <i>quiz, test, questions, lecture, samples/</i>;</li>
+<li>випадки, де предмет не названо прямо: «even if they do not mention Lectern»;</li>
+<li>межа із сусідніми задачами, якщо skill спрацьовує зайве: що він <b>не</b> робить.</li>
+</ul></div>
+</div>
+<p>Нюанс з посібника agentskills.io про описи: агенти звертаються до skills переважно для задач, з якими не впораються самі, тож «прочитай цей PDF» може не активувати навіть ідеально описаний PDF-skill.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Свобода</th><th>Коли</th><th>Форма в skill</th></tr></thead>
+<tbody>
+<tr><td data-th="Свобода">висока</td><td data-th="Коли">кілька правильних підходів, рішення залежить від контексту</td><td data-th="Форма в skill">текстові кроки: рев'ю коду</td></tr>
+<tr><td data-th="Свобода">середня</td><td data-th="Коли">є бажаний шаблон, варіації допустимі</td><td data-th="Форма в skill">псевдокод або скрипт з параметрами</td></tr>
+<tr><td data-th="Свобода">низька</td><td data-th="Коли">операція крихка, важлива однаковість, порядок фіксований</td><td data-th="Форма в skill">«Run exactly this script» без варіацій: міграції, рендер промпту</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Скрипт виконується, а не читається</b>: він надійніший за згенерований код, у контекст іде лише вивід. Помилки обробляє сам («Solve, don't defer»), сталі пояснює коментарем: не знаєте, чому <code>TIMEOUT = 47</code>, — модель теж не знатиме.</li>
+<li><b>SKILL.md — до 500 рядків</b>, довідка — у файлах поруч, з поясненням, коли їх читати. Лише один рівень посилань: ланцюжок <code>SKILL.md → advanced.md → details.md</code> модель читає частково.</li>
+<li><b>Спершу evals, потім текст</b>: три сценарії і прогін без skill як база. Для тригера — ~20 запитів (половина має спрацювати, половина — «майже ті самі», що не мають), по 3 прогони, поріг 0,5, поділ 60/40, щоб не підганяти опис під конкретні фрази. Тестуйте на всіх моделях: що досить для Opus, Haiku може бути замало.</li>
+<li><b>Чого не класти:</b> факти для кожної сесії (CLAUDE.md), правила «завжди» (hook), інструкції з датою, що мовчки стануть хибними, пояснення того, що модель і так знає, і секрети (нижче).</li>
+</ul>
+
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Lectern: skill generate-quiz<span class="sub">Пункт B3 беклогу, реальні прогони</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · модуль 6 · промпт квізу як skill</div><div class="pb">
+<p><b>Що ламалося.</b> <code>batch_generate.sh</code> міняв число питань через <code>sed "s/ 5 / $N /g" prompt.txt</code>. Варто правилам з уроку 5.1 опинитися в тому самому тексті — і <code>sed</code> перепише правило про довжину цитати:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — kit</span></div>
+<pre><span class="ps">$ </span><span class="c">N=3; sed -e "s/ 5 / $N /g" lessons/24/console/lectern-step/system.txt | diff lessons/24/console/lectern-step/system.txt -</span>
+9c9
+<span class="er">&lt;   whole sentence or a clause of at least 5 words. Lectern rejects shorter quotes, and</span>
+<span class="d">---</span>
+<span class="ok">&gt;   whole sentence or a clause of at least 3 words. Lectern rejects shorter quotes, and</span></pre>
+<div class="cap">реальний вивід · 15.10.2026</div></div>
+<p><b>Що зробили</b> (у scratch-копії, де <code>dot-claude/</code> — це <code>.claude/</code>):</p>
+<ol class="steps">
+<li><b>Два версійовані файли в теці skill</b>: <code>quiz.system.txt</code> (правила з 5.1) і <code>quiz.task.txt</code> (задача з <code>${lecture_path}</code>, <code>${question_count}</code>), перший рядок — <code># quiz.system v1 …</code>.</li>
+<li><b><code>scripts/render.py</code></b> (stdlib, Python 3.9+): <code>system</code> знімає заголовок; <code>task LECTURE [N]</code> підставляє змінні через <code>Template.substitute</code>, тож невідома змінна — помилка, а не <code>$x</code> у промпті; <code>version</code> друкує <code>quiz.system@1 quiz.task@1</code>. Поганий шлях чи N — код 2 і зрозуміле повідомлення.</li>
+<li><b><code>batch_generate.sh</code></b>: правила — через <code>--append-system-prompt-file</code>, задача — з <code>render.py task</code>; лекції й <code>-n</code> перевіряються до запуску моделей; версія промпту пишеться в кожен <code>row.json</code> для evals модуля 12. <code>prompt.txt</code> видалено, <code>check_context.py</code> перевіряє й skills.</li>
+<li><b>SKILL.md</b> отримує правила й задачу підстановкою виводу <code>render.py</code>: модель не вгадує ні шлях до скрипта, ні інтерпретатор.</li>
+<li><b>Тести</b> <code>tests/test_quiz_prompts.py</code>: «at least 5 words» не залежить від N, погані N і шляхи, файл без заголовка, SKILL.md за специфікацією (ім'я = тека, опис ≤ 1&nbsp;024 з «Use when», файли з <code>${CLAUDE_SKILL_DIR}/…</code> існують). 48 → 58 тестів.</li>
+</ol>
+<pre class="code" data-lang="yaml"><span class="cm"># SKILL.md · v2</span>
+---
+<span class="k">name:</span> generate-quiz
+<span class="k">description:</span> Writes a multiple-choice quiz from a Lectern lecture file and verifies every quote with lectern check. Use when the user asks for a quiz, test or questions from a lecture or from a .txt file under samples/ or lectures/, in any language (for example "зроби квіз з samples/x.txt"), even if they do not mention Lectern.
+<span class="k">argument-hint:</span> &lt;lecture.txt&gt; [question-count]
+<span class="k">arguments:</span> [lecture, count]
+<span class="k">allowed-tools:</span> Read Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/render.py *) Bash(.venv/bin/lectern check *) Bash(${CLAUDE_PROJECT_DIR}/.venv/bin/lectern check *)
+<span class="k">metadata:</span>
+  <span class="k">version:</span> <span class="s">"2"</span>
+---
+
+# Generate a Lectern quiz
+
+## Rules
+
+!`python3 ${CLAUDE_SKILL_DIR}/scripts/render.py system`
+
+## Task
+
+!`python3 ${CLAUDE_SKILL_DIR}/scripts/render.py task '$lecture' $count || true`
+
+If the task above is a `render.py:` error, ask the user for a valid lecture path and
+question count. Never pick a lecture yourself.
+
+## Steps
+
+1. Check each quote: `.venv/bin/lectern check &lt;lecture&gt; --quote "&lt;quote&gt;"`.
+2. Write `out/&lt;lecture stem&gt;.quiz.json` as `{"items": [...]}` (contract: `quiz.schema.json`).
+3. Gate: `.venv/bin/lectern check &lt;lecture&gt; out/&lt;stem&gt;.quiz.json --json` must print `"ok": true`.
+   Fix only the items it names and run it again, at most twice.
+4. Report in at most 4 lines: the file, the number of items, the coverage line of the check,
+   and any lecture sentence the check flagged as addressed to an AI.</pre>
+<p>Три рішення: <code>'$lecture'</code> в одинарних лапках, щоб аргумент не став shell-кодом (розділ про помилки); <code>|| true</code>, щоб помилка <code>render.py</code> дійшла до моделі текстом, а не скасувала виклик; друге правило для <code>lectern check</code> з <code>${CLAUDE_PROJECT_DIR}</code>, бо модель інколи пише абсолютний шлях.</p>
+
+<h3>Прогін 1 · модель обирає skill сама</h3>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "зроби квіз з samples/stack-queue.txt" --model haiku --setting-sources project --strict-mcp-config --allowedTools "Skill(generate-quiz)" --max-budget-usd 0.40 --output-format stream-json --verbose &gt; model-invoked.jsonl</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.300 · 15.10.2026</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>model-invoked.jsonl — кроки</span></div>
+<pre><span class="y">● Skill</span>  {"skill": "generate-quiz", "args": "samples/stack-queue.txt"}
+<span class="d">  ⎿ Launching skill: generate-quiz</span>
+<span class="y">● Bash</span>  cat samples/stack-queue.txt &amp;&amp; ls … ; ls out
+<span class="d">  ⎿ Exit code 1 (теки out ще немає) · текст лекції</span>
+<span class="y">● Bash</span>  L=samples/stack-queue.txt; for q in "…" "…"; do .venv/bin/lectern check "$L" --quote "$q"; done
+<span class="er">  ⎿ A variable in this command can't be checked before it runs</span>
+<span class="y">● Bash</span>  .venv/bin/lectern check samples/stack-queue.txt --quote "Обидві операції виконуються за сталий час." ; …
+<span class="d">  ⎿ {"ok": true, "match": "exact"} ×4 · {"ok": true, "match": "normalized"} ×2</span>
+<span class="y">● Write</span>  out/stack-queue.quiz.json
+<span class="y">● Bash</span>  .venv/bin/lectern check samples/stack-queue.txt out/stack-queue.quiz.json --json
+<span class="ok">  ⎿ {"ok": true, "items": 5, "errors": [], … "covered": 5}</span>
+
+<span class="d">result · num_turns 9 · 39,5 с · $0,0081</span></pre>
+<div class="cap">реальний вивід, скорочено · повний потік — console/runs/model-invoked.jsonl</div></div>
+<p>Перший крок — виклик Skill з аргументом, який модель сама виділила із запиту. Цикл з <code>$q</code> відхилено: значення змінної не перевірити до запуску, тож правило <code>Bash(.venv/bin/lectern check *)</code> його не покриває, і модель переписала цикл явними командами. Без <code>--allowedTools "Skill(generate-quiz)"</code> Claude Code відхилив сам виклик Skill; модель прочитала SKILL.md через <code>cat</code> і виконувала кроки вручну, без рендеру й gate.</p>
+
+<h3>Прогін 2 · ви викликаєте командою</h3>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "/generate-quiz samples/binary-search.txt 3" --model haiku --setting-sources project --strict-mcp-config --max-budget-usd 0.40 --output-format stream-json --verbose &gt; user-invoked.jsonl</span>
+<span class="d">Ignoring 5 permissions.allow entries from .claude/settings.json: this workspace has not been trusted. …</span></pre>
+<div class="cap">реальна сесія · 15.10.2026 · stderr скорочено</div></div>
+<p>Що отримала модель (з транскрипту сесії): аргументи вже підставлено, обидві команди вже виконано.</p>
+<pre class="code" data-lang="text">## Task
+
+&lt;lecture_path&gt;samples/binary-search.txt&lt;/lecture_path&gt;
+&lt;question_count&gt;3&lt;/question_count&gt;
+Write a quiz of question_count questions from the lecture at lecture_path.</pre>
+<p>Далі — перевірка 3 цитат, запис файла і gate: 7 ходів, 31,8 с, $0,0077, <code>"ok": true, "covered": 3</code>. Зверніть увагу на stderr: allow-правила <code>.claude/settings.json</code> недовіреної теки проігноровано, а <code>allowed-tools</code> skill спрацювали.</p>
+
+<h3>Прогін 3 · перевірка без моделі</h3>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/lectern check samples/stack-queue.txt out/stack-queue.quiz.json</span>
+item 1  exact       line 5        «Обидві операції виконуються за сталий час.»
+item 2  exact       line 7        «Черга працює навпаки: «першим прийшов — першим вийшов».»
+item 3  exact       line 8        «Черги використовують там, де важливий порядок надходження:»
+item 4  normalized  lines 7-8     «Нові елементи додаються в кінець черги, а забираються з її п…»
+item 5  normalized  lines 12-13   «Якщо рекурсія не має умови зупинки, кадри накопичуються, док…»
+coverage: 5/5 quotes found in the lecture
+<span class="ok">ok: every quote is in the lecture</span>
+<span class="ps">$ </span><span class="c">PATH=$PWD/.venv/bin:$PATH scripts/batch_generate.sh -j 2 -n 3 -o out/batch samples/stack-queue.txt samples/binary-search.txt</span>
+stack-queue    ok  items 3  errors 0  attempts 1  success  $0.0041  20.1 s
+binary-search  ok  items 3  errors 0  attempts 1  success  $0.0045  22.9 s
+total  2 lectures · jobs 2 · wall 23.0 s · sum of runs 43 s · $0.0086 (client-side estimate)
+<span class="ps">$ </span><span class="c">jq -c '{lecture, prompt, ok}' out/batch/stack-queue.row.json</span>
+{"lecture":"stack-queue","prompt":"quiz.system@1 quiz.task@1","ok":true}
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q &amp;&amp; .venv/bin/ruff check . &amp;&amp; .venv/bin/python scripts/check_context.py</span>
+..........................................................               [100%]
+58 passed in 3.19s
+All checks passed!
+checked 6 files (18 commands, 13 paths, 11 symbols): 0 problem(s)</pre>
+<div class="cap">реальний вивід · 15.10.2026 · табуляцію summary.tsv замінено пробілами</div></div>
+
+<h3>Чи спрацьовує опис</h3>
+<p>Міні-eval тригера: один прогін <code>--max-turns 2</code> на запит, чи перший інструмент — Skill; потім ті самі запити з описом <code>Lectern helper.</code></p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Запит</th><th>Має спрацювати</th><th>Опис v2</th><th>«Lectern helper.»</th></tr></thead>
+<tbody>
+<tr><td data-th="Запит">зроби квіз з samples/stack-queue.txt</td><td data-th="Має спрацювати">так</td><td data-th="Опис v2">Skill</td><td data-th="«Lectern helper.»">Skill</td></tr>
+<tr><td data-th="Запит">потрібні 4 питання для самоперевірки студентів по samples/lru-cache.txt</td><td data-th="Має спрацювати">так</td><td data-th="Опис v2">Skill</td><td data-th="«Lectern helper.»">Read — без skill</td></tr>
+<tr><td data-th="Запит">make a test from samples/binary-search.txt</td><td data-th="Має спрацювати">так</td><td data-th="Опис v2">Skill</td><td data-th="«Lectern helper.»">Bash — без skill</td></tr>
+<tr><td data-th="Запит">поясни своїми словами, чим стек відрізняється від черги, за samples/stack-queue.txt</td><td data-th="Має спрацювати">ні</td><td data-th="Опис v2">Read</td><td data-th="«Lectern helper.»">—</td></tr>
+<tr><td data-th="Запит">перевір, чи є цитата «Обидві операції виконуються за сталий час.» у samples/stack-queue.txt</td><td data-th="Має спрацювати">ні</td><td data-th="Опис v2">Bash</td><td data-th="«Lectern helper.»">—</td></tr>
+</tbody></table></div>
+<p>5 з 5 проти 1 з 3. Розмитий опис спрацював лише на «квіз», що збігається з іменем <code>generate-quiz</code>: ім'я теж несе сигнал, але тільки для запитів з тим самим словом. Один прогін на запит — це ілюстрація; для рішення потрібні ~20 запитів по 3 рази.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "/skill-doctor" --setting-sources project --strict-mcp-config --output-format json | jq -r .result</span>
+Skills loaded this session
+
+  skill          source           context  7d tokens   uses  last used
+  generate-quiz  projectSettings     ~110       1.1m     8×  today
+
+  context = this skill's one-line listing in the system prompt, included every turn
+  (dash = not in the current listing, costs nothing; full SKILL.md loads only when it runs)
+  7d tokens = tokens attributed to the skill over the last 7 days of sessions on this machine
+
+All loaded skills have been used at least once.</pre>
+<div class="cap">реальний вивід · v2.1.252+ · num_turns 0, $0: звіт будується локально</div></div>
+<p>~110 токенів щоходу — ціна опису в 316 символів; тіло з відрендереними правилами вантажиться лише під час виклику.</p>
+<p><b>Ваш крок:</b> повторіть B3 у своїй копії Lectern, запустіть <code>/generate-quiz</code> на власній лекції і додайте в <code>tests/test_quiz_prompts.py</code> перевірку, що кожна команда з рядків <code>!`…`</code> у SKILL.md покрита правилом з <code>allowed-tools</code>: інакше правка SKILL.md мовчки зламає виклик у headless.</p>
+</div></div>
+</section>
+
+<section class="sec" id="portable">
+<div class="sec-h"><span class="num">08</span><h2>Той самий skill у Codex і Cursor<span class="sub">Agent Skills: що переноситься</span></h2></div>
+<p>Формат SKILL.md розробила Anthropic і відкрила як стандарт <b>Agent Skills</b> (agentskills.io); на 15.10.2026 у переліку клієнтів 46 продуктів, серед них Codex, Cursor, Gemini CLI, GitHub Copilot. Стандарт фіксує теку з <code>SKILL.md</code>, обов'язкові <code>name</code> і <code>description</code>, необов'язкові <code>license</code>, <code>compatibility</code>, <code>metadata</code> і експериментальне <code>allowed-tools</code>, теки <code>scripts/</code>, <code>references/</code>, <code>assets/</code>; валідатор — <code>skills-ref validate</code>. Теки кожного інструмента — урок 4.5; тут — як поводиться наш skill.</p>
+<div class="tabs">
+<input type="radio" name="port-t" id="port-t1" checked><input type="radio" name="port-t" id="port-t2"><input type="radio" name="port-t" id="port-t3">
+<div class="tab-l"><label for="port-t1">Claude Code</label><label for="port-t2">Codex</label><label for="port-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Читає <code>.claude/skills/</code>, але <b>не</b> <code>.agents/skills/</code>: у 2.1.300 skill звідти не з'явився. Симлінк працює, і за документацією тека, на яку вказують кілька шляхів, завантажується один раз.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/probe</span></div>
+<pre><span class="ps">$ </span><span class="c">ln -s ../../.agents/skills/agentsdir-probe .claude/skills/agentsdir-probe</span>
+<span class="ps">$ </span><span class="c">claude -p "Reply: ok" --model haiku --setting-sources project --strict-mcp-config --max-turns 1 --output-format stream-json --verbose | jq -c 'select(.subtype=="init") | .skills | map(select(test("probe")))'</span>
+["agentsdir-probe","probe"]</pre>
+<div class="cap">реальний вивід · 2.1.300 · до симлінка: ["probe"]</div></div>
+<p>Розширення з розділу «Анатомія» працюють лише тут. На claude.ai і в Skills API зайве поле — помилка, а не пропуск: <code>Unexpected key(s) in SKILL.md frontmatter: argument-hint. Allowed properties are: allowed-tools, compatibility, description, license, metadata, name</code>.</p>
+</div>
+<div class="tab-p">
+<p>Шукає <code>.agents/skills</code> від поточної теки до кореня репозиторію і <code>~/.agents/skills</code>. Явний виклик — <code>$ім'я</code> або <code>/skills</code>, неявний — за описом. Заборона неявного виклику — окремий файл, а не поле frontmatter:</p>
+<pre class="code" data-lang="yaml"><span class="cm"># .agents/skills/generate-quiz/agents/openai.yaml</span>
+<span class="k">policy:</span>
+  <span class="k">allow_implicit_invocation:</span> false</pre>
+<p>Список skills займає до 2% вікна (<code>skills.max_context_tokens</code> — до 10&nbsp;000 токенів), при переповненні Codex спершу скорочує описи. Підстановок аргументів і виконання команд у документації skills Codex немає.</p>
+<div class="cap">за офіційною документацією Codex · Codex у цьому уроці не запускався</div>
+</div>
+<div class="tab-p">
+<p>Окрім <code>.agents/skills/</code> і <code>.cursor/skills/</code> читає для сумісності <code>.claude/skills/</code>, тож наш skill знайде без змін. Поля: <code>name</code> (= тека), <code>description</code>, <code>paths</code>, <code>disable-model-invocation</code>, <code>metadata</code>, а <code>icon</code> і <code>color</code> — для Custom Mode (<kbd>Option</kbd>+<kbd>Enter</kbd>), у якому skill лишається в контексті всю сесію. <code>/ім'я</code> прикріплює skill до одного повідомлення.</p>
+<p><code>/migrate-to-skills</code> (з Cursor 2.4) переводить у skills правила «Apply Intelligently» і slash-команди; команди отримують <code>disable-model-invocation: true</code>. Правила з <code>alwaysApply</code> чи <code>globs</code> лишаються правилами.</p>
+<div class="cap">за офіційною документацією Cursor · Cursor у цьому уроці не запускався</div>
+</div>
+</div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Частина generate-quiz</th><th>Claude Code</th><th>Codex</th><th>Cursor</th></tr></thead>
+<tbody>
+<tr><td data-th="Частина generate-quiz"><code>name</code>, <code>description</code>, <code>metadata</code></td><td data-th="Claude Code">так</td><td data-th="Codex">так</td><td data-th="Cursor">так</td></tr>
+<tr><td data-th="Частина generate-quiz"><code>scripts/render.py</code>, <code>quiz.*.txt</code></td><td data-th="Claude Code">так</td><td data-th="Codex">так, якщо тіло каже, як їх запустити</td><td data-th="Cursor">так, так само</td></tr>
+<tr><td data-th="Частина generate-quiz"><code>allowed-tools</code></td><td data-th="Claude Code">дозвіл на хід</td><td data-th="Codex">не документовано</td><td data-th="Cursor">не документовано</td></tr>
+<tr><td data-th="Частина generate-quiz"><code>disable-model-invocation</code></td><td data-th="Claude Code">так</td><td data-th="Codex">через <code>agents/openai.yaml</code></td><td data-th="Cursor">так</td></tr>
+<tr><td data-th="Частина generate-quiz"><code>arguments</code>, <code>$lecture</code>, <code>!`…`</code>, <code>${CLAUDE_SKILL_DIR}</code></td><td data-th="Claude Code">так</td><td colspan="2" data-th="Codex">дійдуть до моделі буквальним текстом: правил і задачі вона не отримає</td></tr>
+</tbody></table></div>
+<p><b>Правило рішення.</b> Команда лише на Claude Code — користуйтеся розширеннями: детермінований рендер вартий прив'язки. Змішана команда — тримайте переносне ядро (скрипти + звичайні інструкції «запусти <code>scripts/render.py task &lt;лекція&gt;</code> з теки skill») і погоджуйтеся на зайвий хід моделі. Двох версій під одним ім'ям не тримайте: Codex однойменні skills не зливає і показує обидва, а що робить з ними Cursor, який читає обидві теки, документація не каже.</p>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">І що з них видно в прогонах</span></h2></div>
+<h3>Аргумент у <code>!`…`</code> — це текст shell-команди</h3>
+<p>Пробний skill з <code>allowed-tools: Bash(echo *)</code>, <code>arguments: [a, b]</code> і рядками <code>A: !`echo "[$a]"`</code>, <code>B: !`echo "[$b]"`</code>. Аргументи вставляються в команду <b>до</b> її виконання, тож захищає лише перевірка дозволів:</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Виклик</th><th>Результат</th></tr></thead>
+<tbody>
+<tr><td><code>/probe hello</code></td><td><code>A: [hello]</code>, <code>B: []</code> — незаповнений іменований аргумент став порожнім</td></tr>
+<tr><td><code>/probe hello</code>, у тілі <code>!`echo "[$0]" "[$1]"`</code></td><td>виклик скасовано: <code>A variable in this command can't be checked before it runs</code> — <code>$1</code> лишився в команді буквально</td></tr>
+<tr><td><code>/probe "$(id -un)" x</code></td><td><code>A: [&lt;user&gt;]</code> — команда з аргументу <b>виконалась</b>: read-only у робочій теці проходить перевірку</td></tr>
+<tr><td><code>/probe "$(touch pwned.txt)" x</code></td><td>скасовано: <code>touch … needs approval</code>; файл не створено</td></tr>
+<tr><td><code>/probe "$(head -c 18 /etc/hosts)" x</code></td><td>скасовано: читати можна лише в робочих теках сесії</td></tr>
+</tbody></table></div>
+<p>Звідси <code>'$lecture'</code> в одинарних лапках у generate-quiz: <code>$(…)</code> всередині не виконується. Аргумент з апострофом лапки закриє, тож останній рубіж однаково — перевірка дозволів, а найпростіший захист — не передавати аргументи в <code>!`…`</code> зовсім.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Що відбувається</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">Розмитий опис</td><td data-th="Що відбувається">1 спрацювання з 3 у нашому замірі; модель робить роботу без процедури</td><td data-th="Як правильно">що робить + «Use when» зі словами користувача; eval тригера з «майже тими самими» запитами</td></tr>
+<tr><td data-th="Помилка">Skill-енциклопедія</td><td data-th="Що відбувається">кожен рядок тіла — токени в кожному ході після виклику; після компакції лишаються перші 5 тис. токенів</td><td data-th="Як правильно">SKILL.md до 500 рядків як навігація; довідка — файлами поруч; головне — нагорі</td></tr>
+<tr><td data-th="Помилка">Секрети в skill</td><td data-th="Що відбувається">SKILL.md комітиться, вивід <code>!`…`</code> іде моделі й у транскрипт</td><td data-th="Як правильно">змінні середовища; <code>.env</code> у deny</td></tr>
+<tr><td data-th="Помилка">Широкі <code>allowed-tools</code></td><td data-th="Що відбувається"><code>Bash(python3 *)</code> — будь-який Python без запиту. Поле діє і в папці без довіри: у прогоні 2 allow-правила <code>settings.json</code> проігноровано, а дозволи skill спрацювали</td><td data-th="Як правильно">точний шлях через <code>${CLAUDE_SKILL_DIR}</code>; рев'ю <code>allowed-tools</code> у чужих репозиторіях; в організації — <code>allowManagedPermissionRulesOnly</code> (v2.1.282+)</td></tr>
+<tr><td data-th="Помилка">Модель сама збирає команду скрипта</td><td data-th="Що відбувається">v1 generate-quiz: Haiku запустив <code>python3 .claude/skills/…/render.py</code> відносним шляхом, правило з абсолютним <code>${CLAUDE_SKILL_DIR}</code> не збіглося, у <code>-p</code> — відмова, квіз без gate (<code>console/runs/user-invoked-v1.txt</code>)</td><td data-th="Як правильно">детермінована частина — через <code>!`…`</code> або «Run exactly this command»</td></tr>
+<tr><td data-th="Помилка">Skill у headless без дозволу</td><td data-th="Що відбувається">виклик Skill відхилено; модель читає SKILL.md через <code>cat</code> і виконує його без рендеру</td><td data-th="Як правильно"><code>--allowedTools "Skill(ім'я)"</code> або <code>/ім'я</code> на початку промпту</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">description</span><span class="h">для кого пишеться?</span></span><span class="b"><span class="t">Для моделі, що обирає</span><span class="d">що робить + коли вживати, у третій особі, ключова ситуація першою</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">disable-model-invocation</span><span class="h">що зникає?</span></span><span class="b"><span class="t">Опис і виклик моделлю</span><span class="d">лишається лише /ім'я; для дій з наслідками</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">allowed-tools</span><span class="h">обмежує інструменти?</span></span><span class="b"><span class="t">Ні, дозволяє без запиту</span><span class="d">на хід виклику; не залежить від довіри до теки</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">!`команда`</span><span class="h">коли виконується?</span></span><span class="b"><span class="t">До того, як модель побачить skill</span><span class="d">вивід замінює рядок; помилка чи не-allow скасовує виклик</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">$1 без аргументу</span><span class="h">що буде?</span></span><span class="b"><span class="t">Лишиться як є</span><span class="d">у тексті — буквально, у <code>!`…`</code> — скасований виклик; іменований стає порожнім</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">.agents/skills</span><span class="h">хто читає?</span></span><span class="b"><span class="t">Codex і Cursor</span><span class="d">Claude Code — ні; рішення — симлінк з .claude/skills</span></span></span></label>
+</div>
+</section>
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Команда хоче, щоб <code>/deploy</code> ніколи не запускався без явної команди людини. Що поставити у frontmatter?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span><code>user-invocable: false</code> — тоді skill не можна викликати випадково з меню</span></label><label class="opt ok"><input type="radio" name="q1"><span><code>disable-model-invocation: true</code> — модель не бачить опису і не може викликати skill</span></label><label class="opt"><input type="radio" name="q1"><span>порожній <code>description</code> — без опису модель не матиме за чим вирішити, коли skill потрібен</span></label><label class="opt"><input type="radio" name="q1"><span>порожній <code>allowed-tools</code> — без дозволених інструментів деплой не почнеться</span></label></div>
+    <div class="why yes">Так. Поле прибирає опис з контексту і блокує виклик через Skill tool; якщо модель спробує, Claude Code зупинить виклик і попросить не повторювати кроки іншим способом.</div>
+    <div class="why no"><code>user-invocable: false</code> робить навпаки: ховає skill від вас і лишає моделі. Без <code>description</code> Claude Code бере перший рядок тіла. <code>allowed-tools</code> лише дає дозволи без запиту й нічого не забороняє.</div></div>
+  <div class="q"><div class="qt">2. У SKILL.md є рядок <code>!`./scripts/lint.sh`</code>. Лінтер знайшов проблеми й завершився з кодом 1. Що отримає модель?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>вивід лінтера на місці рядка: код 1 для перевірок Claude Code вважає нормальним результатом</span></label><label class="opt"><input type="radio" name="q2"><span>SKILL.md без цього рядка й попередження про помилку команди в stderr сесії</span></label><label class="opt"><input type="radio" name="q2"><span>сам рядок як текст, і вона запустить лінтер власним викликом Bash</span></label><label class="opt ok"><input type="radio" name="q2"><span>нічого: виклик skill скасовано з <code>Shell command failed…</code>, вміст не надіслано</span></label></div>
+    <div class="why yes">Так. Ненульовий код скасовує весь виклик. Виняток для коду 1 є лише в пошукових команд і команд порівняння на кшталт <code>grep</code>; для власних перевірок дописуйте <code>|| true</code>.</div>
+    <div class="why no">Підстановка не пропускає рядок і не віддає його моделі як текст: команда, що впала, зупиняє виклик цілком. Виняток для коду 1 стосується лише пошукових команд і команд порівняння.</div></div>
+  <div class="q"><div class="qt">3. Ви пишете: <code>спершу онови changelog, потім /release</code>. Що станеться?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span>skill не запуститься напряму: ім'я посеред тексту лише дозволяє моделі його викликати</span></label><label class="opt"><input type="radio" name="q3"><span><code>/release</code> виконається одразу, а текст перед ним стане аргументом <code>$ARGUMENTS</code></span></label><label class="opt"><input type="radio" name="q3"><span>Claude Code відповість <code>Unknown command</code>: команда має стояти на початку повідомлення</span></label><label class="opt"><input type="radio" name="q3"><span>текст піде як промпт, а <code>/release</code> Claude Code запустить окремим повідомленням після нього</span></label></div>
+    <div class="why yes">Так. Напряму skill виконується, лише коли ім'я стоїть на початку повідомлення. Посеред тексту ім'я — дозвіл: модель сама вирішить за формулюванням, чи викликати skill.</div>
+    <div class="why no">Ім'я посеред тексту не стає командою і не викликає помилки: воно дозволяє моделі викликати skill у цій відповіді. Щоб згадати skill без дозволу, пишіть ім'я без слеша.</div></div>
+  <div class="q"><div class="qt">4. У репозиторії є <code>.claude/skills/deploy</code>, а в розробника — стара копія в <code>~/.claude/skills/deploy</code>. Що виконає <code>/deploy</code> у нього?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>проєктну версію: skill з репозиторію ближчий до сесії і тому має вищий пріоритет</span></label><label class="opt"><input type="radio" name="q4"><span>обидві, під іменами <code>/project:deploy</code> і <code>/user:deploy</code></span></label><label class="opt ok"><input type="radio" name="q4"><span>особисту: пріоритет enterprise &gt; personal &gt; project, без жодного попередження</span></label><label class="opt"><input type="radio" name="q4"><span>жодну: Claude Code покаже конфлікт імен і попросить перейменувати одну</span></label></div>
+    <div class="why yes">Так. Особистий skill перекриває проєктний. Для командних процедур з наслідками беріть ім'я з префіксом проєкту або розповсюджуйте через managed settings чи плагін.</div>
+    <div class="why no">Префікси отримують лише плагінні skills (<code>/плагін:ім'я</code>) і вкладені (<code>/apps/web:deploy</code>). Для рівнів enterprise, personal і project діє порядок enterprise &gt; personal &gt; project, і про перекриття ніхто не попереджає.</div></div>
+  <div class="q"><div class="qt">5. Конвеєр запускає <code>claude -p</code> з <code>--tools "Read,Bash"</code> у репозиторії з 30 skills. Чи платить він за список skills?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>так: поки skills лежать у <code>.claude/skills</code>, їхній список є в кожному запиті</span></label><label class="opt ok"><input type="radio" name="q5"><span>ні: без інструмента Skill список не надсилається (7&nbsp;818 проти 11&nbsp;352 токенів)</span></label><label class="opt"><input type="radio" name="q5"><span>лише за skills без <code>disable-model-invocation</code>, тож їх усі варто так позначити</span></label><label class="opt"><input type="radio" name="q5"><span>ні, але лише з <code>--disable-slash-commands</code>; без цього прапорця список іде завжди</span></label></div>
+    <div class="why yes">Так. Без Skill у <code>--tools</code> запит коштував 7&nbsp;818 токенів, з ним — 11&nbsp;352. <code>--disable-slash-commands</code> поверх <code>--tools "Read,Bash"</code> дав 7&nbsp;821: нічого не змінив.</div>
+    <div class="why no">Список skills — частина інструмента Skill: прибрали інструмент — зник і список. Заміри: 7&nbsp;818 токенів без Skill, 11&nbsp;352 з ним, 7&nbsp;821 з додатковим <code>--disable-slash-commands</code>.</div></div>
+  <div class="q"><div class="qt">6. Ви клонували чужий репозиторій і вперше запускаєте в ньому <code>claude -p</code>. Його skill має <code>allowed-tools: Bash(python3 *)</code>. Що з цим дозволом?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>не діє, доки ви не приймете діалог довіри до теки в інтерактивній сесії</span></label><label class="opt"><input type="radio" name="q6"><span>діє лише для скриптів усередині теки skill, бо шляхи в ньому відносні</span></label><label class="opt"><input type="radio" name="q6"><span>діє, тільки якщо такий самий allow є в <code>.claude/settings.json</code></span></label><label class="opt ok"><input type="radio" name="q6"><span>діє: у ході виклику будь-яка команда <code>python3</code> запускається без запиту</span></label></div>
+    <div class="why yes">Так. Довіра до теки не впливає на <code>allowed-tools</code>: у прогоні 2 Claude Code проігнорував allow-правила <code>settings.json</code> недовіреної теки, а дозволи skill спрацювали. Тому рев'ю <code>allowed-tools</code> — перед першим запуском у чужому репозиторії.</div>
+    <div class="why no">Документація прямо каже, що довіра до теки це поле не обмежує, і наш прогін це показав. Правило <code>Bash(python3 *)</code> не прив'язане до теки skill і не потребує дубля в налаштуваннях.</div></div>
+  <div class="q"><div class="qt">7. Ви скопіювали теку generate-quiz у <code>.agents/skills/</code> і відкрили проєкт у Codex. Що зламається першим?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q7"><span>рядки <code>!`render.py …`</code> і <code>$lecture</code> дійдуть до моделі буквальним текстом</span></label><label class="opt"><input type="radio" name="q7"><span>Codex не знайде skill, бо для проєктних skills шукає лише теку <code>.codex/skills</code></span></label><label class="opt"><input type="radio" name="q7"><span>Codex ігноруватиме <code>description</code> і викличе skill лише через <code>$generate-quiz</code></span></label><label class="opt"><input type="radio" name="q7"><span>Codex не завантажить skill, бо <code>name</code> у frontmatter має збігатися з <code>agents/openai.yaml</code></span></label></div>
+    <div class="why yes">Так. Підстановка аргументів, <code>!`…`</code> і <code>${CLAUDE_SKILL_DIR}</code> — розширення Claude Code. Решта переноситься: name, description, скрипти й файли.</div>
+    <div class="why no">Codex шукає саме <code>.agents/skills</code>, викликає skills і неявно за описом, а <code>agents/openai.yaml</code> необов'язковий. Ламається те, що не входить у стандарт: рендер аргументів і команд.</div></div>
+  <div class="q"><div class="qt">8. SKILL.md розрісся до 900 рядків, більшість — довідка API. Що зробити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>нічого: тіло вантажиться лише під час виклику, тож його розмір не впливає на ціну</span></label><label class="opt"><input type="radio" name="q8"><span>розбити довідку ланцюжком SKILL.md → api.md → details.md, щоб кожен файл був коротким</span></label><label class="opt ok"><input type="radio" name="q8"><span>лишити в SKILL.md огляд і кроки, довідку винести у файли поруч з посиланням з SKILL.md</span></label><label class="opt"><input type="radio" name="q8"><span>перенести суть довідки в <code>description</code>: опис завжди в контексті, тож модель її точно побачить</span></label></div>
+    <div class="why yes">Так. SKILL.md — до 500 рядків, посилання — на один рівень углиб, найважливіше — нагорі: після компакції від skill лишаються перші 5 тис. токенів.</div>
+    <div class="why no">Після виклику тіло лишається в розмові, і кожен рядок оплачується в кожному наступному ході. Вкладені посилання модель читає частково. Опис обрізається на 1&nbsp;536 символах і потрібен для вибору, а не для довідки.</div></div>
+  <div class="q"><div class="qt">9. У <code>allowed-tools</code> є <code>Bash(python3 ${CLAUDE_SKILL_DIR}/scripts/render.py *)</code>, а модель у <code>-p</code> запускає <code>python3 .claude/skills/x/scripts/render.py</code>. Що станеться?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Claude Code зведе обидва шляхи до абсолютного і пропустить команду без запиту</span></label><label class="opt ok"><input type="radio" name="q9"><span>правило не збіжеться, команда піде на звичайну перевірку і в <code>-p</code> отримає відмову</span></label><label class="opt"><input type="radio" name="q9"><span><code>${CLAUDE_SKILL_DIR}</code> в <code>allowed-tools</code> не підставляється, тому таке правило не діє ніколи</span></label><label class="opt"><input type="radio" name="q9"><span>команда пройде, бо <code>Read</code> в <code>allowed-tools</code> дозволяє й запуск файлів skill</span></label></div>
+    <div class="why yes">Так. Змінна підставляється в абсолютний шлях, а модель написала відносний. Саме так упав v1 generate-quiz; v2 виконує скрипт через <code>!`…`</code> і не покладається на те, як модель збере команду.</div>
+    <div class="why no"><code>${CLAUDE_SKILL_DIR}</code> у правилах <code>Bash(…)</code> підставляється, але збіг — текстовий: відносний шлях не дорівнює абсолютному. <code>Read</code> не дозволяє виконувати файли.</div></div>
+  <div class="q"><div class="qt">10. Правило команди: перед кожним комітом запускати <code>make check</code>, без винятків. Куди його покласти?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>у skill <code>commit</code> з <code>disable-model-invocation: true</code>, щоб модель ніколи не пропускала цей крок</span></label><label class="opt"><input type="radio" name="q10"><span>у skill з ім'ям <code>verify</code>: Claude Code сам викликає його перед кожним комітом</span></label><label class="opt"><input type="radio" name="q10"><span>окремим рядком у CLAUDE.md зі словом «завжди», бо CLAUDE.md є в кожній сесії</span></label><label class="opt ok"><input type="radio" name="q10"><span>у hook на подію коміту: його запускає harness, хоч би що пам'ятала модель</span></label></div>
+    <div class="why yes">Так. «Без винятків» — це hook: він виконується щоразу, коли настає подія. Skill і CLAUDE.md — інструкції, які модель може пропустити (урок 6.2).</div>
+    <div class="why no">Skill <code>verify</code> справді потрапляє в інструкції комітів, але це інструкція моделі, а не гарантія; так само CLAUDE.md. Гарантію дає лише hook.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>SKILL.md</td><td>Обов'язковий файл skill: YAML-frontmatter з першого рядка і Markdown-інструкції; тека дає ім'я команди.</td></tr>
+<tr><td>description</td><td>Опис «що робить + коли вживати», за яким модель обирає skill; у списку щоходу.</td></tr>
+<tr><td>model-invoked /<br>user-invoked</td><td>Skill, який викликає модель через Skill tool за описом, і той, що запускаєте ви через <code>/ім'я</code>; типово доступні обидва шляхи.</td></tr>
+<tr><td>disable-model-<br>invocation</td><td>Поле, що лишає skill лише для <code>/ім'я</code>: опису немає в контексті, модель викликати не може.</td></tr>
+<tr><td>allowed-tools</td><td>Інструменти без запиту дозволу в ході виклику; набір інструментів не обмежує, від довіри до теки не залежить.</td></tr>
+<tr><td>$ARGUMENTS</td><td>Аргументи після імені skill: увесь рядок, <code>$N</code> за позицією або іменовані з <code>arguments</code>.</td></tr>
+<tr><td>!`команда`</td><td><code>!`команда`</code> у SKILL.md: Claude Code виконує її до того, як модель побачить skill, і вставляє вивід.</td></tr>
+<tr><td>supporting<br>files</td><td>Скрипти, довідка, шаблони поруч із SKILL.md; читаються або виконуються лише за потреби.</td></tr>
+<tr><td>scope<br>precedence</td><td>Хто перемагає при однакових іменах: enterprise &gt; personal &gt; project, skill &gt; файл команди, плагіни — з префіксом.</td></tr>
+<tr><td>Agent Skills</td><td>Відкритий стандарт формату skill (agentskills.io): тека з SKILL.md, name і description, scripts/references/assets.</td></tr>
+<tr><td>/skill-doctor</td><td><code>/skill-doctor</code>: ціна кожного skill у контексті і частота використання, щоб вимкнути зайві.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Процедура, яку ви повторюєте, — у skill</h3>
+<p>Знайдіть у своєму проєкті процедуру, яку ви чи команда пояснювали агентові щонайменше двічі. Напишіть для неї SKILL.md з обґрунтуванням кожного поля, винесіть детерміновану частину в скрипт, виміряйте тригер на 6 запитах (3 мають спрацювати, 3 «майже ті самі» — ні) і поясніть, що свідомо не поклали в skill.</p>
+<h3>2. Аудит чужого skill і його переносності</h3>
+<p>Візьміть skill з публічного репозиторію (наприклад, anthropics/skills) або від колеги. Оцініть опис, розмір, дозволи, команди з аргументами й секрети, перепишіть опис і визначте, що з skill переживе перенесення в Codex і Cursor.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code — Extend Claude with skills</a><span>злиття команд зі skills, frontmatter, підстановки, <code>!`…`</code>, області й пріоритети, <code>/skill-doctor</code>, eval і усунення несправностей</span></li>
+<li><a href="https://code.claude.com/docs/en/commands" target="_blank" rel="noopener">Claude Code — Commands</a><span>усі вбудовані команди і bundled skills, позначені як Skill</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run programmatically</a><span>skills і команди в <code>-p</code>, bare mode без skills</span></li>
+<li><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code — Permissions</a><span>правила <code>Skill(ім'я)</code>, <code>Bash(…)</code>, робочі теки</span></li>
+<li><a href="https://code.claude.com/docs/en/plugin-evals" target="_blank" rel="noopener">Claude Code — plugin evals</a><span><code>claude plugin eval</code> з грейдером <code>tool_used: Skill</code> для вимірювання тригера</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices" target="_blank" rel="noopener">Anthropic — Skill authoring best practices</a><span>опис у третій особі, ступені свободи, 500 рядків, посилання на один рівень, скрипти, чекліст</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview" target="_blank" rel="noopener">Anthropic — Agent Skills overview</a><span>як працюють skills у продуктах Claude і API; безпека: лише з довірених джерел</span></li>
+<li><a href="https://agentskills.io/specification" target="_blank" rel="noopener">Agent Skills — Specification</a><span>поля стандарту, обмеження name/description, теки, валідація <code>skills-ref</code></span></li>
+<li><a href="https://agentskills.io/skill-creation/optimizing-descriptions" target="_blank" rel="noopener">Agent Skills — Optimizing skill descriptions</a><span>eval тригера: ~20 запитів, 3 прогони, поріг 0,5, поділ 60/40</span></li>
+<li><a href="https://agentskills.io/clients" target="_blank" rel="noopener">Agent Skills — Client Showcase</a><span>46 клієнтів на 15.10.2026</span></li>
+<li><a href="https://learn.chatgpt.com/docs/build-skills" target="_blank" rel="noopener">Codex — Build skills</a><span><code>.agents/skills</code>, <code>$ім'я</code>, <code>agents/openai.yaml</code>, бюджет списку 2%</span></li>
+<li><a href="https://cursor.com/docs/skills" target="_blank" rel="noopener">Cursor — Agent Skills</a><span>теки, поля, Custom Mode, <code>/migrate-to-skills</code></span></li>
+<li><a href="https://github.com/anthropics/skills" target="_blank" rel="noopener">anthropics/skills</a><span>приклади skills і skill-creator</span></li>
+<li><a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills" target="_blank" rel="noopener">Anthropic — Equipping agents for the real world with Agent Skills</a><span>16.10.2025 · навіщо skills і поступове розкриття</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 6.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 6.1 · Senomi<br><br><a href="lesson-28.html">← Урок 5.5</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-30.html">Урок 6.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 5.3. Fine-tuning, prompting чи RAG: три способи адаптувати модель</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 5.3 · Модуль 5</div>
+<h1>Fine-tuning, prompting чи RAG: три способи адаптувати модель</h1>
+<p class="lead">Модель не знає ваших документів і не пише у вашому форматі: це можна виправити промптом, контекстом, пошуком, інструментами або донавчанням, і кожен спосіб змінює щось своє. Розбираємо, що дає кожен важіль, що з них доступне для Claude на 15.10.2026, і перевіряємо вибір двома справжніми експериментами.</p>
+<div class="hero-meta"><span class="chip">Prompt і Context Engineering: повторюваний результат</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Іноді найпростіше рішення — найкраще. Якщо ваша база знань менша за 200 000 токенів (близько 500 сторінок матеріалу), можна просто включити всю базу знань у промпт, без RAG чи подібних методів.</p><cite>Anthropic, «Introducing Contextual Retrieval», 19.09.2024 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 15 розділів</summary><nav class="toc"><a href="#levers"><b>01</b>Чотири важелі і п&#x27;ятий</a><a href="#finetune"><b>02</b>Fine-tuning Claude</a><a href="#fewshot"><b>03</b>Експеримент 1: правила чи приклади</a><a href="#long-vs-rag"><b>04</b>Експеримент 2: увесь корпус чи RAG</a><a href="#rag-min"><b>05</b>Мінімум RAG для рішення</a><a href="#tree"><b>06</b>Дерево рішень</a><a href="#scenarios"><b>07</b>Сценарії</a><a href="#hybrid"><b>08</b>Гібриди</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#mistakes"><b>10</b>Типові помилки</a><a href="#practice"><b>11</b>Практика</a><a href="#quiz"><b>12</b>Квіз</a><a href="#terms"><b>13</b>Терміни уроку</a><a href="#homework"><b>14</b>Домашнє завдання</a><a href="#resources"><b>15</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розкласти будь-яку проблему якості на дефіцит <b>знань</b> чи <b>поведінки</b> і підібрати під неї важіль: промпт, контекст, RAG, інструменти чи fine-tuning;</li>
+    <li>пояснити, що з донавчання доступне для моделей Claude на 15.10.2026 і що з цього випливає для архітектури;</li>
+    <li>вирішити «весь корпус у контекст чи RAG» за розміром корпусу, типом питань і кешем, а не за модою;</li>
+    <li>налаштувати формат виводу правилами й прикладами і перевірити його кодом;</li>
+    <li>записати рішення про адаптацію як ADR і обґрунтувати його власними вимірами.</li>
+  </ul>
+</div>
+
+<section class="sec" id="levers">
+<div class="sec-h"><span class="num">01</span><h2>Чотири важелі і п'ятий<span class="sub">Що саме ви змінюєте</span></h2></div>
+<p>Модель відповідає погано з двох різних причин: <b>не знає</b> потрібних фактів (ваших лекцій, регламенту, цін) або <b>не так поводиться</b> (формат, стиль, тон, межі довжини). Важелі адаптації лікують різне, тому першим кроком є діагноз з eval-набору, а не вибір технології.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Важіль</th><th>Що змінює</th><th>Де ціна</th><th>Як оновити</th><th>Що потрібно</th></tr></thead>
+<tbody>
+<tr><td data-th="Важіль"><b>Промпт</b>: інструкції + приклади (few-shot)</td><td data-th="Що змінює">Поведінку: формат, стиль, тон</td><td data-th="Де ціна">Токени інструкцій у кожному запиті; кешуються</td><td data-th="Як оновити">Правка тексту, діє з наступного запиту</td><td data-th="Що потрібно">3–5 прикладів, eval-набір</td></tr>
+<tr><td data-th="Важіль"><b>Усе в контекст</b> (long context + кеш)</td><td data-th="Що змінює">Знання: модель бачить увесь корпус</td><td data-th="Де ціна">Корпус у кожному запиті; з кешу — 0,1× ціни входу</td><td data-th="Як оновити">Замінили файл — наступний запит знає</td><td data-th="Що потрібно">Корпус до ~200 тис. токенів</td></tr>
+<tr><td data-th="Важіль"><b>RAG</b> (пошук під час запиту)</td><td data-th="Що змінює">Знання: лише знайдені фрагменти</td><td data-th="Де ціна">Наперед — індексація; на запит — пошук і кілька тисяч токенів</td><td data-th="Як оновити">Переіндексувати змінений документ</td><td data-th="Що потрібно">Chunking, індекс, оцінка якості пошуку</td></tr>
+<tr><td data-th="Важіль"><b>Fine-tuning</b> (зміна ваг)</td><td data-th="Що змінює">Поведінку; нові факти засвоює погано</td><td data-th="Де ціна">Наперед — дані й навчання; на запит — коротший промпт</td><td data-th="Як оновити">Нове навчання на кожну зміну</td><td data-th="Що потрібно">Сотні–тисячі пар «промпт → ідеальна відповідь»</td></tr>
+<tr><td data-th="Важіль"><b>Інструменти / агент</b></td><td data-th="Що змінює">Живі дані і дії у світі</td><td data-th="Де ціна">Виклики й ходи циклу на кожен запит</td><td data-th="Як оновити">Реальний час: джерело істини поза моделлю</td><td data-th="Що потрібно">API або MCP-сервер, дозволи (модулі 2 і 7)</td></tr>
+</tbody></table></div>
+<p>Звідси робоче правило: <b>знання — у контекст, поведінка — у промпт</b>, а ваги чіпають, коли промпт вичерпано. Для знань воно має пряме підтвердження. Ovadia et al. (2023) порівняли донавчання на текстах і RAG на однакових фактах: «unsupervised fine-tuning дає певне покращення, але RAG стабільно його перевершує», причому і для знань, які модель бачила під час навчання, і для зовсім нових. Автори зазначають, що нові факти модель засвоює з ваг лише тоді, коли бачить <b>багато різних формулювань того самого факту</b>, тобто для одного регламенту доведеться синтезувати сотні перефразувань.</p>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Ще у статті, яка дала назву RAG (Lewis et al., травень 2020), сформульовано дві речі, яких не дають знання у вагах: <b>джерело</b> відповіді і <b>оновлення</b> знань без перенавчання. Для Lectern перше — це вимога точності цитат з уроку 0.2: факт з ваг неможливо перевірити за сторінкою PDF, факт з контексту — можна.</p>
+</div>
+</section>
+
+<section class="sec" id="finetune">
+<div class="sec-h"><span class="num">02</span><h2>Fine-tuning Claude<span class="sub">Що кажуть документи на 15.10.2026</span></h2></div>
+<p>Глосарій документації Claude:</p>
+<blockquote class="q-src">
+<p>Claude API наразі не пропонує fine-tuning, але зверніться до свого контакту в Anthropic, якщо хочете дослідити цю можливість.</p>
+<p class="orig">“The Claude API does not currently offer fine-tuning, but ask your Anthropic contact if you are interested in exploring this option.”</p>
+<cite>Claude Docs, Glossary, станом на 15.10.2026</cite>
+</blockquote>
+<ul>
+<li><b>Amazon Bedrock.</b> Сторінка «Supported models and Regions for fine-tuning» як єдину модель Anthropic називає <b>Claude 3 Haiku</b> (<code>anthropic.claude-3-haiku-20240307-v1:0:200k</code>, регіон us-west-2). Картка цієї моделі в тій самій документації вказує <b>EOL 10.09.2026</b> для us-west-2 та інших регіонів. Донавчання стартувало як прев'ю 10.07.2024, загальний доступ — 01.11.2024.</li>
+<li><b>Claude API.</b> <code>claude-3-haiku-20240307</code> знято з обслуговування 20.04.2026, запити до неї повертають помилку.</li>
+<li><b>Що обіцяв той запуск.</b> Анонс 2024 року: «Consistent, brand-aligned formatting»; у прикладі з модерацією контенту точність класифікації зросла з 81,5% до 99,6%, а токенів на запит стало на 85% менше. Усе це <b>поведінка</b>: формат, класифікація, коротший промпт. Нових фактів у переліку переваг немає.</li>
+</ul>
+<p>Отже, для актуальних моделей Claude (Haiku, Sonnet, Opus 5.5, Fable 5.1) публічного шляху змінити ваги немає. Адаптація зводиться до промпту, контексту, пошуку й інструментів. Якщо донавчання справді потрібне (мільйони однотипних класифікацій, жорсткий стиль на мінімумі токенів, модель на власному залізі), це означає <b>іншу модель</b>:</p>
+<ul>
+<li>та сама сторінка Bedrock серед моделей для fine-tuning перелічує Amazon Nova і Meta Llama 3.1 / 3.2;</li>
+<li>відкриті моделі донавчають на власному залізі. LoRA (Hu et al., 2021) навчає малі матриці поверх замороженої моделі: порівняно з повним донавчанням GPT-3 175B — у 10 000 разів менше параметрів для навчання, утричі менше пам'яті GPU, без додаткової затримки інференсу.</li>
+</ul>
+<p>Ціна такого рішення: свій eval-набір, підготовлені дані, а з кожною новою базовою моделлю — повторне навчання. Промпт переноситься на нову модель за день, ваги — ні.</p>
+<p>Документація Anthropic теж не починає з технік. Сторінка «Prompt engineering overview» спершу вимагає чітких критеріїв успіху й способу <b>емпірично</b> їх перевіряти і застерігає: «не кожен критерій успіху чи провалений eval найкраще вирішується prompt engineering-ом; наприклад, затримку й вартість іноді легше поліпшити вибором іншої моделі». Про приклади — «Prompting best practices»:</p>
+<blockquote class="q-src">
+<p>Приклади — один з найнадійніших способів керувати форматом, тоном і структурою виводу Claude. […] Включайте 3–5 прикладів для найкращих результатів.</p>
+<p class="orig">“Examples are one of the most reliable ways to steer Claude's output format, tone, and structure. … Include 3–5 examples for best results.”</p>
+<cite>Claude Docs, Prompting best practices, станом на 15.10.2026</cite>
+</blockquote>
+<div class="note warn"><span class="lbl">Пастка старих гайдів</span>
+<p>Сторінка «Legal summarization» у тих самих docs досі радить «Fine-tune Claude to learn from your dataset» з приміткою, що це доступно лише через Bedrock, і посиланням на анонс для Claude 3 Haiku. Перш ніж планувати донавчання за статтею, перевірте, для якої моделі вона писалася і чи ця модель ще існує.</p>
+</div>
+</section>
+
+<section class="sec" id="fewshot">
+<div class="sec-h"><span class="num">03</span><h2>Експеримент 1: правила чи приклади<span class="sub">Флешкартка у форматі курсу</span></h2></div>
+<p>Поведінкова задача з цього ж курсу: за терміном написати картку у форматі <code>cards.json</code>. Haiku 5.5 у headless-режимі Claude Code, інструменти вимкнено, системний промпт власний. Шість термінів (rate limit, feature flag, canary-реліз, dead letter queue, semantic versioning, idempotency key), по два запуски, чотири варіанти системного промпту — 48 запусків:</p>
+<ul>
+<li><b>zero</b> — одне речення: «склади картку у форматі карток курсу: JSON з полями front, back, notes, examples, detail»;</li>
+<li><b>rules</b> — те саме + сім явних правил (лише JSON без <code>```</code>, рівно п'ять полів, back з малої літери без крапки до 160 символів, notes до 90, два приклади, detail з 2–4 розділами <code>## </code>);</li>
+<li><b>few</b> — одне речення + три справжні картки курсу в <code>&lt;examples&gt;</code>;</li>
+<li><b>rules+few</b> — правила і ті самі приклади.</li>
+</ul>
+<p>Сім перевірок рахує код, а не модель. Окремо рахуємо маркер «домашнього стилю», про який правила мовчать: detail починається з <code>## Значення</code>, як у двох з трьох прикладів.</p>
+<pre class="code" data-lang="python"><span class="k">def</span> checks(term, out):
+    <span class="k">try</span>:
+        c = json.loads(out)
+    <span class="k">except</span> ValueError:
+        <span class="k">return</span> {<span class="s">"json"</span>: <span class="k">False</span>}
+    ok = <span class="k">lambda</span> f: isinstance(c.get(f), str) <span class="k">and</span> c[f] != <span class="s">""</span>
+    <span class="k">return</span> {
+        <span class="s">"json"</span>: <span class="k">True</span>,
+        <span class="s">"keys"</span>: set(c) == {<span class="s">"front"</span>, <span class="s">"back"</span>, <span class="s">"notes"</span>, <span class="s">"examples"</span>, <span class="s">"detail"</span>},
+        <span class="s">"front"</span>: c.get(<span class="s">"front"</span>) == term,
+        <span class="s">"back"</span>: ok(<span class="s">"back"</span>) <span class="k">and</span> c[<span class="s">"back"</span>][:<span class="n">1</span>].islower() <span class="k">and</span> <span class="k">not</span> c[<span class="s">"back"</span>].endswith(<span class="s">"."</span>) <span class="k">and</span> len(c[<span class="s">"back"</span>]) &lt;= <span class="n">160</span>,
+        <span class="s">"notes"</span>: ok(<span class="s">"notes"</span>) <span class="k">and</span> <span class="k">not</span> c[<span class="s">"notes"</span>].endswith(<span class="s">"."</span>) <span class="k">and</span> len(c[<span class="s">"notes"</span>]) &lt;= <span class="n">90</span>,
+        <span class="s">"examples"</span>: isinstance(c.get(<span class="s">"examples"</span>), list) <span class="k">and</span> len(c[<span class="s">"examples"</span>]) == <span class="n">2</span>,
+        <span class="s">"detail"</span>: ok(<span class="s">"detail"</span>) <span class="k">and</span> c[<span class="s">"detail"</span>].startswith(<span class="s">"## "</span>) <span class="k">and</span> <span class="n">2</span> &lt;= c[<span class="s">"detail"</span>].count(<span class="s">"## "</span>) &lt;= <span class="n">4</span>,
+    }</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/fewshot</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 summarize.py</span>
+умова      n 7/7 -``` Знач  вхід       $
+zero      12   0    0    0  1019 0.00079
+  без ```: front 11 · back 12 · notes 12
+           examples 10 · detail 12
+rules     12  12   12    0  1213 0.00069
+few       12   3    4   12  2332 0.00073
+  без ```: back 3 · notes 7
+rules+few 12  12   12   12  2527 0.00076</pre>
+<div class="cap">реальний вивід · 15.10.2026 · Claude Code 2.1.300 · claude-haiku-5-5 · перед цим 48 запусків run_cards.py &lt;умова&gt; &lt;прогін&gt;, умови паралельно · «7/7» — усі перевірки, «-```» — після зняття огорожі коду, «Знач» — detail з ## Значення, «вхід» — токенів на запит, $ — total_cost_usd на картку · сирі дані в console/fewshot/</div></div>
+<ol class="steps">
+<li><b>Без правил і прикладів формат не вгадується.</b> Усі 12 карток zero прийшли в огорожі <code>```json</code>, і навіть після її зняття front у 11 з 12 перетворився на «Rate limit (обмеження частоти запитів)», а back почався з великої літери і закінчився крапкою. Зміст був добрий, але без формату його не використати.</li>
+<li><b>Приклади передали стиль, але не межі.</b> Усі 12 карток few почали detail з <code>## Значення</code>, хоча це ніде не сказано. Водночас notes вийшли довшими за 90 символів у 7 з 12, back довшим за 160 у 3, а 3 картки знову прийшли в огорожі. Приклад показує, як виглядає типовий результат, але межу, якої він сам не порушує, з нього не вивести.</li>
+<li><b>Правила виконані 12 з 12</b>, але <code>## Значення</code> — 0 з 12: те, чого не записали, модель не вгадала.</li>
+<li><b>Правила й приклади разом — 12/12 і 12/12.</b> Вхід зріс з 1,0 до 2,5 тис. токенів, а ціна картки не зросла ($0,00076 проти $0,00079 у zero): вихід у Haiku 5.5 у 5 разів дорожчий за вхід, а без рамок модель пише довше: 924 токени виходу проти 785.</li>
+</ol>
+<div class="note fact"><span class="lbl">Що це доводить і чого ні</span>
+<p>12 запусків на умову, одна модель, одна задача: це не статистика, а приклад механізму. Він збігається з розподілом ролей: <b>приклади задають стиль, правила задають межі, а код перевіряє межі</b>. Конверт JSON надійніше закривають structured outputs (урок 2.1). Fine-tuning розв'язав би цю задачу тисячами карток і новим навчанням після кожної зміни стилю, а промпт розв'язав її за 2,5 тис. токенів.</p>
+</div>
+</section>
+
+<section class="sec" id="long-vs-rag">
+<div class="sec-h"><span class="num">04</span><h2>Експеримент 2: увесь корпус чи RAG<span class="sub">Поріг 200 тис. токенів на практиці</span></h2></div>
+<p>Поріг з епіграфа Anthropic супроводжує застереженням: prompt caching робить підхід «усе в промпт» «значно швидшим і дешевшим», але з ростом бази знань потрібне масштабованіше рішення. Перевіримо на корпусі, який модель не могла бачити під час навчання.</p>
+<p><b>Корпус.</b> Чотири лекції про вигадане озеро Світанок. Факти (глибини, дати, види, правила) написано вручну, прозу навколо них розгорнула Haiku 5.5 із забороною додавати нові факти; скрипт перевірив, що в тексті немає чисел поза списком фактів. Разом 33 908 символів, 14,5 тис. токенів, 38 розділів. Лекція 4 містить пастку: застарілу глибину 21 м з експедиції 1934 року.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Питання</th><th>Тип</th><th>Де відповідь</th></tr></thead>
+<tbody>
+<tr><td data-th="Питання">Q1. Яка максимальна глибина і де вона?</td><td data-th="Тип">ключове слово</td><td data-th="Де відповідь">лекція 1 (і пастка в лекції 4)</td></tr>
+<tr><td data-th="Питання">Q2. У які місяці на озері не можна рибалити?</td><td data-th="Тип">перефразування</td><td data-th="Де відповідь">лекція 2: «нерестова заборона… вилов»</td></tr>
+<tr><td data-th="Питання">Q3. Наскільки погіршилась прозорість і що названо причиною?</td><td data-th="Тип">дві лекції</td><td data-th="Де відповідь">лекції 1 і 3</td></tr>
+<tr><td data-th="Питання">Q4. Перелічіть усі інвазійні види</td><td data-th="Тип">агрегація</td><td data-th="Де відповідь">три розділи у двох лекціях</td></tr>
+<tr><td data-th="Питання">Q5. Скільки коштує вхід на пляж Піщаний?</td><td data-th="Тип">відповіді немає</td><td data-th="Де відповідь">пляж згадано, ціну — ні</td></tr>
+</tbody></table></div>
+<p>Обидві умови отримують ту саму інструкцію: відповідати лише з матеріалів, а якщо відповіді немає — так і сказати. <b>Long context</b> кладе весь корпус у системний промпт, питання йде останнім, як радять docs для довгих документів. <b>RAG</b> віддає моделі три найкращі розділи за BM25. Увесь ретривер:</p>
+<pre class="code" data-lang="python"><span class="cm"># Tiny keyword RAG: split lectures into "## " sections, rank with BM25, return top-k.</span>
+<span class="k">import</span> glob, json, re, sys
+<span class="k">from</span> rank_bm25 <span class="k">import</span> BM25Okapi
+
+<span class="k">def</span> tokenize(text, stem=<span class="k">False</span>):
+    words = re.findall(<span class="s">r"\w+"</span>, text.lower())
+    <span class="k">return</span> [w[:<span class="n">5</span>] <span class="k">if</span> stem <span class="k">else</span> w <span class="k">for</span> w <span class="k">in</span> words]  <span class="cm"># stem=True: crude prefix "stemming"</span>
+
+<span class="k">def</span> load_chunks():
+    chunks = []
+    <span class="k">for</span> path <span class="k">in</span> sorted(glob.glob(<span class="s">"L*.md"</span>)):
+        lecture, *sections = open(path).read().split(<span class="s">"\n## "</span>)
+        title = lecture.splitlines()[<span class="n">0</span>].lstrip(<span class="s">"# "</span>)
+        chunks += [{<span class="s">"lecture"</span>: title, <span class="s">"text"</span>: <span class="s">"## "</span> + s.strip()} <span class="k">for</span> s <span class="k">in</span> sections]
+    <span class="k">return</span> chunks
+
+<span class="k">def</span> retrieve(query, k=<span class="n">3</span>, stem=<span class="k">False</span>):
+    chunks = load_chunks()
+    bm25 = BM25Okapi([tokenize(c[<span class="s">"lecture"</span>] + <span class="s">" "</span> + c[<span class="s">"text"</span>], stem) <span class="k">for</span> c <span class="k">in</span> chunks])
+    scores = bm25.get_scores(tokenize(query, stem))
+    top = sorted(range(len(chunks)), key=<span class="k">lambda</span> i: -scores[i])[:k]
+    <span class="k">return</span> [dict(chunks[i], score=round(float(scores[i]), <span class="n">2</span>)) <span class="k">for</span> i <span class="k">in</span> top]</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch/rag</span></div>
+<pre><span class="ps">$ </span><span class="c">python summarize.py</span>
+умова         ok  вхід    $ CC   $ API
+весь курс  10/10 14461 0.00073 0.00149
+BM25 top-3  6/10  2251 0.00055 0.00026
+  помилки: Q2/r1 Q4/r1 Q2/r2 Q4/r2
+BM25 top-8  5/5   4065 0.00131 0.00044
+весь курс + кеш 5 хв, API:
+  1-ше питання $0.00186, далі $0.00019
+мс: курс 1463 · top-3 1322 · top-8 1279</pre>
+<div class="cap">реальний вивід · 15.10.2026 · Claude Code 2.1.300 · claude-haiku-5-5 · rank-bm25 0.2.2 · перед цим run.py long|rag &lt;k&gt; &lt;прогін&gt;: по два прогони long і top-3, один top-8 · «ok» перевіряє код за обов'язковими фрагментами відповіді · «вхід» — усі вхідні токени, разом з кешованими · мс — середня тривалість запиту · «$ CC» — total_cost_usd Claude Code, який сам кешує промпт на годину (запис — 2× ціни входу); «$ API» — ті самі токени за прайсом Haiku 5.5 без кешу · сирі дані в console/rag/</div></div>
+<ol class="steps">
+<li><b>Q2 — розрив словника.</b> У питанні «місяці», «рибалити», у тексті «нерестова заборона», «вилов», «з 1 квітня по 31 травня». Потрібний розділ — лише шостий у рейтингу, а першими йдуть розділи, де збіглися «озері», «на», «не». Грубий стемінг (перші 5 літер слова) не підняв його в топ-3. Модель чесно відповіла «У матеріалах цього немає», і це <b>хибна відсутність</b>: порожній пошук сказав «немає» про факт, який у корпусі є.</li>
+<li><b>Q4 — агрегація.</b> Інвазійні види розкидані по трьох розділах; у топ-3 потрапили два. Відповідь: «В матеріалах згадано два інвазійні види». Вона впевнена, неповна і виглядає повною. Питання «перелічіть усі», «скільки разів», «порівняйте всі» — структурно слабке місце RAG з фіксованим k; для них потрібен увесь корпус, структурований індекс або агент, що шукає кілька разів.</li>
+<li><b>Top-8 виправив обидва</b> за 4,1 тис. токенів, що все ще в 3,5 раза менше за корпус. Але k підібрано під п'ять відомих питань; на незнайомих гарантії немає.</li>
+<li><b>Q1 пройшов в обох умовах</b>, хоча пастка з 21 м потрапила і в топ-3: лекція 4 сама каже, що значення застаріло. Розділ, вирваний без такого речення, дав би моделі дві «правди».</li>
+</ol>
+<figure class="fig">
+<div class="bars">
+  <div class="bar p"><span class="k">Long context без кешу</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">$0,00149</b></span></div>
+  <div class="bar"><span class="k">BM25 top-8</span><span class="tr"><i style="--v:29.5%"></i><b style="--v:29.5%">$0,00044</b></span></div>
+  <div class="bar m"><span class="k">BM25 top-3 (6/10 правильних)</span><span class="tr"><i style="--v:17.4%"></i><b style="--v:17.4%">$0,00026</b></span></div>
+  <div class="bar t"><span class="k">Long context з кешем, 2-ге і далі питання</span><span class="tr"><i style="--v:12.8%"></i><b style="--v:12.8%">$0,00019</b></span></div>
+</div>
+<figcaption>Ціна одного питання через API за прайсом Haiku 5.5 (промпт до 100 тис. токенів: вхід $0,10, запис кешу на 5 хв $0,125, читання $0,01, вихід $0,50 за MTok), розраховано з виміряних токенів. Перше питання з кешем коштує $0,00186, бо записує корпус. Затримка в усіх умовах однакова: 1,3–1,5 с.</figcaption>
+</figure>
+<div class="key"><h4>Висновок для корпусу до ~100–200 тис. токенів</h4>
+<p>Увесь корпус у кешованому промпті дав <b>10/10</b> відповідей, а кожне наступне питання коштувало менше, ніж RAG без кешу. RAG тут додав роботу (chunking, індекс, вибір k) і дві тихі помилки. Межа рухається від моделі: Haiku 5.5 за промпт понад 100 тис. токенів бере в 5 разів більше (урок 1.5), а context rot на сотнях тисяч токенів реальний (урок 1.3). Тому 200 тис. — це стеля, а не ціль: поріг перемикання міряють на власному eval-наборі.</p>
+</div>
+</section>
+
+<section class="sec" id="rag-min">
+<div class="sec-h"><span class="num">05</span><h2>Мінімум RAG для рішення<span class="sub">Чому пошук промахується і що дає Contextual Retrieval</span></h2></div>
+<p>Класичний конвеєр: розрізати документи на фрагменти (chunks), проіндексувати їх, на кожен запит знайти top-k і вставити в промпт. Індекс буває <b>лексичний</b> (BM25: збіг слів з урахуванням їхньої рідкісності й довжини фрагмента) або <b>семантичний</b> (embeddings, урок 1.2). Вони помиляються по-різному. BM25 знаходить точний рядок на кшталт коду помилки «TS-999», де embedding-модель знайде «щось про коди помилок», але провалює перефразування, як наше Q2. Embeddings ловлять зміст, але можуть пропустити рідкісний ідентифікатор. Тому продакшн-RAG зазвичай <b>гібридний</b>.</p>
+<p>Друга системна вада — фрагмент губить контекст. Приклад Anthropic: фрагмент «The company's revenue grew by 3% over the previous quarter» не каже, яка компанія і який квартал, тож ні пошук, ні модель не прив'яжуть його до питання про ACME у Q2 2023. <b>Contextual Retrieval</b> (Anthropic, 19.09.2024) перед індексацією просить модель дописати до кожного фрагмента 50–100 токенів пояснення («This chunk is from an SEC filing on ACME corp's performance in Q2 2023…») і індексує вже доповнений текст, і в embeddings, і в BM25. Результати статті — частка невдалих пошуків серед top-20 (1 − recall@20), базова — 5,7%:</p>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Конфігурація</th><th>Невдалих пошуків</th></tr></thead>
+<tbody>
+<tr><td>Contextual Embeddings</td><td>3,7% (−35%)</td></tr>
+<tr><td>+ Contextual BM25</td><td>2,9% (−49%)</td></tr>
+<tr><td>+ reranking</td><td>1,9% (−67%)</td></tr>
+</tbody></table></div>
+<p>Одноразова ціна контекстуалізації в статті — $1,02 за мільйон токенів документів: документ кешується, і кожен його фрагмент дописується з кешу. Там само: передавати моделі top-20 фрагментів ефективніше, ніж top-10 чи top-5. Це той самий висновок, що й наш top-3 → top-8: на невеликому k пошук губить потрібне.</p>
+<p>Для джерел у відповіді Claude API має блоки <code>search_result</code>: ваші фрагменти передаються з <code>source</code> і <code>title</code>, і модель цитує їх так само, як результати вебпошуку. За документацією, їх підтримують усі активні моделі, крім Claude Haiku 3, без beta-заголовка. Chunking, гібридне ранжування, reranking і evals пошуку — тема уроку 9.2. Тут достатньо знати, що RAG — це окремий пайплайн з власними метриками, а не прапорець у запиті.</p>
+</section>
+
+<section class="sec" id="tree">
+<div class="sec-h"><span class="num">06</span><h2>Дерево рішень<span class="sub">Від дефіциту до важеля</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 520" role="img" aria-label="Дерево рішень: знання — інструменти, весь корпус у контекст або RAG; поведінка — правила й приклади, fine-tuning лише якщо evals провалені">
+  <defs>
+    <marker id="t26a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="t26b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="36" rx="10" class="bx a"/>
+  <text x="180" y="31" text-anchor="middle" class="tx b">Бракує знань: факти, документи</text>
+  <path d="M108 44 V 56" class="ln" marker-end="url(#t26b)"/>
+  <rect x="8" y="60" width="200" height="52" rx="10" class="bx m"/>
+  <text x="108" y="82" text-anchor="middle" class="tx">Потрібні живі дані</text>
+  <text x="108" y="100" text-anchor="middle" class="tx">або дія у світі?</text>
+  <path d="M208 86 H 236" class="ln a" marker-end="url(#t26a)"/>
+  <text x="222" y="80" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="60" width="112" height="52" rx="10" class="bx t"/>
+  <text x="296" y="82" text-anchor="middle" class="tx b">Tools / агент</text>
+  <text x="296" y="100" text-anchor="middle" class="tx s">API, MCP, пошук</text>
+  <path d="M108 112 V 126" class="ln" marker-end="url(#t26b)"/>
+  <text x="122" y="124" class="tx s">ні</text>
+  <rect x="8" y="130" width="200" height="52" rx="10" class="bx m"/>
+  <text x="108" y="152" text-anchor="middle" class="tx">Корпус ≤ 200 тис. токенів</text>
+  <text x="108" y="170" text-anchor="middle" class="tx">(Haiku 5.5: ≤ 100 тис.)?</text>
+  <path d="M208 156 H 236" class="ln a" marker-end="url(#t26a)"/>
+  <text x="222" y="150" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="130" width="112" height="52" rx="10" class="bx t"/>
+  <text x="296" y="152" text-anchor="middle" class="tx b">Усе в контекст</text>
+  <text x="296" y="170" text-anchor="middle" class="tx s">+ prompt caching</text>
+  <path d="M108 182 V 196" class="ln" marker-end="url(#t26b)"/>
+  <text x="122" y="194" class="tx s">ні</text>
+  <rect x="8" y="200" width="200" height="52" rx="10" class="bx t"/>
+  <text x="108" y="222" text-anchor="middle" class="tx b">RAG: BM25 + embeddings</text>
+  <text x="108" y="240" text-anchor="middle" class="tx s">контекст фрагментів, top-20</text>
+  <rect x="8" y="276" width="344" height="36" rx="10" class="bx p"/>
+  <text x="180" y="299" text-anchor="middle" class="tx b">Бракує поведінки: формат, стиль, тон</text>
+  <path d="M108 312 V 324" class="ln" marker-end="url(#t26b)"/>
+  <rect x="8" y="328" width="200" height="52" rx="10" class="bx t"/>
+  <text x="108" y="350" text-anchor="middle" class="tx b">Правила + 3–5 прикладів</text>
+  <text x="108" y="368" text-anchor="middle" class="tx s">JSON — structured outputs</text>
+  <path d="M108 380 V 394" class="ln" marker-end="url(#t26b)"/>
+  <rect x="8" y="398" width="200" height="52" rx="10" class="bx m"/>
+  <text x="108" y="420" text-anchor="middle" class="tx">Evals усе ще провалені,</text>
+  <text x="108" y="438" text-anchor="middle" class="tx">є тисячі прикладів?</text>
+  <path d="M208 424 H 236" class="ln a" marker-end="url(#t26a)"/>
+  <text x="222" y="418" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="398" width="112" height="52" rx="10" class="bx p"/>
+  <text x="296" y="420" text-anchor="middle" class="tx b">Fine-tuning</text>
+  <text x="296" y="438" text-anchor="middle" class="tx s">інша модель, LoRA</text>
+  <path d="M108 450 V 464" class="ln" marker-end="url(#t26b)"/>
+  <text x="122" y="462" class="tx s">ні: досить промпту</text>
+  <rect x="8" y="472" width="344" height="40" rx="10" class="bx"/>
+  <text x="180" y="497" text-anchor="middle" class="tx">Бракує і того, і іншого → гібрид</text>
+</svg>
+<figcaption>Дві гілки незалежні: дефіцит знань і дефіцит поведінки лікують різними важелями, і часто потрібні обидва. Поріг 200 тис. — від Anthropic; для Haiku 5.5 він нижчий, бо промпт понад 100 тис. токенів коштує вп'ятеро дорожче. Оновлення корпусу не заважає: замінений файл просто перезаписує кеш. Fine-tuning актуальних моделей Claude недоступний.</figcaption>
+</figure>
+</section>
+
+<section class="sec" id="scenarios">
+<div class="sec-h"><span class="num">07</span><h2>Сценарії<span class="sub">Таблиця рішень для Lectern і не тільки</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сценарій</th><th>Дефіцит і розмір</th><th>Рішення</th><th>Чому не інше</th></tr></thead>
+<tbody>
+<tr><td data-th="Сценарій">Курс з 3 лекцій, квізи й відповіді на питання</td><td data-th="Дефіцит і розмір">Знання · 3 × 18–32 тис. = 54–96 тис. токенів (оцінка з уроку 1.3)</td><td data-th="Рішення">Усі лекції в кешованому префіксі</td><td data-th="Чому не інше">RAG додав би пайплайн і помилки агрегації («усі визначення курсу»), а економії не дав би</td></tr>
+<tr><td data-th="Сценарій">Бібліотека 300 PDF по ~20 сторінок</td><td data-th="Дефіцит і розмір">Знання · ≈6 тис. сторінок ≈ 5–10 млн токенів</td><td data-th="Рішення">Гібридний RAG (BM25 + embeddings), контекст фрагментів, top-20, цитати через <code>search_result</code></td><td data-th="Чому не інше">Не влазить навіть у вікно 1 млн; fine-tuning не дасть сторінки для цитати</td></tr>
+<tr><td data-th="Сценарій">Фірмовий тон автора курсу</td><td data-th="Дефіцит і розмір">Поведінка</td><td data-th="Рішення">Правила тону + 3–5 справжніх текстів автора як приклади</td><td data-th="Чому не інше">Донавчання Claude недоступне; приклади змінюються за хвилину, а ваги — новим навчанням</td></tr>
+<tr><td data-th="Сценарій">Строгий JSON квізу для API</td><td data-th="Дефіцит і розмір">Поведінка (формат)</td><td data-th="Рішення">Structured outputs (урок 2.1) + правила для того, чого схема не каже (стиль, межі довжини), + перевірка кодом</td><td data-th="Чому не інше">Приклади без правил: 3/12 у нашому експерименті 1</td></tr>
+<tr><td data-th="Сценарій">Регламент, що змінюється щотижня</td><td data-th="Дефіцит і розмір">Знання · свіжість</td><td data-th="Рішення">Малий — увесь у контекст з датою редакції; великий — RAG з переіндексацією при зміні</td><td data-th="Чому не інше">Ваги відтворюватимуть стару редакцію, доки модель не перенавчать, і не покажуть, з якої вона</td></tr>
+<tr><td data-th="Сценарій">Вільні місця на семінар, курс валют</td><td data-th="Дефіцит і розмір">Знання · живі дані</td><td data-th="Рішення">Інструмент до джерела істини (API, MCP)</td><td data-th="Чому не інше">Будь-яка копія даних — у контексті чи в індексі — застаріла в момент запиту</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="hybrid">
+<div class="sec-h"><span class="num">08</span><h2>Гібриди<span class="sub">Важелі складаються</span></h2></div>
+<p>Більшість продуктів мають обидва дефіцити одночасно, тож важелі комбінують за ролями:</p>
+<ul>
+<li><b>RAG + few-shot:</b> факти приходять з пошуку, формат і тон — з правил і прикладів. Експеримент 1 показав, що приклади і правила закривають різні вимоги, тож одне не замінює іншого.</li>
+<li><b>RAG + prompt caching:</b> стабільна частина (інструкції, приклади, довідник, який потрібен завжди) стоїть на початку і кешується, знайдені фрагменти йдуть після неї, перед питанням. Кеш префіксний: фрагменти, що змінюються з кожним запитом, на початку промпту вбивають кеш усього, що за ними (урок 1.5).</li>
+<li><b>Fine-tune для формату + RAG для фактів:</b> донавчена модель засвоює формат і політику відповіді, а факти отримує в контексті, тож оновлення знань не вимагає перенавчання. Для Claude роль донавчання тут виконує промпт; сам патерн актуальний для відкритих моделей.</li>
+<li><b>Корпус у кеші + інструменти:</b> довідник курсу лежить у кешованому префіксі, а живі дані (розклад, оцінки студентів) агент читає інструментом на вимогу.</li>
+</ul>
+<p>Окремий випадок — coding-агенти. Claude Code свідомо не тримає векторного індексу коду і шукає grep-ом, а Cursor улітку 2026 прибрав семантичний індекс (урок 3.1). Для коду, який змінюється щохвилини, «інструмент пошуку на вимогу» переміг «індекс наперед» з тих самих причин, що й у таблиці вище: свіжість і точні збіги ідентифікаторів.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: ADR про адаптацію моделі</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 5.3 · стек адаптації</div><div class="pb">
+<p>У Lectern кілька етапів, і на кожному дефіцит свій. Рішення записуємо як ADR (architecture decision record, уроки 5.4 і 10.2): контекст, рішення, наслідки, з посиланням на виміри цього уроку.</p>
+<pre class="code" data-lang="markdown"># ADR-0007: адаптація моделі
+Статус: прийнято · 15.10.2026
+Контекст: лекція 18–32 тис. токенів,
+  курс 3–30 лекцій; fine-tuning
+  актуальних Claude недоступний;
+  цитата має бути на сторінці PDF.
+Рішення:
+1. Урок і квіз з лекції k: лекція k
+   цілком + план курсу, префікс
+   у кеші.
+2. Формат: structured outputs +
+   правила + 3 приклади стилю автора
+   (експ. 1: межі 12/12 від правил,
+   стиль 12/12 від прикладів).
+3. Перевірка цитати: без пошуку,
+   check_quote звіряє з лекцією.
+4. Питання через курс: ≤ 100 тис.
+   токенів (Haiku) / ≤ 200 тис.
+   (Sonnet) — увесь курс у кеші;
+   більше — гібридний RAG, модуль 9
+   (експ. 2: курс 10/10, BM25 top-3
+   6/10, top-8 5/5).
+5. Fine-tuning: ні, доки недоступний
+   для актуальних моделей.
+Наслідки: оновлення лекції — заміна
+  файлу; поріг переходу на RAG
+  міряємо на golden set (урок 0.2).</pre>
+<p><b>Ваш крок:</b> покладіть цей ADR у <code>docs/adr/0007-adaptation.md</code> свого Lectern і перепишіть пункт 4 під свій курс: порахуйте токени корпусу (урок 1.3), запустіть <code>retrieve.py</code> з цього уроку на своїх лекціях і п'яти питаннях п'яти типів (ключове слово, перефразування, два документи, агрегація, відповіді немає) і запишіть, на якому k пошук перестає губити відповіді.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">10</span><h2>Типові помилки<span class="sub">Симптом → причина → що робити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що робити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">«Модель не знає наших правил — давайте донавчимо»</td><td data-th="Причина">Дефіцит знань лікують вагами; для Claude це ще й недоступно</td><td data-th="Що робити">Правила в контекст (малий корпус) або RAG; донавчання — лише для поведінки й іншої моделі</td></tr>
+<tr><td data-th="Симптом">RAG на корпусі в 30 тис. токенів</td><td data-th="Причина">Звичка «RAG за замовчуванням»</td><td data-th="Що робити">Увесь корпус у кешованому промпті; RAG — коли корпус перерос поріг</td></tr>
+<tr><td data-th="Симптом">Бот каже «у документах цього немає», а воно є</td><td data-th="Причина">Пошук промахнувся (розрив словника, малий k), модель чесно звітує про порожній результат</td><td data-th="Що робити">Гібридний пошук, більший k, переписування запиту; у промпті не дозволяти робити висновок про відсутність з порожнього пошуку</td></tr>
+<tr><td data-th="Симптом">Знайдені фрагменти на початку промпту, кеш не спрацьовує</td><td data-th="Причина">Префікс змінюється з кожним запитом</td><td data-th="Що робити">Стабільне — на початок і кешувати, змінне — в кінець</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">11</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">«Бот не знає нового прайсу»</span><span class="h">знання чи поведінка?</span></span><span class="b"><span class="t">Знання</span><span class="d">прайс у контекст або інструмент до джерела цін; не ваги</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">«Відповідає надто розлого»</span><span class="h">знання чи поведінка?</span></span><span class="b"><span class="t">Поведінка</span><span class="d">правило довжини + приклади + перевірка кодом</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">40 тис. токенів довідника</span><span class="h">RAG?</span></span><span class="b"><span class="t">Ні</span><span class="d">увесь довідник у кешованому префіксі; RAG — коли переросте поріг</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">fine-tuning Sonnet 5.5</span><span class="h">де замовити?</span></span><span class="b"><span class="t">Ніде публічно</span><span class="d">API не пропонує; у Bedrock є лише Claude 3 Haiku з EOL 10.09.2026</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">RAG: «цього немає»</span><span class="h">а факт є</span></span><span class="b"><span class="t">Промах пошуку</span><span class="d">розрив словника або малий k; порожній пошук ≠ відсутність</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">−67%</span><span class="h">Contextual Retrieval</span></span><span class="b"><span class="t">Менше невдалих пошуків</span><span class="d">контекстні embeddings + BM25 + reranking, метрика 1 − recall@20</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">12</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Бот підтримки має відповідати з довідника на 30 тис. токенів, який оновлюють раз на місяць. З чого почати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Векторний RAG з reranking, щоб модель бачила лише релевантне</span></label><label class="opt ok"><input type="radio" name="q1"><span>Увесь довідник у кешованому промпті; оновлення — заміна файлу</span></label><label class="opt"><input type="radio" name="q1"><span>Щомісячне донавчання моделі на новій редакції довідника</span></label></div>
+    <div class="why yes">Так. Корпус на порядок нижчий за поріг 200 тис., кеш робить повторні питання дешевими, а модель бачить усе, включно з відповідями на «перелічіть усі».</div>
+    <div class="why no">Під 200 тис. токенів Anthropic радить просто включити всю базу з кешем. RAG додає пайплайн і промахи, донавчання засвоює факти гірше за контекст і застаріває з кожною редакцією.</div></div>
+  <div class="q"><div class="qt">2. У експерименті 1 приклади дали 12/12 карток з «## Значення», але notes вийшли задовгими у 7 з 12. Що з цього випливає?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Приклади передають стиль, а межі треба записати правилами і перевірити кодом</span></label><label class="opt"><input type="radio" name="q2"><span>Прикладів забагато: з одним прикладом модель дотримувалась би меж набагато краще</span></label><label class="opt"><input type="radio" name="q2"><span>Haiku 5.5 погано читає приклади, для few-shot потрібна модель старша</span></label></div>
+    <div class="why yes">Так. Межу, якої приклад сам не порушує, з нього не вивести. Правила + приклади дали 12/12 і на межах, і на стилі.</div>
+    <div class="why no">Стиль з прикладів модель засвоїла повністю (12/12), отже читає їх добре. Межі довжини в прикладах не записані, тому їх задають правилами і перевіряють кодом.</div></div>
+  <div class="q"><div class="qt">3. RAG-бот відповідає «у документах цього немає», хоча відповідь у корпусі є. Яка причина найімовірніша?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Модель галюцинує відсутність, бо інструкція «не вигадуй» занадто сувора</span></label><label class="opt"><input type="radio" name="q3"><span>Кеш промпту застарів і віддає моделі попередню версію документів</span></label><label class="opt ok"><input type="radio" name="q3"><span>Пошук не знайшов потрібний фрагмент: інші слова в питанні або замалий k</span></label></div>
+    <div class="why yes">Так. Як у Q2 експерименту 2: «рибалити» проти «вилов», потрібний розділ шостий у рейтингу. Модель чесно звітує про те, що отримала.</div>
+    <div class="why no">Модель відповіла правильно щодо того, що бачила. Промахнувся пошук: лексичний індекс не зв'язав різні слова, а top-3 відрізав потрібний фрагмент.</div></div>
+  <div class="q"><div class="qt">4. Команда хоче донавчити Claude Sonnet 5.5 на фірмовому тоні. Що відповісти станом на 15.10.2026?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Замовити fine-tuning у консолі Claude API, дані — пари промпт-відповідь</span></label><label class="opt ok"><input type="radio" name="q4"><span>Публічного донавчання немає; тон задати правилами і 3–5 прикладами</span></label><label class="opt"><input type="radio" name="q4"><span>Донавчити в Amazon Bedrock, де fine-tuning доступний для Claude 5.x</span></label></div>
+    <div class="why yes">Так. Глосарій: API fine-tuning не пропонує. У Bedrock у списку лише Claude 3 Haiku з EOL 10.09.2026. Тон — поведінка, її задає промпт.</div>
+    <div class="why no">API fine-tuning не пропонує, а в Bedrock з моделей Anthropic донавчається лише Claude 3 Haiku, і та з EOL. Для тону достатньо правил і прикладів.</div></div>
+  <div class="q"><div class="qt">5. Регламент компанії змінюється щотижня, його 2 млн токенів. Який важіль для знань?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Донавчання відкритої моделі через LoRA щоп'ятниці на новій редакції</span></label><label class="opt"><input type="radio" name="q5"><span>Увесь регламент у кешованому промпті моделі з вікном на 1 млн токенів</span></label><label class="opt ok"><input type="radio" name="q5"><span>RAG з переіндексацією змінених документів і датою редакції в джерелі</span></label></div>
+    <div class="why yes">Так. Корпус більший за вікно, свіжість важлива, а джерело з датою редакції потрібне для перевірки відповіді.</div>
+    <div class="why no">2 млн токенів не влазять у вікно 1 млн. Ваги відтворюватимуть стару редакцію до наступного навчання і не покажуть, звідки взято відповідь.</div></div>
+  <div class="q"><div class="qt">6. Корпус 150 тис. токенів, модель Haiku 5.5, тисяча питань на день. Що врахувати, кладучи весь корпус у промпт?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Понад 100 тис. токенів Haiku 5.5 рахує всі ціни запиту вп'ятеро дорожче</span></label><label class="opt"><input type="radio" name="q6"><span>Кешування не працює для промптів, довших за 100 тис. токенів, у жодної моделі</span></label><label class="opt"><input type="radio" name="q6"><span>Нічого: до 200 тис. токенів ціна за токен однакова в усіх моделей</span></label></div>
+    <div class="why yes">Так. Поріг Haiku 5.5 — на запит, і кеш теж рахується. Варіанти: стиснути корпус до 100 тис., Sonnet 5.5 без надбавки, або RAG.</div>
+    <div class="why no">Кеш працює, але читання кешу теж дорожчає вп'ятеро ($0,05 замість $0,01 за MTok). Інші моделі 4.6+ надбавки за довжину не мають, а Haiku 5.5 має.</div></div>
+  <div class="q"><div class="qt">7. Що саме робить Contextual Retrieval?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Переписує запит користувача з урахуванням історії діалогу перед пошуком</span></label><label class="opt ok"><input type="radio" name="q7"><span>Дописує до кожного фрагмента 50–100 токенів контексту перед індексацією</span></label><label class="opt"><input type="radio" name="q7"><span>Збільшує фрагменти до розміру цілого документа, щоб контекст не губився</span></label></div>
+    <div class="why yes">Так. Пояснення генерує модель з кешованого документа, а доповнений фрагмент іде і в embeddings, і в BM25: −49% невдалих пошуків, з reranking −67%.</div>
+    <div class="why no">Запит не змінюється, розмір фрагмента теж. До кожного фрагмента додається коротке пояснення, з якого він документа і про що.</div></div>
+  <div class="q"><div class="qt">8. Користувачі питають про вільні місця на семінарі, дані змінюються щохвилини. Що обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>RAG над експортом бази, який переіндексується щоночі о третій</span></label><label class="opt"><input type="radio" name="q8"><span>Список місць у кешованому промпті, оновлений кожні п'ять хвилин</span></label><label class="opt ok"><input type="radio" name="q8"><span>Інструмент, який на запит читає дані з системи бронювання</span></label></div>
+    <div class="why yes">Так. Будь-яка копія живих даних застаріла в момент запиту. Джерело істини — система бронювання, модель звертається до неї інструментом.</div>
+    <div class="why no">І нічний індекс, і п'ятихвилинний промпт — копії. Для даних, що змінюються щохвилини, потрібен виклик до джерела в момент питання.</div></div>
+  <div class="q"><div class="qt">9. «Перелічіть усі інвазійні види» — RAG top-3 назвав два з трьох. Чим ця помилка гірша за «у матеріалах цього немає»?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Неповна відповідь виглядає повною, і користувач не має причини перепитати</span></label><label class="opt"><input type="radio" name="q9"><span>Вона дорожча, бо модель згенерувала більше вихідних токенів</span></label><label class="opt"><input type="radio" name="q9"><span>Вона гірша лише для BM25: семантичний пошук знайшов би всі три</span></label></div>
+    <div class="why yes">Так. «Згадано два інвазійні види» звучить як факт. Для агрегації потрібен увесь корпус, структурований індекс або кілька пошуків.</div>
+    <div class="why no">Різниця в ціні мізерна, і семантичний пошук з k = 3 так само обрізав би розкидані фрагменти. Небезпека в тому, що часткова відповідь не схожа на часткову.</div></div>
+  <div class="q"><div class="qt">10. RAG + кеш: куди поставити знайдені фрагменти в промпті?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>На початок, щоб модель прочитала їх раніше за інструкції</span></label><label class="opt"><input type="radio" name="q10"><span>У системний промпт, бо він кешується автоматично з кожним запитом</span></label><label class="opt ok"><input type="radio" name="q10"><span>Після стабільних інструкцій і прикладів, перед питанням</span></label></div>
+    <div class="why yes">Так. Кеш префіксний: стабільна частина на початку читається з кешу, змінні фрагменти після неї кешу не ламають.</div>
+    <div class="why no">Фрагменти змінюються з кожним запитом. Якщо вони стоять на початку чи в системному промпті, префікс щоразу інший і кеш нічого не дає.</div></div>
+  <div class="q"><div class="qt">11. Чому в експерименті 2 друге й наступні питання з усім корпусом у кеші вийшли дешевшими за RAG top-3 без кешу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Бо Claude Code автоматично стискає довгий системний промпт перед відправкою в API</span></label><label class="opt ok"><input type="radio" name="q11"><span>Читання кешу коштує 0,1× ціни входу: 14,5 тис. з кешу дешевші за 2,3 тис. без</span></label><label class="opt"><input type="radio" name="q11"><span>Бо з повним корпусом модель відповідала коротше і писала менше</span></label></div>
+    <div class="why yes">Так. 14,5 тис. × $0,01 за MTok ≈ $0,00014 проти 2,25 тис. × $0,10 ≈ $0,00023. Платите один раз за запис, далі — десяту частину.</div>
+    <div class="why no">Вихід у long context був навіть трохи довшим (86 проти 71 токена). Різницю дає ціна читання кешу — 0,1× від звичайного входу.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">13</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>знання чи поведінка</td><td>Діагноз перед вибором важеля: бракує фактів (контекст, RAG, інструменти) чи формату, стилю, тону (промпт, ваги).</td></tr>
+<tr><td>fine-tuning<br>(донавчання)</td><td>Зміна ваг моделі на парах «промпт → ідеальна відповідь»; добре для поведінки, погано для нових фактів; для актуальних Claude недоступне.</td></tr>
+<tr><td>few-shot<br>адаптація</td><td>Адаптація поведінки прикладами в промпті: 3–5 зразків передають стиль, але не межі.</td></tr>
+<tr><td>long-context<br>stuffing</td><td>Увесь корпус у промпті замість пошуку; з prompt caching — дешевий для повторних питань.</td></tr>
+<tr><td>правило<br>200 тис. токенів</td><td>Порада Anthropic: базу знань до 200 тис. токенів (~500 сторінок) можна включити в промпт повністю, без RAG.</td></tr>
+<tr><td>RAG</td><td>Retrieval-augmented generation: на кожен запит знайти фрагменти й дати їх моделі в контексті.</td></tr>
+<tr><td>BM25</td><td>Лексична функція ранжування: збіг слів з урахуванням їхньої рідкісності й довжини фрагмента.</td></tr>
+<tr><td>Contextual Retrieval</td><td>Метод Anthropic: до кожного фрагмента дописати 50–100 токенів контексту перед індексацією в embeddings і BM25.</td></tr>
+<tr><td>актуальність знань<br>(freshness)</td><td>Як швидко зміна в джерелі доходить до відповіді: інструмент — миттєво, контекст — з наступного запиту, RAG — після переіндексації, ваги — після навчання.</td></tr>
+<tr><td>гібридна<br>адаптація</td><td>Комбінація важелів за ролями: факти з контексту чи пошуку, формат з правил і прикладів, живі дані з інструментів.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">14</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Стек адаптації для вашої AI-фічі</h3>
+<p>Візьміть фічу свого продукту або Lectern, розкладіть її на етапи, для кожного поставте діагноз «знання чи поведінка», оцініть корпус у токенах і вимогу до свіжості, оберіть важіль за деревом рішень і порахуйте ціну тисячі запитів з кешем і без. Підсумок — ADR на 10–15 рядків.</p>
+<h3>2. Повторіть експеримент на своїх даних</h3>
+<p>Корпус на 10–30 тис. токенів, п'ять питань п'яти типів, дві умови: весь корпус у промпті проти BM25 top-k. Таблиця правильності, токенів і ціни, розбір кожної помилки і висновок, з якого k пошук перестає губити відповіді.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">15</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://www.anthropic.com/news/contextual-retrieval" target="_blank" rel="noopener">Anthropic — Introducing Contextual Retrieval</a><span>19.09.2024 · −35% / −49% / −67% невдалих пошуків, $1,02 за MTok документів, порада про 200 тис. токенів</span></li>
+<li><a href="https://github.com/anthropics/claude-cookbooks/tree/main/capabilities/contextual-embeddings" target="_blank" rel="noopener">Claude Cookbook — Contextual Embeddings</a><span>код Contextual Retrieval</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices" target="_blank" rel="noopener">Claude Docs — Prompting best practices</a><span>розділи «Use examples effectively» (3–5 прикладів) і «Long context prompting»</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview" target="_blank" rel="noopener">Claude Docs — Prompt engineering overview</a><span>критерії успіху перед промптингом; коли промпт не потрібен</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/glossary" target="_blank" rel="noopener">Claude Docs — Glossary</a><span>«The Claude API does not currently offer fine-tuning»</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/search-results" target="_blank" rel="noopener">Claude Docs — Search results</a><span>цитати з власних фрагментів у RAG</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Claude Docs — Prompt caching</a><span>префіксний кеш, TTL, ціни запису й читання</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude Docs — Pricing</a><span>Haiku 5.5: інша ціна для промптів понад 100 тис. токенів</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/model-deprecations" target="_blank" rel="noopener">Claude Docs — Model deprecations</a><span><code>claude-3-haiku-20240307</code> знято 20.04.2026</span></li>
+<li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/custom-model-fine-tuning.html" target="_blank" rel="noopener">Amazon Bedrock — Customize a model with fine-tuning</a><span>таблиця моделей для fine-tuning: Claude 3 Haiku, Amazon Nova, Meta Llama</span></li>
+<li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-3-haiku.html" target="_blank" rel="noopener">Amazon Bedrock — картка Claude 3 Haiku</a><span>EOL 10.09.2026</span></li>
+<li><a href="https://claude.com/blog/fine-tune-claude-3-haiku" target="_blank" rel="noopener">Anthropic — Fine-tune Claude 3 Haiku in Amazon Bedrock</a><span>10.07.2024 · що обіцяло донавчання; загальний доступ з 01.11.2024</span></li>
+<li><a href="https://arxiv.org/abs/2312.05934" target="_blank" rel="noopener">Ovadia et al. — Fine-Tuning or Retrieval? Comparing Knowledge Injection in LLMs</a><span>2023 · RAG стабільно перевершує unsupervised fine-tuning для знань</span></li>
+<li><a href="https://arxiv.org/abs/2005.11401" target="_blank" rel="noopener">Lewis et al. — Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks</a><span>22.05.2020 · стаття, що дала назву RAG</span></li>
+<li><a href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noopener">Hu et al. — LoRA: Low-Rank Adaptation of Large Language Models</a><span>17.06.2021 · у 10 000 разів менше параметрів для навчання</span></li>
+<li><a href="https://pypi.org/project/rank-bm25/" target="_blank" rel="noopener">rank-bm25</a><span>PyPI · бібліотека BM25 з експерименту 2, версія 0.2.2</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 5.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 5.3 · Senomi<br><br><a href="lesson-25.html">← Урок 5.2</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-27.html">Урок 5.4 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

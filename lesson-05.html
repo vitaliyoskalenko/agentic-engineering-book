@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 1.2. Від тексту до відповіді: embeddings, attention, генерація токен за токеном, sampling</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 1.2 · Модуль 1</div>
+<h1>Від тексту до відповіді: embeddings, attention, генерація токен за токеном, sampling</h1>
+<p class="lead">Розбираємо шлях від токенів до відповіді на справжній маленькій моделі: вектори, attention, KV cache, logits і sampling — з виміряними числами, а не метафорами. З механіки випливають робочі правила: чому вихідні токени дорожчі, чому temperature 0 не дає однакових відповідей і чому агентам потрібен структурований вивід, а не «правильна температура».</p>
+<div class="hero-meta"><span class="chip">Як працюють LLM — механіка під капотом</span><span class="chip t">≈ 60 хв</span><span class="chip a">13 карток</span><span class="chip g">перевірено 14.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Навіщо інженеру механіка</a><a href="#pipeline"><b>02</b>Конвеєр</a><a href="#embeddings"><b>03</b>Embeddings</a><a href="#attention"><b>04</b>Attention</a><a href="#generation"><b>05</b>Генерація токен за токеном</a><a href="#sampling"><b>06</b>Sampling</a><a href="#api"><b>07</b>Sampling у Claude API</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>простежити шлях запиту крізь модель: токени → embeddings → блоки transformer → logits → softmax → sampling → новий токен;</li>
+    <li>порахувати косинусну подібність і пояснити, чому поріг подібності не переноситься між embedding-моделями;</li>
+    <li>пояснити Q/K/V, причинну маску і квадратичну вартість attention, а також що саме зберігає KV cache;</li>
+    <li>пояснити різницю між prefill і decode і передбачити, як вона впливає на латентність і ціну;</li>
+    <li>розрахувати вплив temperature, top_p і top_k на розподіл і знати, які з цих параметрів сьогодні приймає Claude API;</li>
+    <li>замінити «налаштування температури» в агенті на структурований вивід, перевірку в коді і промпт.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Навіщо інженеру механіка<span class="sub">П'ять симптомів, які вона пояснює</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом у продукті</th><th>Механізм</th><th>Розділ</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом у продукті">Вихідний токен Claude Opus 5.5 коштує $20 за мільйон, вхідний — $4</td><td data-th="Механізм">Вхід обробляється одним паралельним проходом, вихід — по одному токену за прохід</td><td data-th="Розділ">prefill і decode</td></tr>
+<tr><td data-th="Симптом у продукті">Запит про тести знаходить у базі рецепт борщу</td><td data-th="Механізм">Embedding-модель не знає мови документів, а поріг подібності взято з іншої моделі</td><td data-th="Розділ">embeddings</td></tr>
+<tr><td data-th="Симптом у продукті">Агент із 200K токенів контексту довго мовчить до першого слова</td><td data-th="Механізм">Перед першим токеном модель має обробити весь контекст, а attention росте як n²</td><td data-th="Розділ">attention</td></tr>
+<tr><td data-th="Симптом у продукті">Той самий запит з temperature 0 дав дві різні відповіді</td><td data-th="Механізм">Числа з плаваючою комою + різний розмір батча на сервері</td><td data-th="Розділ">sampling</td></tr>
+<tr><td data-th="Симптом у продукті">Модель помилилась у першому реченні й далі послідовно захищає помилку</td><td data-th="Механізм">Згенерований токен стає частиною входу; редагувати назад нічим</td><td data-th="Розділ">генерація</td></tr>
+</tbody></table></div>
+<p>Комерційні вендори детально не розкривають внутрішню будову своїх моделей. Тому механіку міряємо на відкритій <b>Qwen2.5-0.5B</b>: 24 блоки, 14 голів attention, вектор на 896 чисел, словник на 151&nbsp;936 токенів, 494 млн параметрів. Усі числа в уроці — з реальних запусків.</p>
+</section>
+
+<section class="sec" id="pipeline">
+<div class="sec-h"><span class="num">02</span><h2>Конвеєр<span class="sub">Що відбувається між запитом і токеном</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 640" role="img" aria-label="Конвеєр LLM: текст, токени, embeddings, блоки transformer, logits, softmax, sampling і повернення токена на вхід">
+  <defs>
+    <marker id="l5a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="l5t" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar t"/></marker>
+  </defs>
+  <rect x="8" y="8" width="290" height="46" rx="10" class="bx m"/>
+  <text x="153" y="28" text-anchor="middle" class="tx b">Текст</text>
+  <text x="153" y="45" text-anchor="middle" class="tx s">«The capital of France is»</text>
+  <path d="M153 54 V 74" class="ln a" marker-end="url(#l5a)"/>
+  <rect x="8" y="78" width="290" height="46" rx="10" class="bx"/>
+  <text x="153" y="98" text-anchor="middle" class="tx b">Токени → id</text>
+  <text x="153" y="115" text-anchor="middle" class="tx s">785 · 6722 · 315 · 9625 · 374</text>
+  <path d="M153 124 V 144" class="ln a" marker-end="url(#l5a)"/>
+  <rect x="8" y="148" width="290" height="54" rx="10" class="bx t"/>
+  <text x="153" y="168" text-anchor="middle" class="tx b">Embeddings + позиція</text>
+  <text x="153" y="185" text-anchor="middle" class="tx s">кожен id → рядок таблиці: 896 чисел;</text>
+  <text x="153" y="198" text-anchor="middle" class="tx s">порядок кодує RoPE всередині attention</text>
+  <path d="M153 202 V 222" class="ln a" marker-end="url(#l5a)"/>
+  <rect x="8" y="226" width="290" height="160" rx="12" class="bx a"/>
+  <text x="153" y="248" text-anchor="middle" class="tx b a">Transformer block × 24</text>
+  <rect x="24" y="260" width="258" height="50" rx="8" class="bx"/>
+  <text x="153" y="280" text-anchor="middle" class="tx b">self-attention</text>
+  <text x="153" y="297" text-anchor="middle" class="tx s">токен збирає інформацію з попередніх</text>
+  <path d="M153 310 V 322" class="ln a" marker-end="url(#l5a)"/>
+  <rect x="24" y="326" width="258" height="50" rx="8" class="bx"/>
+  <text x="153" y="346" text-anchor="middle" class="tx b">MLP</text>
+  <text x="153" y="363" text-anchor="middle" class="tx s">перетворює кожну позицію окремо</text>
+  <path d="M153 386 V 406" class="ln a" marker-end="url(#l5a)"/>
+  <rect x="8" y="410" width="290" height="54" rx="10" class="bx"/>
+  <text x="153" y="430" text-anchor="middle" class="tx b">Logits</text>
+  <text x="153" y="447" text-anchor="middle" class="tx s">151 936 чисел — оцінка кожного токена</text>
+  <text x="153" y="459" text-anchor="middle" class="tx s">словника; « Paris» = 17,84</text>
+  <path d="M153 464 V 484" class="ln a" marker-end="url(#l5a)"/>
+  <rect x="8" y="488" width="290" height="54" rx="10" class="bx"/>
+  <text x="153" y="508" text-anchor="middle" class="tx b">softmax(logits / T)</text>
+  <text x="153" y="525" text-anchor="middle" class="tx s">ймовірності, сума = 1;</text>
+  <text x="153" y="537" text-anchor="middle" class="tx s">« Paris» = 31,6% при T = 1</text>
+  <path d="M153 542 V 562" class="ln a" marker-end="url(#l5a)"/>
+  <rect x="8" y="566" width="290" height="54" rx="10" class="bx m"/>
+  <text x="153" y="586" text-anchor="middle" class="tx b">Sampling</text>
+  <text x="153" y="603" text-anchor="middle" class="tx s">обрати один токен (top_k, top_p)</text>
+  <text x="153" y="615" text-anchor="middle" class="tx s">→ « Paris», id 12095</text>
+  <path d="M298 593 H 330 V 101 H 304" class="ln t d" marker-end="url(#l5t)"/>
+  <text x="344" y="347" text-anchor="middle" class="tx s t" transform="rotate(-90 344 347)">дописати в кінець і повторити</text>
+</svg>
+<figcaption>Один крок генерації на Qwen2.5-0.5B. Усе до logits — одна функція від послідовності id; модель повертає розподіл, а не текст. Вибір токена (sampling) робить код інференсу, після чого токен дописується в кінець і цикл повторюється, доки не з'явиться токен кінця або не скінчиться <code>max_tokens</code>.</figcaption>
+</figure>
+<p>Модель видає не текст, а <b>розподіл на один наступний токен</b>; відповідь — це сотні послідовних виборів із таких розподілів, і <b>кожен вибір незворотний</b>. Кожен блок додає свій результат до вектора токена (residual connection), а logits отримують із вектора лише останньої позиції множенням на матрицю словника. У Qwen2.5-0.5B це та сама матриця, що й на вході: 151&nbsp;936 × 896 = 136 млн параметрів, <b>27,6% моделі</b> — плата за великий словник.</p>
+</section>
+
+<section class="sec" id="embeddings">
+<div class="sec-h"><span class="num">03</span><h2>Embeddings<span class="sub">Значення як координати</span></h2></div>
+<p><b>Embedding</b> — вектор, яким модель представляє токен або текст. На вході LLM це рядок таблиці: id 9625 («&nbsp;France») завжди дає той самий вектор; від сусідів він починає залежати лише після блоків attention. Близькість векторів міряють <b>косинусною подібністю</b>:</p>
+<pre class="code" data-lang="text">cos(a, b) = (a · b) / (‖a‖ · ‖b‖)      <span class="cm"># від −1 до 1; для нормованих векторів = a · b</span></pre>
+<h3>Справжня матриця подібності</h3>
+<p>П'ять фраз, дві відкриті embedding-моделі через <code>fastembed</code>: багатомовна <code>paraphrase-multilingual-MiniLM-L12-v2</code> і англомовна <code>bge-small-en-v1.5</code>, обидві по 384 числа.</p>
+<pre class="code" data-lang="python"><span class="cm"># sim.py — косинусна подібність фраз двома embedding-моделями</span>
+<span class="k">for</span> name <span class="k">in</span> sys.argv[<span class="n">1</span>:]:
+    model = TextEmbedding(name)
+    v = np.array(list(model.embed(phrases)))
+    v /= np.linalg.norm(v, axis=<span class="n">1</span>, keepdims=<span class="k">True</span>)   <span class="cm"># нормуємо → cos = скалярний добуток</span>
+    sim = v @ v.T</pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">python sim.py sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2 BAAI/bge-small-en-v1.5</span>
+
+sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2  dim=384
+[0]  1.00  0.85  0.77  0.87  0.11  Тест падає після рефакторингу
+[1]  0.85  1.00  0.72  0.85  0.09  The test fails after refactoring
+[2]  0.77  0.72  1.00  0.71  0.06  Після змін у коді перестав проходити тест
+[3]  0.87  0.85  0.71  1.00  0.10  Тест не падає після рефакторингу
+[4]  0.11  0.09  0.06  0.10  1.00  Як зварити борщ
+
+BAAI/bge-small-en-v1.5  dim=384
+[0]  1.00  0.54  0.91  0.99  0.74  Тест падає після рефакторингу
+[1]  0.54  1.00  0.52  0.53  0.52  The test fails after refactoring
+[2]  0.91  0.52  1.00  0.91  0.73  Після змін у коді перестав проходити тест
+[3]  0.99  0.53  0.91  1.00  0.75  Тест не падає після рефакторингу
+[4]  0.74  0.52  0.73  0.75  1.00  Як зварити борщ</pre>
+<div class="cap">реальний вивід · fastembed 0.9.0, Python 3.12 · 14.10.2026 · рядки прогресу завантаження прибрано</div></div>
+<p>Рядок [0] — подібність до «Тест падає після рефакторингу»:</p>
+<div class="tbl-wrap"><table class="tbl nostack">
+<thead><tr><th>Фраза</th><th>багатомовна</th><th>англомовна</th></tr></thead>
+<tbody>
+<tr><td>переклад англійською</td><td>0,85</td><td>0,54</td></tr>
+<tr><td>той самий зміст іншими словами</td><td>0,77</td><td>0,91</td></tr>
+<tr><td><b>протилежний зміст</b> («не падає»)</td><td><b>0,87</b></td><td><b>0,99</b></td></tr>
+<tr><td>інша тема («Як зварити борщ»)</td><td>0,11</td><td>0,74</td></tr>
+</tbody></table></div>
+<ol class="steps">
+<li><b>Embedding ловить тему, а не істинність.</b> «Тест падає» і «тест не падає» в обох моделях ближчі, ніж перефразування. Пошук знайде документ про проблему, але не скаже, підтверджує він твердження чи заперечує: це робота reranking, LLM або коду.</li>
+<li><b>Модель, яка не знає мови, дає шум із високими числами.</b> Для англомовної моделі рецепт борщу схожий на тест на 0,74, а переклад того самого речення — лише на 0,54: українські фрази в неї злипаються незалежно від змісту.</li>
+<li><b>Поріг прив'язаний до моделі.</b> 0,74 — «інша тема» для однієї моделі й «майже те саме» для іншої. Після заміни моделі поріг калібрують заново на своїх даних.</li>
+</ol>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p><b>Вхідні embeddings LLM — не те саме, що embedding-модель для RAG.</b> Вхідна таблиця дає вектор окремого токена без контексту. Embedding-модель проганяє весь текст крізь свої шари, зводить його до одного вектора і навчена саме на те, щоб близькі за змістом тексти мали близькі вектори. Anthropic власної embedding-моделі не має: документація Claude описує Voyage AI (<code>voyage-4</code>, <code>-large</code>, <code>-lite</code>, <code>voyage-code-4</code>, відкриту <code>voyage-4-nano</code>), чиї вектори нормовані до довжини 1, тож cosine для них дорівнює dot product. Вендорів документація радить порівнювати під свою задачу. RAG розбираємо в модулі 9.</p>
+</div>
+</section>
+
+<section class="sec" id="attention">
+<div class="sec-h"><span class="num">04</span><h2>Attention<span class="sub">Кожен токен вирішує, кого слухати</span></h2></div>
+<p>У self-attention кожен токен через три навчені матриці отримує з власного вектора три нові:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Вектор</th><th>Роль</th><th>Аналогія з пошуком</th></tr></thead>
+<tbody>
+<tr><td data-th="Вектор"><b>Q</b> (query)</td><td data-th="Роль">що поточний токен шукає</td><td data-th="Аналогія з пошуком">запит</td></tr>
+<tr><td data-th="Вектор"><b>K</b> (key)</td><td data-th="Роль">за якою ознакою токен можна знайти</td><td data-th="Аналогія з пошуком">індекс</td></tr>
+<tr><td data-th="Вектор"><b>V</b> (value)</td><td data-th="Роль">що токен передасть тому, хто його знайшов</td><td data-th="Аналогія з пошуком">вміст документа</td></tr>
+</tbody></table></div>
+<p>Q поточного токена множать скалярно на K кожного попереднього, ділять на √d<sub>k</sub> і пропускають крізь softmax. Отримані ваги дають у сумі 1, і результат — зважена сума V: <code>softmax(QKᵀ/√d_k)·V</code>. Таких «голів» у шарі кілька (у Qwen2.5-0.5B — 14), і кожна має свої матриці, тож різні голови стежать за різними зв'язками. Діє <b>причинна маска</b>: токен бачить лише себе і тих, хто перед ним.</p>
+<h3>Куди дивиться «&nbsp;it»</h3>
+<p>Два речення відрізняються лише останнім словом: <i>The animal didn't cross the street because it was too <b>tired</b> / <b>wide</b></i>. Скрипт перебрав усі 336 голів (24 шари × 14) і знайшов ту, що найсильніше реагує на різницю: шар 5, голова 5.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">animal</span><span class="tr"><i style="--v:81%"></i><b class="in" style="--v:81%">0,81</b></span></div>
+  <div class="bar"><span class="k">didn</span><span class="tr"><i style="--v:6%"></i><b style="--v:6%">0,06</b></span></div>
+  <div class="bar"><span class="k">street</span><span class="tr"><i style="--v:5%"></i><b style="--v:5%">0,05</b></span></div>
+  <div class="bar"><span class="k">The</span><span class="tr"><i style="--v:4%"></i><b style="--v:4%">0,04</b></span></div>
+  <div class="bar m"><span class="k">інші 5 токенів разом</span><span class="tr"><i style="--v:5%"></i><b style="--v:5%">0,05</b></span></div>
+</div>
+<figcaption>Ваги attention з токена «&nbsp;it», шар 5, голова 5, Qwen2.5-0.5B. Рядок однаковий в обох реченнях до останнього знака: скрипт перевірив це через <code>torch.allclose</code> для всіх 24 шарів.</figcaption>
+</figure>
+<p>Ваги однакові, бо <b>«&nbsp;it» ще не бачить «tired» і «wide»</b>. Розв'язати займенник можна лише на позиціях, які бачать кінець речення. Ось та сама голова на останньому токені:</p>
+<div class="tbl-wrap"><table class="tbl nostack">
+<thead><tr><th>Останній токен</th><th>→ animal</th><th>→ street</th><th>→ The</th></tr></thead>
+<tbody>
+<tr><td>«&nbsp;tired»</td><td><b>0,73</b></td><td>0,05</td><td>0,11</td></tr>
+<tr><td>«&nbsp;wide»</td><td>0,24</td><td><b>0,27</b></td><td>0,33</td></tr>
+</tbody></table></div>
+<p>Практичний наслідок. Токени відповіді бачать увесь промпт, але з власної відповіді — лише вже згенероване. Тому <b>якщо модель спершу пише висновок, а потім обґрунтування, рішення ухвалено до обґрунтування</b>, і пояснення пишеться під уже сказане. Просіть міркування перед відповіддю або вмикайте reasoning (урок 1.4).</p>
+<div class="note warn"><span class="lbl">Що ми не стверджуємо</span>
+<p>Це одна голова з 336, відібрана під приклад. Ваги attention не пояснюють рішення: Jain і Wallace (2019) показали, що дуже різні розподіли уваги часто дають той самий результат. Багато голів більшість ваги просто віддають першому токену. У нашому прогоні в шарі 16 середня вага з «&nbsp;it» на «The» — 0,94; це явище називають <i>attention sink</i> (Xiao et al., 2023).</p>
+</div>
+<h3>MLP і чому attention коштує n²</h3>
+<p>Друга половина блоку — <b>MLP</b>: та сама мережа обробляє кожну позицію окремо, без обміну між токенами. Параметрів у ній більше: 13,1 млн на шар проти 1,8 млн в attention. Attention переносить інформацію між позиціями, а MLP її перетворює.</p>
+<p>Кожна позиція порівнюється з кожною попередньою, тож attention коштує <code>O(n²·d)</code> на шар (таблиця 1 статті «Attention Is All You Need»). Якщо подвоїти контекст, attention на етапі prefill коштуватиме вчетверо більше. MLP росте лінійно, тому на коротких промптах домінує він, а на довгих — attention. Звідси довга пауза до першого слова. Чому довгий контекст ще й гірше використовується, розбираємо в уроці 1.3.</p>
+</section>
+
+<section class="sec" id="generation">
+<div class="sec-h"><span class="num">05</span><h2>Генерація токен за токеном<span class="sub">Prefill, decode і KV cache</span></h2></div>
+<p>Модель генерує <b>авторегресивно</b>: кожен токен вибирається з розподілу, обчисленого за всіма попередніми, і сам стає входом. У запиту дві фази з різною фізикою:</p>
+<ul>
+<li><b>prefill</b> — увесь промпт одним проходом. Позиції відомі заздалегідь, тож обчислення паралельні й завантажують прискорювач повністю;</li>
+<li><b>decode</b> — один прохід на кожен новий токен. Щоб отримати один токен, треба прочитати з пам'яті всі ваги і весь накопичений кеш. Pope et al. (2022) показують, що тут швидкість упирається в пропускну здатність пам'яті, а не в обчислення.</li>
+</ul>
+<p>Щоб не перераховувати минуле, модель зберігає <b>KV cache</b>: вектори K і V кожного попереднього токена в кожному шарі. Новий токен рахує лише власні Q, K, V. Вимір на тій самій моделі (Apple GPU через MPS, fp16, промпт 1000 токенів, 50 нових):</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">python speed_mps.py</span>
+prefill: 1000 токенів одним проходом — 716 мс (0.72 мс на токен)
+decode з KV cache:  50 токенів — 1437 мс (28.7 мс на токен)
+decode без кешу:    50 токенів — 19087 мс (381.7 мс на токен)</pre>
+<div class="cap">реальний вивід · Qwen2.5-0.5B, torch 2.14.1, Apple M2 Pro · 14.10.2026 · один із трьох запусків; у всіх трьох prefill 0,72–1,51 мс на токен, decode з кешем 29–36 мс, без кешу 330–382 мс</div></div>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">prefill, мс на токен</span><span class="tr"><i style="--v:2%"></i><b style="--v:2%">0,72</b></span></div>
+  <div class="bar"><span class="k">decode з KV cache</span><span class="tr"><i style="--v:8%"></i><b style="--v:8%">28,7</b></span></div>
+  <div class="bar p"><span class="k">decode без кешу</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">381,7</b></span></div>
+</div>
+<figcaption>Час на токен у тому самому запуску. Вихідний токен обробляється в 40 разів довше за вхідний; без KV cache — ще в 13 разів довше, і без кешу ця різниця росте з довжиною контексту.</figcaption>
+</figure>
+<ol class="steps">
+<li><b>Ціна.</b> У Claude Opus 5.5, Sonnet 5.5 і Haiku 5.5 вихідний токен у 5 разів дорожчий за вхідний. Це узгоджується з механікою: вихідний токен займає обладнання значно довше. Довгий промпт із коротким виходом — дешевий шаблон (детально в уроці 1.5).</li>
+<li><b>Латентність.</b> Час до першого токена — це черга плюс prefill усього контексту, далі токени йдуть зі швидкістю decode. Агент, що на кожному кроці пересилає 150K токенів історії, щоразу платить за prefill, якщо префікс не закешовано.</li>
+<li><b>Пам'ять.</b> Для Qwen2.5-0.5B кеш займає 2 (K і V) × 24 шари × 2 KV-голови × 64 числа × 2 байти = <b>12 288 байт на токен</b>, тобто 384 MiB на контекст у 32K. 14 голів запиту ділять 2 пари K/V (grouped-query attention), і кеш у 7 разів менший, ніж якби кожна голова мала свої. За Pope et al., на великих батчах і довгих послідовностях читання KV cache займає більше часу, ніж читання ваг.</li>
+</ol>
+<div class="note arch"><span class="lbl">Міст до prompt caching</span>
+<p>Документація Claude про prompt caching прямо згадує «KV (key-value) cache representations». Тобто це та сама ідея між запитами: не повторювати prefill уже обчисленого префікса. Тому кеш спрацьовує лише на <b>точно однаковому префіксі</b>: K і V кожного токена залежать від усіх попередніх. Як вмикати і скільки це економить — урок 1.5.</p>
+</div>
+<h3>Стрімінг і «неможливо повернутися»</h3>
+<p>З <code>"stream": true</code> Claude API віддає server-sent events: <code>message_start</code>, для кожного блоку <code>content_block_start</code> → серія <code>content_block_delta</code> → <code>content_block_stop</code>, наприкінці <code>message_stop</code>. Генерація не швидшає, але користувач читає з першого токена, а код може перервати запит, щойно побачив достатньо.</p>
+<p>У генерації є лише операція «дописати». Помилка в третьому реченні лишається в контексті, і всі наступні розподіли обчислюються з нею: модель може «виправитися» лише новим текстом, а часто натомість узгоджує продовження з помилкою. Тому результат перевіряють <b>після</b> генерації кодом або окремим викликом і при помилці роблять новий запит із зауваженням. Формат задають <b>до</b> генерації схемою.</p>
+</section>
+
+<section class="sec" id="sampling">
+<div class="sec-h"><span class="num">06</span><h2>Sampling<span class="sub">Від logits до вибраного токена</span></h2></div>
+<p>Softmax перетворює logits на ймовірності, а <b>temperature</b> T ділить logits перед softmax:</p>
+<pre class="code" data-lang="text">p_i = exp(z_i / T) / Σ_j exp(z_j / T)      <span class="cm"># T &lt; 1 загострює розподіл, T &gt; 1 розплющує</span></pre>
+<p>Рахуємо на справжніх logits для двох промптів: з однією очевидною відповіддю і з кількома рівноцінними. Для кожної T — ймовірності п'яти найкращих токенів і скільки токенів лишає <code>top_p = 0.9</code>:</p>
+<pre class="code" data-lang="python"><span class="cm"># sampling.py — справжні logits Qwen2.5-0.5B → softmax з різною temperature</span>
+logits = model(ids.input_ids).logits[<span class="n">0</span>, -<span class="n">1</span>]          <span class="cm"># вектор на 151 936 значень</span>
+<span class="k">for</span> T <span class="k">in</span> (<span class="n">0.2</span>, <span class="n">0.5</span>, <span class="n">1.0</span>, <span class="n">1.5</span>):
+    p = torch.softmax(logits / T, dim=-<span class="n">1</span>)
+    s, _ = torch.sort(p, descending=<span class="k">True</span>)
+    nucleus = int((torch.cumsum(s, <span class="n">0</span>) &lt; <span class="n">0.9</span>).sum()) + <span class="n">1</span>   <span class="cm"># найменший набір із сумою ≥ 0.9</span></pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">python sampling.py</span>
+
+'The capital of France is'  logits: ' Paris'=17.84  ' ______'=16.83  ' ____'=16.24  ' __'=16.10  ':↵'=16.03
+T=0.2   99.3%    0.6%    0.0%    0.0%    0.0%   nucleus(top_p=0.9):     1
+T=0.5   78.1%   10.3%    3.2%    2.4%    2.1%   nucleus(top_p=0.9):     3
+T=1.0   31.6%   11.5%    6.4%    5.5%    5.1%   nucleus(top_p=0.9):    37
+T=1.5    9.2%    4.7%    3.2%    2.9%    2.7%   nucleus(top_p=0.9):  5351
+
+'My favorite color is'  logits: ' blue'=15.99  ' red'=15.31  ' green'=14.95  ' purple'=14.83  ' pink'=14.50
+T=0.2   96.0%    3.1%    0.5%    0.3%    0.1%   nucleus(top_p=0.9):     1
+T=0.5   57.3%   14.4%    7.1%    5.6%    2.9%   nucleus(top_p=0.9):     7
+T=1.0   19.7%    9.9%    6.9%    6.1%    4.4%   nucleus(top_p=0.9):    99
+T=1.5    4.9%    3.1%    2.4%    2.2%    1.8%   nucleus(top_p=0.9): 11842</pre>
+<div class="cap">реальний вивід · Qwen2.5-0.5B (base), torch 2.14.1 · 14.10.2026</div></div>
+<div class="tbl-wrap"><table class="tbl nostack">
+<thead><tr><th>T</th><th>«&nbsp;Paris»</th><th>ядро 0,9</th><th>«&nbsp;blue»</th><th>ядро 0,9</th></tr></thead>
+<tbody>
+<tr><td>0,2</td><td>99,3%</td><td>1</td><td>96,0%</td><td>1</td></tr>
+<tr><td>0,5</td><td>78,1%</td><td>3</td><td>57,3%</td><td>7</td></tr>
+<tr><td>1,0</td><td>31,6%</td><td>37</td><td>19,7%</td><td>99</td></tr>
+<tr><td>1,5</td><td>9,2%</td><td>5351</td><td>4,9%</td><td>11 842</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Ймовірність — не істинність.</b> Це base-модель без донавчання на діалогах, і друге місце в неї займає «&nbsp;______»: у текстах після такої фрази часто стоїть пропуск для вправи. При T = 1 правильна відповідь має лише 31,6%.</li>
+<li><b>Експонента підсилює різницю.</b> Між «&nbsp;Paris» і «&nbsp;______» лише 1,01 логіта. Відношення ймовірностей — e<sup>Δ/T</sup>: при T = 1 це ≈ 2,7 (31,6% проти 11,5%), а при T = 0,2 вже ≈ 156 (99,3% проти 0,6%).</li>
+<li><b>Висока температура будить хвіст.</b> При T = 1,5 у верхні 90% імовірності потрапляє 5351 токен для «Paris» і 11 842 для кольору, переважно сміття.</li>
+</ul>
+<p>Хвіст обрізають двома способами. <b>top_k</b> лишає K найімовірніших токенів, і ширина фіксована, хоч би якою впевненою була модель. <b>top_p</b> (nucleus sampling, Holtzman et al., 2019) лишає найменший набір із сумарною ймовірністю ≥ p, тож ширина адаптивна: 1 токен там, де модель упевнена, і 37 або 99 там, де ні. Розмір ядра залежить від температури, тобто temperature і top_p крутять той самий розподіл двома ручками.</p>
+</section>
+
+<section class="sec" id="api">
+<div class="sec-h"><span class="num">07</span><h2>Sampling у Claude API<span class="sub">Що можна налаштувати і що робити замість цього</span></h2></div>
+<p><code>temperature=0</code> зі старих прикладів на нових моделях Claude не пройде. Документація на день перевірки:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Моделі</th><th>temperature</th><th>top_p</th><th>top_k</th></tr></thead>
+<tbody>
+<tr><td data-th="Моделі">Opus 4.7, 4.8, 5, 5.5; Sonnet 5, 5.5; Haiku 5.5; Fable 5, 5.1</td><td data-th="temperature">лише типове 1; інше → 400</td><td data-th="top_p">лише типове 0,99; навіть <code>1</code> → 400</td><td data-th="top_k">будь-яке значення → 400</td></tr>
+<tr><td data-th="Моделі">Opus 4.6, Sonnet 4.6, Haiku 4.5 і старші</td><td data-th="temperature">0–1, типово 1; несумісна з thinking</td><td data-th="top_p">дозволено; з thinking лише 0,95–1</td><td data-th="top_k">дозволено; несумісний з thinking</td></tr>
+</tbody></table></div>
+<p>На моделях першого рядка запит з <code>temperature</code> і <code>top_p</code> одночасно повертає 400 навіть із типовими значеннями, а Python SDK 1.0+ цих параметрів не визначає (<code>TypeError</code>). Довідник API і сторінка про thinking розходяться щодо <code>top_p</code> (≥ 0,99 приймається проти «<code>1</code> → 400»). Тож безпечний шлях, який радить і гайд міграції на Opus 5.5, — <b>не передавати ці параметри зовсім</b>.</p>
+<div class="note fact"><span class="lbl">Перевірено · 14.10.2026</span>
+<p>Довідник Messages API: навіть з temperature 0,0 результати не будуть повністю детермінованими. Гайд міграції додає, що <code>temperature = 0</code> не гарантувала однакових відповідей і на попередніх моделях.</p>
+<p class="orig">“Note that even with temperature of 0.0, the results will not be fully deterministic.”</p>
+</div>
+<p>Механізм розібрали в Thinking Machines (вересень 2025). 1000 відповідей Qwen3-235B з temperature 0 на той самий промпт дали <b>80 різних варіантів</b>: перші 102 токени збігалися, далі тексти розходилися. Розмір батча на сервері залежить від навантаження, а ядра обчислень не інваріантні до розміру батча. Тому числа з плаваючою комою додаються в іншому порядку, і logits трохи змінюються. Коли два токени майже рівні, як «&nbsp;Paris» і «&nbsp;______» вище, argmax перемикається, і далі генерація авторегресивно йде іншим шляхом.</p>
+<h3>Правила для агентів</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Потрібно</th><th>Не покладайтесь на</th><th>Використовуйте</th></tr></thead>
+<tbody>
+<tr><td data-th="Потрібно">Вихід, який парсить код</td><td data-th="Не покладайтесь на">низьку температуру і «лише JSON»</td><td data-th="Використовуйте">structured outputs (<code>output_config.format</code>, <code>json_schema</code>) або <code>strict: true</code> в інструменті: граматика схеми обмежує сам sampling</td></tr>
+<tr><td data-th="Потрібно">Відтворюваність</td><td data-th="Не покладайтесь на">temperature 0</td><td data-th="Використовуйте">результат як збережений артефакт; у тестах і evals — перевірка властивостей виходу, а не збігу байтів</td></tr>
+<tr><td data-th="Потрібно">Точність цитат і фактів</td><td data-th="Не покладайтесь на">«не вигадуй» у промпті</td><td data-th="Використовуйте">джерело в контексті + перевірка кодом</td></tr>
+<tr><td data-th="Потрібно">Різноманіття</td><td data-th="Не покладайтесь на">N однакових викликів</td><td data-th="Використовуйте">N кандидатів за один виклик з явними осями відмінності, потім фільтр</td></tr>
+<tr><td data-th="Потрібно">Ретельність</td><td data-th="Не покладайтесь на">параметри sampling</td><td data-th="Використовуйте"><code>effort</code> і reasoning (урок 1.4)</td></tr>
+</tbody></table></div>
+<p>На старших моделях довідник радить temperature ближче до 0 для аналітичних задач, ближче до 1 — для творчих. Змінюйте щонайбільше один параметр і лише тоді, коли eval показує різницю: правильнішою відповідь від цього не стає.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: цитати й дистрактори</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 1.2: рішення про sampling</div><div class="pb">
+<p>Дві задачі Lectern мають протилежні вимоги. <b>Цитата</b> з лекції має бути дослівною і стабільною. <b>Дистрактори квізу</b> — правдоподібні хибні відповіді — мають бути різними, бо три варіації однієї помилки роблять питання легким. Рецепт «temperature 0 і 1» на <code>claude-haiku-5-5</code> не працює, тож перевіряємо альтернативу. Лекція — абзац про Transformer у <code>lecture.txt</code>. Скрипт тричі просить дослівну цитату за JSON-схемою і перевіряє її кодом, потім тричі просить 3 дистрактори:</p>
+<pre class="code" data-lang="python"><span class="cm"># sampling_check.py (скорочено)</span>
+QUOTE = {<span class="s">"type"</span>: <span class="s">"object"</span>, <span class="s">"additionalProperties"</span>: <span class="k">False</span>, <span class="s">"required"</span>: [<span class="s">"quote"</span>],
+         <span class="s">"properties"</span>: {<span class="s">"quote"</span>: {<span class="s">"type"</span>: <span class="s">"string"</span>}}}
+
+<span class="k">def</span> ask(prompt, schema):
+    out = subprocess.run([<span class="s">"claude"</span>, <span class="s">"-p"</span>, prompt, <span class="s">"--model"</span>, <span class="s">"haiku"</span>, <span class="s">"--tools"</span>, <span class="s">""</span>,
+                          <span class="s">"--json-schema"</span>, json.dumps(schema), <span class="s">"--output-format"</span>, <span class="s">"json"</span>],
+                         capture_output=<span class="k">True</span>, text=<span class="k">True</span>, check=<span class="k">True</span>).stdout
+    <span class="k">return</span> json.loads(out)[<span class="s">"structured_output"</span>]
+
+q = ask(<span class="s">"Наведи ДОСЛІВНУ цитату з лекції …"</span> + lecture, QUOTE)[<span class="s">"quote"</span>]
+print(<span class="s">"✓ є в тексті"</span> <span class="k">if</span> q <span class="k">in</span> lecture <span class="k">else</span> <span class="s">"✗ НЕМАЄ в тексті"</span>)   <span class="cm"># перевіряє код, а не віра</span></pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 sampling_check.py</span>
+цитата #1: <span class="ok">✓ є в тексті</span> · Автори повністю відмовилися від рекурентних і згорткових шар…
+цитата #2: <span class="ok">✓ є в тексті</span> · Автори повністю відмовилися від рекурентних і згорткових шар…
+цитата #3: <span class="ok">✓ є в тексті</span> · Автори повністю відмовилися від рекурентних і згорткових шар…
+дистрактори #1: ['<span class="y">менше параметрів, ніж у рекурентних моделях</span>', 'використання лише згорткових шарів замість уваги', 'скорочення довжини вхідних послідовностей під час навчання']
+дистрактори #2: ['<span class="y">модель мала менше параметрів</span>', 'використовувала згорткові шари замість рекурентних', 'кешування проміжних станів під час навчання']
+дистрактори #3: ['<span class="y">Менша кількість параметрів у моделі</span>', 'Рекурентні шари несумісні з GPU-обчисленнями', 'Менший розмір словника токенів']</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.299, модель claude-haiku-5-5 · 14.10.2026 · $0,001–0,005 за виклик</div></div>
+<p>Цитата однакова в усіх трьох запусках і пройшла перевірку, хоча температуру ми не задавали. Дистрактори різні за формулюванням, але <b>ідея «менше параметрів» повторилась у всіх трьох</b>: незалежні виклики беруть зразки з одного розподілу, і найімовірніша помилка випадає щоразу. Альтернатива — один виклик, де модель бачить усі кандидати разом і має явну вимогу різноманіття (поле <code>misconception</code> для кожного):</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 diverse.py</span>
+Менше параметрів означає швидше навчан → Модель має менше параметрів, ніж RNN
+Self-attention має лінійну складність  → Attention масштабується лінійно з довжиною тексту
+Відсутність зникаючих градієнтів скоро → Немає зникаючих градієнтів, тож кожен крок швидший
+Архітектура створена спеціально для CP → Модель оптимізована під звичайні CPU-процесори
+Передобучення прискорює саму архітекту → Передобучення скорочує час навчання самої архітектури
+Нижча точність чисел прискорює тренува → Обчислення виконуються у 16-бітній точності</pre>
+<div class="cap">реальний вивід · claude-haiku-5-5 · 14.10.2026 · один виклик, 11,6 с, $0,004 · назви хибних уявлень обрізано до 38 символів</div></div>
+<p>Шість різних хибних уявлень за один виклик. Рішення для Lectern:</p>
+<ul>
+<li><b>цитати</b>: схема з полем <code>quote</code> + перевірка <code>quote in source</code>; якщо не пройшла — повторний запит із зауваженням. Параметри sampling не задаємо;</li>
+<li><b>дистрактори</b>: один виклик на N кандидатів з полем <code>misconception</code>, далі фільтр кодом (довжина, відсутність збігу з правильною відповіддю) і перевірка іншим викликом, що варіант справді хибний.</li>
+</ul>
+<p>Ваш крок: додайте в репозиторій Lectern абзац будь-якої лекції як <code>lecture.txt</code> і свою версію <code>sampling_check.py</code>, запустіть її і запишіть обидва рішення разом із виводом у <code>docs/decisions.md</code>. У модулі 12 перевірка цитати стане eval.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що ламається в продакшні</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Чому не працює</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка"><code>temperature=0</code> «для стабільності» в коді, який переносять на нову модель</td><td data-th="Чому не працює">На Opus 4.7+ і моделях покоління 5 це 400, а детермінізму не давало й раніше</td><td data-th="Як правильно">Видалити параметр; стабільність — через схему, перевірку і збережені артефакти</td></tr>
+<tr><td data-th="Помилка">Поріг подібності 0,8 «з туторіала»</td><td data-th="Чому не працює">Шкала залежить від моделі: 0,74 буває і «інша тема», і «майже те саме»</td><td data-th="Як правильно">Калібрувати поріг на власних парах «релевантно / ні» для своєї моделі</td></tr>
+<tr><td data-th="Помилка">Embedding-модель без підтримки мови документів</td><td data-th="Чому не працює">Вектори злипаються: борщ схожий на тест на 0,74</td><td data-th="Як правильно">Перевірити, що модель заявляє вашу мову, і виміряти на своїх фразах</td></tr>
+<tr><td data-th="Помилка">Мінлива частина (дата, id запиту) на початку системного промпту</td><td data-th="Чому не працює">K і V кожного токена залежать від усіх попередніх: кеш префікса не спрацює ніколи</td><td data-th="Як правильно">Стабільне — на початок, мінливе — в кінець</td></tr>
+<tr><td data-th="Помилка">«Напиши повністю, а потім ми скоротимо»</td><td data-th="Чому не працює">Вихідні токени найдорожчі й найповільніші</td><td data-th="Як правильно">Просити одразу потрібний обсяг і формат; обмежувати <code>max_tokens</code></td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<p>Натисніть на картку, щоб побачити визначення.</p>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">logits</span><span class="h">що повертає модель?</span></span><span class="b"><span class="t">Оцінки токенів</span><span class="d">по одному числу на кожен токен словника; softmax робить з них ймовірності</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">KV cache</span><span class="h">що в ньому?</span></span><span class="b"><span class="t">K і V минулих токенів</span><span class="d">для кожного шару; новий токен рахує лише власні Q, K, V</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">prefill</span><span class="h">чим відрізняється від decode?</span></span><span class="b"><span class="t">Увесь промпт за прохід</span><span class="d">паралельно; decode — один прохід на кожен новий токен</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">top_p = 0.9</span><span class="h">скільки токенів лишиться?</span></span><span class="b"><span class="t">Залежить від упевненості</span><span class="d">найменший набір із сумою ≥ 0,9: від 1 до тисяч токенів</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">причинна маска</span><span class="h">що бачить токен?</span></span><span class="b"><span class="t">Лише минуле</span><span class="d">себе і попередні токени; «&nbsp;it» не бачить слова після себе</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">cos = 0,87</span><span class="h">«тест падає» / «не падає»</span></span><span class="b"><span class="t">Тема, а не істинність</span><span class="d">embedding зближує тексти про одне, навіть з протилежним змістом</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Ви замінили embedding-модель у RAG на іншу, а поріг подібності 0,75 лишили. Що найімовірніше станеться?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Нічого: косинус завжди від −1 до 1, тож поріг 0,75 переноситься між моделями</span></label><label class="opt ok"><input type="radio" name="q1"><span>Результати зсунуться непередбачувано: поріг калібрують заново під нову модель</span></label><label class="opt"><input type="radio" name="q1"><span>Нічого, якщо в обох моделей вектор на 384 числа: шкала залежить від розмірності</span></label></div>
+    <div class="why yes">Так. Діапазон однаковий, а розподіл значень у кожної моделі свій: у демо 0,74 означало «інша тема» для однієї моделі.</div>
+    <div class="why no">Діапазон і навіть розмірність можуть збігатися — обидві моделі в демо мають по 384 числа, — а шкала в кожної своя: англомовна модель дала 0,74 парі «борщ — тест». Поріг калібрують для конкретної моделі.</div></div>
+  <div class="q"><div class="qt">2. На запит «кешування прискорює збірку» векторний пошук першим повертає документ «кешування не прискорює збірку». Що це означає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Модель не знає мови документів: вектори злипаються, тож треба взяти багатомовну</span></label><label class="opt"><input type="radio" name="q2"><span>Поріг подібності занизький: підніміть його до 0,9, і заперечення відсіється</span></label><label class="opt ok"><input type="radio" name="q2"><span>Нормальна поведінка: embedding ловить тему, а полярність перевіряє наступний крок</span></label></div>
+    <div class="why yes">Так. У демо «тест падає» і «тест не падає» мали 0,87, тобто більше, ніж перефразування. Полярність перевіряє reranking, LLM або код.</div>
+    <div class="why no">Обидві моделі в демо, багатомовна теж, поставили заперечення ближче за перефразування (0,87 і 0,99), тож вищий поріг відсіяв би радше перефразування. Це властивість пошуку за подібністю: полярність перевіряє reranking, LLM або код.</div></div>
+  <div class="q"><div class="qt">3. Код зі старого проєкту шле на <code>claude-opus-5-5</code> запит з <code>temperature=0</code>, щоб відповіді були стабільні. Що буде і що робити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span>400; прибрати параметр, а стабільність дати схемою і перевіркою</span></label><label class="opt"><input type="radio" name="q3"><span>400; замінити на <code>top_k=1</code>, що дає той самий детермінований вибір</span></label><label class="opt"><input type="radio" name="q3"><span>Запит пройде, але температуру без попередження замінять на типову 1</span></label></div>
+    <div class="why yes">Так. На Opus 4.7 і новіших будь-яке нетипове значення sampling-параметрів дає 400, а temperature 0 і раніше не гарантувала однакових відповідей.</div>
+    <div class="why no">На Opus 4.7 і новіших нетипові temperature і top_p та будь-який top_k дають 400, тож ні тихої заміни, ні обходу через <code>top_k</code> немає. А детермінізму temperature 0 не давала й раніше.</div></div>
+  <div class="q"><div class="qt">4. Агент Lectern отримує 20 000 токенів лекції і пише 3 000 токенів уроку. Що найсильніше скоротить загальний час відповіді?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Скоротити лекцію на вході: 20 000 токенів — основна частина часу відповіді</span></label><label class="opt ok"><input type="radio" name="q4"><span>Скоротити вихід: генерувати урок частинами лише там, де він змінився</span></label><label class="opt"><input type="radio" name="q4"><span>Увімкнути стрімінг: з <code>stream: true</code> генерація йде швидше</span></label></div>
+    <div class="why yes">Так. Вхід іде одним паралельним prefill, а кожен вихідний токен — окремий прохід. У вимірі вихідний токен коштував у 40 разів більше часу за вхідний.</div>
+    <div class="why no">3 000 вихідних токенів — це 3 000 послідовних проходів decode, а 20 000 вхідних ідуть одним паралельним prefill. Стрімінг генерацію не пришвидшує: користувач лише раніше бачить перші токени.</div></div>
+  <div class="q"><div class="qt">5. На початку системного промпту стоїть <code>Сьогодні: 2026-10-14 10:31:07</code>, далі 30 000 токенів незмінних інструкцій. Чому кеш промпту майже не спрацьовує?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>K і V кожного токена залежать від попередніх: зміна на початку міняє весь префікс</span></label><label class="opt"><input type="radio" name="q5"><span>Кеш зберігає готові відповіді, а не стан моделі, тож новий час означає новий запит</span></label><label class="opt"><input type="radio" name="q5"><span>Кеш прив'язаний до часу запису, і мітка з секундами щоразу робить його застарілим</span></label></div>
+    <div class="why yes">Так. Через attention вектори кожної позиції обчислено з урахуванням усього, що перед нею. Мінливе — в кінець.</div>
+    <div class="why no">Кеш зберігає K і V префікса, а не відповіді, і застаріває не від мітки часу в тексті: K і V кожного токена залежать від усіх попередніх. Секунди в першому рядку змінюють увесь стан, тож мінливе — в кінець.</div></div>
+  <div class="q"><div class="qt">6. Контекст агента виріс з 50 000 до 100 000 токенів. Як приблизно зміниться обсяг обчислень attention на етапі prefill?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Удвічі</span></label><label class="opt ok"><input type="radio" name="q6"><span>Учетверо</span></label><label class="opt"><input type="radio" name="q6"><span>Не зміниться завдяки KV cache</span></label></div>
+    <div class="why yes">Так. Self-attention — <code>O(n²·d)</code> на шар: кожна позиція порівнюється з кожною попередньою.</div>
+    <div class="why no">2n позицій дають 4n² пар. KV cache економить повторні обчислення в decode, але не сам prefill.</div></div>
+  <div class="q"><div class="qt">7. Модель відповіла: «Варіант B. Пояснення: …» і навела переконливе обґрунтування. Що з цього випливає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Обґрунтування підтверджує B: модель бачила всю відповідь і узгодила її з вибором</span></label><label class="opt"><input type="radio" name="q7"><span>Модель перевіряла B, поки писала пояснення, і виправила б його, якби помилилась</span></label><label class="opt ok"><input type="radio" name="q7"><span>B згенеровано до обґрунтування, тож пояснення написане під уже зроблений вибір</span></label></div>
+    <div class="why yes">Так. Генерація авторегресивна: кожен токен бачить лише попередні, а «повернутися» нічим. Якщо потрібне обґрунтоване рішення, міркування мають іти першими.</div>
+    <div class="why no">Генерація лише дописує: «B» з'явилось раніше за пояснення, тож пояснення його не визначало, а свою помилку модель радше захищатиме, ніж виправить.</div></div>
+  <div class="q"><div class="qt">8. На локальній моделі ви поставили T = 1,5 і top_p = 0,9, і у відповідях з'являються безглузді слова. Чому top_p не врятував?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Висока температура розплющує розподіл, і в 90% імовірності потрапляють тисячі токенів</span></label><label class="opt"><input type="radio" name="q8"><span>top_p застосовують до logits ще до температури, тож T = 1,5 обходить обрізання</span></label><label class="opt"><input type="radio" name="q8"><span>top_p = 0,9 відрізає лише 10% словника, тож у вибірці лишаються понад 130 тис. токенів</span></label></div>
+    <div class="why yes">Так. У вимірі при T = 1,5 ядро top_p = 0,9 мало 5351 і 11 842 токени. top_p відрізає хвіст, але температура вирішує, наскільки він товстий.</div>
+    <div class="why no">top_p відрізає не частку словника, а хвіст за сумарною ймовірністю, і рахують його на вже «нагрітому» розподілі. При T = 1,5 у ядро 0,9 потрапив 5351 токен.</div></div>
+  <div class="q"><div class="qt">9. Для квізу потрібно 5 дистракторів, і всі мають бути різними. Що обрати на <code>claude-haiku-5-5</code>?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Один виклик на 6–8 кандидатів, кожен з окремим хибним уявленням, і фільтр кодом</span></label><label class="opt"><input type="radio" name="q9"><span>5 однакових викликів з temperature 1 і top_p 0,95, щоб розширити вибір</span></label><label class="opt"><input type="radio" name="q9"><span>5 однакових викликів з типовими параметрами: незалежні зразки й так виходять різні</span></label></div>
+    <div class="why yes">Так. Незалежні виклики раз у раз повертають найімовірнішу помилку («менше параметрів» тричі з трьох). Один виклик бачить усі кандидати разом і може їх розвести.</div>
+    <div class="why no">На Haiku 5.5 temperature і top_p разом дають 400 навіть із типовими значеннями, а незалежні виклики в демо тричі повторили ту саму ідею. Один виклик з осями відмінності дав шість різних.</div></div>
+  <div class="q"><div class="qt">10. Сервер з open-source моделлю, temperature 0, той самий промпт 100 разів — і кілька різних відповідей. Найімовірніша причина?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Сервер ігнорує temperature 0 і без попередження семплює з типовою T = 1</span></label><label class="opt"><input type="radio" name="q10"><span>Модель навмисно додає шум у logits, щоб відповіді на той самий промпт різнилися</span></label><label class="opt ok"><input type="radio" name="q10"><span>Розмір батча залежить від навантаження, і без batch-invariant ядер logits плавають</span></label></div>
+    <div class="why yes">Так. Thinking Machines отримали 80 різних відповідей з 1000 при temperature 0. Причина — інший порядок операцій з плаваючою комою за іншого розміру батча.</div>
+    <div class="why no">Greedy-вибір детермінований, але logits — ні: за іншого розміру батча числа з плаваючою комою додаються в іншому порядку, і майже рівні токени міняються місцями. Шуму навмисно ніхто не додає.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>embedding</td><td>Вектор чисел, яким модель представляє токен або текст; близькі за змістом тексти мають близькі вектори.</td></tr>
+<tr><td>косинусна подібність</td><td>Косинус кута між векторами, від −1 до 1; для нормованих векторів дорівнює скалярному добутку.</td></tr>
+<tr><td>transformer block</td><td>Шар моделі: self-attention (обмін між позиціями) + MLP (перетворення кожної позиції), з residual-зв'язками.</td></tr>
+<tr><td>self-attention</td><td>Механізм, яким кожен токен збирає зважену інформацію з попередніх токенів.</td></tr>
+<tr><td>Q/K/V</td><td>Query, key, value: що токен шукає, за чим його знаходять і що він передає.</td></tr>
+<tr><td>logits</td><td>Сирі оцінки моделі, по одній на кожен токен словника, до softmax.</td></tr>
+<tr><td>softmax</td><td>Функція, що перетворює logits на ймовірності із сумою 1.</td></tr>
+<tr><td>temperature</td><td>Дільник logits перед softmax: T &lt; 1 загострює розподіл, T &gt; 1 розплющує.</td></tr>
+<tr><td>top_p</td><td>Nucleus sampling: вибір лише з найменшого набору токенів із сумарною ймовірністю ≥ p.</td></tr>
+<tr><td>top_k</td><td>Вибір лише з K найімовірніших токенів.</td></tr>
+<tr><td>autoregressive generation</td><td>Генерація, у якій кожен токен вибирається з урахуванням усіх попередніх і дописується в кінець.</td></tr>
+<tr><td>prefill vs decode</td><td>Паралельна обробка всього промпту проти послідовної генерації по одному токену за прохід.</td></tr>
+<tr><td>KV cache</td><td>Збережені K і V попередніх токенів у кожному шарі, щоб не перераховувати їх на кожному кроці.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Механіка в цифрах: розрахунок і рішення</h3>
+<p>Порахуйте KV cache для заданої моделі й контексту, оцініть, що домінує в латентності двох сценаріїв агента, і виберіть для трьох задач Lectern спосіб керувати результатом на сучасних моделях Claude. Умова з числами — у завданні.</p>
+<h3>2. Власний вимір embeddings</h3>
+<p>Зберіть 6 фраз своєю робочою мовою (перефразування, заперечення, переклад, інша тема), отримайте матрицю подібності на двох моделях і сформулюйте, що з неї випливає для пошуку в Lectern.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 14.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Vaswani et al. — Attention Is All You Need</a><span>2017 · формула attention, таблиця 1 зі складністю O(n²·d), позиційне кодування</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/messages/create" target="_blank" rel="noopener">Claude API — Create a Message</a><span>довідник: <code>temperature</code>, <code>top_p</code>, <code>top_k</code>, примітка про детермінізм</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/thinking" target="_blank" rel="noopener">Claude — Thinking: limits and feature compatibility</a><span>які моделі приймають sampling-параметри і що дозволено з thinking</span></li>
+<li><a href="https://platform.claude.com/docs/en/models/opus-5-5/migration-guide" target="_blank" rel="noopener">Claude — гайд міграції на Opus 5.5</a><span>видалені sampling-параметри, <code>TypeError</code> у Python SDK 1.0+</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs" target="_blank" rel="noopener">Claude — Structured outputs</a><span><code>output_config.format</code>, constrained sampling за граматикою схеми</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/streaming" target="_blank" rel="noopener">Claude — Streaming</a><span>server-sent events і типи подій</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/embeddings" target="_blank" rel="noopener">Claude — Embeddings</a><span>Anthropic не має власної моделі; моделі Voyage AI, нормовані вектори</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude — Pricing</a><span>ціни вхідних і вихідних токенів</span></li>
+<li><a href="https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/" target="_blank" rel="noopener">Thinking Machines — Defeating Nondeterminism in LLM Inference</a><span>10.09.2025 · 80 різних відповідей з 1000 при temperature 0, batch invariance</span></li>
+<li><a href="https://arxiv.org/abs/2211.05102" target="_blank" rel="noopener">Pope et al. — Efficiently Scaling Transformer Inference</a><span>2022 · KV cache, пам'ять і пропускна здатність на етапі генерації</span></li>
+<li><a href="https://arxiv.org/abs/1904.09751" target="_blank" rel="noopener">Holtzman et al. — The Curious Case of Neural Text Degeneration</a><span>2019 · nucleus sampling (top_p)</span></li>
+<li><a href="https://arxiv.org/abs/2305.13245" target="_blank" rel="noopener">Ainslie et al. — GQA</a><span>2023 · grouped-query attention і менший KV cache</span></li>
+<li><a href="https://arxiv.org/abs/2104.09864" target="_blank" rel="noopener">Su et al. — RoFormer</a><span>2021 · rotary position embedding (RoPE)</span></li>
+<li><a href="https://arxiv.org/abs/1902.10186" target="_blank" rel="noopener">Jain, Wallace — Attention is not Explanation</a><span>2019 · чому ваги attention не пояснюють рішення</span></li>
+<li><a href="https://arxiv.org/abs/2309.17453" target="_blank" rel="noopener">Xiao et al. — Efficient Streaming Language Models with Attention Sinks</a><span>2023 · увага, що стікає на перші токени</span></li>
+<li><a href="https://huggingface.co/Qwen/Qwen2.5-0.5B" target="_blank" rel="noopener">Qwen2.5-0.5B — картка моделі</a><span>відкрита модель для вимірів уроку: 24 шари, GQA 14/2, RoPE</span></li>
+<li><a href="https://github.com/qdrant/fastembed" target="_blank" rel="noopener">fastembed</a><span>бібліотека для локальних embeddings; моделі: <a href="https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" target="_blank" rel="noopener">paraphrase-multilingual-MiniLM-L12-v2</a>, <a href="https://huggingface.co/BAAI/bge-small-en-v1.5" target="_blank" rel="noopener">bge-small-en-v1.5</a></span></li>
+<li><a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">Jay Alammar — The Illustrated Transformer</a><span>наочне пояснення Q/K/V і multi-head attention</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 1.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 1.2 · Senomi<br><br><a href="lesson-04.html">← Урок 1.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-06.html">Урок 1.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

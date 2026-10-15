@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 8.2. Інструменти SDD: Spec Kit, Kiro, OpenSpec, BMAD, Tessl, Task Master</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 8.2 · Модуль 8</div>
+<h1>Інструменти SDD: Spec Kit, Kiro, OpenSpec, BMAD, Tessl, Task Master</h1>
+<p class="lead">Шість інструментів SDD станом на 15.10.2026: що кожен кладе в репозиторій і в домашню теку, скільки токенів додає до кожного ходу і де живе spec після злиття. Одну функцію провели через Spec Kit (7 запусків, $0,12), OpenSpec ($0,056) і без інструмента ($0,0055) — і розібрали, що з цієї різниці приносить користь, а що лише церемонія.</p>
+<div class="hero-meta"><span class="chip">Spec-Driven Development</span><span class="chip t">≈ 65 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 15.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Можливо, spec-as-source і навіть spec-anchoring зрештою поєднають недоліки і MDD, і LLM: негнучкість і недетермінованість.</p><cite>Birgitta Böckeler, «Understanding Spec-Driven-Development: Kiro, spec-kit, and Tessl», martinfowler.com, 15.10.2025 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#map"><b>01</b>Шість інструментів</a><a href="#levels"><b>02</b>Шкала</a><a href="#anatomy"><b>03</b>Анатомія</a><a href="#install"><b>04</b>Що робить init</a><a href="#run"><b>05</b>Spec Kit від specify до converge</a><a href="#agents"><b>06</b>Підключення до агентів</a><a href="#limits"><b>07</b>Межі й пастки</a><a href="#choose"><b>08</b>Як обрати</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розмістити Spec Kit, Kiro, OpenSpec, BMAD, Tessl і Task Master на шкалі spec-first → spec-anchored → spec-as-source і пояснити, що з цього випливає для підтримки;</li>
+    <li>передбачити, що інструмент покладе в репозиторій і в домашню теку, скільки токенів додасть до кожного ходу і як підключиться до Claude Code, Codex і Cursor;</li>
+    <li>провести фічу через Spec Kit від specify до converge і за вимірами відрізнити корисні артефакти від церемонії;</li>
+    <li>обрати інструмент під ситуацію або обґрунтовано відмовитися від нього на користь шаблону й plan mode;</li>
+    <li>записати вибір як ADR з умовою, за якої рішення переглядають.</li>
+  </ul>
+</div>
+
+<section class="sec" id="map">
+<div class="sec-h"><span class="num">01</span><h2>Шість інструментів<span class="sub">Хто, що, яка версія на 15.10.2026</span></h2></div>
+<p>Усі шість реалізують один ланцюжок з уроку 8.1: намір → spec → план → задачі. Відрізняються вони трьома речами: <b>де живе spec після злиття</b>, <b>що інструмент ставить у репозиторій</b> і <b>чий агент виконує кроки</b> — ваш (Claude Code, Codex, Cursor) чи власний.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Що це</th><th>Версія · дата</th><th>Ліцензія · хто</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент"><b>GitHub Spec Kit</b></td><td data-th="Що це">CLI <code>specify</code> (Python) генерує skills або команди для 41 агента</td><td data-th="Версія · дата">1.2.0 · 13.10.2026</td><td data-th="Ліцензія · хто">MIT · GitHub; з 22.01.2026 головний мейнтейнер — Manfred Riem</td></tr>
+<tr><td data-th="Інструмент"><b>Kiro</b></td><td data-th="Що це">Агентне IDE на базі VS Code, CLI і web з власним агентом</td><td data-th="Версія · дата">IDE 1.3.0, CLI 2.31.0 · 13.10.2026</td><td data-th="Ліцензія · хто">закритий код · «Built and operated by AWS»; оплата кредитами</td></tr>
+<tr><td data-th="Інструмент"><b>OpenSpec</b></td><td data-th="Що це">npm CLI <code>openspec</code> і skills або команди для 49 інструментів (список <code>--tools</code>)</td><td data-th="Версія · дата">1.14.2 · 15.10.2026</td><td data-th="Ліцензія · хто">MIT · Fission AI, головний мейнтейнер Tabish Bidiwale</td></tr>
+<tr><td data-th="Інструмент"><b>BMAD Method</b></td><td data-th="Що це">npm-інсталятор: 29 skills з агентами-персонами й workflow</td><td data-th="Версія · дата">6.12.4 · 14.10.2026; v7 — alpha</td><td data-th="Ліцензія · хто">MIT, назва — торгова марка BMad Code, LLC</td></tr>
+<tr><td data-th="Інструмент"><b>Tessl</b></td><td data-th="Що це">Платформа й реєстр skills і плагінів; SDD — плагін <code>tessl-labs/spec-driven-development</code></td><td data-th="Версія · дата">CLI 0.115.0 · 14.10.2026; плагін 2.0.1</td><td data-th="Ліцензія · хто">плагін MIT; платформа має безплатний рівень, 1 000 кредитів на місяць</td></tr>
+<tr><td data-th="Інструмент"><b>Task Master</b></td><td data-th="Що це">npm CLI і MCP-сервер: PRD → <code>tasks.json</code></td><td data-th="Версія · дата">0.43.1 · 31.03.2026</td><td data-th="Ліцензія · хто">MIT + Commons Clause · Eyal Toledano, Ralph Khreish (Hamster)</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 15.10.2026</span>
+<p>Версії взято з GitHub API, PyPI і npm у день уроку (<code>console/versions.txt</code>). Зірки: Spec Kit 141 322, OpenSpec 71 984, BMAD 54 155, Task Master 28 226. Зірки показують увагу до проєкту, але не те, чи його підтримують: у Task Master 28 тисяч зірок, проте нового релізу немає з 31.03.2026, а останній push був 28.04.2026. BMAD обіцяє v7 «16 жовтня 2026, можливо раніше», тож назви skills нижче стосуються стабільної 6.12.</p>
+</div>
+</section>
+
+<section class="sec" id="levels">
+<div class="sec-h"><span class="num">02</span><h2>Шкала<span class="sub">spec-first, spec-anchored, spec-as-source</span></h2></div>
+<p>Найкорисніша вісь для порівняння — що відбувається зі spec після того, як фічу злили. Три рівні запропонувала Бірґіта Бекелер:</p>
+<blockquote class="q-src">
+<p><b>Spec-first</b> — спершу пишуть продуману spec, а потім використовують її в роботі з AI над поточною задачею.</p>
+<p><b>Spec-anchored</b> — spec зберігають і після завершення задачі, щоб далі розвивати й підтримувати цю фічу.</p>
+<p><b>Spec-as-source</b> — з часом головним вихідним файлом стає spec: людина редагує лише її і ніколи не торкається коду.</p>
+<p class="orig">“Spec-first: A well thought-out spec is written first, and then used in the AI-assisted development workflow for the task at hand. Spec-anchored: The spec is kept even after the task is complete, to continue using it for evolution and maintenance of the respective feature. Spec-as-source: The spec is the main source file over time, and only the spec is edited by the human, the human never touches the code.”</p>
+<cite>Birgitta Böckeler, martinfowler.com, 15.10.2025</cite>
+</blockquote>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 430" role="img" aria-label="Три рівні SDD і де на них стоять інструменти">
+  <defs>
+    <marker id="m39a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="112" rx="10" class="bx t"/>
+  <text x="22" y="32" class="tx b">spec-first</text>
+  <text x="22" y="52" class="tx s">spec пишуть під одну зміну;</text>
+  <text x="22" y="68" class="tx s">після злиття вона лише історія</text>
+  <rect x="22" y="80" width="92" height="28" rx="8" class="bx m"/>
+  <text x="68" y="99" text-anchor="middle" class="tx s">Spec Kit</text>
+  <rect x="122" y="80" width="70" height="28" rx="8" class="bx m"/>
+  <text x="157" y="99" text-anchor="middle" class="tx s">Kiro</text>
+  <rect x="200" y="80" width="76" height="28" rx="8" class="bx m"/>
+  <text x="238" y="99" text-anchor="middle" class="tx s">BMAD</text>
+  <path d="M60 120 V 148" class="ln a" marker-end="url(#m39a)"/>
+  <text x="74" y="139" class="tx s">зміну зливають у поточну spec</text>
+  <rect x="8" y="152" width="344" height="112" rx="10" class="bx a"/>
+  <text x="22" y="176" class="tx b">spec-anchored</text>
+  <text x="22" y="196" class="tx s">spec живе поруч із кодом; кожна</text>
+  <text x="22" y="212" class="tx s">зміна оновлює її в тому самому PR</text>
+  <rect x="22" y="224" width="96" height="28" rx="8" class="bx m"/>
+  <text x="70" y="243" text-anchor="middle" class="tx s">OpenSpec</text>
+  <rect x="126" y="224" width="112" height="28" rx="8" class="bx m"/>
+  <text x="182" y="243" text-anchor="middle" class="tx s">Tessl-плагін</text>
+  <path d="M60 264 V 292" class="ln a" marker-end="url(#m39a)"/>
+  <text x="74" y="283" class="tx s">людина править лише spec</text>
+  <rect x="8" y="296" width="344" height="96" rx="10" class="bx p"/>
+  <text x="22" y="320" class="tx b">spec-as-source</text>
+  <text x="22" y="340" class="tx s">код генерують зі spec і руками не правлять</text>
+  <rect x="22" y="352" width="236" height="28" rx="8" class="bx m"/>
+  <text x="140" y="371" text-anchor="middle" class="tx s">Tessl Framework 2025 · знятий</text>
+  <text x="180" y="418" text-anchor="middle" class="tx s">поза шкалою: Task Master (правда — tasks.json)</text>
+</svg>
+<figcaption>Spec Kit, Kiro і Tessl 2025 розмістила Бекелер (вересень 2025). OpenSpec, BMAD, Task Master і нинішній плагін Tessl — наша класифікація за документацією і прогонами 15.10.2026.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Рівень</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент">Spec Kit</td><td data-th="Рівень">spec-first</td><td data-th="Чому">Кожна фіча отримує новий <code>specs/NNN-назва/</code>, старий лишається історією (у документації це «flow-forward»). Режим «living spec» описано, але оновлювати <code>spec.md</code> і перегенеровувати план ви маєте самі.</td></tr>
+<tr><td data-th="Інструмент">Kiro</td><td data-th="Рівень">spec-first</td><td data-th="Чому">Бекелер: «mostly spec-first». Spec пишуть під фічу або баг у <code>.kiro/specs/&lt;name&gt;/</code>, механізму злиття в спільну spec немає.</td></tr>
+<tr><td data-th="Інструмент">BMAD</td><td data-th="Рівень">spec-first</td><td data-th="Чому">PRD, архітектура й історії потрібні, щоб координувати збірку. Документація пише прямо: «They do not replace Build».</td></tr>
+<tr><td data-th="Інструмент">OpenSpec</td><td data-th="Рівень">spec-anchored</td><td data-th="Чому">Зміна описується як delta (<code>ADDED</code> / <code>MODIFIED</code> / <code>REMOVED Requirements</code>). <code>archive</code> зливає її в <code>openspec/specs/</code>, яку документація називає «source of truth».</td></tr>
+<tr><td data-th="Інструмент">Tessl</td><td data-th="Рівень">spec-anchored</td><td data-th="Чому">У 2025 році це був єдиний із трьох інструментів Бекелер, що цілив у spec-anchored і пробував spec-as-source: згенерований код мав позначку <code>GENERATED FROM SPEC - DO NOT EDIT</code>, усе в приватній беті. Сьогодні на tessl.io цього фреймворку немає. Формат spec у плагіні — <code>targets</code> на файли коду і посилання <code>[@test]</code> на тести.</td></tr>
+<tr><td data-th="Інструмент">Task Master</td><td data-th="Рівень">поза шкалою</td><td data-th="Чому">PRD читається один раз, далі джерело правди — <code>tasks.json</code>. Його власний <code>CLAUDE.md</code> велить: «Never manually edit tasks.json».</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Рівень визначає, <b>коли ви платите</b>. Spec-first платить один раз, на рев'ю перед кодом: spec — це одноразовий промпт, і застаріла spec у репозиторії потім вводить агента в оману (урок 8.3). Spec-anchored платить на кожній зміні, бо треба написати delta і злити її, зате агент читає поточну поведінку, а не археологію фіч. Обирайте рівень під те, хто читатиме spec через пів року, а не під інструмент.</p>
+</div>
+</section>
+
+<section class="sec" id="anatomy">
+<div class="sec-h"><span class="num">03</span><h2>Анатомія<span class="sub">Артефакти, кроки, де живе стан</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Артефакти однієї фічі</th><th>Де стан</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент">Spec Kit</td><td data-th="Артефакти однієї фічі"><code>spec.md</code>, <code>plan.md</code>, <code>research.md</code>, <code>data-model.md</code>, <code>contracts/</code>, <code>quickstart.md</code>, <code>tasks.md</code>, <code>checklists/</code></td><td data-th="Де стан"><code>specs/NNN-назва/</code>; активна фіча — <code>.specify/feature.json</code>; принципи — <code>.specify/memory/constitution.md</code></td></tr>
+<tr><td data-th="Інструмент">Kiro</td><td data-th="Артефакти однієї фічі"><code>requirements.md</code> (EARS) або <code>bugfix.md</code>, <code>design.md</code>, <code>tasks.md</code></td><td data-th="Де стан"><code>.kiro/specs/&lt;name&gt;/</code>; steering — <code>.kiro/steering/</code> і <code>~/.kiro/steering/</code>; hooks — <code>.kiro/hooks/*.json</code></td></tr>
+<tr><td data-th="Інструмент">OpenSpec</td><td data-th="Артефакти однієї фічі"><code>proposal.md</code>, delta <code>specs/&lt;capability&gt;/spec.md</code>, <code>design.md</code>, <code>tasks.md</code></td><td data-th="Де стан"><code>openspec/changes/&lt;name&gt;/</code>, після archive — <code>openspec/specs/</code> і <code>changes/archive/YYYY-MM-DD-&lt;name&gt;/</code></td></tr>
+<tr><td data-th="Інструмент">BMAD 6.12</td><td data-th="Артефакти однієї фічі">brief, PRD, UX, архітектура, епіки й історії, статус спринту</td><td data-th="Де стан"><code>_bmad-output/planning-artifacts/</code> і <code>implementation-artifacts/</code>; конфіг — <code>_bmad/</code></td></tr>
+<tr><td data-th="Інструмент">Task Master</td><td data-th="Артефакти однієї фічі"><code>tasks.json</code>: id, title, description, status, dependencies, priority, details, testStrategy, subtasks; звіт складності</td><td data-th="Де стан"><code>.taskmaster/tasks/</code>; поточний тег (паралельний список задач) — <code>.taskmaster/state.json</code></td></tr>
+<tr><td data-th="Інструмент">Tessl</td><td data-th="Артефакти однієї фічі"><code>*.spec.md</code> з frontmatter <code>targets</code> і посиланнями <code>[@test]</code></td><td data-th="Де стан"><code>specs/</code>; плагін — <code>.tessl/plugins/</code>, версії — <code>tessl.json</code></td></tr>
+</tbody></table></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Інструмент</th><th>Кроки</th></tr></thead>
+<tbody>
+<tr><td>Spec Kit</td><td><code>constitution</code> (раз на проєкт) → <code>specify</code> → [<code>clarify</code>] → <code>plan</code> → [<code>checklist</code>] → <code>tasks</code> → [<code>analyze</code>] → <code>implement</code> → <code>converge</code>, і так доки converge не відповість «Converged». У дужках — необов'язкові ворота якості.</td></tr>
+<tr><td>Kiro</td><td>Requirements → Design → Tasks або навпаки, Design → Requirements → Tasks, із затвердженням між фазами. Quick Spec генерує все за один прохід без воріт. Незалежні задачі виконуються паралельно, «хвилями».</td></tr>
+<tr><td>OpenSpec</td><td><code>/opsx:explore</code> → <code>/opsx:propose</code> → <code>/opsx:apply</code> → <code>/opsx:archive</code>; ще <code>sync</code> і <code>update</code>. Розширений профіль додає <code>new</code>, <code>continue</code>, <code>ff</code>, <code>verify</code>, <code>bulk-archive</code> і <code>onboard</code>.</td></tr>
+<tr><td>BMAD 6.12</td><td><code>bmad-product-brief</code> → <code>bmad-prd</code> → <code>bmad-ux</code> → <code>bmad-architecture</code> → <code>bmad-create-epics-and-stories</code> → <code>bmad-sprint-planning</code> → <code>bmad-build</code> → <code>bmad-code-review</code> → <code>bmad-retrospective</code>. Ясну дрібну зміну одразу віддають у <code>bmad-build</code>, а підказку про наступний крок дає <code>bmad-help</code>.</td></tr>
+<tr><td>Task Master</td><td><code>init</code> → PRD у <code>.taskmaster/docs/prd.txt</code> → <code>parse-prd</code> → <code>analyze-complexity</code> (оцінки 1–10) → <code>expand</code> → <code>next</code> → <code>set-status</code></td></tr>
+<tr><td>Tessl</td><td><code>tessl install tessl-labs/spec-driven-development</code>, далі в промпті «use spec-driven development». Агент ставить по одному питанню, пише spec, чекає явного схвалення («мовчання — не схвалення»), реалізує і перевіряє.</td></tr>
+</tbody></table></div>
+<p>Неочевидне з документації і з наших прогонів:</p>
+<ul>
+<li><b>Spec Kit 1.x</b> — це вже не команди терміналу, а skills агента. У Claude Code їх викликають як <code>/speckit-specify</code>, у документації пишуть <code>/speckit.specify</code>. Гілка git на кожну spec, яку критикувала Бекелер, тепер вмикається окремо, розширенням <code>git</code>. Крок <code>converge</code> нічого не редагує: він лише дописує задачі в <code>tasks.md</code>.</li>
+<li><b>Kiro</b> записує вимоги в EARS, за шаблоном <code>WHEN [condition/event] THE SYSTEM SHALL [expected behavior]</code>. Bugfix-spec додає <code>SHALL CONTINUE TO</code> для поведінки, яку треба зберегти, і property-based тести. Steering має чотири режими підключення: <code>always</code>, <code>fileMatch</code>, <code>manual</code> і <code>auto</code>. <code>AGENTS.md</code> Kiro читає завжди. Hooks — це shell-команда або промпт агентові на подіях <code>PostFileSave</code>, <code>PreToolUse</code>, <code>PostToolUse</code> і <code>Stop</code>.</li>
+<li><b>BMAD 6.12.4</b> має п'ять персон: Mary (аналітик), John (PM), Winston (архітектор), Sally (UX) і Amelia (розробниця). У v4 були ще Bob (Scrum Master) і Quinn (QA), тепер їхню роботу виконують workflow <code>bmad-sprint-planning</code> і <code>bmad-qa-generate-e2e-tests</code>. <code>bmad-build</code> без <code>uv</code> зупиняється одразу після активації, і інсталятор про це попереджає.</li>
+<li><b>Task Master</b> без API-ключа виконує AI-команди лише через провайдери <code>claude-code</code> або <code>codex-cli</code>. MCP-сервер у режимі <code>core</code> має 7 інструментів, приблизно 5 000 токенів, а в режимі <code>all</code> — 36 інструментів, приблизно 21 000 токенів.</li>
+<li><b>Tessl</b> ставить публічні плагіни без входу в акаунт: «Unauthenticated, only public plugins are available». У реєстрі кожен skill «scanned and scored before installation».</li>
+</ul>
+</section>
+
+<section class="sec" id="install">
+<div class="sec-h"><span class="num">04</span><h2>Що робить init<span class="sub">П'ять справжніх установок</span></h2></div>
+<p>Кожен інструмент ставили в однаковий проєкт на два файли (<code>quiz.py</code>, <code>test_quiz.py</code>). <code>HOME</code>, <code>XDG_CONFIG_HOME</code> і кеш npm при цьому вказували на тимчасову теку: так видно все, що інструмент пише поза проєктом. Spec Kit ставили з PyPI у тимчасовий venv на Python 3.12, решту — через <code>npx</code> з точною версією. Kiro не запускали: це IDE або CLI з входом в акаунт, а CLI ставиться через <code>curl … | bash</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/sdd/speckit</span></div>
+<pre><span class="ps">$ </span><span class="c">python3.12 -m venv venv &amp;&amp; venv/bin/pip install -q specify-cli==1.2.0</span>
+<span class="ps">$ </span><span class="c">specify init --here --force --non-interactive --integration claude --script sh</span>
+Selected coding agent integration: claude
+Initialize Specify Project
+├── ● Check required tools (ok)
+├── ● Install integration (Claude Code)
+├── ● Install shared infrastructure (scripts (sh) + templates)
+├── ● Constitution setup (copied from template)
+├── ● Install bundled workflow (speckit installed)
+└── ● Finalize (project ready)
+<span class="d">…</span>
+  2. Start Claude in this project directory; spec-kit skills were installed to .claude/skills
+<span class="ps">$ </span><span class="c">git status --short</span>
+?? .claude/
+?? .specify/
+<span class="ps">$ </span><span class="c">git ls-files --others | cut -d/ -f1-2 | sort | uniq -c</span>
+  10 .claude/skills
+   1 .specify/.gitignore
+   1 .specify/init-options.json
+   1 .specify/integration.json
+   2 .specify/integrations
+   2 .specify/memory
+   6 .specify/scripts
+   5 .specify/templates
+   2 .specify/workflows</pre>
+<div class="cap">реальний вивід · specify-cli 1.2.0 · 15.10.2026 · рамки й порожні рядки скорочено, тимчасовий HOME у команді не показано; повний лог — console/init/speckit-init.txt</div></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/sdd/openspec</span></div>
+<pre><span class="ps">$ </span><span class="c">OPENSPEC_TELEMETRY=0 npx -y @fission-ai/openspec@1.14.2 init --tools claude,codex,cursor --no-animation --no-copilot-cloud .</span>
+✔ Setup complete for Claude Code
+✔ Setup complete for Codex
+✔ Setup complete for Cursor
+Created: Claude Code, Codex, Cursor
+6 skills and 6 commands in .claude, .agents, .cursor/
+Commands skipped for: codex (uses skills)
+Config: openspec/config.yaml (schema: spec-driven)
+  Start your first change: /opsx:propose "your idea" (Claude Code)
+  Start your first change: $openspec-propose "your idea" (Codex CLI or IDE) <span class="d">…</span>
+  Start your first change: /opsx-propose "your idea" (Cursor)</pre>
+<div class="cap">реальний вивід · OpenSpec 1.14.2 · 15.10.2026 · скорочено; тимчасові HOME і XDG_CONFIG_HOME у команді не показано</div></div>
+<p>Так виглядає згенерований файл — початок skill, який Spec Kit поклав у <code>.claude/skills/speckit-specify/SKILL.md</code> (348 рядків):</p>
+<pre class="code" data-lang="markdown">---
+name: "speckit-specify"
+description: "Create or update the feature specification from a natural language feature description."
+argument-hint: "Describe the feature you want to specify"
+user-invocable: true
+disable-model-invocation: false
+---
+## User Input
+$ARGUMENTS
+You **MUST** consider the user input before proceeding (if not empty).
+## Pre-Execution Checks
+**Check for extension hooks (before specification)**: …</pre>
+<p>Команда OpenSpec <code>/opsx:propose</code> має у frontmatter <code>allowed-tools: Bash(openspec:*)</code>. Отже, поки вона працює, CLI <code>openspec</code> виконується без запиту на дозвіл, і цей рядок варто переглянути так само, як ви переглядали б <code>settings.json</code> (урок 4.2). Обидва файли — промпти на сотні рядків. Їх поклали у ваш репозиторій, і для агента вони мають ту саму вагу, що й ваші власні інструкції.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент і агенти при init</th><th>Файлів · розмір</th><th>Що з'явилось поза проєктом</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент і агенти при init">Spec Kit · Claude Code</td><td data-th="Файлів · розмір">30 · ~240 КБ</td><td data-th="Що з&#x27;явилось поза проєктом">нічого</td></tr>
+<tr><td data-th="Інструмент і агенти при init">OpenSpec · Claude Code, Codex, Cursor</td><td data-th="Файлів · розмір">34 · ~460 КБ</td><td data-th="Що з&#x27;явилось поза проєктом">нічого (телеметрію вимкнено змінною)</td></tr>
+<tr><td data-th="Інструмент і агенти при init">BMAD · Claude Code</td><td data-th="Файлів · розмір">235 · ~1,6 МБ</td><td data-th="Що з&#x27;явилось поза проєктом">нічого</td></tr>
+<tr><td data-th="Інструмент і агенти при init">Task Master · Claude Code, Codex, Cursor</td><td data-th="Файлів · розмір">106 · ~260 КБ</td><td data-th="Що з&#x27;явилось поза проєктом"><b>46 файлів у <code>~/.codex/prompts/</code></b>, без жодного рядка про це в лозі; порожня <code>~/.taskmaster/</code></td></tr>
+<tr><td data-th="Інструмент і агенти при init">Tessl · плагін SDD</td><td data-th="Файлів · розмір">19 · ~30 КБ</td><td data-th="Що з&#x27;явилось поза проєктом">бінарник на 108 МБ у <code>~/.local</code>; <code>~/.tessl/</code> з <code>anonymous-id</code> і <code>"shareUsageData": true</code>; умови «прийнято» автоматично в неінтерактивному запуску</td></tr>
+</tbody></table></div>
+<p>Друга ціна — <b>постійний контекст</b>, тобто скільки токенів проєктні файли інструмента додають до кожного ходу ще до того, як ви щось попросили. Міряли одним запитом «ок» з <code>--setting-sources project --strict-mcp-config</code>. Базовий проєкт — 31 260 токенів, на діаграмі приріст понад нього:</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar"><span class="k">Spec Kit · 10 skills</span><span class="tr"><i style="--v:7.2%"></i><b style="--v:7.2%">+491</b></span></div>
+  <div class="bar"><span class="k">OpenSpec · 6 skills + 6 команд</span><span class="tr"><i style="--v:11.7%"></i><b style="--v:11.7%">+796</b></span></div>
+  <div class="bar"><span class="k">BMAD · 29 skills</span><span class="tr"><i style="--v:36.8%"></i><b style="--v:36.8%">+2 492</b></span></div>
+  <div class="bar m"><span class="k">Tessl · 3 правила alwaysApply</span><span class="tr"><i style="--v:43.9%"></i><b style="--v:43.9%">+2 979</b></span></div>
+  <div class="bar p"><span class="k">Task Master · CLAUDE.md + 46 команд</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">+6 780</b></span></div>
+</div>
+<figcaption>Токени першого ходу понад базовий проєкт. Claude Code 2.1.300, Haiku, 15.10.2026, <code>console/context-overhead.txt</code>. MCP-сервери вимкнено: MCP Task Master додав би ще 5–21 тис. токенів (за його README).</figcaption>
+</figure>
+<div class="note warn"><span class="lbl">Пастка</span>
+<p>Init — це чужий код, який пише виконувані скрипти (<code>.specify/scripts/bash/*.sh</code>), промпти і MCP-конфіги у ваш репозиторій, а деякі інструменти пишуть ще й у <code>~</code>. Перший запуск робіть на гілці з чистим деревом і з тимчасовим <code>HOME</code>. Перегляньте <code>git status</code> і вміст тимчасової домашньої теки, а телеметрію вимкніть до init: у <code>.taskmaster/config.json</code> за замовчуванням стоїть <code>"anonymousTelemetry": true</code>, OpenSpec вимикається через <code>OPENSPEC_TELEMETRY=0</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="run">
+<div class="sec-h"><span class="num">05</span><h2>Spec Kit від specify до converge<span class="sub">Одна функція, сім запусків</span></h2></div>
+<p>Мікрофіча: <code>find_duplicates(items)</code> у <code>quiz.py</code> має повертати групи індексів питань, які збігаються після <code>normalize()</code>. Опис фічі — одне речення, однакове для <code>/speckit-specify</code>, <code>/opsx:propose</code> і запуску без інструмента. Кожен крок — окремий headless-запуск, як окрема сесія після рев'ю:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/sdd/speckit</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "/speckit-specify Додати функцію find_duplicates(items) у quiz.py: вона знаходить у квізі питання, що дублюють одне одне після normalize(), і повертає групи їхніх індексів. Потрібно, щоб автор квізу бачив дублікати до збереження." --model haiku --setting-sources project --strict-mcp-config --permission-mode acceptEdits --allowedTools "Skill" "Read" "Write" "Edit" "Glob" "Grep" "Bash(.specify/scripts/bash/*)" "Bash(python3 -m unittest*)" … --output-format stream-json --verbose &gt; sk1-specify.jsonl</span>
+<span class="ps">$ </span><span class="c">claude -p "/speckit-plan Лише стандартна бібліотека Python, тести на unittest, функція живе в quiz.py поруч із normalize(). Без нових залежностей." …</span>
+<span class="ps">$ </span><span class="c">claude -p "/speckit-tasks" …</span>
+<span class="ps">$ </span><span class="c">claude -p "/speckit-implement" …</span>
+<span class="ps">$ </span><span class="c">claude -p "/speckit-converge" …</span>   <span class="d"># далі implement і converge ще раз</span></pre>
+<div class="cap">реальні команди · Claude Code 2.1.300, claude-haiku-5-5 · 15.10.2026 · список дозволів скорочено, повністю — console/sk.sh.txt</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Крок</th><th>Ходів · с · $</th><th>Що з'явилось</th></tr></thead>
+<tbody>
+<tr><td data-th="Крок">specify</td><td data-th="Ходів · с · $">7 · 47 · 0,016</td><td data-th="Що з&#x27;явилось"><code>spec.md</code> (US1, US2, FR-001…010, SC-001…004), <code>checklists/requirements.md</code>; рішення без уточнень, винесені у звіт</td></tr>
+<tr><td data-th="Крок">plan</td><td data-th="Ходів · с · $">9 · 54 · 0,012</td><td data-th="Що з&#x27;явилось"><code>plan.md</code>, <code>research.md</code>, <code>data-model.md</code>, <code>contracts/find_duplicates.md</code>, <code>quickstart.md</code></td></tr>
+<tr><td data-th="Крок">tasks</td><td data-th="Ходів · с · $">15 · 58 · 0,016</td><td data-th="Що з&#x27;явилось"><code>tasks.md</code>: 21 задача, 5 фаз, «[P] не використано»</td></tr>
+<tr><td data-th="Крок">implement</td><td data-th="Ходів · с · $">46 · 100 · 0,026</td><td data-th="Що з&#x27;явилось">22 рядки коду, 11 тестів; 20 з 29 правок — галочки в <code>tasks.md</code></td></tr>
+<tr><td data-th="Крок">converge</td><td data-th="Ходів · с · $">21 · 52 · 0,016</td><td data-th="Що з&#x27;явилось">T022: <code>None</code> у списку дає <code>AttributeError</code>, а FR-009 вимагає пропустити</td></tr>
+<tr><td data-th="Крок">implement 2</td><td data-th="Ходів · с · $">20 · 46 · 0,015</td><td data-th="Що з&#x27;явилось">перевірка <code>isinstance(item, dict)</code> і тест</td></tr>
+<tr><td data-th="Крок">converge 2</td><td data-th="Ходів · с · $">19 · 59 · 0,018</td><td data-th="Що з&#x27;явилось">T023: немає тесту на три групи (SC-001); <code>research.md</code> §3 застарів після T022</td></tr>
+<tr><td data-th="Крок"><b>разом</b></td><td data-th="Ходів · с · $"><b>137 · 415 · 0,119</b></td><td data-th="Що з&#x27;явилось">8 файлів spec (552 рядки), «Converged» так і не отримали</td></tr>
+</tbody></table></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>sk5-converge.jsonl — підсумок агента</span></div>
+<pre><span class="c">Convergence found one remaining gap. I appended it as task T022 under a new `## Phase 6: Convergence` section …</span>
+<span class="y">Finding (LOW, partial, FR-009):</span> `find_duplicates` calls `item.get("question")` directly, so a non-dict
+element such as `None` in the list raises `AttributeError` instead of being skipped. FR-009 says elements
+without a non-empty `question` must be skipped without error. I confirmed this by reading the code; my attempt
+to run it was blocked by the sandbox, so it is not executed.</pre>
+<div class="cap">реальний вивід · скорочено</div></div>
+<p>Те саме речення провели через OpenSpec (<code>propose → apply → archive</code>) і віддали Claude Code без інструмента, попросивши ще додати тести й запустити їх:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th></th><th>Без інструмента</th><th>OpenSpec 1.14.2</th><th>Spec Kit 1.2.0</th></tr></thead>
+<tbody>
+<tr><td>Запусків · ходів</td><td data-th="Без інструмента">1 · 7</td><td data-th="OpenSpec 1.14.2">4 · 65</td><td data-th="Spec Kit 1.2.0">7 · 137</td></tr>
+<tr><td>Час · вартість</td><td data-th="Без інструмента">16 с · $0,0055</td><td data-th="OpenSpec 1.14.2">184 с · $0,056</td><td data-th="Spec Kit 1.2.0">415 с · $0,119</td></tr>
+<tr><td>Документи</td><td data-th="Без інструмента">немає</td><td data-th="OpenSpec 1.14.2">4 артефакти зміни, 130 рядків; після archive — <code>openspec/specs/quiz-duplicate-detection/spec.md</code></td><td data-th="Spec Kit 1.2.0">8 файлів, 552 рядки</td></tr>
+<tr><td>Тести</td><td data-th="Без інструмента">6, пройшли</td><td data-th="OpenSpec 1.14.2">9, пройшли в нашому запуску; агент їх не запускав, але позначив задачі виконаними</td><td data-th="Spec Kit 1.2.0">13, пройшли</td></tr>
+<tr><td><code>None</code> у списку</td><td data-th="Без інструмента">падає з <code>AttributeError</code></td><td data-th="OpenSpec 1.14.2">падає з <code>AttributeError</code></td><td data-th="Spec Kit 1.2.0">пропускає (після converge)</td></tr>
+<tr><td>Елементи без <code>question</code></td><td data-th="Без інструмента">пропускає</td><td data-th="OpenSpec 1.14.2">групує як дублікати: так записано в spec</td><td data-th="Spec Kit 1.2.0">пропускає: так записано в spec</td></tr>
+</tbody></table></div>
+<div class="cols">
+<div class="cmp good"><h4>Що дала spec</h4><ul>
+<li>Рішення щодо крайових випадків стали видимими: два інструменти ухвалили <b>протилежні</b> рішення про елементи без <code>question</code>, і в обох випадках його можна прочитати й оскаржити до коду.</li>
+<li><code>converge</code> знайшов реальний дефект з <code>None</code>. Запуск без інструмента має той самий дефект і не помітив його.</li>
+<li>Другий <code>converge</code> помітив, що <code>research.md</code> розійшовся з кодом. Це drift у мініатюрі, ще до злиття (урок 8.3).</li>
+</ul></div>
+<div class="cmp bad"><h4>Що було церемонією</h4><ul>
+<li>21 задача і 552 рядки документів на 22 рядки коду. Критерій SC-004 «знайти дублікати у квізі з 50 питань за один виклик» нічого не перевіряє.</li>
+<li>У <code>implement</code> 20 з 29 правок — проставлення галочок у <code>tasks.md</code>.</li>
+<li><code>converge</code> після кожного проходу дописує нову задачу і може не зійтися ніколи. Зупинку вирішує людина.</li>
+<li>Вартість у 22 рази більша, час — у 26. На Haiku це центи, але дорожчим ресурсом лишається рев'ю 552 рядків.</li>
+</ul></div>
+</div>
+<div class="note tip"><span class="lbl">Правило з виміру</span>
+<p>Цінність дали spec і перевірка відповідності коду spec. Все між ними — <code>research.md</code>, <code>data-model.md</code>, 21 задача — для функції на одну сесію лише додало обсягу. Тому на малих змінах вистачає одного промпта з рішеннями щодо крайових випадків і одного проходу «звір код зі spec». Повний конвеєр потрібен там, де план справді щось вирішує: нові залежності, контракти, міграції.</p>
+</div>
+</section>
+
+<section class="sec" id="agents">
+<div class="sec-h"><span class="num">06</span><h2>Підключення до агентів<span class="sub">Claude Code · Codex · Cursor</span></h2></div>
+<p>П'ять інструментів з шести не мають власного агента: вони генерують skills, команди, правила або MCP-конфіг для вашого. Kiro — навпаки, це окремий агент, і з Claude Code його поєднує хіба що спільний <code>AGENTS.md</code>.</p>
+<div class="tabs">
+<input type="radio" name="ag-t" id="ag-t1" checked><input type="radio" name="ag-t" id="ag-t2"><input type="radio" name="ag-t" id="ag-t3">
+<div class="tab-l"><label for="ag-t1">Claude Code</label><label for="ag-t2">Codex</label><label for="ag-t3">Cursor</label></div>
+<div class="tab-p">
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Інструмент</th><th>Що з'являється і як викликати</th></tr></thead>
+<tbody>
+<tr><td>Spec Kit</td><td><code>--integration claude</code> → <code>.claude/skills/speckit-*/SKILL.md</code>, виклик <code>/speckit-specify</code>. У skills стоїть <code>disable-model-invocation: false</code>, тож модель може запустити їх і сама, побачивши відповідний опис.</td></tr>
+<tr><td>OpenSpec</td><td><code>--tools claude</code> → <code>.claude/commands/opsx/*.md</code> і <code>.claude/skills/openspec-*</code>, виклик <code>/opsx:propose</code></td></tr>
+<tr><td>BMAD</td><td><code>--tools claude-code</code> → 29 skills у <code>.claude/skills/</code>, викликаються за назвою, наприклад <code>bmad-help</code>. Для v7 є плагін: <code>/plugin marketplace add bmad-code-org/bmad-plugins</code>.</td></tr>
+<tr><td>Task Master</td><td><code>CLAUDE.md</code> з імпортом <code>@./.taskmaster/CLAUDE.md</code>, <code>.mcp.json</code> із сервером <code>task-master-ai</code> (<code>TASK_MASTER_TOOLS=core</code>) і 46 команд у <code>.claude/commands/tm/</code>. Init пропонує ще й плагін. Без init MCP-сервер підключають так: <code>claude mcp add taskmaster-ai -- npx -y task-master-ai</code>.</td></tr>
+<tr><td>Tessl</td><td><code>.mcp.json</code> (<code>tessl mcp start</code>) і ланцюжок <code>CLAUDE.md</code> → <code>@AGENTS.md</code> → <code>.tessl/RULES.md</code> → правила плагіна</td></tr>
+<tr><td>Kiro</td><td>Не підключається. Навпаки, Spec Kit і OpenSpec мають інтеграції для Kiro: <code>kiro-cli</code> і <code>kiro</code>.</td></tr>
+</tbody></table></div>
+<div class="cap">файли — з наших init 15.10.2026; плагіни BMAD v7 і Task Master — з їхніх README, не встановлювались</div>
+</div>
+<div class="tab-p">
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Інструмент</th><th>Що з'являється і як викликати</th></tr></thead>
+<tbody>
+<tr><td>Spec Kit</td><td><code>--integration codex</code> → <code>.agents/skills</code>, виклик <code>$speckit-specify</code></td></tr>
+<tr><td>OpenSpec</td><td><code>--tools codex</code> → <code>.agents/skills/openspec-*</code>. Команди для Codex не генеруються («Commands skipped for: codex (uses skills)»), виклик <code>$openspec-propose</code>.</td></tr>
+<tr><td>BMAD</td><td><code>--tools codex</code> → <code>.agents/skills</code>; для v7 є плагін: <code>codex plugin marketplace add bmad-code-org/bmad-plugins</code></td></tr>
+<tr><td>Task Master</td><td>46 промптів <code>tm-*.md</code> у <b><code>~/.codex/prompts/</code></b>. Це глобальна тека, тож команди з'являються в усіх ваших проєктах.</td></tr>
+<tr><td>Tessl</td><td><code>.codex/config.toml</code> із MCP-сервером <code>tessl</code>, правила — через <code>AGENTS.md</code></td></tr>
+<tr><td>Kiro</td><td>Спільний лише <code>AGENTS.md</code></td></tr>
+</tbody></table></div>
+<div class="cap">файли — з наших init; Codex на цій машині не встановлено, виклики з документації інструментів · не запускались</div>
+</div>
+<div class="tab-p">
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Інструмент</th><th>Що з'являється і як викликати</th></tr></thead>
+<tbody>
+<tr><td>Spec Kit</td><td><code>--integration cursor-agent</code> → <code>.cursor/skills</code></td></tr>
+<tr><td>OpenSpec</td><td><code>--tools cursor</code> → <code>.cursor/commands/opsx-*.md</code> і <code>.cursor/skills</code>, виклик <code>/opsx-propose</code> (дефіс замість двокрапки)</td></tr>
+<tr><td>BMAD</td><td><code>--tools cursor</code> → <code>.agents/skills</code>, тобто той самий каталог, що й для Codex</td></tr>
+<tr><td>Task Master</td><td><code>.cursor/rules/*.mdc</code> (4), <code>.cursor/mcp.json</code>, 46 команд у <code>.cursor/commands/tm/</code>; у README є посилання для встановлення MCP одним кліком</td></tr>
+<tr><td>Tessl</td><td>Документація обіцяє автоматичне налаштування MCP для Cursor</td></tr>
+<tr><td>Kiro</td><td>Окреме IDE зі своїм агентом</td></tr>
+</tbody></table></div>
+<div class="cap">OpenSpec, BMAD і Task Master — з наших init; Spec Kit і Tessl — з документації · у Cursor не запускались</div>
+</div>
+</div>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Якщо команда працює в кількох агентах, рахуйте, скільки копій тих самих промптів лягає в репозиторій. OpenSpec для трьох агентів поклав 34 файли, тобто шість workflow у трьох форматах. Коли файли оновлює <code>openspec update</code>, а не людина, копії між собою не розходяться. Те, що пишеться в <code>~</code>, у рев'ю PR взагалі не потрапляє.</p>
+</div>
+</section>
+
+<section class="sec" id="limits">
+<div class="sec-h"><span class="num">07</span><h2>Межі й пастки<span class="sub">Що змінилось за рік і де болить</span></h2></div>
+<p>Загальну критику SDD (кувалда для горіха, рев'ю markdown замість коду) розібрав урок 8.1. Тут — те, що стосується саме інструментів. Thoughtworks формулює це так:</p>
+<blockquote class="q-src">
+<p>Можливо, ми заново засвоюємо гіркий урок: вручну розписані детальні правила для AI зрештою не масштабуються.</p>
+<p class="orig">“We may be relearning a bitter lesson — that handcrafting detailed rules for AI ultimately doesn’t scale.”</p>
+<cite>Thoughtworks Technology Radar, «Spec-driven development», кільце Assess, 05.11.2025</cite>
+</blockquote>
+<p>У нашому прогоні ці правила мають конкретний обсяг: 3 134 рядки skills і шаблонів у Spec Kit, 2 624 рядки лише в наборі OpenSpec для Claude Code, 1,6 МБ у BMAD. Нова модель виконуватиме їх інакше, ніж стара, а інструменти змінюються майже щодня: Spec Kit 1.2.0 вийшов 13.10, OpenSpec 1.14.2 — у день уроку. Тому версію фіксуйте, як залежність (<code>specify-cli==1.2.0</code>, <code>@fission-ai/openspec@1.14.2</code>), а оновлення (<code>specify integration upgrade</code>, <code>openspec update</code>) робіть окремим PR з diff промптів.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Жовтень 2025, стаття Бекелер</th><th>Жовтень 2026</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент">Spec Kit</td><td data-th="Жовтень 2025, стаття Бекелер">гілка git на кожну spec; spec-first</td><td data-th="Жовтень 2026">гілки — опційне розширення <code>git</code>; додано <code>converge</code>, процеси bug fix і assessment, режим «living spec»; з 22.01.2026 інший головний мейнтейнер</td></tr>
+<tr><td data-th="Інструмент">Kiro</td><td data-th="Жовтень 2025, стаття Бекелер">легке IDE на базі VS Code</td><td data-th="Жовтень 2026">IDE, CLI і web; Quick Spec без воріт; bugfix-spec із <code>SHALL CONTINUE TO</code></td></tr>
+<tr><td data-th="Інструмент">Tessl</td><td data-th="Жовтень 2025, стаття Бекелер">Framework у приватній беті, spec-as-source</td><td data-th="Жовтень 2026">«agent enablement platform» з реєстром skills; SDD — один із плагінів; spec-as-source на сайті не згадується</td></tr>
+</tbody></table></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">У Codex з'явились команди <code>tm-*</code> в усіх проєктах</td><td data-th="Причина"><code>task-master init --rules …,codex</code> мовчки пише в <code>~/.codex/prompts/</code></td><td data-th="Що зробити">Init з тимчасовим <code>HOME</code>, потрібне переносити руками</td></tr>
+<tr><td data-th="Симптом"><code>parse-prd</code> через провайдер <code>claude-code</code> бачить ваші хуки, MCP і плагіни</td><td data-th="Причина">Провайдер запускає Claude Code з <code>settingSources: ["user", "project", "local"]</code> (код пакета 0.43.1)</td><td data-th="Що зробити">Окремий профіль або API-ключ; не використовувати з даними, які мають обмеження</td></tr>
+<tr><td data-th="Симптом">Задачі позначено <code>[x]</code>, а тести ніхто не запускав</td><td data-th="Причина">Галочку ставить модель, а не перевірка (наш <code>/opsx:apply</code>)</td><td data-th="Що зробити">Stop-хук із тестами (урок 6.2); галочку вважати заявою агента, а не доказом</td></tr>
+<tr><td data-th="Симптом"><code>converge</code> після кожного проходу дописує нову задачу</td><td data-th="Причина">Аналіз лише додає задачі, нічого не прибирає, і завжди щось знайде</td><td data-th="Що зробити">Обмежити кількість проходів, далі вирішує людина</td></tr>
+<tr><td data-th="Симптом">Два інструменти по-різному обробили той самий крайовий випадок</td><td data-th="Причина">Рішення щодо порожнього <code>question</code> ухвалила модель під час specify</td><td data-th="Що зробити">Читати FR і сценарії до <code>plan</code>, сумнівне проганяти через <code>clarify</code></td></tr>
+<tr><td data-th="Симптом">Кожен хід дорожчий на тисячі токенів, навіть без роботи з SDD</td><td data-th="Причина">Описи skills, правила <code>alwaysApply</code> та імпорти в <code>CLAUDE.md</code> вантажаться щоходу</td><td data-th="Що зробити">Виміряти приріст, як тут; вимкнути зайве: профіль OpenSpec, модулі BMAD, <code>TASK_MASTER_TOOLS=core</code></td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="choose">
+<div class="sec-h"><span class="num">08</span><h2>Як обрати<span class="sub">Ситуація → інструмент</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ситуація</th><th>Вибір</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Ситуація">Зміна на одну сесію, і зрозуміло, що робити</td><td data-th="Вибір"><b>Без інструмента</b>: шаблон spec з уроку 8.1 і plan mode</td><td data-th="Чому">SDD-конвеєр коштував у 10–22 рази більше, а користь дали лише spec і звірка коду з нею</td></tr>
+<tr><td data-th="Ситуація">Робота з наявною поведінкою (brownfield), соло або мала команда, specs мають жити далі</td><td data-th="Вибір"><b>OpenSpec</b></td><td data-th="Чому">Delta плюс archive — єдиний механізм spec-anchored «з коробки»; +796 токенів; нічого не пише в <code>~</code>; <code>openspec validate --strict</code> можна поставити в CI</td></tr>
+<tr><td data-th="Ситуація">Нова фіча на кілька сесій із контрактами, моделлю даних і воротами якості; команда на GitHub</td><td data-th="Вибір"><b>Spec Kit</b></td><td data-th="Чому"><code>clarify</code>, <code>analyze</code> і <code>converge</code> ловлять розриви до і після коду; <code>taskstoissues</code>; 41 агент. Ціна — обсяг документів</td></tr>
+<tr><td data-th="Ситуація">Продукт з нуля, потрібні PRD, UX і архітектура, і команда готова до процесу</td><td data-th="Вибір"><b>BMAD 6.12</b></td><td data-th="Чому">Персони й workflow покривають усе від брифу до ретроспективи; v7 поки alpha, тож команді ще рано</td></tr>
+<tr><td data-th="Ситуація">Команда хоче окреме IDE зі specs, hooks і steering і платить кредитами AWS</td><td data-th="Вибір"><b>Kiro</b></td><td data-th="Чому">Специ, hooks і steering вбудовані, але агент свій, а не Claude Code чи Codex</td></tr>
+<tr><td data-th="Ситуація">Довгий беклог задач із залежностями, агент бере «наступну»</td><td data-th="Вибір"><b>Task Master</b>, з обережністю</td><td data-th="Чому"><code>next</code>, оцінки складності й теги корисні, але релізів немає з 31.03.2026, ліцензія Commons Clause і +6 780 токенів щоходу</td></tr>
+<tr><td data-th="Ситуація">Організації треба розповсюджувати skills і правила з політиками та перевіркою безпеки</td><td data-th="Вибір"><b>Tessl</b></td><td data-th="Чому">Реєстр і політики встановлення — це продукт; SDD тут лише один плагін</td></tr>
+</tbody></table></div>
+<div class="key"><p><b>Правило вибору:</b> спершу вирішіть, де житиме spec після злиття і хто її оновлюватиме. Потім порахуйте три ціни: файли в репозиторії, токени щоходу і записи в <code>~</code>. Зірки й кількість кроків у README в цьому рахунку не беруть участі.</p></div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: ADR про інструмент SDD</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 8.2 · ADR 0009</div><div class="pb">
+<p>У Lectern уже є все, що SDD-інструменти приносять ззовні: шаблон S-NN з уроку 8.1, виконувана spec <code>docs/spec/quotes.md</code>, plan mode з <code>docs/plans</code>, ADR і перевірка контексту в CI. Отже, вирішити треба інше: чи додає інструмент щось понад це, і за яку ціну. Чернетка рішення у форматі Найгарда (повністю — <code>console/lectern-step/adr-0009-sdd-tool.md</code>):</p>
+<pre class="code" data-lang="markdown"># 8. Інструмент SDD: без фреймворку — шаблон S-NN, звірка зі spec і правило злиття
+
+## Статус
+Запропоновано · 15.10.2026
+
+## Контекст
+Один репозиторій на Python, один автор, Claude Code (0001), профіль P0–P3 (docs/process.md).
+Specs уже є: S-NN (8.1), виконувана docs/spec/quotes.md. Вимір 8.2 на find_duplicates:
+без інструмента $0,0055 / 16 с; OpenSpec $0,056 / 184 с / 130 рядків; Spec Kit $0,119 /
+415 с / 552 рядки, 21 задача на 22 рядки коду. Дефект знайшов лише крок звірки (converge).
+Постійний контекст: +491 … +6 780 токенів на хід. Task Master і Tessl пишуть у ~.
+
+## Рішення
+1. Фреймворк SDD не ставимо: S-NN за шаблоном 8.1 + plan mode.
+2. Від Spec Kit беремо лише звірку коду зі spec перед PR (prompts/converge.txt):
+   нічого не редагує, дописує розділ «Розриви», не більше двох проходів.
+3. Від OpenSpec беремо правило злиття: вимоги злитої S-NN, що описують поведінку,
+   переносимо в docs/spec/&lt;capability&gt;.md; поведінку рівня P2 — таблицею, яку виконує тест.
+4. Тригер перегляду: другий контриб'ютор, фіча на понад 3 сесії або друга кодова база →
+   пілот OpenSpec (фіксована версія, OPENSPEC_TELEMETRY=0, validate --strict у CI).
+5. Відхилено: Spec Kit, BMAD, Task Master, Kiro, Tessl — причини у файлі.
+
+## Наслідки
+- Нуль залежностей і нуль токенів щоходу; промпт і правило злиття підтримуємо самі.
+- check_context.py перевіряє, що злита S-NN має запис у docs/spec/.
+- Якщо звірка двічі поспіль нічого не знаходить на фічах P1, крок для P1 скасовуємо.</pre>
+<p>Чому не OpenSpec одразу? Його головна перевага — delta плюс archive, тобто spec-anchored без ручної роботи, — окупається, коли specs читає ще хтось, крім автора. Для одного автора те саме правило злиття коштує один абзац у ADR і жодного токена на хід. Тригер у пункті 4 описує саме момент, коли ця арифметика зміниться.</p>
+<p><b>Ваш крок:</b> перенесіть ADR у <code>lectern/docs/adr/0009-sdd-tool.md</code> і перегенеруйте індекс (<code>scripts/check_context.py --write-index</code>). Потім проженіть <code>console/lectern-step/prompts/converge.txt</code> на S-07 з уроку 8.1 і запишіть, скільки розривів знайшов перший прохід і скільки — другий. Сам промпт у цьому уроці не запускали.</p>
+</div></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">spec-anchored</span><span class="h">чим відрізняється від spec-first?</span></span><span class="b"><span class="t">Spec живе після злиття</span><span class="d">кожна зміна оновлює поточну spec; в OpenSpec це робить archive</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">constitution</span><span class="h">у Spec Kit</span></span><span class="b"><span class="t">Принципи проєкту</span><span class="d">.specify/memory/constitution.md; з нею звіряють plan і analyze</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">/speckit-converge</span><span class="h">що змінює?</span></span><span class="b"><span class="t">Лише tasks.md</span><span class="d">звіряє код зі spec і дописує задачі; код не редагує</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">ADDED / MODIFIED / REMOVED</span><span class="h">де це?</span></span><span class="b"><span class="t">Delta spec в OpenSpec</span><span class="d">archive зливає зміну в openspec/specs/</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Kiro steering</span><span class="h">режими підключення</span></span><span class="b"><span class="t">always · fileMatch · manual · auto</span><span class="d">.kiro/steering/; AGENTS.md вантажиться завжди</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">BMAD 6.12</span><span class="h">які персони?</span></span><span class="b"><span class="t">Mary, John, Winston, Sally, Amelia</span><span class="d">аналітик, PM, архітектор, UX, розробниця; SM і QA тепер workflow</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">tasks.json</span><span class="h">хто й як його править?</span></span><span class="b"><span class="t">Task Master, лише командами</span><span class="d">«Never manually edit tasks.json»</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">[@test]</span><span class="h">у spec Tessl</span></span><span class="b"><span class="t">Посилання на тест</span><span class="d">вимога → файл тесту; targets → файли коду</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Двоє людей четвертий рік підтримують сервіс. Більшість задач змінює наявну поведінку, а specs через рік читатиме нова людина. Який інструмент дає це без ручної роботи?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Spec Kit: кожна фіча отримує свій каталог specs/NNN, тож уся історія рішень лишається в репозиторії</span></label><label class="opt ok"><input type="radio" name="q1"><span>OpenSpec: зміну пишуть як delta, а archive зливає її в поточну spec, яку читають як джерело правди</span></label><label class="opt"><input type="radio" name="q1"><span>Task Master: tasks.json зберігає задачі із залежностями й статусами, тож історія змін не загубиться</span></label></div>
+    <div class="why yes">Так. Це spec-anchored за конструкцією: openspec/specs/ завжди описує поточну поведінку, а зміни лягають в архів.</div>
+    <div class="why no">Каталоги Spec Kit за замовчуванням — історія окремих фіч («flow-forward»): щоб зрозуміти поточну поведінку, їх доведеться читати всі. tasks.json описує задачі, а не поведінку системи. Злиття змін у поточну spec робить лише archive в OpenSpec.</div></div>
+  <div class="q"><div class="qt">2. Після <code>task-master init --rules claude,codex,cursor</code> команди <code>tm-*</code> з'явились у Codex в іншому, зовсім не пов'язаному проєкті. Чому?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Init записав 46 промптів у ~/.codex/prompts/ — це глобальна тека Codex, а не тека проєкту</span></label><label class="opt"><input type="radio" name="q2"><span>Codex читає .cursor/commands/ з усіх робочих просторів, які відкривали раніше, і кешує їх</span></label><label class="opt"><input type="radio" name="q2"><span>Init додав у .mcp.json сервер task-master-ai, а MCP-сервери Codex реєструє для користувача</span></label></div>
+    <div class="why yes">Так. У нашому запуску з тимчасовим HOME там лежало 46 файлів tm-*.md, а лог init про це не згадав.</div>
+    <div class="why no">Причина — запис у домашню теку: <code>~/.codex/prompts/</code> діє для всіх проєктів. Чужі .cursor/commands Codex не читає, а .mcp.json — файл Claude Code. Init варто запускати з тимчасовим HOME і дивитися, що з'явилось поза репозиторієм.</div></div>
+  <div class="q"><div class="qt">3. Ви двічі прогнали <code>/speckit-converge</code>, і щоразу він дописував у tasks.md нову задачу. Що робити далі?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Повторювати implement → converge до відповіді «Converged», бо без неї фіча формально не завершена</span></label><label class="opt"><input type="radio" name="q3"><span>Відмовитися від converge і покластися на analyze: він знаходить ті самі розриви ще до implement</span></label><label class="opt ok"><input type="radio" name="q3"><span>Обмежити кількість проходів і вирішити самому, бо аналіз лише дописує задачі й завжди щось знайде</span></label></div>
+    <div class="why yes">Так. У нашому прогоні перший прохід знайшов справжній дефект із None, а другий — лише тест на три групи. Коли зупинитися, вирішує людина.</div>
+    <div class="why no">Converge лише дописує задачі й нічого не прибирає, тож гарантії зійтися немає. Analyze перевіряє узгодженість документів до коду і не бачить дефектів у реалізації: None-дефект знайшов саме converge.</div></div>
+  <div class="q"><div class="qt">4. Після встановлення Task Master кожен хід став дорожчим на 6 780 токенів, хоча MCP-сервери вимкнено через <code>--strict-mcp-config</code>. Звідки приріст?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Сервер task-master-ai у режимі all однаково передає описи всіх 36 інструментів у кожен хід</span></label><label class="opt ok"><input type="radio" name="q4"><span>CLAUDE.md імпортує .taskmaster/CLAUDE.md на 435 рядків, і 46 команд /tm теж додають свої описи</span></label><label class="opt"><input type="radio" name="q4"><span>Task Master вставляє tasks.json у системний промпт, щоб агент завжди бачив поточний беклог задач</span></label></div>
+    <div class="why yes">Так. Імпорт у CLAUDE.md вантажиться завжди. MCP дав би ще 5–21 тис. токенів зверху, залежно від TASK_MASTER_TOOLS.</div>
+    <div class="why no">MCP у вимірі вимкнено, а tasks.json після init ще навіть не існує. Приріст дають файли, які Claude Code читає щоходу: імпорт у CLAUDE.md і описи команд.</div></div>
+  <div class="q"><div class="qt">5. Spec Kit і OpenSpec отримали однакове речення. Spec Kit пропускає елементи без question, а OpenSpec групує їх як дублікати. Що з цього випливає?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Крайові випадки вирішує модель під час specify, тому FR і сценарії треба прочитати до plan</span></label><label class="opt"><input type="radio" name="q5"><span>OpenSpec пише слабші специфікації, бо в ньому немає кроку clarify, який у Spec Kit іде перед plan</span></label><label class="opt"><input type="radio" name="q5"><span>Специфікація нічого не дала: обидва інструменти лишили в коді дефект із None у списку</span></label></div>
+    <div class="why yes">Так. У цьому й цінність spec: рішення записане, і його можна оскаржити до того, як з'явиться код.</div>
+    <div class="why no">Clarify в Spec Kit необов'язковий, і в нашому прогоні його не запускали. Дефект із None Spec Kit після converge виправив, а OpenSpec — ні. Різниця в рішеннях каже не про якість інструмента, а про те, що рішення ухвалила модель.</div></div>
+  <div class="q"><div class="qt">6. Що з переліченого відповідає рівню spec-as-source?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>OpenSpec: людина пише delta, а archive зливає її в openspec/specs/ як джерело правди</span></label><label class="opt"><input type="radio" name="q6"><span>Kiro: bugfix-spec фіксує поведінку, яку треба зберегти, через SHALL CONTINUE TO</span></label><label class="opt ok"><input type="radio" name="q6"><span>Tessl Framework 2025: код генерувався зі spec з позначкою GENERATED FROM SPEC - DO NOT EDIT</span></label></div>
+    <div class="why yes">Так. Людина редагувала лише spec. Сьогодні цього фреймворку на tessl.io немає.</div>
+    <div class="why no">В OpenSpec код пишуть і правлять як завжди, а spec живе поруч, тобто це spec-anchored. Bugfix-spec у Kiro — spec-first для однієї зміни. Spec-as-source означає, що код руками не правлять узагалі.</div></div>
+  <div class="q"><div class="qt">7. Команда ставить Spec Kit у великий наявний репозиторій командою <code>specify init --here --force</code>. Що зробити перед цим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Видалити наявні CLAUDE.md і AGENTS.md, щоб вони не конфліктували з новою constitution</span></label><label class="opt ok"><input type="radio" name="q7"><span>Закомітити або сховати зміни й створити гілку, щоб усе згенероване було видно в рев'ю</span></label><label class="opt"><input type="radio" name="q7"><span>Виконати /speckit-constitution, щоб init узяв принципи з неї замість шаблону</span></label></div>
+    <div class="why yes">Так. Саме так радить гайд Spec Kit для наявних проєктів: --force може перезаписати файли за шляхами, якими керує Spec Kit.</div>
+    <div class="why no">CLAUDE.md і AGENTS.md init не чіпає: інтеграція claude ставить лише .claude/skills і .specify/. Skill constitution з'являється тільки після init.</div></div>
+  <div class="q"><div class="qt">8. Ви хочете запускати <code>task-master parse-prd</code> без API-ключа, через провайдер claude-code, у репозиторії з персональними даними. Що врахувати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Провайдер працює лише з моделлю opus, тож розбір PRD коштуватиме дорожче за пряме API</span></label><label class="opt"><input type="radio" name="q8"><span>Провайдер не має доступу до файлів, тому текст PRD доведеться вставляти в промпт вручну</span></label><label class="opt ok"><input type="radio" name="q8"><span>Провайдер запускає Claude Code з user, project і local settings — з вашими хуками й MCP</span></label></div>
+    <div class="why yes">Так. У коді пакета 0.43.1 стоїть <code>settingSources: ["user", "project", "local"]</code>, тож усе з ~/.claude діє і в цьому виклику.</div>
+    <div class="why no">Провайдер підтримує opus і sonnet і запускає повноцінний Claude Code, з доступом до файлів. Ризик в іншому: разом із ним вантажаться ваші user settings — хуки, MCP і плагіни.</div></div>
+  <div class="q"><div class="qt">9. Ви працюєте самі, фіча вміщується в одну сесію, і все зрозуміло. Що обрати за вимірами уроку?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Шаблон spec і plan mode без інструмента: користь дали spec і звірка, а не решта конвеєра</span></label><label class="opt"><input type="radio" name="q9"><span>OpenSpec, найлегший із протестованих: +796 токенів і чотири артефакти на зміну</span></label><label class="opt"><input type="radio" name="q9"><span>Spec Kit із clarify і analyze, бо ворота якості окупаються навіть на найменших змінах коду</span></label></div>
+    <div class="why yes">Так. Інструменти коштували в 10–22 рази більше, а все між spec і звіркою лише додало обсягу.</div>
+    <div class="why no">Навіть найлегший інструмент коштував удесятеро більше за запуск без нього. Spec Kit на 22 рядки коду видав 21 задачу і 552 рядки документів. На одну сесію вистачає spec із рішеннями щодо крайових випадків.</div></div>
+  <div class="q"><div class="qt">10. Після <code>/opsx:apply</code> усі задачі позначено <code>[x]</code>, а агент пише «Implementation Complete». Що це доводить?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Що тести пройшли: apply ставить галочку лише після успішного запуску команди перевірки</span></label><label class="opt ok"><input type="radio" name="q10"><span>Лише те, що модель заявила про виконання; у нашому прогоні тести вона не запускала</span></label><label class="opt"><input type="radio" name="q10"><span>Що delta spec уже злито в openspec/specs/, бо apply і archive виконуються разом</span></label></div>
+    <div class="why yes">Так. Агент сам написав, що позначив задачі «на основі прочитаного», бо запуск python не дозволили. Доводить лише запуск тестів, наприклад у Stop-хуку.</div>
+    <div class="why no">Галочку ставить модель, перевірка її не ставить. Archive — окремий крок, і в нашому прогоні він ще й зупинився, щоб спитати, чи синхронізувати spec.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>GitHub<br>Spec Kit</td><td>Open-source набір від GitHub: CLI <code>specify</code> ставить у проєкт шаблони, скрипти й skills SDD-процесу для 41 агента.</td></tr>
+<tr><td>constitution<br>(Spec Kit)</td><td>Принципи проєкту в <code>.specify/memory/constitution.md</code>, з якими звіряють plan і analyze.</td></tr>
+<tr><td>Spec Kit<br>workflow<br>(/speckit.*)</td><td>constitution → specify → [clarify] → plan → [checklist] → tasks → [analyze] → implement → converge.</td></tr>
+<tr><td>Kiro specs<br>(requirements<br>/ design<br>/ tasks)</td><td>Три файли фічі в <code>.kiro/specs/&lt;name&gt;/</code>: вимоги в EARS, дизайн і план задач; для бага — <code>bugfix.md</code>.</td></tr>
+<tr><td>Kiro steering</td><td>Постійні інструкції в <code>.kiro/steering/</code>; режими підключення always, fileMatch, manual і auto.</td></tr>
+<tr><td>OpenSpec<br>change<br>proposal</td><td>Тека <code>openspec/changes/&lt;name&gt;/</code>: proposal, delta spec, design і tasks. Archive зливає її в <code>openspec/specs/</code>.</td></tr>
+<tr><td>BMAD agent<br>personas</td><td>Skills-ролі з іменами: Mary (аналітик), John (PM), Winston (архітектор), Sally (UX), Amelia (розробниця) у 6.12.</td></tr>
+<tr><td>Task Master<br>(tasks.json)</td><td>CLI і MCP-сервер, що з PRD будує <code>.taskmaster/tasks/tasks.json</code> із залежностями й оцінкою складності.</td></tr>
+<tr><td>spec-first<br>vs spec-<br>anchored<br>vs spec-as-<br>source</td><td>Що стає зі spec після злиття: історія однієї зміни, жива spec поруч із кодом або єдине джерело, з якого генерують код.</td></tr>
+<tr><td>Tessl</td><td>Платформа й реєстр skills і плагінів; SDD — плагін <code>tessl-labs/spec-driven-development</code> зі spec, що посилаються на тести.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Вибір інструмента SDD для вашого проєкту як ADR</h3>
+<p>Опишіть свій проєкт за осями уроку: хто читатиме spec після злиття, частка brownfield-змін, агенти команди, обмеження на дані. Порівняйте щонайменше три варіанти, серед них «без інструмента», за трьома цінами: файли, токени щоходу, записи в <code>~</code>. Запишіть рішення у форматі Найгарда з тригером перегляду.</p>
+<h3>2. Аудит init: що інструмент приніс у репозиторій</h3>
+<p>Розберіть наданий вивід <code>git status</code> і дерево файлів після init одного з інструментів. Визначте, що з цього стане живою конфігурацією агента, що виконуватиметься, що пише поза репозиторієм і що з цього ви закомітите. Запропонуйте безпечну процедуру встановлення.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 15.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html" target="_blank" rel="noopener">Birgitta Böckeler — Understanding Spec-Driven-Development: Kiro, spec-kit, and Tessl</a><span>15.10.2025 · рівні spec-first, spec-anchored, spec-as-source; порівняння з MDD</span></li>
+<li><a href="https://www.thoughtworks.com/radar/techniques/spec-driven-development" target="_blank" rel="noopener">Thoughtworks Technology Radar — Spec-driven development</a><span>05.11.2025 · кільце Assess, «bitter lesson»</span></li>
+<li><a href="https://github.com/github/spec-kit" target="_blank" rel="noopener">GitHub Spec Kit — репозиторій</a><span>1.2.0, 13.10.2026 · MIT; <a href="https://pypi.org/project/specify-cli/" target="_blank" rel="noopener">specify-cli на PyPI</a></span></li>
+<li><a href="https://github.github.io/spec-kit/reference/agentic-sdd.html" target="_blank" rel="noopener">Spec Kit — Agentic SDD: довідник команд</a><span>constitution … converge, ворота якості</span></li>
+<li><a href="https://github.github.io/spec-kit/reference/integrations.html" target="_blank" rel="noopener">Spec Kit — Integrations</a><span>каталоги й синтаксис виклику для Claude Code, Codex, Cursor</span></li>
+<li><a href="https://github.github.io/spec-kit/guides/existing-projects.html" target="_blank" rel="noopener">Spec Kit — Adopting Spec Kit in an Existing Project</a><span>init у наявному репозиторії, гілка й рев'ю diff</span></li>
+<li><a href="https://github.github.io/spec-kit/guides/evolving-specs.html" target="_blank" rel="noopener">Spec Kit — Evolving Specs</a><span>flow-forward і living spec</span></li>
+<li><a href="https://github.github.io/spec-kit/history.html" target="_blank" rel="noopener">Spec Kit — History</a><span>21.08.2025 — перший коміт; з 22.01.2026 інший головний мейнтейнер</span></li>
+<li><a href="https://kiro.dev/docs/specs/" target="_blank" rel="noopener">Kiro — Specs</a><span>requirements, design, tasks; <a href="https://kiro.dev/docs/specs/feature-specs/" target="_blank" rel="noopener">feature specs і EARS</a></span></li>
+<li><a href="https://kiro.dev/docs/steering/" target="_blank" rel="noopener">Kiro — Steering</a><span>режими підключення, AGENTS.md, глобальний steering</span></li>
+<li><a href="https://kiro.dev/docs/hooks/" target="_blank" rel="noopener">Kiro — Hooks</a><span>тригери й дії, <code>.kiro/hooks/</code></span></li>
+<li><a href="https://kiro.dev/changelog/" target="_blank" rel="noopener">Kiro — Changelog</a><span>IDE 1.3.0 і CLI 2.31.0, 13.10.2026; <a href="https://kiro.dev/pricing/" target="_blank" rel="noopener">ціни (кредити)</a></span></li>
+<li><a href="https://github.com/Fission-AI/OpenSpec" target="_blank" rel="noopener">OpenSpec — репозиторій</a><span>1.14.2, 15.10.2026 · MIT; <a href="https://github.com/Fission-AI/OpenSpec/blob/main/docs/concepts.md" target="_blank" rel="noopener">concepts: delta specs і archive</a></span></li>
+<li><a href="https://openspec.dev/docs/supported-tools" target="_blank" rel="noopener">OpenSpec — Supported tools</a><span>синтаксис виклику в кожному агенті</span></li>
+<li><a href="https://github.com/bmad-code-org/BMAD-METHOD" target="_blank" rel="noopener">BMAD Method — репозиторій</a><span>6.12.4, 14.10.2026 · MIT; v7 — alpha</span></li>
+<li><a href="https://docs.bmad-method.org/plan/choose-a-planning-path/" target="_blank" rel="noopener">BMAD — Choose a planning path</a><span>скільки планування на розмір зміни</span></li>
+<li><a href="https://github.com/eyaltoledano/claude-task-master" target="_blank" rel="noopener">Task Master — репозиторій</a><span>0.43.1, 31.03.2026 · MIT + Commons Clause</span></li>
+<li><a href="https://tryhamster.com/docs/taskmaster/capabilities/task-structure" target="_blank" rel="noopener">Task Master — Task structure</a><span>поля tasks.json, analyze-complexity; <a href="https://tryhamster.com/docs/taskmaster/capabilities/mcp" target="_blank" rel="noopener">MCP-інструменти</a></span></li>
+<li><a href="https://tessl.io/" target="_blank" rel="noopener">Tessl</a><span>платформа й реєстр; <a href="https://docs.tessl.io/reference/mcp-tools" target="_blank" rel="noopener">MCP tools</a></span></li>
+<li><a href="https://github.com/tesslio/spec-driven-development-tile" target="_blank" rel="noopener">Tessl — spec-driven-development plugin</a><span>2.0.1 · MIT; формат spec з targets і [@test]</span></li>
+<li><a href="https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions" target="_blank" rel="noopener">Michael Nygard — Documenting Architecture Decisions</a><span>15.11.2011 · формат ADR</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 8.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 8.2 · Senomi<br><br><a href="lesson-38.html">← Урок 8.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-40.html">Урок 8.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>
