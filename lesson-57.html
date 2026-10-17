@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 12.1. Піраміда перевірок для AI-коду</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 12.1 · Модуль 12</div>
+<h1>Піраміда перевірок для AI-коду</h1>
+<p class="lead">Тести, які агент пише до власного коду, повторюють його розуміння задачі, тож потрібні перевірки, незалежні від автора: типи, інваріанти, мутації. На Lectern Hypothesis знаходить B60 і падіння lectern check, mutmut показує, які гілки тести не бачать, mypy стає гейтом із baseline, а кожна перевірка отримує рівень за виміряним часом.</p>
+<div class="hero-meta"><span class="chip">Якість: автоматичні перевірки й evals</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Чому AI-коду інша піраміда</a><a href="#pyramid"><b>02</b>Піраміда перевірок</a><a href="#property"><b>03</b>Property-based тести</a><a href="#mutation"><b>04</b>Мутаційне тестування</a><a href="#tiers"><b>05</b>Типи з baseline і рівні за часом</a><a href="#experiment"><b>06</b>Експеримент</a><a href="#tools"><b>07</b>Claude Code / Codex / Cursor</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>пояснити, чому тести від того самого агента, що писав код, — слабка перевірка, і додати незалежні;</li>
+    <li>сформулювати інваріант і написати property-based тест на Hypothesis, який сам знаходить і стискає контрприклад;</li>
+    <li>виміряти якість тестів мутаційним тестуванням і відрізнити пропущений тест від еквівалентного мутанта;</li>
+    <li>увімкнути mypy як гейт із baseline, не виправляючи весь борг типів;</li>
+    <li>розкласти перевірки за часом на рівні: коміт, <code>check.sh</code>, окремий запуск.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Чому AI-коду інша піраміда<span class="sub">Правдоподібний код і тести того самого автора</span></h2></div>
+<p>Код агента рідко падає на синтаксисі. Він <b>правдоподібний</b>: компілюється, проходить лінтер і очевидні приклади, а помиляється на межах — порожній список, рівно 50%, дефіс у кінці рядка. Якщо тести пише той самий агент, він перевіряє своє розуміння задачі, а не задачу. Помилка в розумінні потрапляє і в код, і в тест, тож тест зелений.</p>
+<p>Це видно й у дослідженнях. Konstantinou, Degiovanni, Papadakis (arXiv 2410.21136, 2024): тести, згенеровані LLM, «переважно фіксують фактичну поведінку програми, тому знайти баг важко». Модель читає код і записує в assert те, що код робить зараз.</p>
+<p>У нашому експерименті (розділ 6) Haiku написала property-based тест «<code>key_balance</code> повертає не більше двох попереджень». Тест пройшов 100 згенерованих прикладів, але властивість хибна: три попередження бувають (<code>console/experiment/B-property-2/false-property.txt</code>). Такий тест не ловить помилку, а сам є нею.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Перевірка</th><th>Від чого вона незалежна</th><th>Що пропускає</th></tr></thead>
+<tbody>
+<tr><td data-th="Перевірка">Тести від автора коду</td><td data-th="Від чого вона незалежна">Ні від чого: те саме розуміння задачі</td><td data-th="Що пропускає">Помилку в розумінні</td></tr>
+<tr><td data-th="Перевірка">Типи, статичний аналіз</td><td data-th="Від чого вона незалежна">Від розуміння задачі: перевіряє узгодженість коду з самим собою</td><td data-th="Що пропускає">Логіку з правильними типами</td></tr>
+<tr><td data-th="Перевірка">Property-based тести</td><td data-th="Від чого вона незалежна">Від прикладів, які автор уявив: входи генерує машина</td><td data-th="Що пропускає">Хибно сформульований інваріант</td></tr>
+<tr><td data-th="Перевірка">Мутаційне тестування</td><td data-th="Від чого вона незалежна">Від самих тестів: ламає код і дивиться, чи хтось помітив</td><td data-th="Що пропускає">Чи правильна сама вимога</td></tr>
+<tr><td data-th="Перевірка">Контракт, snapshot</td><td data-th="Від чого вона незалежна">Від реалізації: фіксує зовнішній інтерфейс</td><td data-th="Що пропускає">Зміну, яку схвалили разом із новим snapshot</td></tr>
+<tr><td data-th="Перевірка">Приховані приймальні тести (8.1)</td><td data-th="Від чого вона незалежна">Від агента: він їх не бачить</td><td data-th="Що пропускає">Те, чого немає в специфікації</td></tr>
+</tbody></table></div>
+<p>Звідси правило: <b>до кожного артефакту агента — хоча б одна перевірка, яку не писав і не може змінити той самий агент</b>. Захист <code>tests/</code> від правок (11.2) лише не дає агентові переписати тест під код. Чи знайде тест баг, він не гарантує.</p>
+</section>
+
+<section class="sec" id="pyramid">
+<div class="sec-h"><span class="num">02</span><h2>Піраміда перевірок<span class="sub">Шари, ціна і що ловить кожен</span></h2></div>
+<p>Піраміду тестів описав Майк Кон у книжці «Succeeding with Agile» (2009). Мартін Фаулер переказав її в нотатці «TestPyramid» (01.05.2012): низькорівневих тестів має бути набагато більше, ніж тестів через GUI. У Google, за книжкою «Software Engineering at Google» (розд. 11), пропорція приблизно 80% unit, 15% інтеграційних і 5% end-to-end. Розміри там визначено за ресурсами: малий тест працює в одному процесі й не робить I/O, середній — на одній машині, мережа лише до <code>localhost</code>, великий — без обмежень.</p>
+<p>Для коду агента до піраміди додається статика внизу і мутаційне тестування збоку. Мутаційне тестування перевіряє не код, а тести всіх шарів.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 450" role="img" aria-label="Піраміда перевірок для AI-коду: статика, unit і property, контракт, приймальні тести; мутаційне тестування окремо">
+  <polygon points="130,20 230,20 258.9,100 101.1,100" class="bx m"/>
+  <text x="180" y="52" text-anchor="middle" class="tx b">Приймальні, e2e</text>
+  <text x="180" y="71" text-anchor="middle" class="tx s">хвилини</text>
+  <text x="180" y="86" text-anchor="middle" class="tx s">чи виконано намір</text>
+  <polygon points="99.6,104 260.4,104 289.3,184 70.7,184" class="bx p"/>
+  <text x="180" y="136" text-anchor="middle" class="tx b">Контракт, snapshot</text>
+  <text x="180" y="155" text-anchor="middle" class="tx s">секунди</text>
+  <text x="180" y="170" text-anchor="middle" class="tx s">зламаний інтерфейс, схема</text>
+  <polygon points="69.3,188 290.7,188 319.6,268 40.4,268" class="bx t"/>
+  <text x="180" y="220" text-anchor="middle" class="tx b">Unit + property-based</text>
+  <text x="180" y="239" text-anchor="middle" class="tx s">1–20 с</text>
+  <text x="180" y="254" text-anchor="middle" class="tx s">логіка, межі, інваріанти</text>
+  <polygon points="38.9,272 321.1,272 350,352 10,352" class="bx a"/>
+  <text x="180" y="304" text-anchor="middle" class="tx b">Статика: ruff, типи</text>
+  <text x="180" y="323" text-anchor="middle" class="tx s">&lt; 1 с з кешем</text>
+  <text x="180" y="338" text-anchor="middle" class="tx s">None, атрибут, сигнатура</text>
+  <rect x="10" y="372" width="340" height="66" rx="10" class="bx"/>
+  <path d="M10 382 V 428" class="ln d"/>
+  <text x="180" y="397" text-anchor="middle" class="tx b">Мутаційне тестування</text>
+  <text x="180" y="416" text-anchor="middle" class="tx s">перевіряє тести всіх шарів</text>
+  <text x="180" y="431" text-anchor="middle" class="tx s">хвилини · окремий рівень</text>
+</svg>
+<figcaption>Що нижче, то дешевше і швидше: агент може запускати ці шари після кожної правки. Час виміряно на Lectern, розділ 5.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Шар</th><th>Інструмент у Lectern</th><th>Що спіймав у цьому уроці</th></tr></thead>
+<tbody>
+<tr><td data-th="Шар">Статика</td><td data-th="Інструмент у Lectern"><code>ruff</code> (ANN), <code>mypy</code> з baseline</td><td data-th="Що спіймав у цьому уроці">Повернення <code>Any | None</code> із функції <code>-&gt; int</code>; 29 помилок у baseline, одна з них з'явилася в останньому злитті</td></tr>
+<tr><td data-th="Шар">Unit + property</td><td data-th="Інструмент у Lectern">pytest, Hypothesis</td><td data-th="Що спіймав у цьому уроці">B60, <code>StopIteration</code> у <code>lectern check</code>, неідемпотентний <code>norm()</code></td></tr>
+<tr><td data-th="Шар">Контракт</td><td data-th="Інструмент у Lectern"><code>mcp_contract.py</code>, візуальні baseline (11.4)</td><td data-th="Що спіймав у цьому уроці">—</td></tr>
+<tr><td data-th="Шар">Приймальні</td><td data-th="Інструмент у Lectern">приховані тести специфікації (8.1), реальний прогін</td><td data-th="Що спіймав у цьому уроці">—</td></tr>
+<tr><td data-th="Шар">Тести тестів</td><td data-th="Інструмент у Lectern"><code>mutmut</code></td><td data-th="Що спіймав у цьому уроці">Не перевірено гілку <code>_lines()</code>, поріг рівно 50%, елемент із двома варіантами</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="property">
+<div class="sec-h"><span class="num">03</span><h2>Property-based тести<span class="sub">Hypothesis знаходить B60 і стискає контрприклад</span></h2></div>
+<p>Приклад-тест перевіряє один вхід, який придумав автор. <b>Property-based тест</b> перевіряє <b>інваріант</b> — твердження, істинне для кожного входу. Входи генерує бібліотека. Для Lectern перше таке твердження випливає з ADR 0004: <i>будь-який дослівний фрагмент лекції з ≥ 5 слів — цитата, і це підтверджує кожна перевірка</i>.</p>
+<pre class="code" data-lang="python"><span class="cm"># tests/test_properties.py (скорочено)</span>
+WORDS = st.sampled_from([<span class="s">"one"</span>, <span class="s">"two"</span>, <span class="s">"three"</span>, <span class="s">"four"</span>, <span class="s">"five"</span>, <span class="s">"six"</span>, <span class="s">"immut"</span>, <span class="s">"able"</span>])
+SEPS = st.sampled_from([<span class="s">" "</span>, <span class="s">"\n"</span>, <span class="s">"-\n"</span>, <span class="s">" - "</span>, <span class="s">"  "</span>])   <span class="cm"># як витягує PDF</span>
+
+<span class="k">@given</span>(lecture_and_quote())   <span class="cm"># межі фрагмента можуть різати слово чи розділювач</span>
+<span class="k">def</span> test_verbatim_fragment_is_accepted_by_every_check(case):
+    text, quote = case
+    s = session(text)
+    <span class="k">assert</span> s.check_quote(<span class="s">"l"</span>, quote)[<span class="s">"ok"</span>] <span class="k">is</span> True
+    <span class="k">assert</span> s.validate([item(quote)]) == []
+    <span class="k">assert</span> s.report(<span class="s">"l"</span>, [item(quote)])[<span class="s">"covered"</span>] == <span class="n">1</span></pre>
+<p>Проти канонічного <code>tools.py</code>:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — lectern (canonical)</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q tests/test_b60_probe.py --hypothesis-show-statistics</span>
+<span class="er">E       AssertionError: assert ['item 1: quo... the lecture'] == []</span>
+E       Failing test case: test_verbatim_fragment_is_accepted_by_every_check(
+E           <span class="y">case=('one one one one one-\none.', 'one one one one one-')</span>,
+E       )
+  - during generate phase (0.37 seconds):
+    - 100 passing, 4 failing, and 2 invalid test cases
+  - during shrink phase (0.52 seconds):
+    - Tried 176 shrinks of which 5 were successful
+<span class="er">1 failed in 2.60s</span></pre>
+<div class="cap">реальний вивід · Hypothesis 6.170.1 · 17.10.2026 · без бази прикладів (<code>database=None</code>) · скорочено, повний — <code>console/b60-hypothesis-canonical.txt</code></div></div>
+<p>Це B60 із беклогу: <code>check_quote</code> знаходить сирий підрядок <code>five-</code>, а <code>validate()</code> шукає лише в <code>norm()</code>, де «five-⏎one» склеєно в «fiveone». Модель отримує від інструмента «ok», а збереження квізу відхиляється. <b>Shrinking</b> (стискання) — це те, що Hypothesis робить після першого падіння: спрощує вхід, доки тест ще падає. Із лекції до 20 слів лишилися шість слів, один перенос і цитата з п'яти слів.</p>
+<p>Інша форма того самого класу — цитата, що <i>починається</i> з переносу (<code>'-\none one one o'</code>), — валила не лише <code>validate()</code>: <code>lectern check --json</code> падав з <code>StopIteration</code> у <code>_lines()</code> (<code>console/cli-check-stopiteration.txt</code>). Приклад-тест на цей вхід ніхто не написав би.</p>
+<div class="note fact"><span class="lbl">Перевірено · 17.10.2026</span>
+<p>Без бази прикладів Hypothesis знайшов B60 у <b>5 з 6</b> запусків по 100 прикладів. Шостий пройшов. Тому знайдений контрприклад закріплюють <code>@example(...)</code>: за документацією, явний приклад Hypothesis «завжди пробує перед генерацією випадкових». База <code>.hypothesis/</code> — це кеш, а в CI її зазвичай немає.</p>
+</div>
+<h3>Генератор вирішує, що знайдеться</h3>
+<p>Друге твердження: <code>norm()</code> ідемпотентна, <code>norm(norm(s)) == norm(s)</code>. З <code>st.text()</code> (довільний Unicode) тест пройшов <b>2000</b> прикладів. З алфавітом із дев'яти символів, які реально дає PDF (м'який перенос, комбінований наголос, тире, апостроф), він упав на <b>76-му</b>:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — lectern</span></div>
+<pre><span class="er">E       AssertionError: assert '\xe1' == 'a\u0301'</span>
+E       Failing test case: test_norm_is_idempotent(
+E           <span class="y">s='a\xad\u0301'</span>,
+    - 75 passing, 1 failing, and 0 invalid test cases
+    - Tried 23 shrinks of which 4 were successful
+tests/probe_tmp/test_norm_probe.py::test_norm_is_idempotent_any_text:
+    - 2000 passing, 0 failing, and 0 invalid test cases</pre>
+<div class="cap">реальний вивід · <code>console/norm-probe.txt</code> · скорочено; комбінований наголос показано як <code>\u0301</code></div></div>
+<p><code>norm()</code> спершу робить NFKC, а потім прибирає м'який перенос (U+00AD). Після цього <code>a</code> і наголос стоять поруч, але вже нескомпоновані. Якщо в PDF є м'який перенос усередині наголошеного слова, цитата з готовою літерою <code>á</code> буде «missing». Це ADR 0004, тож рішення за власником. У тестах — <code>xfail(strict=True)</code> з номером B110: щойно хтось виправить <code>norm()</code>, тест стане XPASS і нагадає прибрати позначку.</p>
+<div class="note warn"><span class="lbl">Пастка</span>
+<p>Стратегія з великою кількістю відкинутих прикладів (<code>assume()</code> відкидав 2/3) і повільна генерація (Unicode у 14 питаннях квізу) спрацювали як хибна тривога: <code>FailedHealthCheck: Input generation is slow</code> під mutmut, і одне нез'ясоване падіння під навантаженням. Виправлення: генерувати одразу валідне (фрагмент будується від меж слів), дешевий алфавіт, <code>deadline=None</code>. Типовий дедлайн — 200 мс на приклад, а тест перевіряє інваріант, не швидкодію.</p>
+</div>
+<p>Добрі інваріанти для коду агента: <b>узгодженість двох шляхів</b> (<code>check_quote</code> ⇔ <code>validate</code>), <b>ідемпотентність</b> (<code>place_answers(place_answers(x)) == place_answers(x)</code>), <b>збереження</b> (правильний варіант лишається тим самим текстом, неправильні — у тому ж порядку), <b>межа</b> (одна позиція відповіді трапляється не більше ⌈n/4⌉ разів), <b>«ніколи не падає»</b> на битих даних. Кожен з них — рядок специфікації, а не один уявний вхід.</p>
+</section>
+
+<section class="sec" id="mutation">
+<div class="sec-h"><span class="num">04</span><h2>Мутаційне тестування<span class="sub">Хто перевіряє тести</span></h2></div>
+<p>Покриття показує, які рядки виконалися, але не показує, чи тест помітив би, що рядок неправильний. <b>Мутаційне тестування</b> робить у коді малі зміни — <code>&gt;</code> на <code>&gt;=</code>, <code>or</code> на <code>and</code>, <code>+ 1</code> на <code>- 1</code> — і для кожного <b>мутанта</b> проганяє тести. Якщо хоч один тест упав, мутанта «вбито». Якщо всі зелені — <b>мутант вижив</b>, тобто тести не відрізняють цей код від зламаного. <b>Mutation score</b> = вбиті / усі мутанти. На відміну від покриття, агент не підніме цю метрику тестом без assert.</p>
+<p>Lectern — Python 3.12, тож обрано <code>mutmut</code> 3.8.0 (PyPI, 12.09.2026). Він потребує <code>fork</code> (на Windows — лише WSL) і проганяє для кожного мутанта лише ті тести, що викликають змінену функцію. Налаштування — у <code>[tool.mutmut]</code>:</p>
+<pre class="code" data-lang="toml">[tool.mutmut]
+source_paths = [<span class="s">"src/"</span>]
+only_mutate = [<span class="s">"src/lectern/tools.py"</span>]
+pytest_add_cli_args_test_selection = [<span class="s">"tests/test_tools.py"</span>, <span class="cm">… 6 файлів</span>]
+also_copy = [<span class="s">"docs/"</span>, <span class="s">"samples/"</span>]   <span class="cm"># test_spec_quotes читає docs/spec/quotes.md</span></pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/mutation.sh</span>
+  survived: lectern.tools.x__lines__mutmut_39
+  <span class="d">…158 рядків…</span>
+mutants 696 · killed 528 · timeout 9 · survived 159 · other 0
+<span class="y">mutation score 77.2% (min 77%)</span>
+<span class="ps">$ </span><span class="c">.venv/bin/mutmut show lectern.tools.x__lines__mutmut_39</span>
+<span class="er">-    if needle.startswith("-") or needle.endswith("-"):</span>
+<span class="ok">+    if needle.startswith("-") and needle.endswith("-"):</span></pre>
+<div class="cap">реальний вивід · mutmut 3.8.0 · 8 процесів · 2 хв 4 с · скорочено; <code>console/mutation-after.txt</code></div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Функція</th><th>Канонічні тести</th><th>Після уроку</th></tr></thead>
+<tbody>
+<tr><td data-th="Функція"><code>_lines()</code> — рядки цитати</td><td data-th="Канонічні тести">43/73 (59%)</td><td data-th="Після уроку">87/103 (84%)</td></tr>
+<tr><td data-th="Функція"><code>key_balance()</code></td><td data-th="Канонічні тести">55/61</td><td data-th="Після уроку">58/61</td></tr>
+<tr><td data-th="Функція"><code>validate()</code></td><td data-th="Канонічні тести">65/77</td><td data-th="Після уроку">67/79</td></tr>
+<tr><td data-th="Функція"><code>place_answers()</code></td><td data-th="Канонічні тести">40/40</td><td data-th="Після уроку">40/40</td></tr>
+<tr><td data-th="Функція">увесь <code>tools.py</code></td><td data-th="Канонічні тести">486/661 (73,5%)</td><td data-th="Після уроку">537/696 (77,2%)</td></tr>
+</tbody></table></div>
+<p>Що видно з цієї таблиці:</p>
+<ul>
+<li><b>Property-тести для <code>place_answers</code> score не підняли</b>: приклад-тести вже вбивали всі 40 мутантів. Мутаційне тестування міряє лише поточний код, а property-тест захищає від майбутньої зміни, якої серед мутантів немає. Обидва інструменти потрібні, і один не замінює інший.</li>
+<li><b>Мутації показали прогалини в моєму ж фіксі.</b> Перший прогін після B60 залишив живими <code>text.index</code> → <code>text.rindex</code> і <code>or</code> → <code>and</code> у новому рядку <code>_where</code>. Property-тест лише зрідка генерував цитату, що є тільки в сирому тексті. Три явні приклади (два входження, перенос на краю, повтор на іншій сторінці) вбили ці мутанти.</li>
+<li><b>Не кожен мутант — пропущений тест.</b> <code>"\ufffd"</code> → <code>"\uFFFD"</code> — це той самий рядок. <code>most_common(1)[0]</code> → <code>most_common(2)[0]</code> дає той самий перший елемент. Це <b>еквівалентні мутанти</b>: їх не вбити жодним тестом, тож 100% недосяжні. Ще 122 зі 159 вцілілих — у <code>json_schema</code>, <code>_schema_words</code>, <code>_object</code>, <code>_brief</code> і <code>call</code>. Їх перевіряють тести MCP і агентів, які не ввійшли у вибірку заради часу (B113).</li>
+</ul>
+<p>Ціну видно в часі. На канонічних тестах mutmut працював 80 с. Після додавання property-тестів — 2–4 хв, бо кожен мутант заново генерує сотні прикладів. Тому мутації не входять у <code>check.sh</code>. <code>mutation.sh</code> — окремий рівень із порогом <code>MIN_SCORE=77</code>, який працює як храповик: поріг піднімають, коли score росте, і ніколи не опускають, щоб пройшов PR.</p>
+<div class="note warn"><span class="lbl">Пастка, виміряно</span>
+<p>mutmut залишає <code>mutants/</code> з копією <code>tests/</code>. Наступний <code>check.sh</code> зібрав обидві копії й упав на 28 <code>import file mismatch</code>, хоча код не змінювався. Виправлення — <code>testpaths = ["tests"]</code> у <code>[tool.pytest.ini_options]</code> і <code>mutants/</code> у <code>.gitignore</code>, бо ruff поважає <code>.gitignore</code>.</p>
+</div>
+<p>Масштаб для орієнтиру: у Meta агент ACH генерує мутанти під конкретний клас ризиків, потім тести, які їх вбивають. На 10 795 класах Kotlin він дав 9 095 мутантів і 571 тест; інженери прийняли 73% тестів (arXiv 2501.12862, 22.01.2025). Тут мутант — <i>вхід</i> для генерації тестів, а не лише метрика.</p>
+</section>
+
+<section class="sec" id="tiers">
+<div class="sec-h"><span class="num">05</span><h2>Типи з baseline і рівні за часом<span class="sub">Гейт, що не вимагає нуля</span></h2></div>
+<p>B91 з уроку 11.3: mypy у <code>check.sh</code>, але з baseline. mypy 2.4.0 на канонічному <code>src/</code> показує 29 помилок. Більшість — інваріанти, які гарантує потік керування: <code>len(session.saved)</code> після перевірки на <code>None</code> рядками вище; <code>dict[str, Any]</code>, переданий туди, де FastAPI чекає <code>TypedDict</code>. Вимога «нуль помилок» змусила б виправляти борг разом із кожною фічею. Відсутність гейта дозволяє агентові додавати нові помилки непомітно. Baseline розв'язує обидві проблеми: старі помилки записано, нові падають.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/mypy_gate.py</span>   <span class="d"># додано def answer_index(item: dict) -&gt; int: return item.get("answer")</span>
+<span class="er">new: src/lectern/tools.py: error: Incompatible return value type (got "Any | None", expected "int")  [return-value]</span>
+mypy: 30 error(s), baseline 29, new 1, fixed 0
+<span class="ps">$ </span><span class="c">scripts/mypy_gate.py</span>   <span class="d"># виправлено: len(session.saved or [])</span>
+fixed: src/lectern/cli.py: error: Argument 1 to "len" has incompatible type "list[Any] | None"; expected "Sized"  [arg-type]
+mypy: 28 error(s), baseline 29, new 0, fixed 1
+<span class="y">baseline is stale: run scripts/mypy_gate.py --shrink and commit it</span>
+<span class="ps">$ </span><span class="c">scripts/mypy_gate.py --shrink</span>
+baseline: 29 -&gt; 28
+<span class="ps">$ </span><span class="c">scripts/mypy_gate.py --init</span>
+<span class="er">mypy-baseline.txt exists: the baseline only shrinks (--shrink)</span></pre>
+<div class="cap">реальний вивід · mypy 2.4.0 · <code>console/mypy-gate.txt</code></div></div>
+<p>Три рішення в гейті, і кожне закриває конкретну лазівку:</p>
+<ul>
+<li><b>Без номерів рядків.</b> Помилка записується як «файл: текст [код]», тож перенесення коду не ламає baseline.</li>
+<li><b>Мультимножина.</b> Третя однакова помилка у файлі, де їх було дві, вважається новою. Простий список рядків її б пропустив.</li>
+<li><b>Виправлену помилку треба прибрати з baseline</b>, інакше гейт червоний. Без цього правила виправлена помилка лишилася б у baseline і «прикрила» б таку саму нову. Додавати рядки в baseline може лише людина: <code>--init</code> відмовляє, якщо файл є, а в <code>settings.json</code> на редагування стоїть <code>ask</code>.</li>
+</ul>
+<p>Сторінка документації mypy про наявний код радить <code>ignore_errors</code> для модулів, до яких ще не дійшли, і анотації для всього нового коду. Про baseline вона не згадує. Baseline працює точніше: не вимикає перевірку цілих модулів, а фіксує конкретні помилки, тож нова помилка в «брудному» модулі теж падає.</p>
+<h3>Куди ставити кожну перевірку</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Перевірка</th><th>Виміряно</th><th>Рівень</th></tr></thead>
+<tbody>
+<tr><td data-th="Перевірка"><code>ruff check .</code></td><td data-th="Виміряно">&lt; 0,1 с</td><td data-th="Рівень">хук після правки, pre-commit</td></tr>
+<tr><td data-th="Перевірка">pre-commit, усі файли</td><td data-th="Виміряно">0,9–2,6 с</td><td data-th="Рівень">коміт (&lt; 5 с)</td></tr>
+<tr><td data-th="Перевірка"><code>mypy_gate.py</code></td><td data-th="Виміряно">0,4–0,8 с з кешем, 7,6–12,5 с без</td><td data-th="Рівень"><code>check.sh</code></td></tr>
+<tr><td data-th="Перевірка">property-тести</td><td data-th="Виміряно">1,3–3,8 с</td><td data-th="Рівень"><code>check.sh</code></td></tr>
+<tr><td data-th="Перевірка">pytest, 421 тест</td><td data-th="Виміряно">17–61 с</td><td data-th="Рівень"><code>check.sh</code></td></tr>
+<tr><td data-th="Перевірка"><code>check.sh</code> повністю</td><td data-th="Виміряно">19–29 с</td><td data-th="Рівень">«Done» агента, CI на PR</td></tr>
+<tr><td data-th="Перевірка"><code>mutation.sh</code></td><td data-th="Виміряно">2–4 хв</td><td data-th="Рівень">окремо: нічний CI, перед зміною правил цитат</td></tr>
+</tbody></table></div>
+<p>Діапазони широкі, бо машина була спільною з іншими задачами (load average 14–27). Правило розподілу просте: <b>агент запускає перевірку стільки разів, скільки робить кроків</b>. Тож у цикл агента йде те, що вкладається в секунди. У «Done» — те, що вкладається в хвилину. Решта — окремий рівень із власним розкладом. Межі записано в ADR 0015.</p>
+</section>
+
+<section class="sec" id="experiment">
+<div class="sec-h"><span class="num">06</span><h2>Експеримент<span class="sub">Агент пише тести: три постановки задачі</span></h2></div>
+<p>Питання: чи краще ловить баги набір тестів від агента, якщо попросити property-based тести або дати список інваріантів від людини? Функція — <code>key_balance()</code> з Lectern (40 рядків, 61 мутант), винесена в окремий <code>kb.py</code>. <code>claude -p --model haiku</code>, по два прогони на постановку, ізольовано (<code>--setting-sources project --strict-mcp-config</code>). Дозволено лише Read/Write/Edit і <code>.venv/bin/python -m pytest *</code>. Оцінка — mutmut на кожному наборі.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Постановка</th><th>Прогін 1</th><th>Прогін 2</th></tr></thead>
+<tbody>
+<tr><td data-th="Постановка">A · «напиши pytest-тести»</td><td data-th="Прогін 1">55/61 (90%) · 10 тестів</td><td data-th="Прогін 2">57/61 (93%) · 13</td></tr>
+<tr><td data-th="Постановка">B · «напиши property-based тести на Hypothesis»</td><td data-th="Прогін 1">55/61 (90%) · 8</td><td data-th="Прогін 2">50/61 (82%) · 10</td></tr>
+<tr><td data-th="Постановка">C · «перевір кожен інваріант» + 6 інваріантів від людини</td><td data-th="Прогін 1">57/61 (93%) · 16</td><td data-th="Прогін 2">58/61 (95%) · 19</td></tr>
+<tr><td data-th="Постановка">Для порівняння: канонічні тести Lectern</td><td colspan="2" data-th="Прогін 1">55/61 (90%)</td></tr>
+</tbody></table></div>
+<p>Шість прогонів коштували $0,063 (від 6 до 13 ходів). Ще $0,136 пішло на дві перші серії, де дозвіл на pytest не збігся з командою з промпту: агенти написали тести, але не змогли їх запустити й чесно про це сказали. Ці тести не оцінювались.</p>
+<ul>
+<li><b>Слово «property-based» у промпті якості не дало.</b> Набір B-2 перевіряв загальні властивості («повертає список», «не змінює вхід», «порядок не важливий»). Вони істинні, але слабкі, тож він отримав найнижчий бал. Крім того, у B-2 була хибна властивість «не більше двох попереджень», яка пройшла 100 прикладів.</li>
+<li><b>Список інваріантів дав найвищий бал і знайшов баг.</b> C-1 перевірив пункт «биті елементи пропускаються й ніколи не викликають помилку» на елементі-рядку. <code>key_balance()</code> упала з <code>AttributeError</code>. Агент не підправив код, а позначив тест <code>xfail(strict=True)</code> з поясненням. Це B111.</li>
+<li><b>Межі пропустили всі, кому їх не назвали.</b> Мутанти <code>&gt; 1</code> → <code>&gt; 2</code> (питання з двома варіантами), <code>&lt; len</code> → <code>&lt;= len</code> (відповідь за межею списку) і <code>&gt; n*0.5</code> → <code>&gt;= n*0.5</code> (рівно 50%) вижили в A і B. У C-2 «рівно 50% не попереджає» стоїть у списку, і цей мутант убито.</li>
+<li>Два мутанти (<code>most_common(1)[0]</code> → <code>most_common(None)[0]</code> і <code>(2)[0]</code>) еквівалентні й вижили скрізь, тож стеля — 59/61.</li>
+</ul>
+<div class="note warn"><span class="lbl">Межі висновку</span>
+<p>Два прогони на постановку, одна функція, одна модель, оператори mutmut. Різниця між A і C — 1–3 мутанти: це напрям, а не доказ. Стійкий результат дві речі: хибну властивість, що пройшла Hypothesis, і баг, знайдений лише за списком від людини. Обидва відтворюються з <code>console/experiment/</code>.</p>
+</div>
+<p>Робоче правило: <b>інваріанти пише людина або вони беруться зі специфікації; агент перетворює їх на тести; мутаційне тестування перевіряє результат</b>. «Напиши property-based тести» без списку інваріантів дає агентові вибрати властивості, які легко довести, а не ті, що важливі.</p>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Claude Code / Codex / Cursor<span class="sub">Перевірки як гейти в циклі агента</span></h2></div>
+<p>Схема однакова в усіх трьох інструментах. Після правки файлу запускається швидкий шар, і його результат повертається агентові. Перед завершенням ходу запускається <code>check.sh</code>, і червоний результат не дає агентові зупинитися (детально про хуки — урок 6.2). Мутаційне тестування в хуки не ставлять.</p>
+<div class="tabs">
+<input type="radio" name="gate-t" id="gate-t1" checked><input type="radio" name="gate-t" id="gate-t2"><input type="radio" name="gate-t" id="gate-t3">
+<div class="tab-l"><label for="gate-t1">Claude Code</label><label for="gate-t2">Codex CLI</label><label for="gate-t3">Cursor</label></div>
+<div class="tab-p">
+<pre class="code" data-lang="json">{ <span class="s">"hooks"</span>: {
+  <span class="s">"PostToolUse"</span>: [{ <span class="s">"matcher"</span>: <span class="s">"Edit|Write"</span>, <span class="s">"hooks"</span>: [{ <span class="s">"type"</span>: <span class="s">"command"</span>,
+    <span class="s">"command"</span>: <span class="s">"${CLAUDE_PROJECT_DIR}/scripts/hooks/fast_checks.sh"</span> }] }],
+  <span class="s">"Stop"</span>: [{ <span class="s">"hooks"</span>: [{ <span class="s">"type"</span>: <span class="s">"command"</span>,
+    <span class="s">"command"</span>: <span class="s">"${CLAUDE_PROJECT_DIR}/scripts/hooks/stop_check.sh"</span> }] }]
+} }</pre>
+<p><code>PostToolUse</code> не скасовує правку, яка вже відбулася. Щоб агент побачив проблему, хук виходить з кодом 2, і Claude отримує stderr. <code>Stop</code> з <code>{"decision": "block", "reason": …}</code> не дає завершити хід. Типовий тайм-аут командного хука — 600 с. Хук з <code>async: true</code> працює у фоні, а <code>asyncRewake</code> будить Claude, якщо хук завершився з кодом 2. Так можна запустити повільну перевірку, не блокуючи роботу.</p>
+<div class="cap">конфігурація з офіційної документації Claude Code · не запускалась у цьому уроці</div>
+</div>
+<div class="tab-p">
+<pre class="code" data-lang="json"><span class="cm">// .codex/hooks.json — або таблиці [hooks] у .codex/config.toml</span>
+{ <span class="s">"hooks"</span>: {
+  <span class="s">"PostToolUse"</span>: [{ <span class="s">"matcher"</span>: <span class="s">"apply_patch|Edit|Write"</span>, <span class="s">"hooks"</span>: [{ <span class="s">"type"</span>: <span class="s">"command"</span>,
+    <span class="s">"command"</span>: <span class="s">"scripts/hooks/fast_checks.sh"</span> }] }],
+  <span class="s">"Stop"</span>: [{ <span class="s">"hooks"</span>: [{ <span class="s">"type"</span>: <span class="s">"command"</span>, <span class="s">"command"</span>: <span class="s">"scripts/hooks/stop_check.sh"</span> }] }]
+} }</pre>
+<p>Формат той самий, що в Claude Code; <code>matcher</code> — регулярний вираз. Хуки ввімкнено типово (<code>[features] hooks = false</code> вимикає). Кожен хук, який не задано політикою організації, треба переглянути й схвалити командою <code>/hooks</code>, інакше він не запуститься. <code>PostToolUse</code> бачить і <code>apply_patch</code>. Stop з <code>"decision": "block"</code> і <code>reason</code> змушує Codex продовжити роботу, а <code>reason</code> стає новим промптом.</p>
+<div class="cap">конфігурація з офіційної документації Codex · не запускалась у цьому уроці</div>
+</div>
+<div class="tab-p">
+<pre class="code" data-lang="json"><span class="cm">// .cursor/hooks.json</span>
+{ <span class="s">"version"</span>: <span class="n">1</span>, <span class="s">"hooks"</span>: {
+  <span class="s">"afterFileEdit"</span>: [{ <span class="s">"command"</span>: <span class="s">"scripts/hooks/fast_checks.sh"</span> }],
+  <span class="s">"stop"</span>: [{ <span class="s">"command"</span>: <span class="s">"scripts/hooks/stop_check.sh"</span>, <span class="s">"loop_limit"</span>: <span class="n">3</span> }] } }</pre>
+<p>Для <code>afterFileEdit</code> документація описує лише вхід (форматери, облік коду агента), а не відповідь агентові. Повернути результат агентові може <code>postToolUse</code> через <code>additional_context</code>. <code>stop</code> повертає <code>followup_message</code>, і Cursor надсилає його як наступне повідомлення. Типово таких автоматичних повторів не більше 5 (<code>loop_limit</code>).</p>
+<div class="cap">конфігурація з офіційної документації Cursor · не запускалась у цьому уроці</div>
+</div>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">B60, B91 і рівень мутацій у Lectern</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 12.1 · <code>tools.py</code>, 3 скрипти, 2 файли тестів</div><div class="pb">
+<p>Поверх поточного канонічного стану, включно з телеметрією 12.5: 18 файлів, +1116/−22, з них 689 рядків — lock (<code>console/lectern.diff</code>). <code>scripts/check.sh</code>: усі кроки зелені, 421 passed, 1 skipped, 1 xfailed (B110); pre-commit на всіх файлах зелений.</p>
+<ul>
+<li><b>B60 закрито:</b> одне правило для <code>check_quote</code>, <code>validate()</code> і <code>quote_coverage()</code> — цитата є, якщо вона є в сирому тексті <i>або</i> в <code>norm()</code>. <code>_lines()</code> бере адресу такої цитати з позиції в сирому тексті, і <code>StopIteration</code> більше немає. Перевірка <code>ambiguous</code> використовує те саме правило. Тест-фіксацію старої поведінки з 11.2 замінено тестом одного вердикту.</li>
+<li><b><code>tests/test_properties.py</code></b>: 7 property-тестів (один — strict xfail для B110) і 5 тестів-прикладів. Знайдені контрприклади закріплено через <code>@example</code>; <code>deadline=None</code>.</li>
+<li><b>B91:</b> <code>scripts/mypy_gate.py</code> — крок <code>types</code> у <code>check.sh</code>; <code>docs/mypy-baseline.txt</code> (29); <code>[tool.mypy]</code>; <code>allow</code> для гейта, <code>ask</code> на редагування baseline.</li>
+<li><b>Окремий рівень:</b> <code>scripts/mutation.sh</code> + <code>[tool.mutmut]</code>, поріг 77%; <code>testpaths = ["tests"]</code>.</li>
+<li>hypothesis, mypy і mutmut — у групі <code>dev</code>. Lock виріс із 60 до 77 пакетів, 12 з них приносить лише mutmut (textual, rich, libcst…).</li>
+<li>ADR 0015 (рівні за часом), CLAUDE.kit (команди гейта й мутацій, «baseline лише зменшується»). Беклог: B110 <code>norm()</code>, B111 <code>key_balance</code> на не-словнику, B112 гілка дефіса в <code>_lines()</code>, B113 вибірка тестів для мутацій.</li>
+</ul>
+<p>Ваш крок: запустіть <code>scripts/mutation.sh</code>, візьміть три вцілілі мутанти з <code>_lines()</code> і для кожного вирішіть, чого бракує: тесту чи це еквівалентний мутант.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Агент підняв покриття до 90%, а баги лишились</td><td data-th="Причина">Покриття рахує виконані рядки, а не перевірені</td><td data-th="Що зробити">Мутаційне тестування на критичному модулі, поріг-храповик</td></tr>
+<tr><td data-th="Симптом">Знайдений Hypothesis баг «зник» у CI</td><td data-th="Причина">Без бази <code>.hypothesis/</code> контрприклад треба знайти заново, а це вдається не щоразу (5 з 6)</td><td data-th="Що зробити"><code>@example</code> з контрприкладом у тому ж PR</td></tr>
+<tr><td data-th="Симптом">2000 прикладів — і нічого</td><td data-th="Причина"><code>st.text()</code> майже не генерує потрібних поєднань символів</td><td data-th="Що зробити">Алфавіт предметної області: те, що реально дає PDF</td></tr>
+<tr><td data-th="Симптом"><code>FailedHealthCheck</code>, нестабільні падіння</td><td data-th="Причина"><code>assume()</code> відкидає більшість прикладів, повільна генерація, дедлайн 200 мс</td><td data-th="Що зробити">Генерувати одразу валідне, дешевий алфавіт, <code>deadline=None</code></td></tr>
+<tr><td data-th="Симптом">mypy у CI з нуля, PR не проходить</td><td data-th="Причина">29 старих помилок у кожному PR</td><td data-th="Що зробити">Baseline: падають лише нові</td></tr>
+<tr><td data-th="Симптом">Baseline росте</td><td data-th="Причина">Агент або людина дописує туди нові помилки</td><td data-th="Що зробити"><code>--init</code> не перезаписує, <code>ask</code> на файл, видно в diff</td></tr>
+<tr><td data-th="Симптом"><code>check.sh</code> упав після мутацій</td><td data-th="Причина">pytest збирає копію тестів у <code>mutants/</code></td><td data-th="Що зробити"><code>testpaths = ["tests"]</code></td></tr>
+<tr><td data-th="Симптом">«Вбити всіх мутантів»</td><td data-th="Причина">Еквівалентні мутанти й рядки логів</td><td data-th="Що зробити">Класифікувати: пропущений тест, еквівалентний, не варто</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">незалежна перевірка</span><span class="h">незалежна від чого?</span></span><span class="b"><span class="t">Від автора коду</span><span class="d">її не писав і не може змінити той самий агент: типи, мутації, приховані тести</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">інваріант</span><span class="h">приклад з Lectern?</span></span><span class="b"><span class="t">Істинне для кожного входу</span><span class="d">дослівний фрагмент ≥ 5 слів приймають і check_quote, і validate</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">shrinking</span><span class="h">що робить Hypothesis?</span></span><span class="b"><span class="t">Спрощує контрприклад</span><span class="d">доки тест ще падає: лекція до 20 слів → 6 слів і один перенос</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">surviving mutant</span><span class="h">два можливі діагнози</span></span><span class="b"><span class="t">Тести не помітили зміну</span><span class="d">пропущений тест або еквівалентний мутант</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">mutation score</span><span class="h">чим кращий за покриття?</span></span><span class="b"><span class="t">Вбиті / усі мутанти</span><span class="d">тест без assert його не піднімає; Lectern: 73,5% → 77,2%</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">type checking baseline</span><span class="h">що падає?</span></span><span class="b"><span class="t">Лише нові помилки</span><span class="d">старі записано без номерів рядків; виправлені треба прибрати</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">рівень перевірок</span><span class="h">за яким критерієм?</span></span><span class="b"><span class="t">За часом запуску</span><span class="d">хук — секунди, check.sh — до хвилини, мутації — окремо</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Агент реалізував функцію і написав до неї 12 тестів: усі зелені, покриття рядків 100%. Що найкраще перевірить якість саме цих тестів?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Другий набір тестів від того самого агента з іншим промптом і вищою температурою</span></label><label class="opt"><input type="radio" name="q1"><span>Звіт про покриття гілок замість рядків, щоб побачити неперевірені розгалуження</span></label><label class="opt ok"><input type="radio" name="q1"><span>Мутаційне тестування функції: скільки малих змін у коді тести не помічають</span></label></div>
+    <div class="why yes">Так. Mutation score показує, чи тести відрізняють правильний код від зламаного. Покриття цього не показує, а тест без assert покриття піднімає.</div>
+    <div class="why no">Другий набір від того самого агента має те саме розуміння задачі. Покриття гілок, як і рядків, показує лише, що код виконався, а не що його перевірили. Якість тестів міряє мутаційне тестування.</div></div>
+  <div class="q"><div class="qt">2. Hypothesis локально знайшов і стиснув контрприклад для B60, ви виправили код. Що ще зробити в тому самому PR?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Закріпити контрприклад через <code>@example</code>: у CI бази прикладів немає</span></label><label class="opt"><input type="radio" name="q2"><span>Підняти <code>max_examples</code> до 10 000 для всіх тестів, щоб CI знаходив той самий вхід</span></label><label class="opt"><input type="radio" name="q2"><span>Закомітити теку <code>.hypothesis/</code>, щоб CI мав ту саму базу, що й ваша машина</span></label></div>
+    <div class="why yes">Так. Явний приклад Hypothesis пробує перед генерацією, тож регресію буде перевірено в кожному запуску.</div>
+    <div class="why no">Без бази пошук випадковий: в уроці B60 знайшовся в 5 з 6 запусків, і більше прикладів дають лише вищу ймовірність при значно довшому прогоні. База — кеш, а не специфікація. Регресію закріплює <code>@example</code>.</div></div>
+  <div class="q"><div class="qt">3. Тест «<code>norm()</code> ідемпотентна» з генератором <code>st.text()</code> пройшов 2000 прикладів. Що це означає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Що <code>norm()</code> ідемпотентна майже для будь-якого вводу: 2000 прикладів — велика вибірка</span></label><label class="opt ok"><input type="radio" name="q3"><span>Майже нічого: потрібне поєднання символів генератор створює рідко, алфавіт PDF знайшов його на 76-му</span></label><label class="opt"><input type="radio" name="q3"><span>Що варто ввімкнути <code>derandomize=True</code>, аби CI щоразу перевіряв ці самі приклади</span></label></div>
+    <div class="why yes">Так. Що знайдеться, вирішує генератор: м'який перенос перед комбінованим наголосом серед довільного Unicode трапляється рідко.</div>
+    <div class="why no">Кількість прикладів без доречного генератора нічого не доводить, а <code>derandomize</code> лише повторює ту саму невдалу вибірку. З алфавітом із символів, які реально дає PDF, падіння знайшлося на 76-му прикладі.</div></div>
+  <div class="q"><div class="qt">4. mutmut показав вцілілий мутант <code>"\ufffd"</code> → <code>"\uFFFD"</code> у <code>validate()</code>. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Написати тест з U+FFFD у питанні, що перевіряє точний текст помилки <code>validate()</code></span></label><label class="opt"><input type="radio" name="q4"><span>Знизити <code>MIN_SCORE</code> на пункт, бо цей мутант псує метрику без реальної причини</span></label><label class="opt ok"><input type="radio" name="q4"><span>Нічого в тестах: це той самий рядок, мутант еквівалентний; занотувати як відомий</span></label></div>
+    <div class="why yes">Так. Обидва літерали дають той самий рядок, тож жоден тест мутанта не вб'є. Його класифікують, а не «вбивають».</div>
+    <div class="why no">Тест не допоможе: мутований код поводиться так само, тому тест пройде і з ним. Опускати поріг заради PR — це протилежність храповика. Еквівалентні мутанти — причина, чому 100% недосяжні.</div></div>
+  <div class="q"><div class="qt">5. У проєкті 29 помилок mypy, а агенти щодня додають код. Яку політику гейта обрати?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Baseline: падають лише нові помилки, виправлені треба прибрати, додає їх лише людина</span></label><label class="opt"><input type="radio" name="q5"><span><code>mypy --strict</code> у <code>check.sh</code> одразу: агент виправить усі помилки в першому PR</span></label><label class="opt"><input type="radio" name="q5"><span>mypy лише в нічному CI як звіт для інформації, щоб не гальмувати PR агентів</span></label></div>
+    <div class="why yes">Так. Борг не блокує роботу, нові помилки не проходять, а baseline може лише зменшуватися.</div>
+    <div class="why no"><code>--strict</code> одразу змішує борг із фічею, і це провокує <code>type: ignore</code> скрізь. Інформаційний звіт нічого не зупиняє: одна нова помилка в уроці з'явилася якраз у злитті без гейта.</div></div>
+  <div class="q"><div class="qt">6. Хтось пропонує запускати <code>mutation.sh</code> (2–4 хв) у Stop-хуку агента. Що станеться?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Нічого поганого: Stop спрацьовує раз на хід, тож кілька хвилин на роботі не позначаться</span></label><label class="opt ok"><input type="radio" name="q6"><span>Кожен хід чекатиме хвилини, а поріг нижче норми повертатиме агента на нові кола</span></label><label class="opt"><input type="radio" name="q6"><span>Хук не запуститься: командні хуки Claude Code типово обмежено тайм-аутом у 60 секунд</span></label></div>
+    <div class="why yes">Так. Агент запускає гейт стільки разів, скільки ходів робить, тож хвилини множаться. Мутації — окремий рівень за розкладом.</div>
+    <div class="why no">Типовий тайм-аут командного хука — 600 с, тож хук запуститься. Але кожне завершення ходу чекатиме, а червоний поріг не дасть агентові зупинитися, і він піде на нові кола.</div></div>
+  <div class="q"><div class="qt">7. Ви просите агента: «напиши property-based тести для <code>key_balance</code>», без списку інваріантів. Що найімовірніше, судячи з експерименту?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Score стабільно вищий за звичайні тести, бо генеровані входи самі покривають межі</span></label><label class="opt"><input type="radio" name="q7"><span>Агент відмовиться без явних інваріантів і попросить специфікацію перед тестами</span></label><label class="opt ok"><input type="radio" name="q7"><span>Агент обере властивості, які легко довести, а межі на кшталт «рівно 50%» пропустить</span></label></div>
+    <div class="why yes">Так. B-прогони дали 90% і 82%, у B-2 були загальні властивості й одна хибна. Межу «рівно 50%» убив лише набір, якому її назвали.</div>
+    <div class="why no">Генератор покриває межі, лише якщо властивість їх перевіряє: B не перевершили A. Обидва B-прогони написали тести, нічого не питаючи.</div></div>
+  <div class="q"><div class="qt">8. Після <code>mutation.sh</code> наступний <code>check.sh</code> падає з <code>import file mismatch</code>, хоча код не мінявся. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>mutmut лишив на диску мутований <code>tools.py</code> після того, як прогін перервали</span></label><label class="opt ok"><input type="radio" name="q8"><span>pytest збирає копію <code>tests/</code> у <code>mutants/</code>; бракує <code>testpaths</code></span></label><label class="opt"><input type="radio" name="q8"><span>У <code>.hypothesis/</code> лишилися приклади, згенеровані для мутованого коду</span></label></div>
+    <div class="why yes">Так. mutmut 3 мутує копію проєкту в <code>mutants/</code>, а pytest без <code>testpaths</code> збирає тести звідусіль. Два модулі з однаковою назвою дають помилку імпорту.</div>
+    <div class="why no">mutmut 3 не змінює вихідні файли, а працює з копією в <code>mutants/</code>. База Hypothesis зберігає входи, а не код. Помилка — дубль модулів <code>test_*.py</code>, який виправляє <code>testpaths = ["tests"]</code>.</div></div>
+  <div class="q"><div class="qt">9. Агент написав тест «<code>key_balance</code> повертає не більше двох попереджень», і він пройшов 100 прикладів Hypothesis. Як до нього ставитися?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Звірити зі специфікацією: три попередження можливі, тож тест хибний, хоч і зелений</span></label><label class="opt"><input type="radio" name="q9"><span>Прийняти: 100 прикладів без падіння — достатній доказ для такої простої властивості</span></label><label class="opt"><input type="radio" name="q9"><span>Підняти <code>max_examples</code> до 1000 і, якщо тест зелений, вважати властивість доведеною</span></label></div>
+    <div class="why yes">Так. Довжина й позиція — незалежні правила: 3 найдовших + 3 найкоротших із ключем 0 дають три попередження. Тест з хибною властивістю — сам помилка.</div>
+    <div class="why no">Генератор рідко будує саме таку комбінацію, тож і 1000 прикладів не доводять властивість. Правильність інваріанта перевіряють за специфікацією, а не кількістю прикладів.</div></div>
+  <div class="q"><div class="qt">10. PostToolUse-хук Claude Code запускає ruff і mypy на зміненому файлі й знаходить помилку. Як повідомити агента?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Повернути <code>"permission": "deny"</code>, щоб правку скасували й агент зробив її знову</span></label><label class="opt"><input type="radio" name="q10"><span>Вивести помилку в stdout з кодом 0: Claude читає вивід усіх хуків після кожного виклику</span></label><label class="opt ok"><input type="radio" name="q10"><span>Вийти з кодом 2 і написати помилку в stderr: правка вже є, але Claude побачить причину</span></label></div>
+    <div class="why yes">Так. За документацією, щоб Claude побачив попередження з <code>PostToolUse</code>, хук виходить з кодом 2. Інструмент уже відпрацював, тож скасувати правку не можна.</div>
+    <div class="why no">PostToolUse спрацьовує після інструмента, тож нічого не скасовує. <code>permission</code> — це поле PreToolUse. Документація прямо радить для PostToolUse exit 2 і stderr, а не stdout із кодом 0.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>піраміда перевірок (AI-код)</td><td>Шари від дешевих до дорогих — статика, unit + property, контракт, приймальні — плюс мутаційне тестування збоку, яке перевіряє самі тести.</td></tr>
+<tr><td>незалежна перевірка</td><td>Перевірка, яку не писав і не може змінити автор коду (агент): типи, мутації, приховані приймальні тести.</td></tr>
+<tr><td>property-based test</td><td>Тест інваріанта: входи генерує бібліотека (Hypothesis), падіння стискається до найменшого прикладу.</td></tr>
+<tr><td>shrinking</td><td>Спрощення знайденого контрприкладу, доки тест ще падає.</td></tr>
+<tr><td>інваріант</td><td>Твердження, істинне для кожного допустимого входу: узгодженість, ідемпотентність, збереження, межа.</td></tr>
+<tr><td>mutation testing</td><td>Малі автоматичні зміни коду; для кожної проганяються тести, щоб побачити, чи вони її помітять.</td></tr>
+<tr><td>mutation score</td><td>Частка вбитих мутантів (тут разом із тайм-аутами) серед усіх.</td></tr>
+<tr><td>surviving mutant</td><td>Мутант, з яким усі тести зелені: пропущений тест або еквівалентний мутант.</td></tr>
+<tr><td>type checking baseline</td><td>Записаний список наявних помилок типів; гейт падає лише на нових, а список лише зменшується.</td></tr>
+<tr><td>рівень перевірок за часом</td><td>Місце перевірки за ціною запуску: хук і pre-commit — секунди, <code>check.sh</code> — до хвилини, мутації — окремо.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Інваріанти й мутації для одного модуля</h3>
+<p>Сформулюйте 5 інваріантів для функції з вашого коду або з <code>tools.py</code> Lectern, напишіть property-тести і зробіть мутаційний аналіз до і після. Розберіть три вцілілі мутанти.</p>
+<h3>2. Політика гейтів для команди з агентами</h3>
+<p>Розкладіть перевірки проєкту за рівнями з виміряним часом, задайте політику baseline і незалежну перевірку для кейсу з умови. Налаштування гейтів — для одного інструмента.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://martinfowler.com/bliki/TestPyramid.html" target="_blank" rel="noopener">Martin Fowler — TestPyramid</a><span>01.05.2012 · піраміда Майка Кона («Succeeding with Agile», 2009)</span></li>
+<li><a href="https://abseil.io/resources/swe-book/html/ch11.html" target="_blank" rel="noopener">Software Engineering at Google — розд. 11 «Testing Overview»</a><span>розміри тестів (small / medium / large), пропорція 80/15/5</span></li>
+<li><a href="https://hypothesis.readthedocs.io/en/latest/" target="_blank" rel="noopener">Hypothesis — документація</a><span>стратегії, shrinking; <a href="https://hypothesis.readthedocs.io/en/latest/reference/api.html" target="_blank" rel="noopener">API</a>: <code>@example</code>, <code>max_examples</code> = 100, <code>deadline</code> = 200 мс, health checks</span></li>
+<li><a href="https://pypi.org/project/hypothesis/" target="_blank" rel="noopener">hypothesis на PyPI</a><span>версія 6.170.1 (16.10.2026), Python ≥ 3.11</span></li>
+<li><a href="https://mutmut.readthedocs.io/en/latest/" target="_blank" rel="noopener">mutmut — документація</a><span>конфігурація <code>[tool.mutmut]</code>, потребує <code>fork</code>; <a href="https://pypi.org/project/mutmut/" target="_blank" rel="noopener">PyPI</a>: 3.8.0 (12.09.2026)</span></li>
+<li><a href="https://mypy.readthedocs.io/en/stable/existing_code.html" target="_blank" rel="noopener">mypy — Using mypy with an existing codebase</a><span>поступове впровадження, <code>ignore_errors</code> по модулях</span></li>
+<li><a href="https://arxiv.org/abs/2410.21136" target="_blank" rel="noopener">Konstantinou, Degiovanni, Papadakis — Can we find bugs using LLM-generated oracles?</a><span>arXiv, 2024 (v2 — 2026) · тести від LLM переважно фіксують фактичну поведінку</span></li>
+<li><a href="https://arxiv.org/abs/2501.12862" target="_blank" rel="noopener">Foster et al. — Mutation-Guided LLM-based Test Generation at Meta</a><span>22.01.2025 · ACH: 9 095 мутантів, 571 тест, 73% прийнято</span></li>
+<li><a href="https://code.claude.com/docs/en/hooks" target="_blank" rel="noopener">Claude Code — Hooks reference</a><span><code>PostToolUse</code> і exit 2, <code>Stop</code>, <code>async</code> / <code>asyncRewake</code>, тайм-аут 600 с</span></li>
+<li><a href="https://learn.chatgpt.com/docs/hooks" target="_blank" rel="noopener">Codex — Hooks</a><span><code>hooks.json</code>, <code>PostToolUse</code> з <code>apply_patch</code>, Stop з <code>decision: block</code>, довіра через <code>/hooks</code></span></li>
+<li><a href="https://cursor.com/docs/agent/hooks" target="_blank" rel="noopener">Cursor — Hooks</a><span><code>afterFileEdit</code>, <code>postToolUse.additional_context</code>, <code>stop.followup_message</code>, <code>loop_limit</code> = 5</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 12.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 12.1 · Senomi<br><br><a href="lesson-56.html">← Урок 11.5</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-58.html">Урок 12.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 12.5. Observability: трасування агентів і моніторинг</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 12.5 · Модуль 12</div>
+<h1>Observability: трасування агентів і моніторинг</h1>
+<p class="lead">Агентна система, яку видно лише через логи, відповідає на «що сталося», але не на «де пішли час і гроші» і «як часто каскад ескалює». Траса однієї задачі Lectern від HTTP-запиту до гейта, з модельними запитами Claude Code всередині, показала прихований п'ятий запит на кожну сесію і 15-секундний холодний старт, а escalation rate 0 з 6 виявився інтервалом від 0 до 39%.</p>
+<div class="hero-meta"><span class="chip">Якість: автоматичні перевірки й evals</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Навіщо агенту телеметрія</a><a href="#signals"><b>02</b>Три сигнали OpenTelemetry</a><a href="#what"><b>03</b>Що міряти в агентній системі</a><a href="#genai"><b>04</b>GenAI semantic conventions</a><a href="#claude-code"><b>05</b>Телеметрія Claude Code</a><a href="#tools"><b>06</b>Codex, Cursor і бекенди</a><a href="#project"><b>07</b>Lectern: телеметрія сервісу</a><a href="#privacy"><b>08</b>Приватність, семплінг, зберігання</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>скласти дерево спанів агентної задачі й перелік полів для кожного рівня: запуск, виклик моделі, інструмент, результат;</li>
+    <li>увімкнути OpenTelemetry-експорт Claude Code, прочитати його метрики, події й спани та знати, що в них потрапляє за замовчуванням;</li>
+    <li>передати trace id через чергу і через межу процесу (Agent SDK → CLI), щоб одна задача була однією трасою;</li>
+    <li>інструментувати власний агентний сервіс за GenAI semantic conventions з нульовою ціною у вимкненому стані і тестами на in-memory exporter;</li>
+    <li>рахувати метрику-частку (escalation rate) з правильним знаменником і довірчим інтервалом, обирати семплінг і не відправляти вміст у телеметрію.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Навіщо агенту телеметрія<span class="sub">Питання, на які журнал не відповідає</span></h2></div>
+<p>Журнал сесії (2.3) пояснює одну сесію, статус-рядок і <code>/usage</code> (4.3) — витрати однієї людини. Сервіс, який крутить сотні агентних запусків, ставить інші питання, і кожне потребує свого сигналу:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Питання</th><th>Сигнал</th><th>Чим відповідаємо в Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Питання">Де пішли 30 секунд цієї задачі?</td><td data-th="Сигнал">траса</td><td data-th="Чим відповідаємо в Lectern">спани job → спроба → запити моделі → інструменти → гейт</td></tr>
+<tr><td data-th="Питання">Скільки коштує задача на p95 і чи росте?</td><td data-th="Сигнал">метрика</td><td data-th="Чим відповідаємо в Lectern">гістограма <code>lectern.job.cost</code></td></tr>
+<tr><td data-th="Питання">Як часто каскад іде на Sonnet?</td><td data-th="Сигнал">метрика-частка</td><td data-th="Чим відповідаємо в Lectern"><code>lectern.escalations / lectern.cascade_jobs</code> (B35)</td></tr>
+<tr><td data-th="Питання">Що саме сталося з задачею <code>5352…</code>?</td><td data-th="Сигнал">журнал подій з trace id</td><td data-th="Чим відповідаємо в Lectern">JSON-рядки <code>job.submitted</code>, <code>attempt.end</code>, <code>job.done</code></td></tr>
+</tbody></table></div>
+<p>Бюджети стадій з 9.1 і продуктові метрики з 9.5 без телеметрії лишаються разовими вимірами. Тут — фундамент, на якому модуль 15 будуватиме моніторинг вартості в продакшні та розбір інцидентів.</p>
+</section>
+
+<section class="sec" id="signals">
+<div class="sec-h"><span class="num">02</span><h2>Три сигнали OpenTelemetry<span class="sub">Траси, метрики, журнали і як їх зшити</span></h2></div>
+<ul>
+<li><b>Траса (trace)</b> — дерево операцій однієї логічної дії; вузол — <b>спан (span)</b>: назва, початок, тривалість, атрибути, статус, батько. Для агента траса — один запуск, спани — запити до моделі й виклики інструментів.</li>
+<li><b>Метрика</b> — агрегат: лічильник, гістограма. Дешева, не семплюється, придатна для алертів, але тримає лише атрибути з малою кардинальністю: модель, вердикт, стадія. Id задачі в атрибуті метрики — кожна задача стає окремим часовим рядом.</li>
+<li><b>Журнал (logs)</b> — окремі записи з довільними полями. <b>Подія (event)</b> — іменований структурований запис: у Claude Code це <code>claude_code.api_request</code>, у Lectern — <code>attempt.end</code>. Подія з <code>trace_id</code> веде з журналу прямо в трасу.</li>
+</ul>
+<p>Траса цілісна, лише коли trace id перетинає кожну межу. Стандарт — W3C Trace Context: заголовок <code>traceparent: 00-&lt;trace-id 32 hex&gt;-&lt;span-id 16 hex&gt;-&lt;flags&gt;</code>. У Lectern три межі:</p>
+<ol class="steps">
+<li><b>Клієнт → сервіс:</b> вбудований OTel FastAPI читає <code>traceparent</code> запиту <code>POST /quizzes</code>.</li>
+<li><b>Запит → воркер:</b> черга <code>asyncio.Queue</code> контекст не переносить; його треба зберегти при постановці й відновити у воркері як батька <code>lectern.job</code>.</li>
+<li><b>Сервіс → Claude Code:</b> Agent SDK запускає CLI дочірнім процесом і кладе в його оточення <code>TRACEPARENT</code> активного спану. У режимах <code>-p</code> і SDK CLI читає цю змінну, і його <code>claude_code.interaction</code> стає дитиною вашого спану. Інтерактивні сесії вхідний <code>TRACEPARENT</code> ігнорують.</li>
+</ol>
+<div class="note fact"><span class="lbl">Перевірено · 17.10.2026</span>
+<p>Python-пакет <code>claude-agent-sdk</code> 0.2.168 робить це сам: у <code>subprocess_cli.py</code> викликає <code>opentelemetry.propagate.inject()</code>, якщо встановлено <code>opentelemetry-api</code> і є активний спан. Явне значення в <code>ClaudeAgentOptions.env</code> має пріоритет.</p>
+</div>
+</section>
+
+<section class="sec" id="what">
+<div class="sec-h"><span class="num">03</span><h2>Що міряти в агентній системі<span class="sub">Поля на кожному рівні</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Поля</th><th>Навіщо</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">Запуск (trace)</td><td data-th="Поля">trace id, job id, політика моделей, час у черзі, статус, вартість, кількість спроб</td><td data-th="Навіщо">p50/p95 задачі, вартість задачі, зв'язок з API</td></tr>
+<tr><td data-th="Рівень">Виклик моделі</td><td data-th="Поля">model id, токени: вхідні, кеш-читання, кеш-запис, вихідні; TTFT і повний час; <code>stop_reason</code>; request id; вартість</td><td data-th="Навіщо">де латентність, частка кешу, чому хід завершився</td></tr>
+<tr><td data-th="Рівень">Інструмент</td><td data-th="Поля">назва, підсумок аргументів (розміри, не вміст), тривалість, <code>is_error</code>, рішення дозволу (accept/reject і джерело)</td><td data-th="Навіщо">повільні й збійні інструменти, відмови політики</td></tr>
+<tr><td data-th="Рівень">Результат</td><td data-th="Поля">вердикт гейта, причина відмови, ескалація (з якої моделі, на яку, чому), повтори, resume</td><td data-th="Навіщо">якість і ціна каскаду</td></tr>
+<tr><td data-th="Рівень">Продукт (9.5)</td><td data-th="Поля">прийняті без правок питання, скарги, key error rate</td><td data-th="Навіщо">чи потрібна фіча взагалі</td></tr>
+</tbody></table></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 352" role="img" aria-label="Водоспад однієї задачі Lectern: задача 17 секунд, старт CLI 2,2 секунди, чотири запити моделі, інструменти, гейт">
+  <text x="6" y="16" class="tx s">спан · тривалість</text>
+  <text x="128" y="16" class="tx s">0–17 с від постановки задачі</text>
+  <rect x="128" y="24" width="221" height="14" rx="3" class="bx a"/><text x="6" y="35" class="tx s">lectern.job · 17,0 с</text>
+  <rect x="128" y="48" width="221" height="14" rx="3" class="bx t"/><text x="6" y="59" class="tx s">invoke_agent · 17,0 с</text>
+  <rect x="128" y="72" width="29" height="14" rx="3" class="bx" stroke-dasharray="4 3"/><text x="6" y="83" class="tx s">старт CLI · 2,2 с</text>
+  <rect x="157" y="96" width="181" height="14" rx="3" class="bx m"/><text x="6" y="107" class="tx s">cc.interaction · 14,0 с</text>
+  <rect x="158" y="120" width="20" height="14" rx="3" class="bx p"/><text x="6" y="131" class="tx s">модель #1 · 1,5 с</text>
+  <rect x="178" y="144" width="3" height="14" class="bx t"/><text x="6" y="155" class="tx s">read_lecture · 0,06 с</text>
+  <rect x="180" y="168" width="50" height="14" rx="3" class="bx p"/><text x="6" y="179" class="tx s">модель #2 · 3,9 с</text>
+  <rect x="215" y="192" width="3" height="14" class="bx t"/><rect x="219" y="192" width="3" height="14" class="bx t"/><rect x="223" y="192" width="3" height="14" class="bx t"/><rect x="227" y="192" width="3" height="14" class="bx t"/><rect x="231" y="192" width="3" height="14" class="bx t"/>
+  <text x="6" y="203" class="tx s">check_quote ×5</text>
+  <rect x="230" y="216" width="91" height="14" rx="3" class="bx p"/><text x="6" y="227" class="tx s">модель #3 · 6,9 с</text>
+  <rect x="321" y="240" width="3" height="14" class="bx t"/><text x="6" y="251" class="tx s">save_quiz · 0,1 с</text>
+  <rect x="323" y="264" width="15" height="14" rx="3" class="bx p"/><text x="6" y="275" class="tx s">модель #4 · 1,2 с</text>
+  <rect x="346" y="288" width="3" height="14" class="bx a"/><text x="6" y="299" class="tx s">lectern.gate · 0,22 с</text>
+  <path d="M128 314 H 349" class="ln"/>
+  <path d="M128 310 V 318 M193 310 V 318 M258 310 V 318 M323 310 V 318" class="ln"/>
+  <text x="128" y="332" text-anchor="middle" class="tx s">0</text>
+  <text x="193" y="332" text-anchor="middle" class="tx s">5 с</text>
+  <text x="258" y="332" text-anchor="middle" class="tx s">10 с</text>
+  <text x="323" y="332" text-anchor="middle" class="tx s">15 с</text>
+  <text x="6" y="348" class="tx s">рожеве — запити моделі, бірюзове — інструменти</text>
+</svg>
+<figcaption>Реальна траса задачі <code>5352844f4a18</code> (Haiku, 5 питань, 17.10.2026). Інструменти <code>check_quote</code> виконуються, поки модель #2 ще стримить відповідь. Модель займає 13,5 з 17 секунд, старт CLI — 2,2 секунди, інструменти й гейт разом — близько 0,5 секунди.</figcaption>
+</figure>
+</section>
+
+<section class="sec" id="genai">
+<div class="sec-h"><span class="num">04</span><h2>GenAI semantic conventions<span class="sub">Спільні назви для моделей, агентів, інструментів</span></h2></div>
+<p>Щоб бекенд (Langfuse, Phoenix, Datadog, Grafana) упізнав спан як запит до моделі без ручного мапінгу, атрибути називають за конвенціями OpenTelemetry для генеративного AI:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Спан</th><th>Назва</th><th>Ключові атрибути</th></tr></thead>
+<tbody>
+<tr><td data-th="Спан">Запит до моделі</td><td data-th="Назва"><code>{gen_ai.operation.name} {gen_ai.request.model}</code>, kind CLIENT</td><td data-th="Ключові атрибути"><code>gen_ai.provider.name</code>, <code>gen_ai.request.model</code>, <code>gen_ai.response.model</code>, <code>gen_ai.response.id</code>, <code>gen_ai.response.finish_reasons</code>, <code>gen_ai.usage.input_tokens</code>, <code>gen_ai.usage.output_tokens</code>, <code>gen_ai.usage.cache_read.input_tokens</code>, <code>gen_ai.usage.cache_write.input_tokens</code></td></tr>
+<tr><td data-th="Спан">Агент</td><td data-th="Назва"><code>invoke_agent {gen_ai.agent.name}</code></td><td data-th="Ключові атрибути"><code>gen_ai.agent.name</code>, <code>gen_ai.conversation.id</code></td></tr>
+<tr><td data-th="Спан">Інструмент</td><td data-th="Назва"><code>execute_tool {gen_ai.tool.name}</code>, kind INTERNAL</td><td data-th="Ключові атрибути"><code>gen_ai.tool.name</code>, <code>gen_ai.tool.call.id</code>, <code>gen_ai.tool.type</code>, <code>error.type</code>; аргументи й результат — лише opt-in</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 17.10.2026</span>
+<p>Статус конвенцій — <b>Development</b>, тобто назви можуть змінитися. З 2026 року вони живуть в окремому репозиторії <code>open-telemetry/semantic-conventions-genai</code> (створено 05.05.2026, релізів ще немає). Сторінки <code>gen-ai</code> на opentelemetry.io лише посилаються туди. <code>gen_ai.system</code> позначено застарілим на користь <code>gen_ai.provider.name</code>.</p>
+</div>
+<p>Дві пастки, які видно на справжніх даних:</p>
+<ul>
+<li><b>Токени з кешем.</b> <code>input_tokens</code> в API Anthropic <b>не містить</b> кешованих токенів, а <code>gen_ai.usage.input_tokens</code> за конвенцією містить. Перший запит нашого прогону Claude Code: <code>input_tokens: 2</code>, <code>cache_read_tokens: 13873</code>, <code>cache_creation_tokens: 4116</code>. Скопіюйте поле 1:1 — і дашборд покаже 2 вхідні токени там, де модель прочитала 17 991. Claude Code сам <code>gen_ai.usage.*</code> не ставить і в документації пояснює, як скласти три поля.</li>
+<li><b>Дрейф назв.</b> Документація Claude Code для <code>claude_code.llm_request</code> перелічує <code>gen_ai.system</code>, а версія 2.1.302 у нашому прогоні пише і <code>gen_ai.system</code>, і <code>gen_ai.provider.name</code>, і <code>gen_ai.conversation.id</code>. Тому в Lectern усі назви <code>gen_ai.*</code> зібрано в одному модулі: перейменування конвенції — одна правка, а не пошук по коду.</li>
+</ul>
+</section>
+
+<section class="sec" id="claude-code">
+<div class="sec-h"><span class="num">05</span><h2>Телеметрія Claude Code<span class="sub">Справжній прогін з console-експортером</span></h2></div>
+<p>Експорт вимкнено, доки не задано <code>CLAUDE_CODE_ENABLE_TELEMETRY=1</code> і хоча б один експортер. Метрики й події (сигнал logs) стабільні, спани — бета і вмикаються ще й <code>CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1</code>. Прогін — в окремому scratch-репозиторії з одним файлом, на чистому оточенні (<code>env -i</code>), без налаштувань користувача:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/l61/ccdemo</span></div>
+<pre><span class="ps">$ </span><span class="c">env -i HOME=$HOME PATH=$HOME/.local/bin:/usr/bin:/bin TERM=xterm-256color \
+  CLAUDE_CODE_ENABLE_TELEMETRY=1 OTEL_METRICS_EXPORTER=console OTEL_LOGS_EXPORTER=console \
+  CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1 OTEL_TRACES_EXPORTER=console \
+  OTEL_METRIC_EXPORT_INTERVAL=1000 OTEL_LOGS_EXPORT_INTERVAL=1000 OTEL_TRACES_EXPORT_INTERVAL=1000 \
+  claude -p "Count the lines in notes.txt with wc -l and answer with the number only." \
+  --model haiku --setting-sources project --strict-mcp-config --allowedTools "Bash(wc *)"</span>
+<span class="d">{ body: "claude_code.user_prompt", traceId: "0a4d174c…", attributes: {</span>
+    "user.email": "&lt;email&gt;", "organization.id": "&lt;org-uuid&gt;",
+    "prompt.id": "14bd3d87-…", prompt_length: "72", <span class="ok">prompt: "&lt;REDACTED&gt;"</span>, … } }
+<span class="d">{ name: "claude_code.llm_request", parentSpanContext: { spanId: "4e4e390b…" }, attributes: {</span>
+    "gen_ai.provider.name": "anthropic", "gen_ai.system": "anthropic",
+    "gen_ai.request.model": "claude-haiku-5-5", "gen_ai.conversation.id": "74df950f-…",
+    duration_ms: 1681, ttft_ms: 1311, <span class="y">input_tokens: 2, cache_read_tokens: 11228,
+    cache_creation_tokens: 6751</span>, output_tokens: 85, stop_reason: "tool_use",
+    request_id: "req_011Cg89q…", effort: "medium" } }
+<span class="d">{ body: "claude_code.tool_decision", attributes: {</span> decision: "accept", source: "config",
+    tool_name: "Bash", tool_use_id: "toolu_01FcSE…" } }
+<span class="d">{ body: "claude_code.api_request", attributes: {</span> model: "claude-haiku-5-5",
+    cost_usd: 0.00150518, cost_usd_micros: 1505, duration_ms: 1676, query_source: "sdk", … } }
+<span class="d">{ name: "claude_code.token.usage", dataPoints: [</span> {type: "input"} 2,
+    {type: "output"} 85, {type: "cacheRead"} 11228, {type: "cacheCreation"} 6751 ] }
+<span class="d">{ name: "claude_code.tool", attributes: {</span> bash_command_class: "file_read", bash_argv0: "wc",
+    "gen_ai.tool.call.id": "toolu_01FcSE…", duration_ms: 1403 } }
+3</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.302 · 17.10.2026 · 42 КБ виводу скорочено до полів; email, uuid організації й акаунта замінено · повний файл — <code>console/cc-telemetry/</code></div></div>
+<p>Той самий запуск з <code>OTEL_EXPORTER_OTLP_PROTOCOL=http/json</code> у локальний приймач на stdlib (<code>console/otlp_sink.py</code>, 37 рядків): шість типів подій, чотири метрики (сім часових рядів), дерево спанів.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>summary.txt — OTLP/JSON того самого запуску</span></div>
+<pre>events: managed_settings_resolved ×1, user_prompt ×1, tool_decision ×1,
+        api_request ×2, tool_result ×1, assistant_response ×1
+claude_code.cost.usage = 0.001211
+claude_code.token.usage{type=cacheRead} = 31862 · {type=input} = 4
+claude_code.interaction 3445ms user_prompt=&lt;REDACTED&gt; len=72
+  claude_code.llm_request 1261ms ttft_ms=1059 in=2 cache_read=13873 cache_write=4116 out=85 stop=tool_use
+  claude_code.tool 1167ms tool=Bash argv0=wc
+    claude_code.tool.blocked_on_user 7ms
+    claude_code.tool.execution 1160ms
+  claude_code.llm_request 989ms ttft_ms=968 in=2 cache_read=17989 cache_write=122 out=3 stop=end_turn</pre>
+<div class="cap">реальний вивід · підсумок <code>console/cc-telemetry/summary.txt</code> · 17.10.2026</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>За замовчуванням</th><th>Що потрапляє</th><th>Вмикається</th></tr></thead>
+<tbody>
+<tr><td data-th="За замовчуванням">Експортується</td><td data-th="Що потрапляє">довжина промпту, модель, токени, вартість (оцінка), тривалість, TTFT, назви вбудованих інструментів, рішення дозволів; <b><code>user.email</code>, uuid акаунта й організації</b> при вході через OAuth</td><td data-th="Вмикається">—</td></tr>
+<tr><td data-th="За замовчуванням">Редагується</td><td data-th="Що потрапляє">текст промпту і відповіді (<code>&lt;REDACTED&gt;</code>)</td><td data-th="Вмикається"><code>OTEL_LOG_USER_PROMPTS</code>, <code>OTEL_LOG_ASSISTANT_RESPONSES</code></td></tr>
+<tr><td data-th="За замовчуванням">Не пишеться</td><td data-th="Що потрапляє">аргументи інструментів, команди Bash, назви MCP-інструментів у подіях (<code>tool_name: "mcp_tool"</code>)</td><td data-th="Вмикається"><code>OTEL_LOG_TOOL_DETAILS</code></td></tr>
+<tr><td data-th="За замовчуванням">Не пишеться</td><td data-th="Що потрапляє">вміст файлів і вивід команд у спанах; повні тіла запитів API</td><td data-th="Вмикається"><code>OTEL_LOG_TOOL_CONTENT</code>, <code>OTEL_LOG_RAW_API_BODIES</code></td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Пастка</span>
+<p><code>user.email</code> іде в кожен запис і «надсилається лише на ваш endpoint», але спільний колектор команди — теж «ваш». Якщо бекенд бачать не всі, хто бачить email, видаліть атрибут процесором колектора. <code>OTEL_LOG_RAW_API_BODIES</code> несе всю історію розмови, і за документацією його ввімкнення означає згоду на все, що відкривають інші три прапорці.</p>
+</div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">06</span><h2>Codex, Cursor і бекенди<span class="sub">Хто що експортує</span></h2></div>
+<div class="tabs">
+<input type="radio" name="tel-t" id="tel-t1" checked><input type="radio" name="tel-t" id="tel-t2"><input type="radio" name="tel-t" id="tel-t3">
+<div class="tab-l"><label for="tel-t1">Claude Code</label><label for="tel-t2">Codex CLI</label><label for="tel-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Змінні оточення, OTLP gRPC або HTTP, експортер <code>console</code>, <code>otlp</code> або <code>prometheus</code>. Три сигнали, спани — бета. Агент на Agent SDK експортує те саме, бо всередині той самий CLI. Для SDK документація забороняє <code>console</code>: експортер пише в stdout, а stdout — канал протоколу SDK.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/.zshrc або managed settings</span></div>
+<pre>export CLAUDE_CODE_ENABLE_TELEMETRY=1
+export OTEL_METRICS_EXPORTER=otlp
+export OTEL_LOGS_EXPORTER=otlp
+export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317</pre>
+<div class="cap">з офіційної документації Claude Code (Monitoring) · експорт у console перевірено прогоном вище</div></div>
+</div>
+<div class="tab-p">
+<p>Секція <code>[otel]</code> лише в користувацькому <code>~/.codex/config.toml</code>: проєктний <code>.codex/config.toml</code> її ігнорує. Типово <code>exporter = "none"</code>: події записуються, але нікуди не йдуть. Події <code>codex.conversation_starts</code>, <code>codex.api_request</code>, <code>codex.user_prompt</code>, <code>codex.tool_decision</code>, <code>codex.tool_result</code>; промпт редагується, доки не ввімкнено <code>log_user_prompt</code>. Окремо є <code>trace_exporter</code>, а <code>metrics_exporter</code> типово <code>statsig</code> — анонімна статистика для OpenAI, яку вимикає <code>[analytics] enabled = false</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>~/.codex/config.toml</span></div>
+<pre>[otel]
+environment = "staging"
+exporter = { otlp-http = {
+  endpoint = "https://otel.example.com/v1/logs",
+  protocol = "binary",
+  headers = { "x-otlp-api-key" = "${OTLP_TOKEN}" }
+}}
+log_user_prompt = false</pre>
+<div class="cap">з офіційної документації Codex (Advanced configuration) · не запускалось у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p>Локального експорту в Cursor немає. <b>OpenTelemetry Export</b> (план Enterprise) шле дані команди з серверів Cursor у ваш публічний OTLP/HTTP-колектор. Метрики <code>cursor.token.usage</code>, <code>cursor.tool.calls</code>, <code>cursor.cost.usage</code> доставляються at-most-once, журнали — at-least-once, з дедуплікацією за <code>cursor.event.id</code>. Трас немає, ретроспективних даних теж. Вміст розмов — окрема опційна група подій. Admin API і Analytics API (теж Enterprise) віддають використання й витрати за запитом.</p>
+</div>
+</div>
+<p>Куди відправляти: будь-який бекенд, що приймає OTLP. Спеціалізовані LLM-бекенди розуміють <code>gen_ai.*</code> і показують трасу як розмову:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Ліцензія</th><th>Версія 17.10.2026</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент">Langfuse (self-host, трасування на OTel)</td><td data-th="Ліцензія">MIT, крім каталогів <code>ee/</code></td><td data-th="Версія 17.10.2026">сервер v4.63.0, Python SDK 5.0.2</td></tr>
+<tr><td data-th="Інструмент">Arize Phoenix</td><td data-th="Ліцензія"><b>Elastic License 2.0</b> — не OSI: не можна продавати як керований сервіс</td><td data-th="Версія 17.10.2026">20.23.0</td></tr>
+<tr><td data-th="Інструмент">OpenLLMetry (інструментації OTel для SDK провайдерів)</td><td data-th="Ліцензія">Apache-2.0</td><td data-th="Версія 17.10.2026">0.62.4</td></tr>
+<tr><td data-th="Інструмент">Jaeger (загальні траси)</td><td data-th="Ліцензія">Apache-2.0</td><td data-th="Версія 17.10.2026">v2.22.0</td></tr>
+</tbody></table></div>
+<p>Для Lectern вистачає OTel SDK і колектора: Lectern сам ставить <code>gen_ai.*</code>, а модельні спани пише Claude Code. Інструментація на кшталт OpenLLMetry потрібна там, де ви кличете Messages API напряму. Anthropic SDK тепер має власне OTel-трасування (бета).</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Lectern: телеметрія сервісу<span class="sub">telemetry.py, B35 і реальні задачі</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 12.5 · <code>telemetry.py</code>, B35, <code>docs/observability.md</code></div><div class="pb">
+<p><b>Вимоги до кроку:</b> спани job → спроба → модельні запити → інструменти → гейт; атрибути <code>gen_ai.*</code>; метрики задач, вартості й escalation rate (B35); JSON-журнал з trace id; експортер console за замовчуванням, OTLP опційно; у вимкненому стані — нуль роботи; тести без мережі.</p>
+<pre class="code" data-lang="python"><span class="cm"># src/lectern/telemetry.py (скорочено)</span>
+NOOP = _Noop()
+_NULL = contextlib.nullcontext(NOOP)  <span class="cm"># один на процес: вимкнено — жодних алокацій</span>
+
+<span class="k">def</span> span(name: str, attributes=<span class="k">None</span>, parent=<span class="k">None</span>):
+    tracer = _state[<span class="s">"tracer"</span>]
+    <span class="k">if</span> tracer <span class="k">is None</span>:            <span class="cm"># LECTERN_TELEMETRY≠1: opentelemetry-sdk навіть не імпортовано</span>
+        <span class="k">return</span> _NULL
+    <span class="k">return</span> tracer.start_as_current_span(name, context=parent, attributes=_clean(attributes <span class="k">or</span> {}))
+
+<span class="k">def</span> agent_env() -&gt; dict[str, str]:
+    <span class="s">"""OTel CLI Claude Code: увімкнений лише явно; content-прапорці — завжди 0."""</span>
+    off = dict.fromkeys(CONTENT_FLAGS, <span class="s">"0"</span>)  <span class="cm"># OTEL_LOG_USER_PROMPTS, …_TOOL_CONTENT, …</span>
+    <span class="k">if not</span> (endpoint := os.environ.get(AGENT_ENDPOINT_ENV)):
+        <span class="k">return</span> {<span class="s">"CLAUDE_CODE_ENABLE_TELEMETRY"</span>: <span class="s">"0"</span>, **off}
+    <span class="k">return</span> {<span class="s">"CLAUDE_CODE_ENABLE_TELEMETRY"</span>: <span class="s">"1"</span>, <span class="s">"CLAUDE_CODE_ENHANCED_TELEMETRY_BETA"</span>: <span class="s">"1"</span>,
+            <span class="s">"OTEL_EXPORTER_OTLP_PROTOCOL"</span>: <span class="s">"http/json"</span>, <span class="s">"OTEL_EXPORTER_OTLP_ENDPOINT"</span>: endpoint, …, **off}
+
+<span class="cm"># src/lectern/service.py — спроба: SDK бачить активний спан і передає CLI його TRACEPARENT</span>
+<span class="k">with</span> telemetry.span(<span class="s">"invoke_agent lectern-quiz"</span>, telemetry.attempt_attributes(model, rung, …)) <span class="k">as</span> sp:
+    why, out = <span class="k">await</span> _attempt(job, model, resume, budget)   <span class="cm"># агент + гейт (спан lectern.gate)</span>
+    sp.set_attributes({<span class="s">"gen_ai.conversation.id"</span>: out.session_id, <span class="s">"lectern.verdict"</span>: why <span class="k">or</span> <span class="s">"pass"</span>,
+                       **telemetry.usage_attributes(out.usage)})  <span class="cm"># input_tokens = свіжі + кеш</span>
+    telemetry.fail(sp, why)  <span class="cm"># error.type завжди; статус ERROR — лише timeout/crash/api_error</span></pre>
+<ul>
+<li><b>Черга:</b> <code>submit</code> зберігає <code>telemetry.capture()</code>, воркер відкриває <code>lectern.job</code> з ним як батьком. <code>traceparent</code> клієнта стає коренем траси задачі, і <code>trace_id</code> повертається в <code>GET /quizzes/{id}</code>.</li>
+<li><b>FastAPI 0.143</b> має вбудований OTel (<code>FastAPI(telemetry=…)</code>). Ми передаємо йому свої провайдери, не глобальні, вимикаємо його журнали й спани на кожну залежність і виключаємо GET: опитування статусу дало б сотні однакових спанів на задачу.</li>
+<li><b>Інструменти</b> виконуються в процесі Lectern (MCP in-process), тож <code>execute_tool</code> — справжня тривалість з підсумком аргументів: <code>quote.words</code>, <code>quiz.items</code>, але не текст.</li>
+<li><b>B35:</b> <code>lectern.escalations</code> і знаменник <code>lectern.cascade_jobs</code> (лише задачі <code>model: auto</code>, що викликали модель; кеш не рахується). <code>GET /stats</code> рахує те саме з SQLite-журналу задач, без OTel-бекенда, з 95% інтервалом Вілсона.</li>
+<li><b>Тести:</b> <code>InMemorySpanExporter</code> + <code>InMemoryMetricReader</code> і фейковий агент: дерево спанів, <code>traceparent</code> через чергу, ескалація як подія плюс лічильник, жодного речення лекції в спанах і журналі, семплінг з <code>OTEL_TRACES_SAMPLER</code>; окремий процес перевіряє, що вимкнений сервіс не вантажить <code>opentelemetry.sdk</code>.</li>
+</ul>
+<p><b>Реальний прогін:</b> сервіс з console-експортом у файл, Claude Code — OTLP/JSON у локальний приймач. Перша партія — 7 задач (6 з <code>model: auto</code>) і повтор із кешу; друга, після виправлення, — 3 задачі. Усе на Haiku, разом близько $0,04.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/l61/run</span></div>
+<pre><span class="ps">$ </span><span class="c">LECTERN_TELEMETRY=1 LECTERN_OTEL_FILE=spans.jsonl LECTERN_LOG_JSON=1 \
+  LECTERN_AGENT_OTLP_ENDPOINT=http://127.0.0.1:4319 lectern serve --data data --port 8061 2&gt; server.log &amp;</span>
+<span class="ps">$ </span><span class="c">python submit.py</span>   <span class="d"># 3 задачі; перша з traceparent 00-4bf92f35…-00f067aa0ba902b7-01</span>
+{"id": "1e95a54f553a", "lecture_id": "00-sample", "status": "done", "cost_usd": 0.002666, <span class="ok">"trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"</span>} ['haiku']
+{"id": "5352844f4a18", "lecture_id": "02-sensors", "status": "done", "cost_usd": 0.003321, "trace_id": "712fc198…"} ['haiku']
+{"id": "757d834d6228", "lecture_id": "05-maintenance", "status": "done", "cost_usd": 0.003082, "trace_id": "0415c87b…"} ['haiku']
+<span class="ps">$ </span><span class="c">python scripts/otel_report.py spans.jsonl --otlp sink/traces.jsonl --tree 5352844f4a18</span>
+POST /quizzes  0.01s  202
+  lectern.job  17.00s  auto $0.0033 queue 0.0s
+    invoke_agent lectern-quiz  17.00s  haiku pass in 24457 out 2693
+      cc.interaction  13.95s
+        cc.llm_request  1.55s  ttft 1152ms in 1980 out 65 tool_use
+        cc.tool  0.06s  read_lecture
+        cc.llm_request  3.87s  ttft 1090ms in 5086 out 916 tool_use
+        cc.tool  0.05s  check_quote      <span class="d">… ще 4 check_quote</span>
+        cc.llm_request  6.95s  ttft 992ms in 6309 out 1681 tool_use
+        cc.tool  0.09s  save_quiz
+        cc.llm_request  1.17s  ttft 1059ms in 11082 out 31 end_turn
+      execute_tool read_lecture  0.00s
+      execute_tool check_quote  0.01s  words=6      <span class="d">… ще 4</span>
+      execute_tool save_quiz  0.03s  items=5
+      lectern.gate  0.22s  ok=True covered=5
+<span class="ps">$ </span><span class="c">grep 5352844f4a18 server.log | head -2</span>
+{"ts": "2026-10-17T17:11:03.022Z", "level": "info", "event": "attempt.end", "job_id": "5352844f4a18", "model": "haiku",
+ "verdict": "pass", "cost_usd": 0.00332117, "ms": 13929, "trace_id": "712fc1987a2e92ca20e2fde305a3f69c", …}</pre>
+<div class="cap">реальний вивід · 17.10.2026 · Claude Code 2.1.302, claude-agent-sdk 0.2.168, opentelemetry-sdk 1.45.1 · повтори рядків скорочено; сервіс запускався як <code>env -i … python -m lectern.cli serve</code> · <code>console/lectern-run/</code></div></div>
+<p>Дашборд — з тих самих спанів, без бекенда (перша партія, 7 задач без кешу, ще з прихованим запитом):</p>
+<div class="tbl-wrap"><table class="tbl nostack">
+<thead><tr><th>Стадія</th><th>n</th><th>p50, с</th><th>p95, с</th></tr></thead>
+<tbody>
+<tr><td>черга</td><td>7</td><td>0,01</td><td>28,68</td></tr>
+<tr><td>задача (<code>lectern.job</code>)</td><td>7</td><td>24,25</td><td>29,75</td></tr>
+<tr><td>спроба (<code>invoke_agent</code>)</td><td>7</td><td>24,25</td><td>29,75</td></tr>
+<tr><td>запит до моделі</td><td>35</td><td>1,73</td><td>8,40</td></tr>
+<tr><td>· TTFT</td><td>35</td><td>1,04</td><td>3,80</td></tr>
+<tr><td>інструмент (Claude Code)</td><td>54</td><td>0,04</td><td>0,14</td></tr>
+<tr><td>інструмент (Lectern)</td><td>54</td><td>0,00</td><td>0,02</td></tr>
+<tr><td>гейт</td><td>8</td><td>0,36</td><td>0,77</td></tr>
+</tbody></table></div>
+<p>Вартість задачі: p50 $0,0038, p95 $0,0040, разом $0,0243 за 7 задач. Escalation rate: <b>0/6, 95% інтервал 0–0,39</b>. Дані — реальний вивід <code>otel_report.py</code> (<code>console/lectern-run-before-title-fix/dashboard.txt</code>). Гейт спрацював 8 разів, бо повтор із кешу теж проходить гейт; у знаменнику ескалацій 6 задач <code>auto</code>, повтор із кешу туди не входить.</p>
+<p>Що показали траси і чого не показав би журнал:</p>
+<ol class="steps">
+<li><b>Прихований п'ятий запит.</b> 35 модельних запитів на 7 задач, а потік SDK бачив по 4 (<code>lectern.requests</code>). П'ятий — <code>query_source: generate_session_title</code>, без батька в трасі: ~1 190 вхідних токенів, $0,00013, від 3,3% до 5,8% вартості задачі. Сума <code>cost_usd</code> подій <code>api_request</code> збіглася з <code>total_cost_usd</code> SDK до шостого знака, тобто гроші за нього ми платили. <code>CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1</code> у <code>runner.py</code> його прибрав: у другій партії 4 запити з 4.</li>
+<li><b>Холодний старт.</b> Між початком <code>invoke_agent</code> і <code>claude_code.interaction</code> у перших двох спробах свіжого процесу минуло 15,7 і 15,6 с, у наступних — 1,2–5,3 с, у другій партії — 1,2–2,3 с. Для задачі на 29 с це більше половини часу, і жодна модель тут не винна (B152).</li>
+<li><b>Escalation rate 0 з 6</b> не означає, що каскад зайвий: верхня межа 95% інтервалу — 39%. Рішення про каскад приймають на ≥ 30 задачах (поріг у <code>docs/observability.md</code>).</li>
+</ol>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/l61/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/check.sh</span>
+== lint: .venv/bin/python -m ruff check .
+All checks passed!
+== tests: .venv/bin/python -m pytest -q -p no:cacheprovider
+<span class="ok">409 passed, 1 skipped in 120.44s (0:02:00)</span>
+== context · trace · tasks · mcp-contract
+<span class="ok">all checks passed</span></pre>
+<div class="cap">реальний вивід · 17.10.2026 · було 398 тестів; +11 у <code>tests/test_telemetry.py</code> · вивід кроків context/trace/tasks/mcp-contract згорнуто</div></div>
+<p><b>На злиття в <code>lectern/</code></b> (<code>console/lectern.diff</code>, 13 файлів, +1275/−17): <code>src/lectern/telemetry.py</code>, інструментація <code>service.py</code>, <code>runner.py</code>, <code>agent_sdk.py</code> (<code>sdk_tools()</code> винесено з <code>build_server()</code>), <code>GET /stats</code>, <code>scripts/otel_report.py</code>, extras <code>otel</code> і <code>otel-otlp</code>, lock з <code>--extra otel</code>, <code>docs/observability.md</code>, тести. <b>У беклог:</b> B150 tail sampling у колекторі, B151 <code>gen_ai.tool.call.id</code> на <code>execute_tool</code>, B152 холодний старт CLI, B153 спани для <code>lectern module</code>, B154 зв'язок трас після resume, B155 <code>requests</code> не бачить фонових запитів.</p>
+</div></div>
+</section>
+
+<section class="sec" id="privacy">
+<div class="sec-h"><span class="num">08</span><h2>Приватність, семплінг, зберігання<span class="sub">Телеметрія — ще одне сховище даних</span></h2></div>
+<p>Колектор і бекенд — новий отримувач даних, і для нього діють ті самі класи даних, що в ADR 0005. Конвенції GenAI кажуть прямо: інструкції, повідомлення й відповіді моделі інструментації <b>не повинні</b> записувати за замовчуванням, лише за явним увімкненням; у продакшні вміст радять тримати в окремому сховищі з власним доступом і класти в спан посилання.</p>
+<div class="cols">
+<div class="cmp bad"><h4>Не пишемо ніколи</h4><ul>
+<li>текст лекції, питання, варіанти, цитати;</li>
+<li>вміст промптів і відповідей, тіла запитів API;</li>
+<li>id задачі в атрибутах метрик (кардинальність);</li>
+<li>секрети в заголовках експортера в репозиторії.</li>
+</ul></div>
+<div class="cmp good"><h4>Пишемо</h4><ul>
+<li>id задачі й лекції, sha256-префікс тексту, довжини;</li>
+<li>токени, вартість, тривалість, TTFT, <code>stop_reason</code>;</li>
+<li>вердикти, причини, ескалації, рішення дозволів;</li>
+<li><code>trace_id</code> у журналі й відповіді API.</li>
+</ul></div>
+</div>
+<p><b>Семплінг.</b> Head sampling вирішує на старті траси, ще до результату: <code>OTEL_TRACES_SAMPLER=parentbased_traceidratio</code> з <code>OTEL_TRACES_SAMPLER_ARG=0.1</code> залишить 10% трас, і рідкісні провали зникнуть пропорційно. Tail sampling вирішує після того, як зібрано всю трасу (процесор колектора). Правило для Lectern (B150): усі траси з <code>error.type</code> або ескалацією плюс 10% чистих. Метрики не семплюються ніколи, тому escalation rate і вартість рахуються з лічильників і журналу задач, а не з трас.</p>
+<p><b>Зберігання.</b> Траси потрібні для розбору — 14 днів; метрики — для трендів, 13 місяців; журнал задач — за політикою даних сервісу. Це гіпотези, переглядаються після пілоту. Чим коротше зберігання, тим менша шкода, якщо в атрибут все ж потрапить щось зайве.</p>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">І як їх ловить урок</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Наслідок</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка"><code>input_tokens</code> API → <code>gen_ai.usage.input_tokens</code> 1:1</td><td data-th="Наслідок">вхідних «2 токени», частка кешу не рахується</td><td data-th="Як правильно">скласти свіжі, кеш-читання й кеш-запис</td></tr>
+<tr><td data-th="Помилка"><code>OTEL_*_EXPORTER=console</code> в оточенні сервісу з Agent SDK</td><td data-th="Наслідок">CLI пише телеметрію в stdout і ламає протокол SDK</td><td data-th="Як правильно">OTLP у колектор; CLI — <code>CLAUDE_CODE_ENABLE_TELEMETRY=0</code>, якщо телеметрія агента не потрібна</td></tr>
+<tr><td data-th="Помилка">Спан задачі відкрито в обробнику HTTP, а робота йде у воркері</td><td data-th="Наслідок">траса рветься на черзі, модельні запити опиняються в окремій трасі</td><td data-th="Як правильно">зберегти контекст при постановці, відкрити спан у воркері з ним як батьком</td></tr>
+<tr><td data-th="Помилка">Статус ERROR на кожен провал гейта</td><td data-th="Наслідок">алерт «помилки» спрацьовує від нормальної роботи каскаду</td><td data-th="Як правильно">ERROR — інфраструктура; якість — <code>error.type</code> і вердикт</td></tr>
+<tr><td data-th="Помилка">Частка без знаменника й інтервалу</td><td data-th="Наслідок">«0% ескалацій» на 6 задачах стає аргументом прибрати каскад</td><td data-th="Як правильно">явний знаменник, інтервал Вілсона, рішення від ≥ 30 подій</td></tr>
+<tr><td data-th="Помилка">Довіряти лічильнику ходів SDK як «кількості запитів»</td><td data-th="Наслідок">фоновий запит не видно, вартість не сходиться з ходами</td><td data-th="Як правильно">звіряти з <code>claude_code.api_request</code> і <code>total_cost_usd</code></td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">trace і span</span><span class="h">у термінах агента</span></span><span class="b"><span class="t">Запуск і його кроки</span><span class="d">траса — одна задача, спани — спроба, запити моделі, інструменти, гейт</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">traceparent</span><span class="h">що несе?</span></span><span class="b"><span class="t">W3C trace context</span><span class="d">trace id, id батьківського спану, прапорець sampled</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">gen_ai.usage.input_tokens</span><span class="h">з кешем чи без?</span></span><span class="b"><span class="t">З кешем</span><span class="d">свіжі + cache_read + cache_write; в API Anthropic input_tokens — без кешу</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">OTEL_LOG_USER_PROMPTS</span><span class="h">типово?</span></span><span class="b"><span class="t">Вимкнено</span><span class="d">у подіях лише довжина промпту, текст — &lt;REDACTED&gt;</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">escalation rate</span><span class="h">знаменник?</span></span><span class="b"><span class="t">Задачі каскаду</span><span class="d">завершені задачі з model: auto, що викликали модель; кеш не входить</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">tail sampling</span><span class="h">де і навіщо?</span></span><span class="b"><span class="t">У колекторі</span><span class="d">рішення після всієї траси: зберегти всі провали, частину чистих</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Задача Lectern іде 29 с. Модельні запити в трасі разом дають 12 с, інструменти й гейт — 0,5 с. Що робити першим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Перейти з Haiku на швидшу модель: модель усе одно найдовший окремий спан у трасі</span></label><label class="opt ok"><input type="radio" name="q1"><span>Шукати непокриті спанами 16 с: старт CLI, черга, завершення процесу між спанами</span></label><label class="opt"><input type="radio" name="q1"><span>Зменшити кількість викликів check_quote, бо їх у кожній задачі п'ять і більше</span></label></div>
+    <div class="why yes">Так. Більша частина часу лежить поза модельними спанами. У прогоні уроку це був холодний старт CLI: 15,7 с між початком спроби і першим запитом.</div>
+    <div class="why no">Модель тут — 12 с з 29, а інструменти — соті частки секунди. Найбільший шматок — проміжок між спанами: старт CLI, черга, завершення процесу. Його й видно в трасі як «порожнє» місце.</div></div>
+  <div class="q"><div class="qt">2. Спан запиту показує <code>input_tokens: 2</code>, <code>cache_read_tokens: 13873</code>, <code>cache_creation_tokens: 4116</code>. Що записати в <code>gen_ai.usage.input_tokens</code>?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>17 991: за конвенцією атрибут містить і свіжі, і кешовані вхідні токени</span></label><label class="opt"><input type="radio" name="q2"><span>2: це поле API, а кешовані токени мають власні атрибути cache_read і cache_write</span></label><label class="opt"><input type="radio" name="q2"><span>13 875: кеш-запис оплачується окремо, тож до вхідних додаємо лише кеш-читання</span></label></div>
+    <div class="why yes">Так. Конвенції GenAI: <code>gen_ai.usage.input_tokens</code> включає всі вхідні токени, кешовані теж; деталі — у <code>cache_read</code>/<code>cache_write</code> як підмножини.</div>
+    <div class="why no">В API Anthropic <code>input_tokens</code> не містить кешу, а в конвенції — містить. Деталізація кешу — підмножини загального числа, а не заміна. Сума: 2 + 13 873 + 4 116.</div></div>
+  <div class="q"><div class="qt">3. Сервіс на Agent SDK. Хтось додав в оточення <code>OTEL_TRACES_EXPORTER=console</code> і <code>CLAUDE_CODE_ENABLE_TELEMETRY=1</code>, «щоб бачити спани». Що станеться?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Нічого поганого: спани CLI з'являться в stdout сервісу поруч з його звичайними логами</span></label><label class="opt"><input type="radio" name="q3"><span>CLI проігнорує console, бо в режимі SDK підтримує лише OTLP-експортер</span></label><label class="opt ok"><input type="radio" name="q3"><span>Телеметрія піде в stdout CLI, тобто в канал протоколу SDK, і зламає обмін</span></label></div>
+    <div class="why yes">Так. SDK читає stdout дочірнього CLI як потік повідомлень. Документація забороняє console для SDK і радить локальний OTLP-колектор.</div>
+    <div class="why no">CLI не відрізняє «режим SDK» для експортера: console пише в stdout, а stdout CLI — це канал, з якого SDK читає повідомлення. Тому Lectern передає CLI <code>CLAUDE_CODE_ENABLE_TELEMETRY=0</code>, якщо агентна телеметрія не замовлена.</div></div>
+  <div class="q"><div class="qt">4. Спан <code>lectern.job</code> відкрито в обробнику <code>POST /quizzes</code>, а агент працює у воркері черги. Що побачите в бекенді?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Одну трасу: asyncio переносить контекст у задачу воркера через contextvars</span></label><label class="opt ok"><input type="radio" name="q4"><span>Короткий спан задачі й окремі траси спроб: воркер не має контексту запиту</span></label><label class="opt"><input type="radio" name="q4"><span>Помилку експорту: спан, що закрився раніше за дітей, бекенд відкидає</span></label></div>
+    <div class="why yes">Так. Воркер створено при старті, і контекст запиту через <code>asyncio.Queue</code> він не отримує. Контекст треба зберегти при постановці й відкрити спан у воркері з ним як батьком.</div>
+    <div class="why no">contextvars копіюються в задачу в момент її створення, а воркер створено при старті сервісу, ще до запиту. Дитина, що живе довше за батька, OTel допускає. Проблема саме в розриві контексту на черзі.</div></div>
+  <div class="q"><div class="qt">5. За тиждень каскад отримав 6 задач і жодної ескалації. Продакт пропонує прибрати Sonnet зі сходинок. Відповідь?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Погодитись: 0% ескалацій означає, що друга сходинка нічого не додає</span></label><label class="opt"><input type="radio" name="q5"><span>Відмовитись: Sonnet дорожчий, але якість завжди важливіша за вартість</span></label><label class="opt ok"><input type="radio" name="q5"><span>Рано: 95% інтервал для 0 з 6 — від 0 до 39%, рішення від ≥ 30 задач</span></label></div>
+    <div class="why yes">Так. Частка без інтервалу на малій вибірці нічого не доводить. Інтервал Вілсона для 0/6 — 0–0,39.</div>
+    <div class="why no">«0%» на шести задачах сумісне і з 0%, і з 39% ескалацій. «Якість важливіша» — не аргумент без даних: каскад якраз і купує якість лише там, де гейт не пройдено.</div></div>
+  <div class="q"><div class="qt">6. Потрібно ловити всі провалені задачі, а зберігати лише 10% трас. Який семплінг?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Tail sampling у колекторі: правило «всі з error.type + 10% решти» після всієї траси</span></label><label class="opt"><input type="radio" name="q6"><span>Head sampling parentbased_traceidratio 0.1: батьківське рішення збереже провали</span></label><label class="opt"><input type="radio" name="q6"><span>Head sampling 10% і окремий лічильник провалів, щоб їх трасу відновити пізніше</span></label></div>
+    <div class="why yes">Так. Лише tail sampling бачить результат траси до рішення.</div>
+    <div class="why no">Head sampling вирішує на старті, коли результат ще невідомий, тож провали відкидаються з тією самою ймовірністю 90%. Лічильник скаже, скільки провалів було, але трасу вже не поверне.</div></div>
+  <div class="q"><div class="qt">7. Команда ділить один OTel-колектор на кількох розробників і вмикає телеметрію Claude Code з типовими прапорцями. Що бачать усі, хто має доступ до бекенда?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Текст промптів, але без відповідей моделі й без аргументів інструментів</span></label><label class="opt"><input type="radio" name="q7"><span>Лише агреговані метрики: події з атрибутами потребують окремого прапорця</span></label><label class="opt ok"><input type="radio" name="q7"><span>Email і uuid акаунтів, моделі, токени, вартість, але не тексти промптів</span></label></div>
+    <div class="why yes">Так. За OAuth <code>user.email</code> іде в кожен запис; промпт і відповідь — <code>&lt;REDACTED&gt;</code>, аргументи інструментів не пишуться.</div>
+    <div class="why no">Промпти типово редагуються (<code>OTEL_LOG_USER_PROMPTS</code> вимкнено), а події йдуть одразу, щойно задано <code>OTEL_LOGS_EXPORTER</code>. Зате <code>user.email</code> є завжди, коли він доступний. Видаляйте його процесором колектора, якщо доступ до бекенда ширший.</div></div>
+  <div class="q"><div class="qt">8. Чому в Lectern провал гейта ставить на спан <code>error.type</code>, але не статус ERROR?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Статус ERROR зарезервовано конвенціями GenAI лише для HTTP-помилок провайдера</span></label><label class="opt ok"><input type="radio" name="q8"><span>Провал гейта — вердикт якості для каскаду, а алерт на ERROR — для збоїв</span></label><label class="opt"><input type="radio" name="q8"><span>Спан зі статусом ERROR бекенд не показує в дашборді вартості й латентності</span></label></div>
+    <div class="why yes">Так. Timeout чи падіння агента — збій, ERROR. Вгадуваний ключ чи провал гейта — штатна робота каскаду; його видно через <code>error.type</code> і <code>lectern.verdict</code>.</div>
+    <div class="why no">Конвенції не обмежують ERROR HTTP-кодами, і бекенди показують такі спани. Причина в семантиці алертів: ERROR на кожен провал гейта будив би чергового від нормальної роботи каскаду.</div></div>
+  <div class="q"><div class="qt">9. Як у тесті перевірити, що спроба агента — дитина спану задачі, без мережі й без моделі?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>InMemorySpanExporter і фейковий агент: перевірити батька кожного завершеного спану</span></label><label class="opt"><input type="radio" name="q9"><span>Запустити локальний Jaeger у Docker і запитати його API після тестового прогону</span></label><label class="opt"><input type="radio" name="q9"><span>Замокати tracer.start_as_current_span і порахувати, скільки разів його викликано</span></label></div>
+    <div class="why yes">Так. In-memory експортер дає справжні спани з <code>parent</code>, атрибутами й подіями; синхронний процесор кладе їх у пам'ять одразу після завершення.</div>
+    <div class="why no">Jaeger — мережа, Docker і нестабільність у CI. Мок перевіряє виклики, а не структуру: він пропустить і розрив контексту, і неправильного батька.</div></div>
+  <div class="q"><div class="qt">10. Сума <code>cost_usd</code> подій <code>claude_code.api_request</code> за сесію збігається з <code>total_cost_usd</code> SDK, а запитів у подіях 5, у потоці SDK — 4. Висновок?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Подія задублювалась при повторній відправці OTLP, тож вартість у подіях завищена</span></label><label class="opt"><input type="radio" name="q10"><span>SDK втратив одне повідомлення, і вартість у ResultMessage занижена на один запит</span></label><label class="opt ok"><input type="radio" name="q10"><span>Є оплачений фоновий запит поза потоком повідомлень: шукати query_source</span></label></div>
+    <div class="why yes">Так. У прогоні це був <code>generate_session_title</code>: 3,3–5,8% вартості задачі; <code>CLAUDE_CODE_DISABLE_TERMINAL_TITLE=1</code> його прибрав.</div>
+    <div class="why no">Якби подія задублювалась, сума перевищила б <code>total_cost_usd</code>. Якби SDK щось втратив, вартість не зійшлась би. Збіг сум при різній кількості запитів означає оплачений запит, якого немає в потоці повідомлень.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>trace і span (запуск агента)</td><td>Траса — дерево однієї задачі; спани — спроба, запити моделі, інструменти, гейт, з батьком, часом і атрибутами.</td></tr>
+<tr><td>GenAI semantic conventions</td><td>Назви атрибутів <code>gen_ai.*</code> для моделей, агентів та інструментів; статус Development, окремий репозиторій.</td></tr>
+<tr><td>поля телеметрії виклику моделі</td><td>Модель, токени (свіжі, кеш-читання, кеш-запис, вихідні), TTFT і тривалість, <code>stop_reason</code>, request id, вартість.</td></tr>
+<tr><td>OTel-експорт Claude Code</td><td><code>CLAUDE_CODE_ENABLE_TELEMETRY=1</code> + експортери; метрики й події стабільні, спани — бета; вміст типово редагується.</td></tr>
+<tr><td>metrics vs events vs logs</td><td>Метрики — дешеві агрегати з малою кардинальністю; події й журнали — окремі записи з довільними полями й trace id.</td></tr>
+<tr><td>поширення trace id</td><td>Перенесення контексту W3C (<code>traceparent</code>) через HTTP, чергу і межу процесу, щоб задача лишалась однією трасою.</td></tr>
+<tr><td>escalation rate</td><td>Частка задач каскаду, що дійшли до сильнішої моделі; знаменник — задачі <code>auto</code> з викликом моделі; з інтервалом.</td></tr>
+<tr><td>семплінг трас</td><td>Head — рішення на старті траси, tail — після всієї траси в колекторі; метрики не семплюються.</td></tr>
+<tr><td>редагування вмісту промптів</td><td>Текст промптів, відповідей і аргументів не експортується без явного прапорця; у спані лише довжина або <code>&lt;REDACTED&gt;</code>.</td></tr>
+<tr><td>InMemorySpanExporter</td><td>Експортер OTel SDK, що тримає завершені спани в пам'яті: тести структури трас без мережі.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. План інструментації вашої агентної системи</h3>
+<p>Дерево спанів, поля на кожен рівень, метрики зі знаменниками, класи даних, семплінг, зберігання й один алерт з порогом.</p>
+<h3>2. Розбір реальної траси</h3>
+<p>За даними двох партій прогону Lectern (у завданні) знайдіть, куди йдуть час і гроші, і обґрунтуйте зміни та метрику-частку з інтервалом.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/monitoring-usage" target="_blank" rel="noopener">Claude Code — Monitoring (OpenTelemetry)</a><span>змінні, метрики, події, спани (бета), прапорці <code>OTEL_LOG_*</code>, мапінг токенів на <code>gen_ai.usage.*</code></span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/observability" target="_blank" rel="noopener">Agent SDK — Observability with OpenTelemetry</a><span>передача <code>TRACEPARENT</code> у CLI, заборона console для SDK, ідентичність кінцевих користувачів</span></li>
+<li><a href="https://code.claude.com/docs/en/env-vars" target="_blank" rel="noopener">Claude Code — Environment variables</a><span><code>CLAUDE_CODE_DISABLE_TERMINAL_TITLE</code>, <code>CLAUDE_CODE_OTEL_DIAG_STDERR</code></span></li>
+<li><a href="https://platform.claude.com/docs/en/manage-claude/opentelemetry" target="_blank" rel="noopener">Claude API — OpenTelemetry</a><span>бета: спани SDK і API, режими вмісту, підрахунок токенів без подвоєння</span></li>
+<li><a href="https://github.com/open-telemetry/semantic-conventions-genai" target="_blank" rel="noopener">OpenTelemetry — GenAI semantic conventions</a><span>репозиторій з 05.05.2026, статус Development; <a href="https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/client-inference.md" target="_blank" rel="noopener">запити до моделі</a>, <a href="https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md" target="_blank" rel="noopener">агенти й інструменти</a></span></li>
+<li><a href="https://opentelemetry.io/docs/concepts/signals/" target="_blank" rel="noopener">OpenTelemetry — Signals</a><span>траси, метрики, журнали; <a href="https://opentelemetry.io/docs/concepts/sampling/" target="_blank" rel="noopener">Sampling</a> — head і tail</span></li>
+<li><a href="https://www.w3.org/TR/trace-context/" target="_blank" rel="noopener">W3C Trace Context</a><span>формат <code>traceparent</code></span></li>
+<li><a href="https://opentelemetry-python.readthedocs.io/en/latest/sdk/trace.export.html" target="_blank" rel="noopener">opentelemetry-sdk для Python — trace.export</a><span>Console, Batch/Simple processor, InMemorySpanExporter · версія 1.45.1</span></li>
+<li><a href="https://fastapi.tiangolo.com/advanced/opentelemetry/" target="_blank" rel="noopener">FastAPI — OpenTelemetry</a><span>вбудований OTel, <code>FastAPI(telemetry=…)</code>, журнали з повідомленнями винятків</span></li>
+<li><a href="https://learn.chatgpt.com/docs/config-file/config-advanced" target="_blank" rel="noopener">Codex — Advanced configuration</a><span>секція <code>[otel]</code>, події <code>codex.*</code>, <code>log_user_prompt</code></span></li>
+<li><a href="https://cursor.com/docs/enterprise/opentelemetry-export" target="_blank" rel="noopener">Cursor — OpenTelemetry Export</a><span>Enterprise, серверний експорт метрик і журналів; <a href="https://cursor.com/docs/api" target="_blank" rel="noopener">Admin і Analytics API</a></span></li>
+<li><a href="https://github.com/anthropics/claude-code-monitoring-guide" target="_blank" rel="noopener">Claude Code ROI Measurement Guide</a><span>Docker Compose з колектором і Prometheus від Anthropic</span></li>
+<li><a href="https://langfuse.com/docs" target="_blank" rel="noopener">Langfuse</a><span>MIT (крім <code>ee/</code>), трасування на OTel; <a href="https://github.com/Arize-ai/phoenix" target="_blank" rel="noopener">Arize Phoenix</a> — ELv2; <a href="https://github.com/traceloop/openllmetry" target="_blank" rel="noopener">OpenLLMetry</a> — Apache-2.0</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 12.5 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 12.5 · Senomi<br><br><a href="lesson-60.html">← Урок 12.4</a> · <a href="index.html">Зміст курсу</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

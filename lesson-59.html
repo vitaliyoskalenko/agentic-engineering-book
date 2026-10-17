@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 12.3. Evals для LLM-фіч; практика — evals точності цитат у Lectern</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="32" width="56" height="56" rx="8"/><rect x="48" y="48" width="24" height="24" rx="3"/><path d="M44 20v12M60 20v12M76 20v12M44 88v12M60 88v12M76 88v12M20 44h12M20 60h12M20 76h12M88 44h12M88 60h12M88 76h12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 12.3 · Модуль 12</div>
+<h1>Evals для LLM-фіч; практика — evals точності цитат у Lectern</h1>
+<p class="lead">Перевірки форми кажуть, що всі 150 питань Lectern мають дослівні цитати, але не кажуть, що 59% із них вгадуються без лекції, а цитата не завжди підтверджує ключ. Урок будує eval як інженерну систему — датасет, грейдери від коду до відкаліброваного судді, метрики з інтервалами й gate з офлайн-replay — і ловить ним навмисну регресію промпту.</p>
+<div class="hero-meta"><span class="chip">Якість: автоматичні перевірки й evals</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Що не бачать перевірки форми</a><a href="#anatomy"><b>02</b>Анатомія eval</a><a href="#graders"><b>03</b>Ієрархія грейдерів</a><a href="#judge"><b>04</b>LLM-суддя</a><a href="#dataset"><b>05</b>Датасет і прогін</a><a href="#triage"><b>06</b>Розбір провалів</a><a href="#regression"><b>07</b>Навмисна регресія</a><a href="#gate"><b>08</b>Evals як gate</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#mistakes"><b>10</b>Типові помилки</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розкласти eval LLM-фічі на датасет, задачу, грейдери, метрики з порогами й історію версій;</li>
+    <li>для кожної властивості виходу обрати найдешевший грейдер, який здатен її вирішити;</li>
+    <li>відкалібрувати LLM-суддю на людських мітках і не довіряти йому, поки κ нижча за поріг;</li>
+    <li>читати метрику з n та інтервалом, а не одне число, і розбирати провали грейдера вручну;</li>
+    <li>зробити з evals gate: офлайн-replay у CI, живий прогін на зміну промпту, результати на версію.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Що не бачать перевірки форми<span class="sub">Квіз проходить усі гейти — і вгадується без лекції</span></h2></div>
+<p>У Lectern уже є чотири детерміновані перевірки квізу: <code>check_quote</code> (цитата дослівна), <code>validate()</code> (4 різні варіанти, індекс ключа, ≥ 5 слів у цитаті, без посилань і дублікатів), баланс ключа B4 (правильний варіант не найдовший у &gt; 40% питань) і <code>place_answers()</code> (позицію ключа обирає код). Усі вони перевіряють <b>форму</b>. На прогоні цього уроку — 150 питань від Haiku 5.5 з 10 лекцій — вони дали 100% дослівних цитат і 0 помилок схеми. Водночас модель, якій не показали <b>нічого, крім питання</b>, вгадала ключ у <b>88 зі 150 питань (59%)</b> при випадковому рівні 25%.</p>
+<p>Правило «питання корисне, лише якщо студент, який пропустив лекцію, не вгадає відповідь» записане в самому промпті генератора (<code>quiz.system.txt</code>, урок 6.1). Перевірити його кодом неможливо: це властивість змісту. Для таких властивостей потрібні evals — система, що міряє якість LLM-фічі на фіксованому наборі входів так само відтворювано, як тести міряють код.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що вже було</th><th>Урок</th><th>Чим цей урок інший</th></tr></thead>
+<tbody>
+<tr><td data-th="Що вже було">Golden set як ідея: PDF з відомими цитатами</td><td data-th="Урок">0.2</td><td data-th="Чим цей урок інший">Датасет з мітками автора і прогоном на кожну версію промпту</td></tr>
+<tr><td data-th="Що вже було">A/B промпту з 7 кодовими перевірками</td><td data-th="Урок">5.1</td><td data-th="Чим цей урок інший">Модельні грейдери, калібрування, інтервали, gate</td></tr>
+<tr><td data-th="Що вже було">recall@k і MRR пошуку</td><td data-th="Урок">9.2</td><td data-th="Чим цей урок інший">Якість згенерованого тексту, а не ранжування</td></tr>
+<tr><td data-th="Що вже було">LLM-суддя на ін'єкції, 9 вердиктів</td><td data-th="Урок">9.3</td><td data-th="Чим цей урок інший">Суддя, якому не довіряють без κ на людських мітках</td></tr>
+<tr><td data-th="Що вже було">Метрики продукту, ціна помилок S0–S2</td><td data-th="Урок">9.5</td><td data-th="Чим цей урок інший">Офлайн-рядок «task success» із <code>docs/metrics.md</code> стає кодом</td></tr>
+<tr><td data-th="Що вже було">Детерміновані тести коду</td><td data-th="Урок">12.1</td><td data-th="Чим цей урок інший">Те саме для недетермінованого виходу моделі</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="anatomy">
+<div class="sec-h"><span class="num">02</span><h2>Анатомія eval<span class="sub">П'ять частин і версія</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 560" role="img" aria-label="Анатомія eval: датасет, задача, грейдери, метрики з порогами, результати по версіях">
+  <defs>
+    <marker id="e59a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="e59b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="20" y="10" width="320" height="70" rx="10" class="bx m"/>
+  <text x="180" y="34" text-anchor="middle" class="tx b">1 · Датасет (eval cases)</text>
+  <text x="180" y="52" text-anchor="middle" class="tx s">вхід: лекція + n · мітки автора:</text>
+  <text x="180" y="68" text-anchor="middle" class="tx s">заборонений текст, мін. сторінок, звернення до AI</text>
+  <path d="M180 80 V 102" class="ln a" marker-end="url(#e59a)"/>
+  <rect x="20" y="106" width="320" height="70" rx="10" class="bx t"/>
+  <text x="180" y="130" text-anchor="middle" class="tx b">2 · Задача (system under test)</text>
+  <text x="180" y="148" text-anchor="middle" class="tx s">агент Lectern · версія промпту p-861a085610</text>
+  <text x="180" y="164" text-anchor="middle" class="tx s">claude-haiku-5-5 · 3 прогони на кейс</text>
+  <path d="M180 176 V 198" class="ln a" marker-end="url(#e59a)"/>
+  <rect x="20" y="202" width="320" height="148" rx="10" class="bx a"/>
+  <text x="180" y="226" text-anchor="middle" class="tx b">3 · Грейдери</text>
+  <rect x="34" y="238" width="140" height="100" rx="8" class="bx t"/>
+  <text x="104" y="258" text-anchor="middle" class="tx b">код</text>
+  <text x="104" y="276" text-anchor="middle" class="tx s">цитата дослівна</text>
+  <text x="104" y="292" text-anchor="middle" class="tx s">і на сторінці</text>
+  <text x="104" y="308" text-anchor="middle" class="tx s">схема, баланс ключа</text>
+  <text x="104" y="326" text-anchor="middle" class="tx s">$0 · завжди</text>
+  <rect x="186" y="238" width="140" height="100" rx="8" class="bx p"/>
+  <text x="256" y="258" text-anchor="middle" class="tx b">модель</text>
+  <text x="256" y="276" text-anchor="middle" class="tx s">відповідь лише</text>
+  <text x="256" y="292" text-anchor="middle" class="tx s">за цитатою</text>
+  <text x="256" y="308" text-anchor="middle" class="tx s">суддя дистракторів</text>
+  <text x="256" y="326" text-anchor="middle" class="tx s">лише з калібруванням</text>
+  <path d="M180 350 V 372" class="ln a" marker-end="url(#e59a)"/>
+  <rect x="20" y="376" width="320" height="70" rx="10" class="bx t"/>
+  <text x="180" y="400" text-anchor="middle" class="tx b">4 · Метрики + пороги</text>
+  <text x="180" y="418" text-anchor="middle" class="tx s">частка, n, 95% інтервал по кейсах</text>
+  <text x="180" y="434" text-anchor="middle" class="tx s">min / max і max_drop проти базової версії</text>
+  <path d="M180 446 V 468" class="ln a" marker-end="url(#e59a)"/>
+  <rect x="20" y="472" width="320" height="76" rx="10" class="bx m"/>
+  <text x="180" y="496" text-anchor="middle" class="tx b">5 · Результати по версіях</text>
+  <text x="180" y="514" text-anchor="middle" class="tx s">results/&lt;версія&gt;.json + replay-кеш</text>
+  <text x="180" y="530" text-anchor="middle" class="tx s">CI відтворює їх без моделі за $0</text>
+  <path d="M340 510 C 358 420, 358 200, 340 141" class="ln d" marker-end="url(#e59b)"/>
+</svg>
+<figcaption>Пунктир — регресія: нова версія промпту проходить той самий датасет, і її метрики порівнюються з базовою. Без п'ятої частини eval — разовий експеримент, а не перевірка.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Частина</th><th>Що фіксується</th><th>Що ламається без неї</th></tr></thead>
+<tbody>
+<tr><td data-th="Частина">Кейс (eval case)</td><td data-th="Що фіксується">вхід + еталон або мітки, які може перевірити грейдер</td><td data-th="Що ламається без неї">«покращення» на входах, підібраних після того, як побачили вихід</td></tr>
+<tr><td data-th="Частина">Задача</td><td data-th="Що фіксується">повний id моделі, хеш промпту, ліміти</td><td data-th="Що ламається без неї">аліас <code>haiku</code> «оновлюється з часом» (B51): та сама версія коду міряє іншу модель</td></tr>
+<tr><td data-th="Частина">Грейдер</td><td data-th="Що фіксується">код або промпт грейдера з власною версією</td><td data-th="Що ламається без неї">змінили суддю — і метрика зрушила без жодної зміни фічі</td></tr>
+<tr><td data-th="Частина">Поріг</td><td data-th="Що фіксується">правило в конфігу, записане до прогону</td><td data-th="Що ламається без неї">поріг підганяють під результат, який уже бачили</td></tr>
+<tr><td data-th="Частина">Історія</td><td data-th="Що фіксується">результат на кожну версію промпту</td><td data-th="Що ламається без неї">регресію нема з чим порівняти</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="graders">
+<div class="sec-h"><span class="num">03</span><h2>Ієрархія грейдерів<span class="sub">Найдешевший, що здатен вирішити</span></h2></div>
+<blockquote class="q-src">
+<p><b>Оцінювання кодом</b>: найшвидше й найнадійніше, надзвичайно масштабується, але бракує нюансів для складних суджень. <b>Оцінювання людиною</b>: найгнучкіше і найякісніше, але повільне й дороге — уникайте, якщо можливо. <b>Оцінювання LLM</b>: швидке й гнучке, масштабується, годиться для складних суджень — спершу перевірте надійність, потім масштабуйте.</p>
+<p class="orig">“Code-based grading: Fastest and most reliable, extremely scalable, but also lacks nuance for more complex judgments… Human grading: Most flexible and high quality, but slow and expensive. Avoid if possible. LLM-based grading: Fast and flexible, scalable and suitable for complex judgment. Test to ensure reliability first then scale.”</p>
+<cite>Anthropic, «Define success criteria and build evaluations», документація Claude, перевірено 17.10.2026</cite>
+</blockquote>
+<p>Інженерний блог Anthropic (9 січня 2026) формулює те саме як правило вибору: детерміновані грейдери — де можливо, LLM — де необхідно, людина — вибірково, для валідації; модельні грейдери «потребують калібрування з людьми». Для Lectern це означає: кожна властивість квізу отримує грейдер нижчого рівня, якщо він її вирішує.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Властивість</th><th>Грейдер</th><th>Чому не дешевший</th></tr></thead>
+<tbody>
+<tr><td data-th="Властивість">Цитата дослівна, ≥ 5 слів, не з колонтитула, на якій сторінці</td><td data-th="Грейдер">код: <code>check_quote</code> + мітки <code>forbid</code></td><td data-th="Чому не дешевший">дешевшого немає; це S2 з 9.5, тож 100% автоматично</td></tr>
+<tr><td data-th="Властивість">Схема, 4 різні варіанти, баланс ключа</td><td data-th="Грейдер">код: <code>validate()</code>, <code>key_balance()</code></td><td data-th="Чому не дешевший">—</td></tr>
+<tr><td data-th="Властивість">Цитата <b>підтверджує</b> ключ</td><td data-th="Грейдер">модель: свіжий екземпляр відповідає лише за цитатою</td><td data-th="Чому не дешевший">підтвердження — семантика; але є відома правильна відповідь, тож вердикт перевіряється кодом</td></tr>
+<tr><td data-th="Властивість">Ключ не вгадується без лекції</td><td data-th="Грейдер">модель: те саме питання без цитати</td><td data-th="Чому не дешевший">те саме: вердикт — літера, порівнюється з ключем кодом</td></tr>
+<tr><td data-th="Властивість">Дистрактори правдоподібні</td><td data-th="Грейдер">LLM-суддя за рубрикою</td><td data-th="Чому не дешевший">еталону немає взагалі; лише після калібрування на людських мітках</td></tr>
+</tbody></table></div>
+<div class="note arch"><span class="lbl">Перевірка відповідності — модель із кодовим вердиктом</span>
+<p><b>Answerability check</b> не просить модель «оцінити якість». Вона розв'язує задачу (обрати A–D або <code>none</code>), а правильність розв'язку перевіряє код, бо ключ відомий. Такий грейдер стабільніший за суддю з рубрикою, а його помилки мають дві відомі форми: <code>none</code> там, де відповідь у цитаті є, і вгадування ключа зі знань світу, коли цитата його не підтверджує. Першу ловить розбір провалів, другу — контроль без цитати (closed book) на синтетичних фактах, яких модель не може знати.</p>
+</div>
+</section>
+
+<section class="sec" id="judge">
+<div class="sec-h"><span class="num">04</span><h2>LLM-суддя<span class="sub">Упередження і калібрування</span></h2></div>
+<p>Найцитованіше дослідження суддів — Zheng et al. (NeurIPS 2023, MT-Bench): суддя GPT-4 збігся з людьми у понад 80% порівнянь, на рівні згоди людей між собою. Тим самим дослідженням названо три упередження, які треба вимірювати у власного судді, а не припускати їх відсутність.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Упередження</th><th>Що виміряно у статтях</th><th>Захист у Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Упередження"><b>Позиційне</b> (position bias) — перевага певних позицій у списку</td><td data-th="Що виміряно у статтях">MT-Bench: GPT-4 дав той самий вердикт після обміну відповідей місцями лише в 65,0% випадків, Claude-v1 — у 23,8%. Wang et al. (ACL 2024): переставивши відповіді, Vicuna-13B «перемагала» ChatGPT у 66 з 80 запитів</td><td data-th="Захист у Lectern">кожен суддівський виклик двічі: дистрактори в прямому і зворотному порядку; узгодженість — окрема метрика з порогом</td></tr>
+<tr><td data-th="Упередження"><b>Багатослівність</b> (verbosity bias) — перевага довшого тексту</td><td data-th="Що виміряно у статтях">MT-Bench, атака «повторений список»: обдурила GPT-3.5 і Claude-v1 у 91,3% випадків, GPT-4 — у 8,7%</td><td data-th="Захист у Lectern">рубрика прямо називає «довший або розмитіший за інші» ознакою слабкого дистрактора; код окремо міряє довжину ключа (B4)</td></tr>
+<tr><td data-th="Упередження"><b>Самопреференція</b> (self-enhancement) — перевага власних текстів</td><td data-th="Що виміряно у статтях">MT-Bench: GPT-4 +10% перемог собі, Claude-v1 +25%, але автори не змогли довести саме упередження. Panickssery et al. (NeurIPS 2024): сила самопреференції лінійно корелює зі здатністю моделі впізнати свій текст</td><td data-th="Захист у Lectern">генератор і суддя тут — та сама Haiku 5.5, тож від'ємне відхилення від людей очікуване; його й міряє калібрування</td></tr>
+</tbody></table></div>
+<h3>Калібрування: κ, а не «відсоток збігів»</h3>
+<p>Суддю порівнюють з людськими мітками на тих самих об'єктах. Сира згода оманлива, коли один клас рідкісний: якщо 87% дистракторів правдоподібні, суддя, що завжди каже «plausible», збігається з людиною у 87% випадків, нічого не розрізняючи. <b>κ Коена</b> (1960) віднімає згоду, очікувану випадково за частками класів кожного оцінювача:</p>
+<pre class="code" data-lang="text">κ = (p_o − p_e) / (1 − p_e)
+p_o — частка збігів
+p_e = Σ_c p_людина(c) · p_суддя(c)
+
+test-мітки: 60 дистракторів
+збіглися 53
+людина: plausible 52, weak 8
+суддя:  plausible 51, weak 9
+p_o = 53/60 = 0,883
+p_e = (52/60)(51/60)
+    + (8/60)(9/60) = 0,757
+κ = (0,883 − 0,757)
+    / (1 − 0,757) = 0,52</pre>
+<p>За поширеною шкалою Landis і Koch (1977) 0,41–0,60 — «помірна» згода, 0,61–0,80 — «суттєва». Поріг довіри в Lectern — κ ≥ 0,6 на мітках, яких не бачили під час роботи над рубрикою, і позиційна узгодженість ≥ 0,8. Нижче порога метрика судді друкується, але <b>не входить у gate</b>.</p>
+<div class="note warn"><span class="lbl">Мітки dev і test</span>
+<p>Якщо правити рубрику, дивлячись на розбіжності з людиною, і на тих самих мітках міряти κ, рубрика підганяється під 60 конкретних прикладів. Тому мітки поділено: dev — на них розбирають розбіжності; test — розмічені пізніше, до перегляду вердиктів судді, і рішення «довіряти» ухвалюється лише за ними.</p>
+</div>
+</section>
+
+<section class="sec" id="dataset">
+<div class="sec-h"><span class="num">05</span><h2>Датасет і прогін<span class="sub">10 лекцій, 150 питань, $0,40</span></h2></div>
+<p>Шість українських лекцій — це golden-корпус уроку 9.2 (вигадана мережа метеостанцій «Обрій», 3–4 сторінки PDF кожна). Чотири нові, по 1–2 сторінки, написано для цього уроку під конкретні ризики. Усі тексти синтетичні й позначені так у файлах: місця, люди й числа вигадані. Це не лише питання даних (ADR 0005), а умова роботи контролю без цитати: справжні факти модель могла б знати, а вигадані — лише вгадати.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Кейси</th><th>Ризик, під який написано</th><th>Мітка автора</th></tr></thead>
+<tbody>
+<tr><td data-th="Кейси">01–06 «Обрій»</td><td data-th="Ризик, під який написано">колонтитул «Обрій · Лекція N · сторінка M» у тексті кожної сторінки</td><td data-th="Мітка автора"><code>forbid</code>: колонтитул; <code>min_pages</code>: 2–3</td></tr>
+<tr><td data-th="Кейси">08 бібліотека</td><td data-th="Ризик, під який написано">речення, звернене до генератора тестів</td><td data-th="Мітка автора"><code>addresses_ai: true</code>; <code>forbid</code>: це речення</td></tr>
+<tr><td data-th="Кейси">09 сир</td><td data-th="Ризик, під який написано">багато близьких чисел (72 °C, 39 °C, 32 °C) — ризик двох правильних варіантів</td><td data-th="Мітка автора"><code>min_pages</code>: 2</td></tr>
+<tr><td data-th="Кейси">10 дрони</td><td data-th="Ризик, під який написано">одна коротка сторінка на 5 питань</td><td data-th="Мітка автора"><code>min_pages</code>: 1</td></tr>
+<tr><td data-th="Кейси">11 трамвай</td><td data-th="Ризик, під який написано">те саме «Коротко: …» на двох сторінках — неоднозначна сторінка цитати</td><td data-th="Мітка автора"><code>min_pages</code>: 2</td></tr>
+</tbody></table></div>
+<p>Кейс тут не має «еталонного квізу»: правильних квізів з лекції багато. Еталоном є <b>мітки, які може перевірити код</b> (заборонений текст, мінімум різних сторінок, чи має детектор звернень спрацювати), плюс ключ кожного згенерованого питання — його модель-грейдер мусить відновити за цитатою.</p>
+<h3>Прогін на поточному Lectern</h3>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/run_evals.py</span>
+prompt p-861a085610 · dataset d1 · runs 3 · generator claude-haiku-5-5 · graders claude-haiku-5-5
+  quiz_saved                 1.0  n=30   cases=10  95% CI [1.000, 1.000]
+  schema_ok                  1.0  n=30   cases=10  95% CI [1.000, 1.000]
+  key_balance_ok          0.9667  n=30   cases=10  95% CI [0.900, 1.000]
+  citation_accuracy          1.0  n=150  cases=10  95% CI [1.000, 1.000]
+  min_pages_ok               1.0  n=30   cases=10  95% CI [1.000, 1.000]
+  page_ambiguous             0.0  n=150  cases=10  95% CI [0.000, 0.000]
+  answerability           0.9067  n=150  cases=10  95% CI [0.840, 0.960]
+  answer_none             0.0933  n=150  cases=10  95% CI [0.040, 0.160]
+  closed_book             0.5867  n=150  cases=10  95% CI [0.500, 0.667]
+  distractor_plausible    0.8594  n=441  cases=10  95% CI [0.806, 0.907]
+  also_correct               0.0  n=441  cases=10  95% CI [0.000, 0.000]
+  position_consistency    0.9025  n=441  cases=10  95% CI [0.880, 0.925]
+  cost_median_usd        0.00347
+  turns_median               8.0
+  judge vs human [dev]: n=60 agreement 0.883 kappa 0.397 (binary 0.397)
+  judge vs human [test]: n=60 agreement 0.883 kappa 0.521 (binary 0.521)
+  judge-graded metrics gated: False
+  cost: recorded $0.401 · spent now $0.0
+<span class="y">alert closed_book: 0.5867 above target 0.5</span>
+<span class="ok">gate: passed</span></pre>
+<div class="cap">реальний вивід · replay живого прогону за 1,2 с без жодного виклику моделі · живий прогін: 30 генерацій + 600 викликів грейдерів, 9 хв 14 с, $0,39 · 17.10.2026 · скорочено 2 рядки і стовпчик порогів (вони в <code>evals/config.json</code>)</div></div>
+<p>Що варто прочитати в цій таблиці, крім чисел:</p>
+<ul>
+<li><b>n і кейси.</b> 150 питань — це не 150 незалежних спостережень: питання однієї лекції з одного прогону корельовані. Інтервал тут — кластерний bootstrap (ресемплінг лекцій, 2000 повторів). Для closed_book він [0,500; 0,667], а інтервал Вілсона по питаннях — [0,507; 0,662]; на answerability різниця більша: [0,840; 0,960] проти [0,849; 0,944].</li>
+<li><b>Нуль — теж з інтервалом.</b> <code>also_correct</code> 0 з 441 означає верхню межу Вілсона 0,9%, а не «двох ключів не буває».</li>
+<li><b>Ціна шарів.</b> Генерація — $0,0035 на квіз (медіана), модельні грейдери — 4 виклики на питання по ~$0,0005. Кодові грейдери безкоштовні й відпрацьовують за мілісекунди.</li>
+<li><b>Пороги записано до прогону</b>, з <code>docs/metrics.md</code>: S2 = 0 → citation_accuracy = 1,0; task success ≥ 95% (H) → answerability ≥ 0,9 з поправкою на шум грейдера. Один поріг не витримав першого прогону — про нього нижче.</li>
+</ul>
+</section>
+
+<section class="sec" id="triage">
+<div class="sec-h"><span class="num">06</span><h2>Розбір провалів<span class="sub">Кожен прапорець модельного грейдера читає людина</span></h2></div>
+<p><b>Answerability: 14 провалів, усі — <code>none</code>.</b> Розібрані вручну по одному:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що насправді</th><th>Скільки</th><th>Приклад</th></tr></thead>
+<tbody>
+<tr><td data-th="Що насправді">Ключ містить те, чого в цитаті немає — дефект квізу</td><td data-th="Скільки">4</td><td data-th="Приклад">цитата «Позначка «сумнівне» не означає, що дані помилкові», ключ «значення викликає сумнів і потребує уваги» — модель обрізала речення якраз перед відповіддю</td></tr>
+<tr><td data-th="Що насправді">Цитата без підмета: займенник або підрядне речення — цитата не самодостатня</td><td data-th="Скільки">4</td><td data-th="Приклад">«Якщо вона перевищує 0,3 °C, датчик налаштовують…» — хто «вона», з цитати не видно</td></tr>
+<tr><td data-th="Що насправді">Грейдер надто суворий — хибний провал</td><td data-th="Скільки">6</td><td data-th="Приклад">«Молоко нагрівають до 72 °C…» на питання про сир «Гірський»: назви сиру в цитаті немає, і грейдер відмовився відповідати</td></tr>
+</tbody></table></div>
+<p>Точність прапорця — 8 з 14 (57%), а справжня answerability ближча до 0,95, ніж до 0,91. Обидва факти записано поруч із метрикою, а не замість неї: поріг відкалібровано на тому самому грейдері, тож порівнювати версії між собою чесно, а абсолютне число — ні.</p>
+<p><b>Closed book: 59% при випадкових 25%.</b> Код цього не бачить: правильний варіант унікально найдовший лише у 32 зі 150 питань (21%), позицію обирає <code>place_answers()</code>. Вгадують за змістом: «Чи можна ввести в роботу датчик без акта калібрування?» — ключ «Ні, без підписаного акта…» і три варіанти «Так, …»; «Що робить пілот, якщо інспектор зупиняє політ?» — «продовжує політ до кінця маршруту». Найгірші кейси — дрони (12 з 15) і обслуговування станцій (11 з 15), де питання про правила безпеки розв'язуються здоровим глуздом.</p>
+<p>Попередньо записаний поріг <code>max 0,5</code> провалився на першому ж прогоні. Варіантів два: тримати gate червоним, доки промпт не виправлять, або перетворити поріг на храповик (ratchet). Обрано друге й записано в конфіг: <code>max 0,65</code> — верхня межа інтервалу першого прогону, тобто гірше не можна; <code>target 0,5</code> друкується як alert при кожному прогоні; виправлення промпту — окремий пункт беклогу. Знижувати поріг мовчки, щоб gate позеленів, не можна — тому зміна стоїть у <code>about</code> конфігу з поясненням.</p>
+<p><b>Суддя дистракторів не пройшов калібрування.</b> 120 дистракторів (20 питань dev + 20 test) розмітив автор курсу-агент за тією самою рубрикою, що в судді, до перегляду вердиктів; другого розмітника не було, тож стелі «людина — людина» немає. Далі — експеримент, який варто повторити кожному, хто «покращує» суддю:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рубрика</th><th>dev: згода / κ</th><th>test: згода / κ</th><th>Позиційна узгодженість</th></tr></thead>
+<tbody>
+<tr><td data-th="Рубрика">j1 — вихідна</td><td data-th="dev: згода / κ">0,883 / 0,397</td><td data-th="test: згода / κ">0,883 / 0,521</td><td data-th="Позиційна узгодженість">0,903</td></tr>
+<tr><td data-th="Рубрика">j2 — переписана за розбіжностями на dev</td><td data-th="dev: згода / κ">0,917 / <b>0,569</b></td><td data-th="test: згода / κ">0,860 / <b>0,473</b></td><td data-th="Позиційна узгодженість">0,884</td></tr>
+</tbody></table></div>
+<p>j2 краща на тих мітках, за якими її писали, і гірша на відкладених — класичне перенавчання рубрики на 60 прикладах. Залишено j1; метрика <code>distractor_plausible</code> = 0,86 друкується, але gate її не враховує. Щоб суддя став gate, потрібні не нові формулювання, а дані: більше міток слабких дистракторів (зараз 14 зі 120) і другий розмітник, бо без κ «людина — людина» невідомо, чи 0,6 взагалі досяжне на цій рубриці.</p>
+</section>
+
+<section class="sec" id="regression">
+<div class="sec-h"><span class="num">07</span><h2>Навмисна регресія<span class="sub">Правка, яка виглядає як покращення</span></h2></div>
+<p>Типова «дрібна» правка промпту: цитати іноді не проходять <code>check_quote</code> з першого разу, і хтось вирішує полегшити моделі задачу та заодно допомогти студентові знайти місце в лекції. Решта SYSTEM без змін; рядки перенесено для телефона.</p>
+<pre class="code" data-lang="diff"><span class="cm">--- SYSTEM, p-861a085610</span>
+<span class="cm">+++ quote-first-sentence.txt,</span>
+<span class="cm">+++ p-a42cd5c499</span>
+<span class="k">-</span> Ground every question in a quote
+<span class="k">-</span> copied from the lecture character
+<span class="k">-</span> for character.
+<span class="s">+</span> Give every question a quote copied
+<span class="s">+</span> from the lecture character for
+<span class="s">+</span> character: the first sentence of
+<span class="s">+</span> the paragraph the question comes
+<span class="s">+</span> from, so the student can find
+<span class="s">+</span> the place.</pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/run_evals.py --live --system evals/variants/quote-first-sentence.txt</span>
+prompt p-a42cd5c499 · dataset d1 · runs 3 · generator claude-haiku-5-5 · graders claude-haiku-5-5
+  quiz_saved                 1.0  n=30   cases=10  95% CI [1.000, 1.000]
+  schema_ok                  1.0  n=30   cases=10  95% CI [1.000, 1.000]
+  key_balance_ok          0.9667  n=30   cases=10  95% CI [0.900, 1.000]
+  citation_accuracy          1.0  n=150  cases=10  95% CI [1.000, 1.000]
+  answerability           0.4533  n=150  cases=10  95% CI [0.327, 0.573]
+  answer_none             0.5467  n=150  cases=10  95% CI [0.427, 0.673]
+  closed_book             0.6867  n=150  cases=10  95% CI [0.587, 0.780]
+  distractor_plausible    0.8725  n=447  cases=10  95% CI [0.833, 0.909]
+  cost_median_usd        0.00361
+  cost: recorded $0.413 · spent now $0.4133
+<span class="er">GATE FAIL answerability: 0.453 &lt; min 0.9</span>
+<span class="er">GATE FAIL answerability: 0.453 dropped 0.453 from 0.907</span>
+<span class="er">GATE FAIL closed_book: 0.687 &gt; max 0.65</span>
+<span class="er">gate: FAILED</span></pre>
+<div class="cap">реальний вивід · 17.10.2026 · $0,41 · скорочено рядки метрик, що не змінились, і стовпчик порогів · exit 1</div></div>
+<p>Усе, що перевіряє код, не змінилось: квізи збережено, цитати дослівні, схема й баланс ключа ті самі, ціна квізу та сама. Перше речення абзацу вводить тему, а не факт: на питання про висоту анемометра цитата — «Розміщення приладів теж має значення.», про код E-217 — «Якщо перевірка виявляє відхилення, система повідомляє про це кодом помилки.». 82 зі 150 питань грейдер не зміг розв'язати за цитатою, і кожен із 82 провалів — <code>none</code>, тобто сигнал «цитата не відповідає», а не випадковий шум. Інтервали базової [0,840; 0,960] і варіанта [0,327; 0,573] не перетинаються, тож це не ефект трьох прогонів.</p>
+<div class="note fact"><span class="lbl">Перевірено · 17.10.2026</span>
+<p>Суддя дистракторів тієї ж регресії не побачив: 0,859 → 0,873. Він оцінює варіанти, а не зв'язок цитати з ключем. Одна метрика ловить одну властивість — саме тому грейдер на кожен вимір окремий.</p>
+</div>
+</section>
+
+<section class="sec" id="gate">
+<div class="sec-h"><span class="num">08</span><h2>Evals як gate<span class="sub">Replay у CI, живий прогін на зміну промпту</span></h2></div>
+<ol class="steps">
+<li><b>Кожен PR</b> — <code>scripts/check.sh</code>, крок <code>evals</code>: replay за ~1 с і $0. Грейдери-код і метрики перераховуються, пороги перевіряються, а збережений <code>evals/results/&lt;версія&gt;.json</code> мусить збігтися з перерахунком — інакше exit 1 «results застаріли».</li>
+<li><b>PR, що міняє <code>SYSTEM</code>, <code>TASK</code> чи схеми інструментів</b>, — нова версія промпту, кешу для неї немає, replay падає з exit 2. Автор запускає <code>--live</code> (~$0,40, 9 хв) і комітить новий replay і results разом зі зміною: рецензент бачить метрики в diff.</li>
+<li><b>Зміна грейдера-коду</b> (як виправлення <code>parse_choice</code> нижче) — <code>--write</code>: replay без моделі, нові results, diff показує, чи зрушила хоч одна метрика.</li>
+<li><b>За розкладом</b> — живий прогін поточної версії: replay не бачить дрейфу моделі за тим самим id. Це headless-автоматизація уроку 15.4 (B134).</li>
+</ol>
+<div class="note warn"><span class="lbl">Тест грейдера знайшов баг у грейдері</span>
+<p><code>parse_choice("C")</code> — відповідь без JSON — повертав <code>""</code>, бо в Python <code>"" in "ABCD"</code> дорівнює <code>True</code>, а <code>"ABCD".index("")</code> — 0. Нерозібрана відповідь зараховувалась би як вибір A. Тест на цей випадок упав, виправлення — <code>in tuple(LETTERS)</code>; replay за секунду показав, що жодна метрика не змінилась (усі відповіді грейдерів містили JSON). Грейдери — код, і без тестів вони так само брешуть.</p>
+</div>
+<p>Що не допускає конфіг: метрику без даних (n = 0 — порушення, а не «пройшли»); суддю в gate без калібрування; мовчазне зниження порога. B38 частково закрито тут же: кожен живий прогін фіксує медіану вартості й ходів на злитому стані ($0,00347, 8 ходів, одне збереження на 30 прогонах) і дає alert на +30% проти базової версії; латентність і нічний прогін лишаються.</p>
+<h3>Фреймворки: ті самі частини під іншими іменами</h3>
+<p><code>run_evals.py</code>, <code>graders.py</code> і <code>store.py</code> — близько 770 рядків без жодної нової залежності, бо Lectern уже мав усі перевірки й Agent SDK. Для нової фічі без такої бази беруть готовий фреймворк; поняття в них ті самі.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Частина</th><th>Lectern</th><th>Inspect AI 0.3.281</th><th>promptfoo 0.124.1</th></tr></thead>
+<tbody>
+<tr><td data-th="Частина">Кейс</td><td data-th="Lectern"><code>evals/dataset/cases.json</code></td><td data-th="Inspect AI 0.3.281"><code>Sample</code> (обов'язковий <code>input</code>, <code>target</code>…) у <code>Dataset</code></td><td data-th="promptfoo 0.124.1"><code>tests</code> з <code>vars</code></td></tr>
+<tr><td data-th="Частина">Задача</td><td data-th="Lectern">агент Lectern, <code>--system</code> для варіанта</td><td data-th="Inspect AI 0.3.281"><code>Task</code> + <code>solver</code></td><td data-th="promptfoo 0.124.1"><code>prompts</code> × <code>providers</code></td></tr>
+<tr><td data-th="Частина">Кодовий грейдер</td><td data-th="Lectern"><code>grade_citations</code>, <code>grade_schema</code></td><td data-th="Inspect AI 0.3.281">scorer (<code>match</code>, <code>includes</code>, свій)</td><td data-th="promptfoo 0.124.1">assertions (<code>equals</code>, <code>regex</code>, <code>is-json</code>…)</td></tr>
+<tr><td data-th="Частина">Модельний грейдер</td><td data-th="Lectern">answerability, суддя j1</td><td data-th="Inspect AI 0.3.281"><code>model_graded_qa()</code>, <code>model_graded_fact()</code></td><td data-th="promptfoo 0.124.1"><code>llm-rubric</code></td></tr>
+<tr><td data-th="Частина">Повтори</td><td data-th="Lectern"><code>runs: 3</code></td><td data-th="Inspect AI 0.3.281"><code>--epochs n</code>, редукція <code>mean</code> чи <code>pass_at_k</code></td><td data-th="promptfoo 0.124.1"><code>--repeat</code></td></tr>
+<tr><td data-th="Частина">Кеш і replay</td><td data-th="Lectern"><code>evals/replay/&lt;версія&gt;.jsonl</code>, промах = помилка</td><td data-th="Inspect AI 0.3.281">логи прогонів, <code>inspect view</code></td><td data-th="promptfoo 0.124.1">кеш відповідей у <code>~/.promptfoo/cache</code>, <code>--no-cache</code></td></tr>
+</tbody></table></div>
+<p>Різниця, яку варто перевірити в будь-якому фреймворку: що він робить при промаху кешу. Кеш promptfoo за замовчуванням — локальний і прозорий: на машині CI без кешу той самий конфіг тихо піде до моделі. Для gate у PR потрібна протилежна поведінка — відповіді в репозиторії, промах валить збірку. Окремої функції evals у Claude Code, Codex чи Cursor немає; сторінку Evaluation tool у Console документація Claude більше не містить (адреса переадресовує на сторінку про критерії успіху).</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: evals/ і scripts/run_evals.py</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 12.3 · evals генерації квізів</div><div class="pb">
+<p>Diff проти поточного канонічного <code>lectern/</code> (уже з 12.2 і 12.5): 17 файлів коду й документів, +1854/−6, плюс дані — replay базової версії (626 записів) і results обох версій. <code>scripts/check.sh</code>: <b>461 passed, 1 skipped</b>, ruff, context, trace, MCP contract, <b>evals: gate passed</b>.</p>
+<ul>
+<li><code>evals/dataset/</code> — 10 кейсів (6 PDF golden-корпусу + 4 нові синтетичні лекції), мітки <code>forbid</code> / <code>min_pages</code> / <code>addresses_ai</code>;</li>
+<li><code>evals/graders.py</code> — кодові грейдери, промпти й розбір answerability, closed book і судді, Вілсон, кластерний bootstrap, κ, <code>gate()</code>; <code>evals/store.py</code> — replay-кеш, промах = помилка;</li>
+<li><code>evals/config.json</code> — моделі, прогони, пороги з обґрунтуванням, <code>baseline</code>, правило калібрування; <code>evals/labels/</code> — 120 людських міток dev/test; <code>evals/variants/</code> — регресія;</li>
+<li><code>scripts/run_evals.py</code> (replay, <code>--live</code>, <code>--system</code>, <code>--write</code>, <code>--cases</code>), крок <code>evals</code> у <code>check.sh</code>, <code>agent_sdk.options(system=…)</code>, <code>tests/test_evals.py</code> (25 тестів без моделі), <code>docs/evals.md</code>, рядок у CLAUDE.kit;</li>
+<li>беклог: B130 (answerability v2), B131 (самодостатні цитати), B132 (closed book), B133 (калібрування судді), B134 (живий прогін за розкладом), B135–B138; прогрес B38.</li>
+</ul>
+<p><b>Ваш крок</b>: <code>.venv/bin/python scripts/run_evals.py</code> (безкоштовно) — переконайтеся, що gate проходить і alert <code>closed_book</code> друкується. Потім змініть один рядок <code>SYSTEM</code> і запустіть ще раз: replay має впасти з exit 2 і назвати версію, для якої немає кешу. Живий прогін (<code>--live</code>, ~$0,40) — лише коли готові заплатити за відповідь на питання «чи стало краще».</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">10</span><h2>Типові помилки<span class="sub">І картки для самоперевірки</span></h2></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Помилка</th><th>Що сталося б тут</th></tr></thead>
+<tbody>
+<tr><td>Міряти лише те, що вже перевіряє гейт</td><td>citation_accuracy 1,0 і schema_ok 1,0 «довели» б якість, хоча 59% питань вгадуються, а регресія з першим реченням абзацу пройшла б непоміченою</td></tr>
+<tr><td>Довіряти судді за сирою згодою</td><td>88% згоди виглядають добре, але κ 0,52; суддя «завжди plausible» мав би 87%</td></tr>
+<tr><td>Правити рубрику й міряти на тих самих мітках</td><td>j2 «покращилась» з κ 0,397 до 0,569 — і погіршилась на відкладених мітках</td></tr>
+<tr><td>Рахувати 150 питань як 150 незалежних спостережень</td><td>інтервал вужчий, ніж є; різницю в кілька пунктів між версіями прийняли б за ефект</td></tr>
+<tr><td>Не читати провали модельного грейдера</td><td>6 з 14 провалів answerability — помилки грейдера; без розбору їх лагодили б у промпті генератора</td></tr>
+<tr><td>Тихий живий виклик при промаху кешу в CI</td><td>кожен PR платив би за прогін, а результат залежав би від дня; «зелений» gate без виміру</td></tr>
+<tr><td>Аліас моделі замість повного id</td><td>той самий хеш промпту міряв би іншу модель після оновлення аліасу (B51)</td></tr>
+<tr><td>Знизити поріг, що провалився, без запису</td><td>closed_book 0,5 → 0,65 мовчки зробив би ціль невидимою; храповик з target друкує її щоразу</td></tr>
+</tbody></table></div>
+<h3>Переверніть картку</h3>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">answerability check</span><span class="h">чим відрізняється від судді?</span></span><span class="b"><span class="t">Модель розв'язує, код оцінює</span><span class="d">вибір A–D за цитатою порівнюється з відомим ключем</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">closed book</span><span class="h">навіщо?</span></span><span class="b"><span class="t">Контроль вгадування</span><span class="d">те саме питання без цитати; випадковий рівень — 25%, у Lectern 59%</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">κ = 0,52 при згоді 88%</span><span class="h">як так?</span></span><span class="b"><span class="t">Рідкісний клас</span><span class="d">випадкова згода p_e = 0,76, бо 87% міток — plausible</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">dev / test міток</span><span class="h">навіщо ділити?</span></span><span class="b"><span class="t">Проти підгонки рубрики</span><span class="d">на dev розбирають розбіжності, за test вирішують, чи довіряти</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">промах кешу в replay</span><span class="h">що робить run_evals.py?</span></span><span class="b"><span class="t">Exit 2</span><span class="d">потрібен --live і коміт evals/replay/ та evals/results/</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">храповик порога</span><span class="h">коли?</span></span><span class="b"><span class="t">Стан гірший за ціль</span><span class="d">gate: «не гірше, ніж зараз», ціль — alert при кожному прогоні</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 рішень</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Усі 30 квізів пройшли <code>check_quote</code>, <code>validate()</code> і баланс ключа. Що з цього можна стверджувати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Що квізи якісні: кожна цитата дослівна, тож кожна підтверджує свій ключ</span></label><label class="opt ok"><input type="radio" name="q1"><span>Лише форму: цитати дослівні й схема правильна, а чи цитата підтверджує ключ — ні</span></label><label class="opt"><input type="radio" name="q1"><span>Що питання не вгадуються, бо ключ рідко найдовший і позицію обирає код</span></label></div>
+    <div class="why yes">Так. Регресія з першим реченням абзацу зберегла 100% дослівних цитат при answerability 0,45.</div>
+    <div class="why no">Дослівність не означає підтвердження: перше речення абзацу дослівне, але відповіді не містить. І баланс довжини не завадив 59% питань вгадуватися без лекції — вгадують за змістом.</div></div>
+  <div class="q"><div class="qt">2. Треба перевірити, що цитата підтверджує ключ. Який грейдер обрати першим?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Модель розв'язує питання лише за цитатою, а код порівнює її вибір з ключем</span></label><label class="opt"><input type="radio" name="q2"><span>LLM-суддю, який за шкалою 1–5 оцінить, наскільки цитата доречна до питання</span></label><label class="opt"><input type="radio" name="q2"><span>Людину на кожне питання, бо зв'язок цитати і ключа — питання змісту</span></label></div>
+    <div class="why yes">Так. Є відома правильна відповідь, тож оцінка не потрібна: модель виконує задачу, вердикт рахує код.</div>
+    <div class="why no">Суддя з рубрикою — останній рівень: недетермінований і потребує калібрування, а тут еталон є. Людина на кожне питання — «повільно й дорого, уникайте, якщо можливо»; її місце — валідація вибірки.</div></div>
+  <div class="q"><div class="qt">3. Суддя збігся з вашими мітками у 88% дистракторів. Чому цього мало для gate?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Бо для gate потрібна згода понад 95%, як у порогу task success з метрик продукту</span></label><label class="opt"><input type="radio" name="q3"><span>Бо суддя і генератор — та сама модель, тож згоду треба перевіряти іншою моделлю</span></label><label class="opt ok"><input type="radio" name="q3"><span>Бо 87% міток — один клас, і випадкова згода вже 0,76: κ лише 0,52</span></label></div>
+    <div class="why yes">Так. κ віднімає згоду, очікувану за частками класів; суддя «завжди plausible» мав би 87% згоди і κ = 0.</div>
+    <div class="why no">Поріг довіри — κ на відкладених мітках, а не сира згода і не «інша модель». Самопреференцію якраз і показує калібрування на людських мітках; заміна моделі без калібрування нічого не доводить.</div></div>
+  <div class="q"><div class="qt">4. Ви переписали рубрику судді за його розбіжностями з вами, і κ на тих самих мітках зросла з 0,40 до 0,57. Що далі?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Прийняти нову рубрику: зростання на 0,17 більше за типовий шум</span></label><label class="opt ok"><input type="radio" name="q4"><span>Виміряти κ на мітках, яких не бачили під час правки</span></label><label class="opt"><input type="radio" name="q4"><span>Додати в рубрику ще кілька прикладів із розбіжностей, щоб дійти до 0,6</span></label></div>
+    <div class="why yes">Так. У Lectern j2 на відкладених мітках дала 0,473 проти 0,521 у вихідної — рубрику підігнали під 60 прикладів.</div>
+    <div class="why no">Покращення на тих самих мітках, за якими правили, — очікуване і нічого не доводить. Ще більше прикладів із dev лише поглиблює підгонку; рішення ухвалюють за test.</div></div>
+  <div class="q"><div class="qt">5. Модель без цитати вгадала ключ у 59% питань, а правильний варіант найдовший лише у 21%. Що це означає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Модель бачила ці факти в передтренуванні: потрібні лекції з даними, яких вона не знає</span></label><label class="opt"><input type="radio" name="q5"><span>Шум: при 150 питаннях і 4 варіантах 59% лежить у межах випадкового коливання</span></label><label class="opt ok"><input type="radio" name="q5"><span>Дистрактори відкидаються здоровим глуздом — це зміст, якого код балансу не бачить</span></label></div>
+    <div class="why yes">Так. Факти вигадані, тож знати їх модель не може; вгадують за змістом варіантів («Ні» серед трьох «Так», правила безпеки).</div>
+    <div class="why no">Лекції вже синтетичні: мережу «Обрій», сир «Гірський» і заповідник вигадано, тож бачити ці факти модель не могла. А інтервал [0,500; 0,667] далекий від 0,25 — це не шум.</div></div>
+  <div class="q"><div class="qt">6. Попередньо записаний поріг <code>closed_book ≤ 0,5</code> провалився на першому прогоні поточного main. Що чесніше?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Храповик: max — межа поточного стану, 0,5 — ціль, яку друкують щоразу</span></label><label class="opt"><input type="radio" name="q6"><span>Підняти поріг до 0,6, щоб main був зеленим, і повернутися до нього пізніше</span></label><label class="opt"><input type="radio" name="q6"><span>Вимкнути метрику, доки не виправлять промпт, щоб gate не блокував інші PR</span></label></div>
+    <div class="why yes">Так. Gate не пропускає погіршення, а ціль лишається видимою; зміна записана в конфігу з причиною.</div>
+    <div class="why no">Тихе підняття робить ціль невидимою, а вимкнення пропустить будь-яке погіршення. Храповик закриває обидва ризики.</div></div>
+  <div class="q"><div class="qt">7. Answerability — 0,907 на 150 питаннях з 10 лекцій. Яке твердження про точність коректне?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>±2,3 пункти: інтервал Вілсона на 150 питаннях найточніший з можливих</span></label><label class="opt ok"><input type="radio" name="q7"><span>Незалежних одиниць ближче до 10, ніж до 150, тож інтервал ширший: [0,84; 0,96]</span></label><label class="opt"><input type="radio" name="q7"><span>Інтервал не потрібен: при 150 питаннях частка вже стабільна до другого знака</span></label></div>
+    <div class="why yes">Так. Питання однієї лекції з одного прогону корельовані; кластерний bootstrap ресемплює лекції.</div>
+    <div class="why no">Вілсон по питаннях ([0,849; 0,944]) припускає незалежність, якої немає. «Стабільність до другого знака» — саме та ілюзія, яку дає ігнорування кластерів.</div></div>
+  <div class="q"><div class="qt">8. Хтось змінив одне слово в <code>SYSTEM</code>. Що зробить крок <code>evals</code> у <code>check.sh</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Викличе модель для нової версії, оновить кеш і перевірить пороги</span></label><label class="opt"><input type="radio" name="q8"><span>Пройде: replay бере кеш попередньої версії, бо лекції ті самі</span></label><label class="opt ok"><input type="radio" name="q8"><span>Впаде з exit 2: для нової версії промпту кешу немає</span></label></div>
+    <div class="why yes">Так. Версія — хеш SYSTEM, TASK і схем; автор має запустити <code>--live</code> і закомітити replay і results.</div>
+    <div class="why no">Тихий живий виклик у CI робив би кожен PR платним і результат — залежним від дня; кеш старої версії міряв би не той промпт. Промах — помилка.</div></div>
+  <div class="q"><div class="qt">9. Регресію «цитата = перше речення абзацу» суддя дистракторів не помітив (0,86 → 0,87). Висновок?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Так і має бути: він міряє інший вимір; на кожну властивість — свій грейдер</span></label><label class="opt"><input type="radio" name="q9"><span>Суддя зламаний: регресія мала знизити всі модельні метрики разом</span></label><label class="opt"><input type="radio" name="q9"><span>Треба об'єднати всі перевірки в одного суддю із загальною оцінкою якості</span></label></div>
+    <div class="why yes">Так. Дистрактори не змінились; змінився зв'язок цитати з ключем, і його впіймала answerability.</div>
+    <div class="why no">Загальна оцінка змішала б виміри, і падіння одного розчинилось би в інших. Блог Anthropic радить окремого суддю на кожен вимір.</div></div>
+  <div class="q"><div class="qt">10. 14 провалів answerability, усі <code>none</code>. Розбір: 4 — ключ поза цитатою, 4 — цитата без підмета, 6 — грейдер надто суворий. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Переписати промпт генератора під усі 14 випадків і повторити прогін</span></label><label class="opt ok"><input type="radio" name="q10"><span>Записати точність прапорця 8/14 поруч із метрикою, грейдер і генератор лагодити окремо</span></label><label class="opt"><input type="radio" name="q10"><span>Прибрати answerability з gate: грейдер, що помиляється в 6 випадках з 14, для gate не годиться</span></label></div>
+    <div class="why yes">Так. Порівняння версій тим самим грейдером чесне; v2 грейдера (B130) і правило самодостатніх цитат (B131) — окремі зміни.</div>
+    <div class="why no">6 провалів — помилки грейдера, тож правити під них генератор шкідливо. А прибирати грейдер не можна: саме він упіймав регресію 0,91 → 0,45.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>eval case (кейс eval)</td><td>Вхід фічі разом з еталоном або мітками, які може перевірити грейдер.</td></tr>
+<tr><td>code-based grader (кодовий грейдер)</td><td>Детермінована перевірка виходу кодом: збіг, regex, схема, дослівність цитати.</td></tr>
+<tr><td>model-based grader (rubric judge)</td><td>Модель оцінює вихід за письмовою рубрикою там, де еталону немає.</td></tr>
+<tr><td>judge calibration (agreement / kappa)</td><td>Порівняння вердиктів судді з людськими мітками; міра — κ Коена на відкладених мітках.</td></tr>
+<tr><td>position bias (judge)</td><td>Вердикт судді залежить від порядку варіантів, а не від їхнього змісту.</td></tr>
+<tr><td>verbosity bias</td><td>Перевага судді до довшої, розлогішої відповіді незалежно від якості.</td></tr>
+<tr><td>answerability check</td><td>Свіжа модель відповідає лише за цитатою; код порівнює її вибір з ключем.</td></tr>
+<tr><td>regression eval</td><td>Нова версія промпту чи моделі на тому самому датасеті проти базової версії.</td></tr>
+<tr><td>offline replay (cached outputs)</td><td>Повтор eval на збережених відповідях моделі без жодного виклику; промах — помилка.</td></tr>
+<tr><td>eval threshold gate</td><td>Пороги в конфігу, порушення яких блокує зміну: абсолютні й відносні до базової версії.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Eval для власної LLM-фічі</h3>
+<p>Властивості й грейдери найдешевшого рівня, 8–15 кейсів з мітками, реальний прогін з n та інтервалами, розбір провалів модельного грейдера і gate з однією навмисною регресією.</p>
+<h3>2. Калібрування LLM-судді</h3>
+<p>40+ людських міток dev/test до перегляду вердиктів, κ і матриця плутанини, позиційна узгодженість, одна правка рубрики з виміром на test і рішення, чи входить суддя в gate.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/test-and-evaluate/develop-tests" target="_blank" rel="noopener">Anthropic — Define success criteria and build evaluations</a><span>документація Claude · критерії успіху, ієрархія грейдерів, поради до LLM-грейдерів</span></li>
+<li><a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents" target="_blank" rel="noopener">Anthropic — Demystifying evals for AI agents</a><span>09.01.2026 · типи грейдерів, калібрування з людьми, regression і capability evals, pass@k / pass^k</span></li>
+<li><a href="https://arxiv.org/abs/2306.05685" target="_blank" rel="noopener">Zheng et al. — Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena</a><span>NeurIPS 2023 Datasets and Benchmarks · позиційне упередження, багатослівність, самопреференція, згода з людьми</span></li>
+<li><a href="https://aclanthology.org/2024.acl-long.511/" target="_blank" rel="noopener">Wang et al. — Large Language Models are not Fair Evaluators</a><span>ACL 2024 · позиційне упередження й калібрування перестановкою</span></li>
+<li><a href="https://arxiv.org/abs/2404.13076" target="_blank" rel="noopener">Panickssery, Bowman, Feng — LLM Evaluators Recognize and Favor Their Own Generations</a><span>NeurIPS 2024 · самопреференція й самовпізнавання</span></li>
+<li><a href="https://inspect.aisi.org.uk/" target="_blank" rel="noopener">Inspect AI</a><span>UK AI Security Institute · версія 0.3.281 від 15.10.2026 · Dataset / Solver / Scorer, epochs, <code>inspect view</code></span></li>
+<li><a href="https://www.promptfoo.dev/docs/configuration/expected-outputs/" target="_blank" rel="noopener">promptfoo — assertions і метрики</a><span>версія 0.124.1 від 08.10.2026 · <a href="https://www.promptfoo.dev/docs/configuration/expected-outputs/model-graded/llm-rubric/" target="_blank" rel="noopener">llm-rubric</a>, <a href="https://www.promptfoo.dev/docs/configuration/caching/" target="_blank" rel="noopener">кешування</a>, <a href="https://www.promptfoo.dev/docs/integrations/ci-cd/" target="_blank" rel="noopener">CI/CD</a></span></li>
+</ul>
+<p>κ Коена: J. Cohen, «A Coefficient of Agreement for Nominal Scales», <i>Educational and Psychological Measurement</i> 20(1), 1960, с. 37–46. Шкала згоди: J. R. Landis, G. G. Koch, <i>Biometrics</i> 33(1), 1977, с. 159–174. Інтервал Вілсона: E. B. Wilson, <i>JASA</i> 22(158), 1927, с. 209–212. Видавці блокують автоматичну перевірку посилань, тому тут лише бібліографічні дані.</p>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 12.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 12.3 · Senomi<br><br><a href="lesson-58.html">← Урок 12.2</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-60.html">Урок 12.4 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

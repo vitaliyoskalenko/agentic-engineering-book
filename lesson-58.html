@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 12.2. AI code review: GitHub Action, людина в циклі</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="32" width="56" height="56" rx="8"/><rect x="48" y="48" width="24" height="24" rx="3"/><path d="M44 20v12M60 20v12M76 20v12M44 88v12M60 88v12M76 88v12M20 44h12M20 60h12M20 76h12M88 44h12M88 60h12M88 76h12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 12.2 · Модуль 12</div>
+<h1>AI code review: GitHub Action, людина в циклі</h1>
+<p class="lead">AI-рецензент корисний, коли відомо, де він стоїть у потоці PR, що він ловить на ваших правилах і хто відповідає за рішення. Ми виміряли Haiku і Sonnet на 12 PR Lectern із засіяними дефектами, з проєктним і з типовим промптом, і підключили автоматичне рев'ю з правилами з базової гілки та без секретів для форків.</p>
+<div class="hero-meta"><span class="chip">Якість: автоматичні перевірки й evals</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#place"><b>01</b>Де стоїть AI-рев&#x27;ю</a><a href="#human"><b>02</b>Людина в циклі</a><a href="#evidence"><b>03</b>Що відомо з вимірів</a><a href="#results"><b>04</b>Результати</a><a href="#prompt"><b>05</b>Проєктний промпт рев&#x27;ю</a><a href="#action"><b>06</b>GitHub Action для Lectern</a><a href="#tools"><b>07</b>Рев&#x27;ю в чотирьох інструментах</a><a href="#lectern"><b>08</b>Lectern</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>вирішити, де в потоці PR стоїть AI-рев'ю і яку глибину рев'ю дає кожен рівень ризику;</li>
+    <li>виміряти рецензента на власних PR із засіяними дефектами: recall за типом дефекту, хибні тривоги на чистому PR, ціну;</li>
+    <li>написати проєктний промпт рев'ю, який перевіряє правила проєкту, а не повторює CI;</li>
+    <li>підключити автоматичне рев'ю через <code>claude-code-action</code> з мінімальними правами, без секретів для форків і з правилами з базової гілки;</li>
+    <li>налаштувати процес так, щоб за злиття відповідала людина і щоб рев'ю не перетворювалось на штампування.</li>
+  </ul>
+</div>
+
+<section class="sec" id="place">
+<div class="sec-h"><span class="num">01</span><h2>Де стоїть AI-рев'ю<span class="sub">Три точки в потоці змін</span></h2></div>
+<p>Рецензент-субагент (урок 6.4), розділення генератора й критика (10.1), чекліст рев'ю diff (11.1) і рецензент лише зі spec і diff (11.5) уже були. Тепер питання системне: де рецензент запускається, хто читає його знахідки і хто відповідає за рішення.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Точка</th><th>Коли і хто читає</th><th>Що ловить добре</th><th>Ціна помилки рецензента</th></tr></thead>
+<tbody>
+<tr><td data-th="Точка"><b>Самоперевірка до коміту</b><br><code>/code-review</code>, рецензент-субагент</td><td data-th="Коли і хто читає">Автор, у своїй сесії, до того як diff побачить хтось інший</td><td data-th="Що ловить добре">Очевидні баги, забуті тести, порушення CLAUDE.md, поки виправити найдешевше</td><td data-th="Ціна помилки рецензента">Низька: хибну знахідку автор відкидає за секунди</td></tr>
+<tr><td data-th="Точка"><b>Рев'ю PR</b><br>GitHub Action, Code Review, Copilot, Codex, Bugbot</td><td data-th="Коли і хто читає">Автор і рецензент-людина, коментарями в PR</td><td data-th="Що ловить добре">Те саме плюс незалежний погляд: інша сесія не знає міркувань автора</td><td data-th="Ціна помилки рецензента">Середня: кожна хибна тривога забирає час людини і вчить ігнорувати бота</td></tr>
+<tr><td data-th="Точка"><b>Аудит після злиття</b><br>заплановане рев'ю <code>main</code></td><td data-th="Коли і хто читає">Власник модуля, звітом раз на тиждень</td><td data-th="Що ловить добре">Те, що видно лише в сумі змін: дрейф архітектури, повтори коду, нові поверхні атаки</td><td data-th="Ціна помилки рецензента">Низька для злиття (воно вже сталося), висока для довіри до звіту, якщо він шумний</td></tr>
+</tbody></table></div>
+<p>Самоперевірка і рев'ю PR не замінюють одна одну. Автор, який запускав <code>/code-review</code> у тій самій сесії, що писала код, отримує критика з тим самим контекстом і тими самими сліпими плямами. Рев'ю PR запускається окремо, з порожнім контекстом і власним промптом, і саме ця незалежність робить його корисним.</p>
+<h3>Глибина рев'ю за рівнем ризику</h3>
+<p>Рівні P0–P3 з уроку 8.4 задають не лише обсяг специфікації, а й те, скільки рев'ю отримує зміна. Lectern записує це в <code>docs/process.md</code>:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>AI-рев'ю</th><th>Людина</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">P0 · спайк</td><td data-th="AI-рев&#x27;ю">не запускається: у <code>main</code> не зливається</td><td data-th="Людина">—</td></tr>
+<tr><td data-th="Рівень">P1 · CLI, документи</td><td data-th="AI-рев&#x27;ю">автоматичне, порада в PR</td><td data-th="Людина">автор читає кожну знахідку і зливає сам</td></tr>
+<tr><td data-th="Рівень">P2 · промпти, перевірка цитат, схеми MCP</td><td data-th="AI-рев&#x27;ю">автоматичне + рецензент зі специфікацією (11.5)</td><td data-th="Людина">власник схвалює; кожна знахідка має рішення з причиною</td></tr>
+<tr><td data-th="Рівень">P3 · хуки, дані учнів, дозволи</td><td data-th="AI-рев&#x27;ю">за бажанням, як другий погляд</td><td data-th="Людина">людина пише й перевіряє, AI не замінює жодного кроку</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="human">
+<div class="sec-h"><span class="num">02</span><h2>Людина в циклі<span class="sub">Хто відповідає і як не штампувати</span></h2></div>
+<p>Великі продукти AI-рев'ю типово <b>не схвалюють PR</b>. Anthropic про Code Review: «Він не схвалює PR — це й далі рішення людини». Copilot типово залишає рев'ю типу Comment, яке не зараховується до обов'язкових схвалень. Codex: правила рев'ю «не замінюють тестів, захисту гілок і обов'язкових схвалень». Bugbot типово ставить перевірці висновок <code>neutral</code>, тож вимога «перевірка пройшла» злиття за знахідками не блокує.</p>
+<blockquote class="q-src">
+<p>Він не схвалює PR — це й далі рішення людини.</p>
+<p class="orig">“It won't approve PRs — that's still a human call”</p>
+<cite>Anthropic, «Code Review for Claude Code», 09.03.2026</cite>
+</blockquote>
+<div class="note warn"><span class="lbl">Перевірено · 17.10.2026</span>
+<p>Copilot уже вміє схвалювати (публічне прев'ю, вмикається явно): його Approve задовольняє правило обов'язкових схвалень так само, як схвалення колеги, і знімається після нового push. Увімкнути це — означає зробити бота підзвітним учасником, а підзвітним він бути не може. Для Lectern рішення одне: AI-рецензент ніколи не входить до обов'язкових схвалень.</p>
+</div>
+<h3>Три правила підзвітності</h3>
+<ol class="steps">
+<li><b>Знахідка AI — пропозиція.</b> Вона стає вимогою, лише коли людина її підтвердила фактом: прогоном, тестом, рядком специфікації (тріаж з 11.5).</li>
+<li><b>Відповідальний — той, хто зливає.</b> Не автор промпту, не «бот пропустив». У PR він бачить усі знахідки і для кожної blocker/major лишає рішення: «виправлено», «відхилено, бо…», «окремий B-пункт».</li>
+<li><b>AI-рев'ю не входить до обов'язкових перевірок.</b> Обов'язковий gate — детермінований <code>scripts/check.sh</code>. Рецензент-LLM з recall нижче 100% як gate дає хибне відчуття безпеки, а з хибними тривогами блокує зливання без причини.</li>
+</ol>
+<h3>Штампування (rubber-stamping)</h3>
+<p>Ризик не в тому, що AI пропустить баг, а в тому, що людина перестане шукати сама. У контрольованому експерименті 29 експертів (Tufano та ін., 2024) рецензенти, які починали з автоматичного рев'ю, <b>зосереджувались на місцях, які вказала модель</b>, знайшли більше дрібних проблем, але не більше серйозних, і не заощадили часу. Практик з дослідження Cihan та ін. (2024) сформулював це так: «рецензенти можуть ігнорувати решту, вирішивши, що якби була ще проблема, бот би її написав».</p>
+<div class="cols">
+<div class="cmp bad"><h4>Симптоми</h4><ul>
+<li>схвалення за хвилину після коментаря бота, без власних коментарів;</li>
+<li>«бот нічого не знайшов» як аргумент у PR;</li>
+<li>знахідки без відповіді або закриті без причини;</li>
+<li>бот пише по 6–8 коментарів на кожен PR, і їх перестали читати.</li>
+</ul></div>
+<div class="cmp good"><h4>Що робити</h4><ul>
+<li>людина читає diff і опис <b>до</b> коментарів бота: так видно, що вона знайшла сама;</li>
+<li>промпт дозволяє порожнє рев'ю і забороняє «consider…» без конкретного збою;</li>
+<li>раз на місяць засіяний PR: якщо людина схвалила його з дефектом, процес зламався;</li>
+<li>міряти частку прийнятих знахідок: падає — промпт шумить.</li>
+</ul></div>
+</div>
+</section>
+
+<section class="sec" id="evidence">
+<div class="sec-h"><span class="num">03</span><h2>Що відомо з вимірів<span class="sub">Дослідження, заяви вендорів і власний бенчмарк</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Джерело</th><th>Умови</th><th>Результат</th></tr></thead>
+<tbody>
+<tr><td data-th="Джерело">Cihan та ін., «Automated Code Review In Practice», ICSE 2025</td><td data-th="Умови">Qodo PR-Agent на GPT-4 Turbo, 4335 PR, з них 1568 з автоматичним рев'ю; кожен коментар треба було обов'язково позначити</td><td data-th="Результат">73,8% коментарів «вирішено», але середній час закриття PR зріс з 5 год 52 хв до 8 год 20 хв; 21,3% — «Won't Fix»</td></tr>
+<tr><td data-th="Джерело">Tantithamthavorn та ін., RovoDev Code Reviewer, Atlassian, ICSE SEIP 2026</td><td data-th="Умови">рік онлайн-оцінки у великій компанії</td><td data-th="Результат">38,7% коментарів спричинили зміни коду; час циклу PR −30,8%; коментарів людей −35,6%</td></tr>
+<tr><td data-th="Джерело">Crupi, Tufano, Bavota, ICPC 2026</td><td data-th="Умови">ChatGPT-4 проти людей-рецензентів на 240 PR</td><td data-th="Результат">у 2,4 раза більше коментарів, але лише 10% проблем якості, які знайшли люди; ~40% додаткових коментарів моделі — змістовні</td></tr>
+<tr><td data-th="Джерело">Tufano та ін., 2024</td><td data-th="Умови">контрольований експеримент, 29 експертів</td><td data-th="Результат">із автоматичним рев'ю — більше дрібних знахідок, не більше серйозних, без економії часу</td></tr>
+</tbody></table></div>
+<p>Дві речі з цих чисел визначають дизайн процесу. «Вирішено» і «змінило код» — різні метрики: перша включає «прочитав і закрив», друга — лише знахідки, які щось виправили, тож 73,8% і 38,7% напряму не порівнюються. І AI-рев'ю може <b>подовжити</b> PR: кожна знахідка вимагає реакції, а дешевих знахідок модель пише багато.</p>
+<div class="note fact"><span class="lbl">Заяви вендорів · перевірено 17.10.2026</span>
+<p>Anthropic про власний Code Review: до нього змістовні коментарі отримували 16% внутрішніх PR, з ним — 54%; на PR понад 1000 рядків знахідки є у 84% (у середньому 7,5), на PR до 50 рядків — у 31% (0,5); інженери позначають хибними менше 1% знахідок; рев'ю коштує в середньому $15–25. Cursor про Bugbot: 80% знайдених багів виправлено до злиття, прогін коштує в середньому $1–1,5. Це внутрішні метрики без опублікованої методики: орієнтир, а не бенчмарк.</p>
+</div>
+<h3 id="bench">Власний бенчмарк: 12 PR Lectern із засіяними дефектами</h3>
+<p>Чужі цифри не скажуть, як рецензент поводиться з <b>вашими</b> правилами. Засіяний бенчмарк (seeded-defect benchmark) відповідає на це за годину: невеликі PR з відомими дефектами, мітки записано до першого прогону, той самий промпт, що піде в CI.</p>
+<ol class="steps">
+<li><b>Дев'ять дефектних PR і три чисті</b> на копії канонічного Lectern після модуля 11, кожен у своїй гілці. Кожен PR проходить <code>LECTERN_BASE=main scripts/check.sh</code>: AI-рев'ю має знаходити те, чого CI не бачить.</li>
+<li><b>Мітки до прогону</b>: файл, рядки нової версії, тип дефекту, що саме не так. Коміт з мітками зроблено раніше, ніж запущено першого рецензента.</li>
+<li><b>Ізольований рецензент</b>: <code>claude -p</code> у порожній теці, <code>--tools ""</code>, <code>--setting-sources project --strict-mcp-config</code>, відповідь за JSON-схемою. На вході — <code>prompts/review.md</code>, назва й опис PR і diff.</li>
+<li><b>Автоматична оцінка + ручний розбір</b>: влучання — знахідка в тому самому файлі ±3 рядки (для «немає тесту» ще й слово test у тексті); кожну blocker/major поза мітками читає людина.</li>
+</ol>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>PR</th><th>Тип</th><th>Що засіяно</th><th>Що треба бачити</th></tr></thead>
+<tbody>
+<tr><td data-th="PR">p01</td><td data-th="Тип">логіка</td><td data-th="Що засіяно">«ковзний TTL»: <code>get()</code> перезаписує запис, але <code>put()</code> ставить старий <code>created_at</code> поверх нового; тест не може впасти</td><td data-th="Що треба бачити">репозиторій: тіла <code>put()</code> у diff немає</td></tr>
+<tr><td data-th="PR">p02</td><td data-th="Тип">логіка</td><td data-th="Що засіяно"><code>--shuffle</code> переставляє варіанти, а правильним позначає позицію зі старого порядку</td><td data-th="Що треба бачити">diff</td></tr>
+<tr><td data-th="PR">p03</td><td data-th="Тип">немає тесту</td><td data-th="Що засіяно">LEC-BUD-003 (повторний запуск пропускає ok-лекції) без тесту й маркера <code>req</code></td><td data-th="Що треба бачити">diff</td></tr>
+<tr><td data-th="PR">p04</td><td data-th="Тип">безпека</td><td data-th="Що засіяно">шаблон <code>lecture_id</code> прибрано, а id стає іменем файлу в теці задачі: <code>../../x</code></td><td data-th="Що треба бачити">diff + здогад про використання</td></tr>
+<tr><td data-th="PR">p05</td><td data-th="Тип">безпека</td><td data-th="Що засіяно"><code>Bash(.venv/bin/python *)</code> у fan-out скрипті: довільний код через <code>python -c</code></td><td data-th="Що треба бачити">diff</td></tr>
+<tr><td data-th="PR">p06</td><td data-th="Тип">правило проєкту</td><td data-th="Що засіяно">цитати без урахування регістру; рядок LEC-Q-003 переписано на місці, приклад і тест змінено під код</td><td data-th="Що треба бачити">diff + промпт</td></tr>
+<tr><td data-th="PR">p07</td><td data-th="Тип">специфікація</td><td data-th="Що засіяно"><code>CANDIDATES</code> 20 → 50, а LEC-RAG-003 каже «top-20»</td><td data-th="Що треба бачити">специфікація</td></tr>
+<tr><td data-th="PR">p08</td><td data-th="Тип">продуктивність</td><td data-th="Що засіяно">кеш <code>norm()</code> прибрано з хибним обґрунтуванням: <code>report()</code> 10 питань ≈1 → 110–117 мс</td><td data-th="Що треба бачити">diff</td></tr>
+<tr><td data-th="PR">p09</td><td data-th="Тип">стиль</td><td data-th="Що засіяно">англійський докстринг, імена <code>tmp</code>/<code>res</code>/<code>x</code>, зник id LEC-BUD-001</td><td data-th="Що треба бачити">diff</td></tr>
+<tr><td data-th="PR">p10–p12</td><td data-th="Тип">чисті</td><td data-th="Що засіяно">битий запис кешу — промах; <code>quantile([])</code> — ValueError; нетекстова цитата не валить рендер</td><td data-th="Що треба бачити">—</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Один дефект довелося замінити</span>
+<p>Перша версія p08 замінила бінарний пошук у <code>_lines()</code> лінійним: O(n²) замість O(n log n). <code>check.sh</code> не завершився: на тесті «цитата в кінці 300-сторінкової лекції» pytest працював 7 хвилин, поки ми його не зупинили, а job CI має <code>timeout-minutes: 15</code>. Детермінований тест спіймав регресію раніше за будь-якого рецензента, тож у бенчмарку їй не місце.</p>
+</div>
+</section>
+
+<section class="sec" id="results">
+<div class="sec-h"><span class="num">04</span><h2>Результати<span class="sub">Що дає модель, що — промпт, що — специфікація</span></h2></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — копія Lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/review_bench.py run --model haiku --repeat 2 --out runs/haiku.jsonl</span>
+<span class="d">p01 haiku spec=False #1: 4 findings, $0.00300836, 56.2 s
+p01 haiku spec=False #2: 5 findings, $0.0032424599999999995, 21.6 s
+p02 haiku spec=False #1: 3 findings, $0.00335726, 17.8 s
+…</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/review_bench.py score runs/*.jsonl</span>
+haiku   generic.md spec=False runs=24  recall=0.89  alarms/clean PR=0.5  …  $0.0605  15.3 s/PR
+haiku   review.md  spec=False runs=24  recall=1.0  alarms/clean PR=0.83  …  $0.0779  20.4 s/PR
+haiku   review.md  spec=True  runs=24  recall=1.0  alarms/clean PR=0.83  …  $0.0822  18.7 s/PR
+sonnet  generic.md spec=False runs=12  recall=0.89  alarms/clean PR=0.0  …  $0.3235  11.4 s/PR
+sonnet  review.md  spec=False runs=12  recall=1.0  alarms/clean PR=0.33  …  $0.4272  17.5 s/PR
+sonnet  review.md  spec=True  runs=12  recall=1.0  alarms/clean PR=0.33  …  $0.4097  13.7 s/PR</pre>
+<div class="cap">реальний вивід, скорочено · Claude Code 2.1.302, claude-haiku-5-5 і claude-sonnet-5-5 · Haiku n=2, Sonnet n=1 · вартість — <code>total_cost_usd</code> так, як її рахує Claude Code · <code>generic.md</code> — фокус-список з прикладу автоматичного рев'ю в документації action</div></div>
+<p>Автоматичне зіставлення каже «recall 0,89–1,0» скрізь. Ручний розбір кожного влучання показує інше: з типовим промптом знахідка на p06 стояла на правильному рядку, але говорила про <code>ß → ss</code>, а не про послаблене правило цитат, і на p07 — про латентність, а не про специфікацію.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar m"><span class="k">Haiku · типовий промпт</span><span class="tr"><i style="--v:67%"></i><b style="--v:67%">12 з 18</b></span></div>
+  <div class="bar m"><span class="k">Sonnet · типовий промпт</span><span class="tr"><i style="--v:67%"></i><b style="--v:67%">6 з 9</b></span></div>
+  <div class="bar"><span class="k">Haiku · review.md</span><span class="tr"><i style="--v:89%"></i><b class="in" style="--v:89%">16 з 18 + 2 част.</b></span></div>
+  <div class="bar"><span class="k">Sonnet · review.md</span><span class="tr"><i style="--v:89%"></i><b class="in" style="--v:89%">8 з 9 + 1 част.</b></span></div>
+  <div class="bar t"><span class="k">Haiku · review.md + вимоги</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">18 з 18</b></span></div>
+  <div class="bar t"><span class="k">Sonnet · review.md + вимоги</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">9 з 9</b></span></div>
+</div>
+<figcaption>Засіяні дефекти, знайдені повністю, після ручного розбору (<code>console/adjudication.txt</code>). «Част.» — p07: рецензент підозрює вимогу LEC-RAG, але не бачить її.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип дефекту</th><th>Типовий промпт</th><th>review.md</th><th>+ рядки вимог</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип дефекту">логіка, безпека, продуктивність, стиль (p01, p02, p04, p05, p08, p09)</td><td data-th="Типовий промпт">усі, обидві моделі</td><td data-th="review.md">усі</td><td data-th="+ рядки вимог">усі</td></tr>
+<tr><td data-th="Тип дефекту">немає тесту (p03)</td><td data-th="Типовий промпт">пропущено 3 з 3</td><td data-th="review.md">знайдено</td><td data-th="+ рядки вимог">знайдено</td></tr>
+<tr><td data-th="Тип дефекту">правило проєкту (p06)</td><td data-th="Типовий промпт">пропущено 3 з 3</td><td data-th="review.md">знайдено, blocker</td><td data-th="+ рядки вимог">знайдено, blocker</td></tr>
+<tr><td data-th="Тип дефекту">специфікація (p07)</td><td data-th="Типовий промпт">пропущено 3 з 3</td><td data-th="review.md">лише підозра</td><td data-th="+ рядки вимог">знайдено з цитатою LEC-RAG-003</td></tr>
+</tbody></table></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Конфігурація</th><th>blocker/major на чистий PR</th><th>з них хибних</th><th>$ / PR</th></tr></thead>
+<tbody>
+<tr><td data-th="Конфігурація">Haiku · типовий</td><td data-th="blocker/major на чистий PR">0,50</td><td data-th="з них хибних">0</td><td data-th="$ / PR">0,0025</td></tr>
+<tr><td data-th="Конфігурація">Sonnet · типовий</td><td data-th="blocker/major на чистий PR">0</td><td data-th="з них хибних">0</td><td data-th="$ / PR">0,027</td></tr>
+<tr><td data-th="Конфігурація">Haiku · review.md</td><td data-th="blocker/major на чистий PR">0,83</td><td data-th="з них хибних">1 з 5</td><td data-th="$ / PR">0,0032</td></tr>
+<tr><td data-th="Конфігурація">Sonnet · review.md</td><td data-th="blocker/major на чистий PR">0,33</td><td data-th="з них хибних">0</td><td data-th="$ / PR">0,036</td></tr>
+<tr><td data-th="Конфігурація">Haiku · + вимоги</td><td data-th="blocker/major на чистий PR">0,83</td><td data-th="з них хибних">0</td><td data-th="$ / PR">0,0034</td></tr>
+<tr><td data-th="Конфігурація">Sonnet · + вимоги</td><td data-th="blocker/major на чистий PR">0,33</td><td data-th="з них хибних">0</td><td data-th="$ / PR">0,034</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Модель дає дефекти, видимі в diff; промпт — дефекти проєкту; специфікація — порушення вимог.</b> Логіку, безпеку і продуктивність знайшли всі шість конфігурацій. Три дефекти, які залежать від правил Lectern, знайшов лише проєктний промпт, а p07 повністю — лише з рядками вимог у контексті. Різниця між Haiku і Sonnet на цих 12 PR — у шумі, не в recall.</li>
+<li><b>Майже всі тривоги на чистих PR справжні.</b> Тривоги на «чистому» p10 виявились правдою: <code>read_text("utf-8")</code> кидає <code>UnicodeDecodeError</code>, а це не <code>OSError</code> і не <code>JSONDecodeError</code>, тож файл з не-UTF-8 байтами далі дає 500. Мітки помилились. Хибною виявилась одна тривога з 15: Haiku на p12 назвав дефектом задуману поведінку.</li>
+<li><b>Ціна проєктного промпту — завищена серйозність.</b> Стильовий p09 типовий промпт Sonnet оцінив як minor, а з правилом «коментар з рішенням — контракт» — як major, Haiku — аж до blocker. З рядками вимог Sonnet повернувся до minor. Шкала серйозності потребує калібрування так само, як recall.</li>
+<li><b>Дефекту, якого немає в diff, не побачив ніхто.</b> p01 ламається в <code>put()</code>, якого рецензент не бачив. Усі конфігурації помітили, що новий тест не може впасти, і чесно написали «I can't see <code>put</code>». У CI з інструментом Read рецензент міг би відкрити файл; бенчмарк без інструментів цього не міряє (B120).</li>
+</ul>
+<div class="note warn"><span class="lbl">Межі цих чисел</span>
+<p>12 PR, n=1–2, дефекти й промпт писала одна людина. Промпт прямо згадує <code>Bash(python *)</code> і «тест, що не може впасти», тож упередженість у його користь реальна: саме тому поруч стоїть контроль із типовим промптом. Рецензент працював без інструментів, а в CI він читатиме репозиторій. Усі прогони коштували $1,47.</p>
+</div>
+</section>
+
+<section class="sec" id="prompt">
+<div class="sec-h"><span class="num">05</span><h2>Проєктний промпт рев'ю<span class="sub">prompts/review.md: що CI не бачить</span></h2></div>
+<p>Проєктний промпт рев'ю (project review prompt) — один файл, який читають і бенчмарк, і workflow: виміряне в бенчмарку і є тим, що працює в CI. Три рішення в ньому важать більше за перелік перевірок.</p>
+<pre class="code" data-lang="markdown"><span class="k">CI already runs `scripts/check.sh`</span>: ruff (with `ANN` annotations for `src/`), pytest, `trace.py`
+(`@pytest.mark.req` markers, `Refs:` trailers on commits that touch `src/`), the MCP contract and
+`tests/test_ci_policy.py` (no bare `Bash` in agent allow lists). <span class="k">Do not repeat what those catch.</span>
+...
+   - Citation rule: `check_quote`, `validate()`, `norm()`, quote matching and `MIN_QUOTE_WORDS` are
+     never loosened in an ordinary PR; such a change needs the owner and an ADR.
+   - Requirements: ... A requirement whose meaning changes gets a new id and the old one becomes
+     `superseded`; a row is never silently edited. `Refs:` names the requirements a change really
+     implements; `Refs: none` only when none is affected.
+   - <span class="k">A comment that records a decision (a complexity bound, a requirement id, a measured number)
+     is a contract</span>: removing the decision is a finding, not a cleanup.
+...
+- Report only a problem you can point to in this diff: file, line in the NEW version of the file,
+  what goes wrong and when. No praise, no summary of the PR, no "consider ..." without a concrete
+  failure.
+- <span class="k">If you are not sure, say what would confirm it and lower the severity</span>; do not invent context
+  you were not shown.
+- <span class="k">A correct PR gets no findings. An empty review is a valid review.</span></pre>
+<div class="cap">фрагменти <code>prompts/review.md</code> (повний файл — 43 рядки)</div>
+<ul>
+<li><b>Межа з CI.</b> ANN, трейлери, маркери і голий <code>Bash</code> уже перевіряє <code>check.sh</code>. Рецензентові лишається те, що детермінована перевірка побачити не може: чи <code>Refs:</code> називає <i>правильну</i> вимогу, чи <code>Bash(python *)</code> не ширший за голий <code>Bash</code>, чи тест узагалі здатен впасти.</li>
+<li><b>Порожнє рев'ю дозволене явно.</b> Разом із забороною «consider…» без конкретного збою це дає рецензентові законний спосіб сказати «нічого»: на чистому p11 у шести прогонах з цим промптом немає жодної знахідки рівня blocker/major, а Sonnet обидва рази повернув порожній список.</li>
+<li><b>Невпевненість — нижча серйозність, а не вигадка.</b> У прогонах це видно: Sonnet пише «I can't see <code>put</code>, so I can't tell…» і пропонує, що перевірити, замість твердження, якого не може довести.</li>
+</ul>
+</section>
+
+<section class="sec" id="action">
+<div class="sec-h"><span class="num">06</span><h2>GitHub Action для Lectern<span class="sub">claude-review.yml: права, форки, вартість</span></h2></div>
+<p><code>anthropics/claude-code-action</code> має два режими. Із входом <code>prompt</code> він запускається сам на подію workflow (automation mode); без нього чекає згадки <code>@claude</code> в коментарі (тригерну фразу змінює вхід <code>trigger_phrase</code>). Відповідь на <code>@claude</code> з уроків 10.3 і 11.5 живе в окремому workflow; автоматичне рев'ю — у своєму.</p>
+<pre class="code" data-lang="yaml"><span class="k">on:</span>
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+    paths: ["src/**", "scripts/**", "tests/**", "docs/spec/**", "docs/specs/**", "prompts/**", ...]
+<span class="k">permissions:</span>
+  contents: read
+  pull-requests: write
+  id-token: write <span class="cm"># як у прикладі docs/solutions.md claude-code-action</span>
+<span class="k">concurrency:</span>
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+<span class="k">jobs:</span>
+  review:
+    if: &gt;-
+      github.event.pull_request.draft == false &amp;&amp;
+      github.event.pull_request.head.repo.full_name == github.repository &amp;&amp;
+      !contains(github.event.pull_request.labels.*.name, 'no-ai-review')
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5…  <span class="cm"># v7.0.1, persist-credentials: false</span>
+      - name: Review rules from the base branch
+        uses: actions/checkout@3d3c42e5…
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .review-base
+          sparse-checkout: prompts/review.md
+      - id: rules
+        run: |  <span class="cm"># текст правил → вихід кроку</span>
+          { echo 'text&lt;&lt;LECTERN_REVIEW_EOF'; cat .review-base/prompts/review.md
+            echo 'LECTERN_REVIEW_EOF'; } &gt;&gt; "$GITHUB_OUTPUT"
+      - uses: anthropics/claude-code-action@f27be6b6…  <span class="cm"># v1.0.252</span>
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          settings: '{"disableAllHooks": true}'  <span class="cm"># хуки Lectern — скрипти з голови PR</span>
+          prompt: |
+            ${{ steps.rules.outputs.text }}
+            <span class="cm">## Delivery on GitHub: gh pr diff / gh pr view; inline comment per finding;</span>
+            <span class="cm">## one gh pr comment with a table; never approve, push or edit files</span>
+          claude_args: |
+            --model claude-sonnet-5-5
+            --max-turns 20
+            --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"</pre>
+<div class="cap"><code>dot-github/workflows/claude-review.yml</code>, скорочено · у справжньому репозиторії — <code>.github/workflows/</code> · дії закріплено SHA тегів · на GitHub не запускалось: у курсу немає ключа API й віддаленого репозиторію</div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Рішення</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td><code>pull_request</code>, не <code>pull_request_target</code></td><td>PR з форка в <code>pull_request</code> не отримує секретів (крім <code>GITHUB_TOKEN</code>, який стає лише для читання). <code>pull_request_target</code> виконується в контексті базового репозиторію з його секретами, і поєднання з checkout коду PR — класичний «pwn request». З 8 грудня 2025 цей тригер завжди бере workflow і коміт з типової гілки, а <code>actions/checkout</code> v7 типово відмовляється робити checkout голови PR у ньому. Форк рев'юїть людина.</td></tr>
+<tr><td><code>if: head.repo == repository</code></td><td>Без цього PR з форка падає на відсутньому ключі: червоний хрестик, який усі навчаться ігнорувати.</td></tr>
+<tr><td>Правила з базової гілки</td><td>PR не може послабити правила, за якими його рев'юять: змінений у PR <code>prompts/review.md</code> почне діяти лише після злиття. Action сам відновлює <code>.claude/</code>, <code>CLAUDE.md</code> і <code>.mcp.json</code> з бази, але про наш промпт не знає.</td></tr>
+<tr><td><code>disableAllHooks</code></td><td>Хуки Lectern викликають <code>scripts/hooks/*.py</code>. <code>.claude/settings.json</code> action бере з бази, але самі скрипти в checkout — з голови PR, і документація action прямо попереджає про такі «repo-relative» команди. Рецензентові хуки не потрібні.</td></tr>
+<tr><td>Права</td><td><code>contents: read</code> і <code>pull-requests: write</code>: читати код, коментувати. Немає <code>contents: write</code> — бот не пушить; немає дозволу Bash поза трьома командами <code>gh pr</code>.</td></tr>
+<tr><td>Секрет</td><td>Лише <code>${{ secrets.ANTHROPIC_API_KEY }}</code>. Вхід <code>show_full_output</code> не вмикаємо: за документацією він виводить усі повідомлення й результати інструментів, які «можуть містити секрети», у публічний лог.</td></tr>
+<tr><td>Вартість</td><td><code>paths</code> пропускає PR лише з документами; draft не рев'юїться; новий push скасовує рев'ю застарілого diff; <code>--max-turns 20</code> і <code>timeout-minutes: 15</code> обмежують утечу; мітка <code>no-ai-review</code> вимикає рев'ю для одного PR.</td></tr>
+</tbody></table></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — копія Lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">actionlint -version | head -1</span>
+1.7.12
+<span class="ps">$ </span><span class="c">cp dot-github/workflows/claude-review.yml .github/workflows/ &amp;&amp; actionlint -oneline; echo "exit $?"</span>
+exit 0</pre>
+<div class="cap">реальний вивід · actionlint 1.7.12 з <code>actionlint-py</code> у тимчасовому venv (як в уроці 10.3) · shellcheck не встановлено, тож блоки <code>run:</code> не перевірені · actionlint не доводить, що workflow справді спрацює</div></div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Рев'ю в чотирьох інструментах<span class="sub">Тригер, правила, хто платить</span></h2></div>
+<p>Головна різниця між продуктами — не модель, а <b>звідки береться файл правил</b>. Якщо з голови PR, автор може змінити правила, за якими рев'ю перевіряє його зміну.</p>
+<div class="tabs">
+<input type="radio" name="rv-t" id="rv-t1" checked><input type="radio" name="rv-t" id="rv-t2"><input type="radio" name="rv-t" id="rv-t3"><input type="radio" name="rv-t" id="rv-t4">
+<div class="tab-l"><label for="rv-t1">Claude Code</label><label for="rv-t2">Codex</label><label for="rv-t3">Cursor</label><label for="rv-t4">Copilot</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Локально</b>: <code>/code-review</code> (рівні <code>low</code>…<code>max</code>; <code>--comment</code> публікує знахідки в PR, <code>--fix</code> застосовує, <code>ultra</code> — глибоке багатоагентне рев'ю в хмарі). <code>/review</code> з версії 2.1.223 — його аліас. <code>/security-review</code> перевіряє зміни гілки на вразливості.</li>
+<li><b>У CI</b>: <code>claude-code-action</code>, як вище; ключ API, ваш промпт, ваш раннер. Налаштування застосунку й секрету — <code>/install-github-app</code> (лише github.com, потрібні права адміністратора репозиторію).</li>
+<li><b>Керований Code Review</b> (Team і Enterprise; загальний доступ з 15.10.2026): команда агентів шукає, перевіряє і ранжує знахідки; правила — <code>REVIEW.md</code> з базової або типової гілки, ніколи з самого PR; рев'ю не схвалює і не блокує PR; оплата за токени.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Тригер</b>: коментар <code>@codex review</code> у PR або «Automatic review» в особистих налаштуваннях Codex — тоді без коментаря.</li>
+<li><b>Що пише</b>: «у GitHub Codex позначає лише проблеми P0 і P1» — фільтр шуму зашитий у продукт.</li>
+<li><b>Правила</b>: розділ <code>## Code Review Rules</code> в <code>AGENTS.md</code>, найближчому до коду, якого вони стосуються.</li>
+<li><b>Поруч</b>: <code>@codex security review</code> (дослідницьке прев'ю) і <code>@codex fix the P1 issue</code> — хмарна задача з PR як контекстом.</li>
+</ul>
+<div class="cap">з документації Codex (GitHub integration) · не запускалось у цьому уроці</div>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Bugbot</b>: автоматичне рев'ю на кожне оновлення PR, вручну — коментар <code>cursor review</code> або <code>bugbot run</code>.</li>
+<li><b>Правила</b>: кореневий <code>.cursor/BUGBOT.md</code> плюс такі самі файли вгору від змінених; правила проєкту <code>*.mdc</code> на Bugbot не діють.</li>
+<li><b>Gate</b>: висновок перевірки типово <code>neutral</code> — обов'язковість самої перевірки злиття за знахідками не блокує.</li>
+<li><b>Ціна</b>: з травня 2026 за використання замість $40 за місце; середній прогін, за Cursor, $1–1,5.</li>
+</ul>
+<div class="cap">з документації і блогу Cursor · не запускалось у цьому уроці</div>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Тригер</b>: Copilot як рецензент PR; автоматично — особисте налаштування або набір правил гілки (ruleset) з опціями для нових push і draft.</li>
+<li><b>Правила</b>: <code>.github/copilot-instructions.md</code>, <code>.github/instructions/*.instructions.md</code> для шляхів, <code>AGENTS.md</code>. Читаються <b>з голови PR</b>, а не з базової гілки.</li>
+<li><b>Рішення</b>: типово рев'ю Comment, яке не зараховується до обов'язкових схвалень; за налаштування — Approve (прев'ю).</li>
+<li><b>Ціна</b>: AI-кредити: за документацією, $0,05–1 на рев'ю з зусиллям Lite і $0,25–5 з Balanced, плюс хвилини Actions.</li>
+</ul>
+<div class="cap">з документації GitHub Copilot code review · не запускалось у цьому уроці</div>
+</div>
+</div>
+<p>Сторонні сервіси перевіряйте на те саме. CodeRabbit читає <code>.coderabbit.yaml</code> з гілки, що рев'юїться, тобто з голови PR, а <code>@coderabbitai review</code> дивиться лише нові зміни (повний прохід — <code>@coderabbitai full review</code>); для публічних репозиторіїв безкоштовний. Код при цьому йде на сервер постачальника, тож для приватних даних це рішення про обробку даних, а не лише про інструмент.</p>
+</section>
+
+<section class="sec" id="lectern">
+<div class="sec-h"><span class="num">08</span><h2>Lectern<span class="sub">Рецензент, якого можна виміряти</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 12.2</div><div class="pb">
+<p>Lectern отримує автоматичне рев'ю PR і бенчмарк, без якого промпт рецензента не змінюють. Знахідки бенчмарку, які CI мав би ловити сам, стали тестами.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — копія Lectern, гілка l58</span></div>
+<pre><span class="ps">$ </span><span class="c">git diff --stat main..l58 -- . ':!tests/fixtures'</span>
+ BACKLOG.md                             |   6 +
+ CHANGELOG.md                           |   1 +
+ docs/process.md                        |  11 +
+ dot-claude/CLAUDE.kit.md               |   5 +
+ dot-github/workflows/claude-review.yml |  83 +++++++
+ prompts/review.md                      |  43 ++++
+ scripts/review_bench.py                | 326 +++++++++++++++++++++++++
+ tests/test_review_bench.py             | 118 +++++++++
+ tests/test_service.py                  |   9 +
+ tests/test_tools.py                    |  13 +
+ 10 files changed, 615 insertions(+)
+<span class="ps">$ </span><span class="c">git diff --shortstat main..l58 -- tests/fixtures</span>
+ 14 files changed, 755 insertions(+)
+<span class="ps">$ </span><span class="c">LECTERN_BASE=main scripts/check.sh | tail -3</span>
+<span class="d">== mcp-contract: … scripts/mcp_contract.py check
+contract unchanged (0.3.0)</span>
+<span class="ok">all checks passed</span></pre>
+<div class="cap">реальний вивід · гілка уроку в копії канонічного Lectern · pytest 436 passed, 1 skipped, з них 27 нових · повний diff — <code>console/lectern-l58.diff</code></div></div>
+<ul>
+<li><code>prompts/review.md</code> — правила рецензента; <code>dot-github/workflows/claude-review.yml</code> — автоматичне рев'ю з правилами з базової гілки, без хуків проєкту (<code>disableAllHooks</code>) і без секретів для форків.</li>
+<li><code>scripts/review_bench.py</code> (stdlib): <code>cases</code>, <code>prompt</code>, <code>run</code> (<code>--spec</code> — рядки сімейств вимог, <code>--rules</code> — контрольний промпт), <code>score</code>; фікстури — 12 diff, <code>cases.json</code> з мітками і <code>generic.md</code>.</li>
+<li><code>tests/test_review_bench.py</code>: кожна мітка вказує в рядки свого diff; оцінка рахує влучання, тривоги й шум так, як заявлено; бенчмарк і workflow читають той самий файл правил; у workflow немає <code>pull_request_target</code>, <code>contents: write</code> і <code>show_full_output</code>.</li>
+<li>Два класи знахідок перетворено на тести: <code>test_lecture_id_cannot_leave_the_job_folder</code> (p04: <code>../../x</code>, <code>a/b</code>, <code>..</code>) і <code>test_lecture_is_normalized_once_per_session</code> (p08). Обидва падають на коді засіяних PR — тепер це ловить <code>check.sh</code>, а не рецензент.</li>
+<li><code>docs/process.md</code> — таблиця глибини AI-рев'ю для P0–P3; CLAUDE.kit — команда <code>score</code> і правило «промпт рецензента змінюють лише з числами до і після».</li>
+</ul>
+<p><b>Ваш крок:</b> допишіть у <code>cases.json</code> тринадцятий PR з дефектом, який ваш рецензент, на вашу думку, пропустить, підтвердьте, що <code>check.sh</code> на ньому зелений, і прогоніть <code>run --model haiku --cases p13</code>.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Бот пише 5–7 коментарів на кожен PR, їх перестали читати</td><td data-th="Причина">Промпт не дозволяє порожнього рев'ю і не відсікає «consider…»; дублює лінтер</td><td data-th="Що зробити">Межа з CI в промпті, порожнє рев'ю як валідна відповідь, серйозність з визначеннями; міряти тривоги на чистих PR</td></tr>
+<tr><td data-th="Симптом">Рецензент «пропустив» порушення специфікації</td><td data-th="Причина">Він її не бачив: diff не містить рядків вимог</td><td data-th="Що зробити">Дати контекст: рядки сімейств вимог, згаданих у PR, або інструмент Read у CI</td></tr>
+<tr><td data-th="Симптом">Автор PR послабив правила рев'ю у тому самому PR</td><td data-th="Причина">Файл правил читається з голови PR</td><td data-th="Що зробити">Правила з базової гілки (sparse checkout <code>base.sha</code>), як Code Review читає <code>REVIEW.md</code></td></tr>
+<tr><td data-th="Симптом">Рев'ю «не працює для контриб'юторів» → перейшли на <code>pull_request_target</code></td><td data-th="Причина">Форки не отримують секретів, і це правильно</td><td data-th="Що зробити">Повернути <code>pull_request</code>, пропускати форки умовою; форк рев'юїть людина</td></tr>
+<tr><td data-th="Симптом">AI-рецензента зробили обов'язковою перевіркою</td><td data-th="Причина">Хочеться «автоматичного gate»</td><td data-th="Що зробити">Gate — детермінований <code>check.sh</code>; підтверджений клас знахідок перетворити на тест, як <code>test_lecture_id_cannot_leave_the_job_folder</code></td></tr>
+<tr><td data-th="Симптом">Змінили промпт або модель — «стало краще»</td><td data-th="Причина">Враження з двох PR</td><td data-th="Що зробити">Прогін бенчмарку до і після: recall за типом і тривоги на чистих PR</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">рев'ю PR чи самоперевірка?</span><span class="h">чим відрізняються</span></span><span class="b"><span class="t">Незалежністю</span><span class="d">окремий запуск з порожнім контекстом не має сліпих плям сесії, що писала код</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">хибна тривога</span><span class="h">як рахувати</span></span><span class="b"><span class="t">blocker/major на чистому PR</span><span class="d">кожну розбирає людина: хибна, справжня чи завищена</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">звідки правила рев'ю?</span><span class="h">база чи голова PR</span></span><span class="b"><span class="t">З базової гілки</span><span class="d">інакше PR послаблює правила, за якими його перевіряють</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">PR з форка</span><span class="h">AI-рев'ю?</span></span><span class="b"><span class="t">Ні, людина</span><span class="d">pull_request не дає секретів форку; pull_request_target дав би</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">AI-рецензент як gate</span><span class="h">можна?</span></span><span class="b"><span class="t">Ні</span><span class="d">gate — детермінований check.sh; знахідку, що повторюється, — у тест</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">recall 100%</span><span class="h">чому не довіряти одразу</span></span><span class="b"><span class="t">Промпт знає дефекти</span><span class="d">автор промпту засіяв їх сам — потрібен контроль з типовим промптом</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Автор запустив <code>/code-review</code> у сесії, що писала код, і знахідок не отримав. Тімлід пропонує вимкнути рев'ю PR як дубль. Що відповісти?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Погодитись: та сама модель з тим самим промптом не знайде в PR нічого нового</span></label><label class="opt ok"><input type="radio" name="q1"><span>Лишити: рев'ю PR — окремий запуск без контексту і міркувань автора, у нього інші сліпі плями</span></label><label class="opt"><input type="radio" name="q1"><span>Лишити, але лише для PR понад 1000 рядків: саме там, за даними вендорів, з'являється більшість знахідок</span></label></div>
+    <div class="why yes">Так. Самоперевірка в тій самій сесії успадковує її пояснення й припущення; незалежність рев'ю PR — його головна цінність.</div>
+    <div class="why no">Дубль був би, якби контекст був той самий. Але рев'ю PR стартує з порожнім контекстом і власним промптом, тож не повторює помилок сесії автора. Розмір PR тут не критерій: засіяні дефекти бенчмарку сиділи в PR на 1–30 рядків.</div></div>
+  <div class="q"><div class="qt">2. PR змінює один рядок у <code>norm()</code>. Яку глибину рев'ю він отримує в Lectern?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>P2: AI-рев'ю, рецензент зі специфікацією і схвалення власника з рішенням на кожну знахідку</span></label><label class="opt"><input type="radio" name="q2"><span>P1: зміна в один рядок, тож досить автоматичного AI-рев'ю, після якого автор зливає сам</span></label><label class="opt"><input type="radio" name="q2"><span>P0: дрібна правка не потребує рев'ю, бо CI все одно проганяє всі тести перевірки цитат</span></label></div>
+    <div class="why yes">Так. Рівень задає тип зміни: перевірка цитат — P2, лише власник.</div>
+    <div class="why no">Рівень визначає тип зміни, а не розмір diff: правило цитат — P2 (урок 8.4). І p06 бенчмарку показує, чому CI тут не захист: тест і приклад специфікації змінили разом з кодом, і <code>check.sh</code> позеленів.</div></div>
+  <div class="q"><div class="qt">3. Після впровадження AI-рев'ю схвалення приходять за хвилину після коментаря бота, власних коментарів у рецензентів немає. Що це і що зробити насамперед?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Ознака якісного бота: люди довіряють його знахідкам, тож варто зробити його обов'язковою перевіркою</span></label><label class="opt"><input type="radio" name="q3"><span>Втома від шуму: треба вимкнути бота, бо будь-яке AI-рев'ю неминуче призводить до штампування</span></label><label class="opt ok"><input type="radio" name="q3"><span>Штампування: людина читає diff до коментарів бота, а засіяний PR раз на місяць перевіряє процес</span></label></div>
+    <div class="why yes">Так. За Tufano та ін., рецензенти з автоматичним рев'ю зосереджуються на вказаних моделлю місцях і не знаходять більше серйозних проблем.</div>
+    <div class="why no">Швидкі схвалення без власних коментарів — класичний симптом штампування, а не довіри. Вимикати бота не обов'язково: важливо повернути людині власний пошук і перевіряти процес засіяним PR.</div></div>
+  <div class="q"><div class="qt">4. Рецензент на p07 (CANDIDATES 20 → 50) без специфікації написав «якщо LEC-RAG-вимога фіксує кількість кандидатів…». Як це зарахувати і що змінити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Як промах: модель не назвала LEC-RAG-003, отже треба брати сильнішу модель</span></label><label class="opt ok"><input type="radio" name="q4"><span>Як часткове влучання: він не бачив вимог; дати рядки сімейства LEC-RAG у контекст</span></label><label class="opt"><input type="radio" name="q4"><span>Як повне влучання: рядок той самий, а рішення про злиття все одно ухвалює людина-рецензент</span></label></div>
+    <div class="why yes">Так. Дефект видно лише зі специфікацією; з рядками LEC-RAG у контексті рецензент прямо цитує «top-20».</div>
+    <div class="why no">Автоматичне влучання (той самий рядок) ще не знахідка, а модель тут не винна: вона чесно сказала, чого не бачить. Виправлення — контекст: рядки вимог тих сімейств, які згадано в PR чи diff.</div></div>
+  <div class="q"><div class="qt">5. Recall на 9 засіяних дефектах — 100% в обох моделей. Що зробити, перш ніж писати це в звіт?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Збільшити повтори до n=5: при n=1–2 випадковість легко дає 100% замість реальних 80% recall</span></label><label class="opt"><input type="radio" name="q5"><span>Нічого: мітки записано до прогону, тож результат чесний і переноситься на будь-який PR</span></label><label class="opt ok"><input type="radio" name="q5"><span>Прогнати контроль з типовим промптом: автор промпту засіяв дефекти сам і міг підказати їх</span></label></div>
+    <div class="why yes">Так. Промпт згадує <code>Bash(python *)</code> і «тест, що не може впасти» — саме те, що засіяно. Контроль показує, скільки дає промпт, а скільки модель.</div>
+    <div class="why no">Повтори знижують шум, але не упередженість: якщо промпт описує засіяні дефекти, 100% повториться і при n=5. Мітки до прогону захищають від підгонки оцінки, а не від підказки в промпті.</div></div>
+  <div class="q"><div class="qt">6. На «чистому» p10 рецензент знайшов major: <code>UnicodeDecodeError</code> не перехоплюється. Що робити з цією тривогою?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Перевірити фактом: якщо так і є, мітка помилилась — це справжня знахідка із завищеною серйозністю</span></label><label class="opt"><input type="radio" name="q6"><span>Зарахувати як хибну тривогу: PR позначено чистим до прогону, тож будь-яка знахідка там хибна</span></label><label class="opt"><input type="radio" name="q6"><span>Викреслити з оцінки: на чистих PR рахують лише кількість знахідок, а не їхній зміст</span></label></div>
+    <div class="why yes">Так. <code>UnicodeDecodeError</code> — підклас <code>ValueError</code>, не <code>OSError</code> і не <code>JSONDecodeError</code>; файл з не-UTF-8 байтами справді дасть 500.</div>
+    <div class="why no">Мітки теж помиляються. Тривогу на чистому PR розбирає людина: хибна, справжня чи справжня із завищеною серйозністю. Лише після розбору її можна зарахувати.</div></div>
+  <div class="q"><div class="qt">7. Контриб'ютор з форка скаржиться, що AI-рев'ю на його PR падає без ключа. Колега пропонує перейти на <code>pull_request_target</code>. Чому ні?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Бо <code>pull_request_target</code> з грудня 2025 узагалі не запускається для PR з форків</span></label><label class="opt ok"><input type="radio" name="q7"><span>Бо він дає секрети базового репозиторію, а рецензент читає код і текст автора форку</span></label><label class="opt"><input type="radio" name="q7"><span>Бо <code>claude-code-action</code> не підтримує цей тригер і завершиться з помилкою входу</span></label></div>
+    <div class="why yes">Так. Код і коментарі PR — недовірений вхід, а prompt injection чи checkout голови PR відкриють секрет. Форк рев'юїть людина; падіння прибирає умова <code>head.repo == repository</code>.</div>
+    <div class="why no">Тригер працює для форків, і action його підтримує, з попередженням не робити checkout недовіреного коду. Зміна грудня 2025 лише закріпила workflow і коміт за типовою гілкою. Небезпека — секрети поруч із кодом автора форку.</div></div>
+  <div class="q"><div class="qt">8. Навіщо workflow Lectern окремо витягає <code>prompts/review.md</code> з <code>base.sha</code>, якщо основний checkout уже містить цей файл?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Щоб пришвидшити job: sparse checkout одного файлу дешевший за читання з основного checkout</span></label><label class="opt"><input type="radio" name="q8"><span>Бо action відновлює з бази всі файли репозиторію, а без цього промпт був би недоступний</span></label><label class="opt ok"><input type="radio" name="q8"><span>Бо в основному checkout файл з голови PR, і PR міг би послабити правила свого ж рев'ю</span></label></div>
+    <div class="why yes">Так. Action відновлює з бази лише фіксований список (<code>.claude/</code>, <code>CLAUDE.md</code>, <code>.mcp.json</code>…); решта дерева — з голови PR.</div>
+    <div class="why no">Справа не у швидкості: action повертає з бази лише власні конфіги Claude, а все інше, зокрема <code>prompts/</code>, лишається з голови PR. Без окремого кроку автор міг би вписати в промпт «знахідок не повідомляй».</div></div>
+  <div class="q"><div class="qt">9. Засіяний p08 прибрав кеш <code>norm()</code>: <code>report()</code> 10 питань став у ~100 разів повільнішим, CI зелений. Рецензенти це знайшли. Що зробити далі?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Додати тест «лекцію нормалізовано один раз за сесію»: такий клас регресій ловитиме CI</span></label><label class="opt"><input type="radio" name="q9"><span>Зробити AI-рев'ю обов'язковою перевіркою, раз воно ловить те, чого не бачить CI</span></label><label class="opt"><input type="radio" name="q9"><span>Додати в промпт рядок «перевіряй кеш norm()», щоб рецензент не пропустив це наступного разу</span></label></div>
+    <div class="why yes">Так. Підтверджений клас знахідок стає детермінованою перевіркою; урок додав саме такий тест, і він падає на p08.</div>
+    <div class="why no">LLM-рецензент як gate має recall нижче 100% і хибні тривоги, а рядок про конкретний кеш у промпті — латка під один випадок. Детермінований тест закриває весь клас назавжди.</div></div>
+  <div class="q"><div class="qt">10. Copilot у вашій організації вміє ставити Approve, і це задовольнило б правило «одне схвалення». Що вирішити для коду, за який відповідає команда?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Увімкнути: Approve знімається після нового push, тож бот ніколи не схвалить неперевірений код</span></label><label class="opt ok"><input type="radio" name="q10"><span>Не вмикати: схвалення означає відповідальність, а бот не може відповідати за наслідки злиття</span></label><label class="opt"><input type="radio" name="q10"><span>Увімкнути лише для P2: там і так є рецензент зі специфікацією, тож ризик подвійно закритий</span></label></div>
+    <div class="why yes">Так. Відповідальний — той, хто зливає; AI-коментарі лишаються пропозиціями.</div>
+    <div class="why no">Зняття схвалення після push не робить бота підзвітним, а P2 — саме той рівень, де власник має схвалювати сам. Anthropic формулює це прямо: схвалення PR «й далі рішення людини».</div></div>
+  <div class="q"><div class="qt">11. Haiku на тому самому промпті знайшов ті самі засіяні дефекти, що й Sonnet, приблизно в 10 разів дешевше. Що це означає для вибору моделі в CI?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Брати Haiku: при однаковому recall дешевша модель завжди краща, а решта метрик вторинна</span></label><label class="opt"><input type="radio" name="q11"><span>Брати Sonnet: дешевий рецензент свідчить про поверхневий аналіз, навіть якщо recall той самий</span></label><label class="opt ok"><input type="radio" name="q11"><span>Дивитися ще на тривоги на чистих PR і серйозність: ціна шуму — час людини, а не долари</span></label></div>
+    <div class="why yes">Так. Різниця у вартості — центи за PR, а одна хибна major-тривога коштує хвилини людини і привчає ігнорувати бота.</div>
+    <div class="why no">Recall — лише половина картини. Вирішують ще тривоги на чистих PR і чи не завищує модель серйозність стилю до blocker: це прямо витрачає увагу рецензента.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>розміщення AI-рев'ю</td><td>Де запускається рецензент-LLM: до коміту, на PR чи після злиття — з різним читачем і ціною помилки.</td></tr>
+<tr><td>глибина рев'ю за ризиком</td><td>Обсяг рев'ю задає рівень ризику зміни P0–P3, а не розмір diff.</td></tr>
+<tr><td>штампування (rubber-stamping)</td><td>Схвалення без власної перевірки: людина покладається на коментарі бота.</td></tr>
+<tr><td>засіяний бенчмарк</td><td>PR з навмисними дефектами відомих типів і чисті PR; мітки до першого прогону.</td></tr>
+<tr><td>recall рев'ю за типом дефекту</td><td>Частка знайдених засіяних дефектів кожного типу окремо.</td></tr>
+<tr><td>хибна тривога на чистий PR</td><td>Знахідки blocker/major на PR без дефектів, після ручного розбору.</td></tr>
+<tr><td>проєктний промпт рев'ю</td><td>Правила рецензента для репозиторію: межа з CI, правила проєкту, серйозність, дозвіл на порожнє рев'ю.</td></tr>
+<tr><td>pull_request vs pull_request_target</td><td>Перший не дає форку секретів; другий виконується з секретами бази й небезпечний поруч із кодом PR.</td></tr>
+<tr><td>тригер @claude</td><td>Запуск claude-code-action згадкою в коментарі; лише користувачі з правом запису.</td></tr>
+<tr><td>відповідальна людина-рецензент</td><td>Той, хто зливає PR: рішення на кожну серйозну знахідку; бот не входить до схвалень.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Засіяний бенчмарк для вашого рецензента</h3>
+<p>8–10 PR (щонайменше 6 дефектних, кожен проходить ваш CI), мітки до прогону, recall за типом, розбір кожної тривоги на чистому PR, одна зміна з планом перевірки.</p>
+<h3>2. Workflow AI-рев'ю, якому можна довіряти</h3>
+<p>Workflow з обґрунтованими подією, правами, секретом і джерелом правил; два сценарії зловживання; правила підзвітності й метрики проти штампування.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://github.com/anthropics/claude-code-action" target="_blank" rel="noopener">anthropics/claude-code-action</a><span>v1.0.252 (16.10.2026) · <a href="https://github.com/anthropics/claude-code-action/blob/main/docs/solutions.md" target="_blank" rel="noopener">docs/solutions.md</a> (автоматичне рев'ю PR), <a href="https://github.com/anthropics/claude-code-action/blob/main/docs/security.md" target="_blank" rel="noopener">docs/security.md</a> (права запису, форки, файли з базової гілки), <a href="https://github.com/anthropics/claude-code-action/blob/main/docs/custom-automations.md" target="_blank" rel="noopener">custom-automations.md</a> (automation mode)</span></li>
+<li><a href="https://code.claude.com/docs/en/github-actions" target="_blank" rel="noopener">Claude Code — GitHub Actions</a><span>налаштування, <code>/install-github-app</code>, керування вартістю</span></li>
+<li><a href="https://code.claude.com/docs/en/commands" target="_blank" rel="noopener">Claude Code — команди</a><span><code>/code-review</code>, <code>/review</code> (аліас з 2.1.223), <code>/security-review</code>, <code>/ultrareview</code></span></li>
+<li><a href="https://code.claude.com/docs/en/code-review" target="_blank" rel="noopener">Claude Code — Code Review</a><span>керований сервіс: REVIEW.md з базової гілки, не схвалює й не блокує; <a href="https://claude.com/blog/code-review" target="_blank" rel="noopener">анонс 09.03.2026</a> і <a href="https://claude.com/resources/articles/code-review-is-now-generally-available" target="_blank" rel="noopener">загальний доступ 15.10.2026</a></span></li>
+<li><a href="https://docs.github.com/en/copilot/concepts/agents/code-review" target="_blank" rel="noopener">GitHub — Copilot code review</a><span>Comment типово, Approve у прев'ю, інструкції з голови PR, AI-кредити</span></li>
+<li><a href="https://learn.chatgpt.com/docs/third-party/github" target="_blank" rel="noopener">Codex — GitHub integration</a><span><code>@codex review</code>, автоматичне рев'ю, P0/P1, <code>## Code Review Rules</code> в AGENTS.md</span></li>
+<li><a href="https://cursor.com/docs/bugbot" target="_blank" rel="noopener">Cursor — Bugbot</a><span>тригери, <code>.cursor/BUGBOT.md</code>, висновок neutral; <a href="https://cursor.com/blog/may-2026-bugbot-changes" target="_blank" rel="noopener">зміна ціни, 11.05.2026</a></span></li>
+<li><a href="https://docs.coderabbit.ai/reference/review-commands" target="_blank" rel="noopener">CodeRabbit — команди рев'ю</a><span><code>@coderabbitai review</code> / <code>full review</code>; <a href="https://docs.coderabbit.ai/getting-started/yaml-configuration" target="_blank" rel="noopener">.coderabbit.yaml</a></span></li>
+<li><a href="https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows" target="_blank" rel="noopener">GitHub Actions — події</a><span>секрети й GITHUB_TOKEN для форків, попередження про <code>pull_request_target</code></span></li>
+<li><a href="https://github.blog/changelog/2025-11-07-actions-pull_request_target-and-environment-branch-protections-changes/" target="_blank" rel="noopener">GitHub changelog — pull_request_target</a><span>07.11.2025 · з 08.12.2025 workflow і коміт з типової гілки</span></li>
+<li><a href="https://github.blog/changelog/2026-06-18-safer-pull_request_target-defaults-for-github-actions-checkout/" target="_blank" rel="noopener">GitHub changelog — actions/checkout v7</a><span>18.06.2026 · відмова від типових pwn-request патернів</span></li>
+<li><a href="https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/" target="_blank" rel="noopener">GitHub Security Lab — Preventing pwn requests</a><span>03.08.2021</span></li>
+<li><a href="https://arxiv.org/abs/2412.18531" target="_blank" rel="noopener">Cihan та ін. — Automated Code Review In Practice</a><span>ICSE 2025 · 73,8% вирішених коментарів, довше закриття PR</span></li>
+<li><a href="https://arxiv.org/abs/2601.01129" target="_blank" rel="noopener">Tantithamthavorn та ін. — RovoDev Code Reviewer</a><span>Atlassian, ICSE SEIP 2026 · 38,7% коментарів змінили код</span></li>
+<li><a href="https://arxiv.org/abs/2602.11925" target="_blank" rel="noopener">Crupi, Tufano, Bavota — Studying Quality Improvements Recommended via Manual and Automated Code Review</a><span>ICPC 2026 · 240 PR</span></li>
+<li><a href="https://arxiv.org/abs/2411.11401" target="_blank" rel="noopener">Tufano та ін. — Deep Learning-based Code Reviews: A Paradigm Shift or a Double-Edged Sword?</a><span>11.2024 · експеримент з 29 експертами</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 12.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 12.2 · Senomi<br><br><a href="lesson-57.html">← Урок 12.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-59.html">Урок 12.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>
