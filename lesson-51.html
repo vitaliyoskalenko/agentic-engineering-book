@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 10.4. Декомпозиція на задачі й планування ітерацій з агентом</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 10.4 · Модуль 10</div>
+<h1>Декомпозиція на задачі й планування ітерацій з агентом</h1>
+<p class="lead">Список задач ще не план: у tasks.md Lectern перший реальний виклик моделі стоїть у кінці ланцюжка, а оцінка вартості бачила 4% входу. Ріжемо задачі вертикальними зрізами від ризику, оцінюємо за референсним класом із 64 прогонів курсу, рахуємо вартість моделлю циклу агента, будуємо критичний шлях і хвилі з перетином файлів і перевіряємо скриптом план ітерації, який запропонував Sonnet.</p>
+<div class="hero-meta"><span class="chip">SDLC, фаза 1 — підготовка проєкту з Claude</span><span class="chip t">≈ 65 хв</span><span class="chip a">11 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Відокремлюйте дослідження й планування від реалізації, щоб не розв'язувати не ту задачу.</p><cite>Anthropic, Claude Code — Best practices · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Від tasks.md до ітерації</a><a href="#slicing"><b>02</b>Нарізка</a><a href="#estimate"><b>03</b>Оцінка з даних</a><a href="#loop-cost"><b>04</b>Вартість прогону</a><a href="#graph"><b>05</b>Граф і паралельність</a><a href="#agent-plan"><b>06</b>План ітерації з агентом</a><a href="#replan"><b>07</b>Перепланування</a><a href="#lectern"><b>08</b>Lectern</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>перерізати пошаровий список задач на вертикальні зрізи й поставити найризикованіше припущення першим;</li>
+    <li>оцінити задачу агента за референсним класом із власних логів, а не «на око»;</li>
+    <li>порахувати вартість прогону агента моделлю циклу (префікс на кожному запиті + історія) і бюджетувати за p90;</li>
+    <li>побудувати критичний шлях і хвилі паралельної роботи з урахуванням WIP-ліміту й перетину файлів;</li>
+    <li>скласти план ітерації з місткістю, буфером і критеріями виходу, перевірити план агента скриптом і переплановувати за сигналами.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Від tasks.md до ітерації<span class="sub">Чого не дає список задач</span></h2></div>
+<p>У Lectern є <code>tasks.md</code> фічі «модуль з PDF» (урок 8.5): 14 задач, залежності, вимоги, приймання; T1, T2 і T14 виконано. Гранулярність задач і ланцюжок spec → plan → tasks — урок 8.1, ідентифікатори вимог — 8.3. План ітерації відповідає на інші питання:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Питання</th><th>tasks.md</th><th>План ітерації</th></tr></thead>
+<tbody>
+<tr><td data-th="Питання">Що в якому порядку</td><td data-th="tasks.md">лише «залежить від»</td><td data-th="План ітерації">порядок за ризиком і критичним шляхом</td></tr>
+<tr><td data-th="Питання">Скільки це коштує</td><td data-th="tasks.md">—</td><td data-th="План ітерації">години автора, прогони агента, $ — з даних</td></tr>
+<tr><td data-th="Питання">Що йде паралельно</td><td data-th="tasks.md">—</td><td data-th="План ітерації">хвилі з WIP-лімітом і без спільних файлів</td></tr>
+<tr><td data-th="Питання">Коли ітерація закінчена</td><td data-th="tasks.md">приймання кожної задачі</td><td data-th="План ітерації">критерії виходу: гейт, демо, виміряні гіпотези</td></tr>
+<tr><td data-th="Питання">Що робити, коли задача вибухає</td><td data-th="tasks.md">—</td><td data-th="План ітерації">сигнали й таблиця рішень</td></tr>
+</tbody></table></div>
+<p>Головна проблема цього <code>tasks.md</code> видна лише на графі: <b>перший реальний виклик моделі (T12) стоїть у кінці ланцюжка</b> T5 → T7 → T8 → T9 → T12. Гіпотези H1 (модуль ≤ $0,25), H3 (≥ 80% питань без правок) і H4 (точність <code>--dry-run</code>) перевіряться після ~9 годин роботи автора. Якщо H1 провалиться, половину зробленого доведеться переробляти під інший спосіб генерації.</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Агент робить задачу розміру M за 1,5–2 хвилини і $0,02 (виміри нижче). Дефіцитні ресурси інші: <b>години людини</b> на специфікацію, відповіді й рев'ю та <b>календар до першої правди</b> про гіпотезу. Їх і планують.</p>
+</div>
+</section>
+
+<section class="sec" id="slicing">
+<div class="sec-h"><span class="num">02</span><h2>Нарізка<span class="sub">Шари, вертикальні зрізи, ходячий скелет</span></h2></div>
+<p><code>tasks.md</code> частково нарізано <b>шарами</b>: T6 — інструменти <code>save_*</code> для трьох артефактів, T11 — промпти для них же, T7 — генерація, T8 — асемблер. Кожна задача окремо проходить гейт, але жодна не дає працюючого шляху «PDF → модуль» з реальною моделлю. <b>Вертикальний зріз</b> проходить усі шари для одного вузького випадку.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 400" role="img" aria-label="Матриця шарів і артефактів: задача-шар T6 проти вертикального зрізу квізу">
+  <defs>
+    <marker id="m51a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <text x="96" y="20" text-anchor="middle" class="tx s">квіз</text>
+  <text x="160" y="20" text-anchor="middle" class="tx s">картки</text>
+  <text x="224" y="20" text-anchor="middle" class="tx s">план</text>
+  <text x="288" y="20" text-anchor="middle" class="tx s">ДЗ</text>
+  <text x="8" y="56" class="tx s">PDF</text>
+  <text x="8" y="112" class="tx s">save_*</text>
+  <text x="8" y="168" class="tx s">промпт</text>
+  <text x="8" y="224" class="tx s">генерація</text>
+  <text x="8" y="280" class="tx s">асемблер</text>
+  <text x="8" y="336" class="tx s">модель</text>
+  <rect x="68" y="32" width="56" height="320" rx="10" class="bx a"/>
+  <rect x="132" y="88" width="184" height="40" rx="8" class="bx m"/>
+  <text x="224" y="113" text-anchor="middle" class="tx b">T6 — шар</text>
+  <rect x="132" y="144" width="184" height="40" rx="8" class="bx m"/>
+  <text x="224" y="169" text-anchor="middle" class="tx b">T11 — шар</text>
+  <rect x="132" y="312" width="184" height="40" rx="8" class="bx p"/>
+  <text x="224" y="337" text-anchor="middle" class="tx b">T12 — в кінці</text>
+  <text x="96" y="66" text-anchor="middle" class="tx s">T5</text>
+  <text x="96" y="116" text-anchor="middle" class="tx s">є</text>
+  <text x="96" y="172" text-anchor="middle" class="tx s">є</text>
+  <text x="96" y="228" text-anchor="middle" class="tx s">T7a</text>
+  <text x="96" y="284" text-anchor="middle" class="tx s">T8a</text>
+  <text x="96" y="340" text-anchor="middle" class="tx s">R1</text>
+  <path d="M96 76 V 100" class="ln a" marker-end="url(#m51a)"/>
+  <path d="M96 236 V 266" class="ln a" marker-end="url(#m51a)"/>
+  <path d="M96 292 V 322" class="ln a" marker-end="url(#m51a)"/>
+  <text x="180" y="384" text-anchor="middle" class="tx s">колонка «квіз» — скелет: реальний прогін у 1-й ітерації</text>
+</svg>
+<figcaption>Квіз уже має інструмент <code>save_quiz</code> і промпт, тому зріз «квіз через усі шари» — це T5, половина T7 і T8 та перший реальний прогін. Картки, план і ДЗ додаються наступними зрізами.</figcaption>
+</figure>
+<blockquote class="q-src">
+<p>Ходячий скелет — крихітна реалізація системи, що виконує невелику наскрізну функцію. Вона не мусить мати остаточну архітектуру, але має зв'язувати основні архітектурні компоненти. Тоді архітектура й функціональність можуть розвиватися паралельно.</p>
+<p class="orig">“A Walking Skeleton is a tiny implementation of the system that performs a small end-to-end function. It need not use the final architecture, but it should link together the main architectural components. The architecture and the functionality can then evolve in parallel.”</p>
+<cite>Alistair Cockburn, «Crystal Clear», 2004 (термін — з 1994–1997, за його сторінкою)</cite>
+</blockquote>
+<p>Від spike скелет відрізняється тим, що spike викидають, а скелет — постійний код із тестами, який росте разом із системою (Cockburn там само). Для агентної роботи це важливо вдвічі: агент, що бачить робочий наскрізний шлях і тести, розширює його; агент, що будує шар «на майбутнє», вгадує інтерфейси, які ніхто ще не викликав.</p>
+<h3>Три правила нарізки для агента</h3>
+<ol class="steps">
+<li><b>Спершу найризикованіше.</b> Ризик = невизначеність × ціна помилки. Для «модуля з PDF» найдорожча помилка — неправильний спосіб генерації (H1), тому реальний прогін стає задачею першої ітерації (R1), а не T12.</li>
+<li><b>Зріз, а не шар.</b> Задача, після якої нічого нового не можна запустити, — підозріла. T7 → T7a (квіз, наявний <code>save_quiz</code>) і T7b (три нові артефакти), T8 → T8a/T8b.</li>
+<li><b>Одна задача — один перевірний результат за одну сесію агента</b> (8.1): якщо приймання не можна сформулювати однією перевіркою, ріжте далі.</li>
+</ol>
+<p>Перевірка готової нарізки — <b>INVEST</b> Білла Вейка (17.08.2003): історія має бути Independent, Negotiable, Valuable, Estimable, Small, Testable. Для задачі агента літери читаються так:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Літера</th><th>Питання до задачі агента</th><th>Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Літера">I</td><td data-th="Питання до задачі агента">Чи не ділить вона файли з іншою задачею тієї ж хвилі?</td><td data-th="Lectern">T3 і T5 обидві в <code>cli.py</code> — не паралельно</td></tr>
+<tr><td data-th="Літера">N</td><td data-th="Питання до задачі агента">Чи можна змінити «як» без зміни вимоги?</td><td data-th="Lectern">OQ4 (порожній пароль PDF) вирішити до T5</td></tr>
+<tr><td data-th="Літера">V</td><td data-th="Питання до задачі агента">Що нового можна запустити після злиття?</td><td data-th="Lectern">T6 сам по собі — нічого; T8a — <code>module.json</code></td></tr>
+<tr><td data-th="Літера">E</td><td data-th="Питання до задачі агента">Чи є референсний клас такого розміру?</td><td data-th="Lectern">M: 6 прогонів 8.1</td></tr>
+<tr><td data-th="Літера">S</td><td data-th="Питання до задачі агента">Чи вкладається в одну сесію без компакції?</td><td data-th="Lectern">T1 (L) — 29 ходів, межа</td></tr>
+<tr><td data-th="Літера">T</td><td data-th="Питання до задачі агента">Чи приймання — команда з кодом виходу?</td><td data-th="Lectern">«одна <code>missing</code> → <code>ok: false</code>»</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="estimate">
+<div class="sec-h"><span class="num">03</span><h2>Оцінка з даних<span class="sub">Референсний клас із власних логів</span></h2></div>
+<p><b>Оцінка за референсним класом</b> (reference-class forecasting) — «погляд ззовні»: замість розкладати задачу на кроки й складати оптимістичні припущення, беруть розподіл результатів схожих минулих задач. Основи описали Канеман і Тверскі (1979), метод для проєктів сформулював Бент Фліфб'єрг (2006) у трьох кроках:</p>
+<ol class="steps">
+<li>визначити референсний клас минулих схожих задач — достатньо широкий для статистики і достатньо вузький для порівнянності;</li>
+<li>побудувати розподіл результатів цього класу;</li>
+<li>розмістити нову задачу в цьому розподілі.</li>
+</ol>
+<p>У курсі вже 47 уроків реальних прогонів агента на Lectern із <code>stream-json</code>-логами. Скрипт <code>mine_runs.py</code> (у <code>console/</code>) знаходить кожну подію <code>result</code>, рахує запити й правки і групує прогони за класом розміру, присвоєним за README уроку:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/course</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 mine_runs.py lessons --classes --brief</span>
+class         n turns   $ med   $ p80
+XS haiku     10  10.5  0.0051  0.0060
+S haiku       5  11.0  0.0059  0.0065
+M haiku       6  24.0  0.0195  0.0240
+L haiku       2  23.5  0.0389  0.0467
+S sonnet      5   9.0  0.0723  0.0829
+S opus        2  16.5  0.5050  0.6326
+M sonnet      1  29.0  0.3233  0.3233
+review haiku  4  12.5  0.0062  0.0063</pre>
+<div class="cap">реальний вивід · 64 прогони уроків 2.2, 3.5, 4.3, 4.4, 5.5, 8.1, 8.5, разом $3,17 · час і p80 ходів — <code>console/reference-class.txt</code></div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Клас</th><th>Що це було</th><th>Приклад з tasks.md</th></tr></thead>
+<tbody>
+<tr><td data-th="Клас">XS</td><td data-th="Що це було">прапорець чи перевірка в наявній команді (3.5 T1/T2, 4.4)</td><td data-th="Приклад з tasks.md">T13 (документація)</td></tr>
+<tr><td data-th="Клас">S</td><td data-th="Що це було">фіча в 1–2 модулях з тестами (5.5 <code>--max-quotes</code>)</td><td data-th="Приклад з tasks.md">T3, T4, T9, T10, T11</td></tr>
+<tr><td data-th="Клас">M</td><td data-th="Що це було">нова команда чи модуль з тестами (8.1 <code>lectern stats</code>)</td><td data-th="Приклад з tasks.md">T5, T6, T7, T8</td></tr>
+<tr><td data-th="Клас">L</td><td data-th="Що це було">новий модуль + фікстури + зміни в ядрі (8.5 T1, T2)</td><td data-th="Приклад з tasks.md">не лишилось</td></tr>
+</tbody></table></div>
+<p>Що з цього випливає для плану:</p>
+<ul>
+<li><b>Гроші на агента в ітерації майже нульові:</b> 6 задач M на Haiku з повторами ≈ $0,20–0,25. Модель множить вартість: на тій самій задачі класу S (урок 5.5) Sonnet коштував у 12 разів більше за Haiku, Opus з наївним промптом — у 86. Ліміт $5 не обмежує план, години автора — обмежують.</li>
+<li><b>Повтор — частина оцінки.</b> У всіх трьох задачах, які проходили рев'ю свіжим контекстом (3.5 T1, T2, 4.3), були знахідки; дві отримали ще один раунд агента, одна — окрему задачу. Тож очікуйте ≈ 1,7 прогону на задачу.</li>
+<li><b>Годин автора в логах немає.</b> Шкала XS 0,5 · S 1 · M 2 · L 4 години — припущення; план ітерації містить таблицю обліку, з якої його замінять реальні числа в I-02.</li>
+</ul>
+<div class="note warn"><span class="lbl">Пастка в логах</span>
+<p>Після <code>--resume</code> поле <code>total_cost_usd</code> — <b>накопичене за сесію</b>, а <code>num_turns</code> — ні. Сирий підсумок сесії Lectern уроку 4.3 дав $3,33 замість $1,20: план, виконання й виправлення були однією сесією. Майнер віднімає попередній результат тієї ж <code>session_id</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="loop-cost">
+<div class="sec-h"><span class="num">04</span><h2>Вартість прогону<span class="sub">Модель циклу агента замість «символи / 2,5» (B36)</span></h2></div>
+<p>LEC-BUD-001 оцінював прогін як «токени лекції = символи / 2,5». Вимір 9.1 показав, що лекція — лише ≈ 4% входу. Причина в циклі агента: <b>кожен запит надсилає весь контекст наново</b> — системний промпт і схеми інструментів (префікс), лекцію після <code>read_lecture</code> і всю історію відповідей та результатів інструментів. Ось контекст кожного запиту одного прогону на 11-сторінковій лекції:</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar m"><span class="k">запит 1 · префікс</span><span class="tr"><i style="--v:12.5%"></i><b style="--v:12.5%">1 981</b></span></div>
+  <div class="bar"><span class="k">запит 2 · + лекція</span><span class="tr"><i style="--v:68.9%"></i><b class="in" style="--v:68.9%">10 918</b></span></div>
+  <div class="bar"><span class="k">запит 3 · + відповідь і результати</span><span class="tr"><i style="--v:77.6%"></i><b class="in" style="--v:77.6%">12 310</b></span></div>
+  <div class="bar t"><span class="k">запит 4 · + ще один крок історії</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">15 855</b></span></div>
+</div>
+<figcaption>Вхід прогону — сума: 41 064 токени при оцінці лекції 8 624. Лекція пройшла через модель тричі. Реальний прогін Haiku 5.5, 17.10.2026, <code>console/runs/runs.jsonl</code>.</figcaption>
+</figure>
+<p>Звідси модель (<code>src/lectern/estimate.py</code>): для R запитів, префікса P, лекції L з множником токенізації f і накопиченої історії H</p>
+<pre class="code" data-lang="text">вхід         = R·P + (R − 1)·f·L + H
+запис у кеш  = C_R − P   <span class="cm"># холодний: + P</span>
+читання кешу = вхід − запис − 2·R
+$ = запис·0,20 + читання·0,01
+  + вихід·0,50 + 2·R·0,10
+<span class="cm"># $ за 1 млн токенів, Haiku 5.5</span></pre>
+<p>Параметри калібруються з <code>runs.jsonl</code> скрипта <code>measure_pipeline.py</code> (9.1): P — контекст першого запиту, f·L — приріст після <code>read_lecture</code>, H — сума решти. Ціни отримано регресією по 20 прогонах 9.1: вони <b>точно</b> відтворюють <code>total_cost_usd</code> клієнта ($0,10/$0,50 вхід/вихід збігаються зі специфікацією; запис у кеш з TTL 1 год — 2×, читання — 0,1×). Облік точний: профіль одного прогону повертає його ж вхід до ±2 токенів (тест <code>test_calibrated_profile_reproduces_a_measured_run_exactly</code>).</p>
+<h3>Прогноз до прогону, потім вимір</h3>
+<p>Профіль взяли з 10 прогонів 9.1 і <b>записали прогноз до запуску</b> (<code>console/predict.txt</code>, 17:24:17), потім виміряли 6 прогонів на поточному стані (Haiku, по 2 на лекцію з 2, 4 і 11 сторінок):</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Лекція</th><th>Вхід: прогноз → факт</th><th>$: прогноз → факт</th><th>«Лише лекція»</th></tr></thead>
+<tbody>
+<tr><td data-th="Лекція">2 стор., L = 1 208</td><td data-th="Вхід: прогноз → факт">21 756 → 15 473 / 14 990 (+41…+45%)</td><td data-th="$: прогноз → факт">0,0039 → 0,0024 / 0,0020</td><td data-th="«Лише лекція»">−92%</td></tr>
+<tr><td data-th="Лекція">4 стор., L = 3 198</td><td data-th="Вхід: прогноз → факт">28 675 → 24 613 / 26 222 (+9…+16%)</td><td data-th="$: прогноз → факт">0,0044 → 0,0031 / 0,0035</td><td data-th="«Лише лекція»">−87…−88%</td></tr>
+<tr><td data-th="Лекція">11 стор., L = 8 624</td><td data-th="Вхід: прогноз → факт">47 542 → 41 064 / 42 517 (+12…+16%)</td><td data-th="$: прогноз → факт">0,0058 → 0,0042 / 0,0051</td><td data-th="«Лише лекція»">−79…−80%</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Нахил правильний:</b> від 2 до 11 сторінок вхід росте на 3,6 токена за токен лекції; модель дає (R − 1)·f = 3,5.</li>
+<li><b>Зсув — від версії промпту.</b> Профіль 9.1 знятий до правил 9.3 і ADR 0011; тепер історія коротша (менше попереджень <code>save_quiz</code>), тому оцінка завищена. Усі 6 фактичних вартостей ≤ p90 профілю.</li>
+<li><b>Профіль поточної версії</b> (по черзі тренуємо на двох лекціях, перевіряємо на третій): медіанна похибка входу 9–25%, вартості 18–27%; один прогін з шести дорожчий за p90.</li>
+</ul>
+<div class="key"><p>Висновок для AC6: ±15% досяжні для <b>медіани входу</b> на профілі тієї самої версії промпту; вартість одного прогону коливається сильніше (вихід і запис у кеш), тому <b>ліміт бюджету ставлять за p90</b>. Специфікацію оновлено до v3.3; модуль із 3 лекцій по 10 сторінок × 4 артефакти ≈ 12 прогонів × $0,005 ≈ $0,06 — якщо артефакти коштують як квіз (B47).</p></div>
+</section>
+
+<section class="sec" id="graph">
+<div class="sec-h"><span class="num">05</span><h2>Граф і паралельність<span class="sub">Критичний шлях, хвилі, перетин файлів</span></h2></div>
+<p>Граф залежностей цієї фічі вже малювали в 8.5; тут його рахує скрипт, і рахує в годинах автора, бо саме вони визначають кінець ітерації. <code>scripts/plan_tasks.py</code> читає markdown-таблиці задач (стовпці «Залежить від», «Розмір», «Файли», «Коли»), зливає рядки з однаковим ID з кількох файлів і друкує:</p>
+<ul>
+<li><b>критичний шлях</b> — найдовший за вагою ланцюжок незавершених задач: будь-яка затримка на ньому зсуває кінець;</li>
+<li><b>хвилі</b> — задачі, всі залежності яких виконано в попередніх хвилях, тобто кандидати на паралельні worktree (4.4);</li>
+<li><b>перетин файлів</b> — пари задач однієї хвилі, що змінюють той самий файл.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 scripts/plan_tasks.py docs/specs/module-from-pdf/tasks.md</span>
+11 open tasks, 3 done · work 15.5 h · critical path 9 h
+critical path: T5(M) → T7(M) → T8(M) → T9(S) → T12(M)
+waves:
+  1. T5*, T6, T3, T4   [2 h]
+  2. T7*, T11   [2 h]
+  3. T8*   [2 h]
+  4. T9*, T10   [1 h]
+  5. T12*, T13   [2 h]
+max parallel: 4 · * = on the critical path
+<span class="y">overlap: wave 1: T5 and T3 both touch src/lectern/cli.py</span>
+<span class="y">overlap: wave 4: T9 and T10 both touch src/lectern/module.py</span>
+<span class="y">overlap: wave 5: T12 and T13 both touch CHANGELOG.md</span>
+zero slack (any delay moves the end): T5, T6, T7, T8, T9, T10, T12
+slack: T3+8h, T4+8h, T11+4h, T13+1.5h</pre>
+<div class="cap">реальний вивід · 17.10.2026 · файли задач — нова таблиця «Розмір і файли» в tasks.md</div></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 440" role="img" aria-label="Хвилі задач T3–T13: критичні задачі ліворуч, пари з перетином файлів позначено пунктиром">
+  <defs>
+    <marker id="m51b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <text x="14" y="52" class="tx b">1</text>
+  <text x="14" y="132" class="tx b">2</text>
+  <text x="14" y="212" class="tx b">3</text>
+  <text x="14" y="292" class="tx b">4</text>
+  <text x="14" y="372" class="tx b">5</text>
+  <rect x="40" y="30" width="70" height="34" rx="8" class="bx a"/><text x="75" y="52" text-anchor="middle" class="tx b">T5 · M</text>
+  <rect x="120" y="30" width="70" height="34" rx="8" class="bx a"/><text x="155" y="52" text-anchor="middle" class="tx b">T6 · M</text>
+  <rect x="200" y="30" width="70" height="34" rx="8" class="bx t"/><text x="235" y="52" text-anchor="middle" class="tx">T3 · S</text>
+  <rect x="280" y="30" width="70" height="34" rx="8" class="bx t"/><text x="315" y="52" text-anchor="middle" class="tx">T4 · S</text>
+  <path d="M75 64 C 75 84, 235 84, 235 64" class="ln d"/>
+  <text x="155" y="96" text-anchor="middle" class="tx s">cli.py</text>
+  <rect x="40" y="110" width="70" height="34" rx="8" class="bx a"/><text x="75" y="132" text-anchor="middle" class="tx b">T7 · M</text>
+  <rect x="200" y="110" width="70" height="34" rx="8" class="bx t"/><text x="235" y="132" text-anchor="middle" class="tx">T11 · S</text>
+  <rect x="40" y="190" width="70" height="34" rx="8" class="bx a"/><text x="75" y="212" text-anchor="middle" class="tx b">T8 · M</text>
+  <rect x="40" y="270" width="70" height="34" rx="8" class="bx a"/><text x="75" y="292" text-anchor="middle" class="tx b">T9 · S</text>
+  <rect x="120" y="270" width="70" height="34" rx="8" class="bx a"/><text x="155" y="292" text-anchor="middle" class="tx b">T10 · S</text>
+  <path d="M75 304 C 75 324, 155 324, 155 304" class="ln d"/>
+  <text x="115" y="336" text-anchor="middle" class="tx s">module.py</text>
+  <rect x="40" y="350" width="70" height="34" rx="8" class="bx a"/><text x="75" y="372" text-anchor="middle" class="tx b">T12 · M</text>
+  <rect x="200" y="350" width="70" height="34" rx="8" class="bx t"/><text x="235" y="372" text-anchor="middle" class="tx">T13 · XS</text>
+  <path d="M75 384 C 75 404, 235 404, 235 384" class="ln d"/>
+  <text x="155" y="420" text-anchor="middle" class="tx s">CHANGELOG.md</text>
+  <path d="M58 66 V 108" class="ln a" marker-end="url(#m51b)"/>
+  <path d="M155 64 C 155 90, 110 96, 98 108" class="ln a" marker-end="url(#m51b)"/>
+  <path d="M75 144 V 188" class="ln a" marker-end="url(#m51b)"/>
+  <path d="M75 224 V 268" class="ln a" marker-end="url(#m51b)"/>
+  <path d="M60 304 V 348" class="ln a" marker-end="url(#m51b)"/>
+</svg>
+<figcaption>Фіолетові — задачі без запасу часу, зелені — із запасом; пунктир — пари однієї хвилі зі спільним файлом. Критичний шлях іде лівою колонкою, і саме на ньому — T12, перший реальний прогін.</figcaption>
+</figure>
+<p>Чотири задачі в першій хвилі не означають чотирьох агентів. Обмежень три: <b>WIP-ліміт</b> (3.5) — скільки гілок автор встигає рев'ювити; <b>перетин файлів</b> — дві гілки з <code>cli.py</code> дадуть конфлікт злиття, як у 4.4, де два прогони тієї самої задачі зіткнулися саме в <code>cli.py</code> і <code>tests/test_smoke.py</code>; <b>послідовне рев'ю</b> — паралельність скорочує календар, але не години людини. З <code>--wip 2</code> планувальник бере першими задачі з найдовшим хвостом і відкладає ту, що ділить файл із уже взятою:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 scripts/plan_tasks.py docs/specs/module-from-pdf/tasks.md --wip 2</span>
+waves (wip 2):
+  1. T5*, T6   [2 h]
+  2. T7*, T11   [2 h]
+  3. T8*, T3   [2 h]
+  4. T9*, T4   [1 h]
+  5. T10   [1 h]
+  6. T12*   [2 h]
+  7. T13   [0.5 h]</pre>
+<div class="cap">реальний вивід, скорочено до хвиль</div></div>
+<p>Календар — 10,5 год замість 9: T10 чекає T9 через <code>module.py</code>, T13 чекає T12 через <code>CHANGELOG.md</code>. Це та сама ознака, що <code>[P]</code> у Spec Kit («different files, no dependencies»), але обчислена з таблиці, а не поставлена на око. Таблиця «Файли» — прогноз; після злиття його варто звіряти з <code>git diff --name-only</code> (B48).</p>
+</section>
+
+<section class="sec" id="agent-plan">
+<div class="sec-h"><span class="num">06</span><h2>План ітерації з агентом<span class="sub">Sonnet пропонує, скрипт перевіряє, людина вирішує</span></h2></div>
+<p>Ітерація — 2 тижні для автора-одинака з агентами. Місткість задають у тих одиницях, яких бракує: <b>12 годин</b> автора на специфікації, відповіді, рев'ю й злиття; <b>2 агенти</b> одночасно; <b>$5</b> на агентів. Агентові дали лише документи — <code>spec.md</code>, <code>plan.md</code>, <code>tasks.md</code> з таблицею файлів, вимір 9.1 і референсний клас — без скриптів, і попросили план із фінальним рядком <code>WAVES:</code> у машиночитному форматі:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/plan-run</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat prompt.txt)" --model sonnet --setting-sources project --strict-mcp-config --tools "Read,Glob,Grep" --allowedTools "Read" "Glob" "Grep" --permission-mode dontAsk --max-turns 20 --max-budget-usd 1.00 --output-format stream-json --verbose &gt; plan-sonnet.jsonl</span>
+<span class="d">Glob docs/* → Read tasks.md, plan.md, spec.md, measurement-9.1.json, reference-class.txt, reference-class-notes.md</span>
+<span class="d">result · num_turns 8 · 50,8 с · $0.1309</span></pre>
+<div class="cap">реальний запуск · Claude Code 2.1.302 · claude-sonnet-5-5 · повна відповідь — <code>console/plan-run/plan-sonnet.md</code></div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>plan-sonnet.md — уривки</span></div>
+<pre><span class="c">Беремо T3, T4, T5, T6, T7, T11.</span> … Обмежує не гроші, а години автора.
+<span class="c">Години автора в даних не виміряно. Це моя припущена шкала: S ≈ 1 год, M ≈ 2 год.</span>
+Разом: ≈9,3 год, ≈$0,18 (p80 ≈$0,25). … Буфер: 2,7 год (≈22%).
+Хвиля 2: T5 ‖ T11. T5 іде після злиття T3, бо обидві чіпають cli.py.
+Агенти працюють хвилини, а рев'ю автора послідовне. Тому паралелізм економить календар, а не години автора.
+Наступна ітерація: T8–T10, потім T12 і T13.
+WAVES: T3, T6 | T5, T11 | T7, T4</pre>
+<div class="cap">реальний вивід, скорочено</div></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 scripts/plan_tasks.py docs/specs/module-from-pdf/tasks.md --only "T3…T13" --check "T3, T6 | T5, T11 | T7, T4"</span>
+<span class="d">…</span>
+<span class="ok">plan check: 0 problem(s)</span></pre>
+<div class="cap">реальний вивід · перевірка залежностей, дублікатів і перетину файлів у кожній паралельній групі</div></div>
+<p>Механічно план бездоганний: залежності дотримано, спільні файли розведено по хвилях, оцінки взято з даних і чесно позначено припущення. Але скрипт перевіряє лише те, що формалізовано. Рецензія людини знайшла три речі, яких у таблиці немає:</p>
+<div class="cols">
+<div class="cmp bad"><h4>План агента</h4><ul>
+<li>жодного виклику реальної моделі за 2 тижні: T7 — з фейковим агентом, T12 — «наступна ітерація»;</li>
+<li>немає демо: без асемблера (T8) <code>lectern module</code> нічого не видає;</li>
+<li>T4 (MCP, запас 8 год) забирає годину автора, а T8 без запасу в ітерацію не потрапив.</li>
+</ul></div>
+<div class="cmp good"><h4>I-01 після рецензії</h4><ul>
+<li>скелет: T5 → T7a → T8a → R1 — реальний прогін на 3 PDF у другому тижні;</li>
+<li>демо: <code>module.json</code> з квізом кожної лекції і фактичною вартістю;</li>
+<li>T4 — поза ітерацією, перша кандидатка, якщо звільниться час.</li>
+</ul></div>
+</div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 scripts/plan_tasks.py docs/specs/module-from-pdf/tasks.md docs/iterations/I-01.md --only "T3,T5,T6,T7a,T8a,R1,T11" --wip 2</span>
+7 open tasks, 3 done · work 10 h · critical path 6 h
+critical path: T5(M) → T7a(M) → T8a(S) → R1(S)
+waves (wip 2):
+  1. T5*, T6   [2 h]
+  2. T7a*, T3   [2 h]
+  3. T8a*, T11   [1 h]
+  4. R1*   [1 h]
+zero slack (any delay moves the end): R1, T5, T7a, T8a
+slack: T3+5h, T6+3h, T11+3h</pre>
+<div class="cap">реальний вивід · задачі T7a, T8a, R1 визначено в I-01.md, решта — з tasks.md</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Складова I-01</th><th>Значення</th><th>Звідки</th></tr></thead>
+<tbody>
+<tr><td data-th="Складова I-01">Зобов'язання</td><td data-th="Значення">T5, T7a, T8a, R1, T3, T6 — 9 год</td><td data-th="Звідки">шкала розмірів</td></tr>
+<tr><td data-th="Складова I-01">Бажане</td><td data-th="Значення">T11 — 1 год, викидається першою</td><td data-th="Звідки">запас 3 год на графі</td></tr>
+<tr><td data-th="Складова I-01">Буфер</td><td data-th="Значення">2 год (17%)</td><td data-th="Звідки">0,67 повтору × 0,5 год × 6 задач</td></tr>
+<tr><td data-th="Складова I-01">Агенти</td><td data-th="Значення">≈ $0,25 (p80) + R1 ≈ $0,03</td><td data-th="Звідки">референсний клас, <code>estimate.py</code> p90</td></tr>
+<tr><td data-th="Складова I-01">Критерії виходу</td><td data-th="Значення">гейт CI і <code>trace.py</code> 0 errors; демо на 3 PDF; R1 і рішення щодо H1 записано; OQ4 вирішено до T5; таблицю обліку заповнено</td><td data-th="Звідки">spec AC, BACKLOG B49</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 17.10.2026</span>
+<p>Агент сам розвів T3/T5 (<code>cli.py</code>) і T6/T11 (<code>tools.py</code>), бо прочитав таблицю файлів. Без цієї таблиці скрипт перетину не бачить, а агент вгадував би файли з <code>plan.md</code>: колонка «Файли» — найдешевший спосіб зробити паралельність перевірною.</p>
+</div>
+</section>
+
+<section class="sec" id="replan">
+<div class="sec-h"><span class="num">07</span><h2>Перепланування<span class="sub">Сигнали, що задача вибухає, і де живе план</span></h2></div>
+<p>Оцінка — розподіл, тож вихід за нього — подія, на яку план має готову реакцію. Пороги беруть з того самого референсного класу: медіана ходів S — 11, M — 24.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сигнал</th><th>Поріг</th><th>Рішення</th></tr></thead>
+<tbody>
+<tr><td data-th="Сигнал">Ходи агента</td><td data-th="Поріг">&gt; 2× медіани класу (S &gt; 22, M &gt; 48)</td><td data-th="Рішення">зупинити й прочитати лог: задача більша за клас → розрізати; агент кружляє → уточнити специфікацію, новий прогін з чистим контекстом</td></tr>
+<tr><td data-th="Сигнал">Гейт падає</td><td data-th="Поріг">2 раунди поспіль на тій самій перевірці</td><td data-th="Рішення">третього прогону не буде: причину дивиться людина, задача → «блокована», у хвилю йде наступна готова</td></tr>
+<tr><td data-th="Сигнал">Питання до специфікації</td><td data-th="Поріг">відповідь змінює вимогу</td><td data-th="Рішення">зупинити задачу, нова версія spec (як v3.3 у цьому уроці), потім продовжити — не «вирішувати в коді»</td></tr>
+<tr><td data-th="Сигнал">Вимір гіпотези (R1)</td><td data-th="Поріг">факт &gt; p90 або H1 &gt; $0,25 з екстраполяцією</td><td data-th="Рішення">наступна ітерація починається з важеля H1 (один прогін на лекцію з чотирма <code>save_*</code>), а не з T7b</td></tr>
+<tr><td data-th="Сигнал">Години автора</td><td data-th="Поріг">&gt; 60% витрачено при &lt; 50% задач</td><td data-th="Рішення">викинути бажане (T11), потім задачу з найбільшим запасом</td></tr>
+</tbody></table></div>
+<p>Чекліст агента всередині сесії та план ітерації — різні речі. План ітерації живе в репозиторії (<code>docs/iterations/I-01.md</code> з таблицею обліку) і переживає будь-яку сесію; чекліст допомагає агентові не загубити кроки однієї задачі.</p>
+<div class="tabs">
+<input type="radio" name="trk-t" id="trk-t1" checked><input type="radio" name="trk-t" id="trk-t2"><input type="radio" name="trk-t" id="trk-t3">
+<div class="tab-l"><label for="trk-t1">Claude Code</label><label for="trk-t2">Codex CLI</label><label for="trk-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Інструменти чекліста — <code>TaskCreate</code>, <code>TaskGet</code>, <code>TaskList</code>, <code>TaskUpdate</code> (застарілий <code>TodoWrite</code> — з <code>CLAUDE_CODE_ENABLE_TASKS=0</code>). За документацією їх типово дають лише Opus 4.7, Sonnet 4.6, Haiku 4.5 і старішим моделям: новіші ведуть багатокрокову роботу без письмового чекліста, а визначення інструментів займають контекст. Увімкнути: <code>CLAUDE_CODE_ENABLE_TODO_TOOLS=1</code> або назвати інструмент у <code>--allowedTools</code>. В інтерактивному сеансі <code>Ctrl+T</code> показує чекліст; <code>CLAUDE_CODE_TASK_LIST_ID</code> ділить один список між сеансами.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>init-подія · claude -p --model haiku</span></div>
+<pre>default
+  Task, TaskStop
+CLAUDE_CODE_ENABLE_TODO_TOOLS=1
+  Task, TaskStop, TodoWrite
+--allowedTools TaskCreate
+  Task, TaskStop, TodoWrite</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.302 · з повного списку інструментів лишено назви Task*/TodoWrite (<code>Task</code> — субагенти, <code>TaskStop</code> — фонові задачі) · <code>console/tools-check.txt</code></div></div>
+<p>У режимі <code>-p</code> увімкнення дало <code>TodoWrite</code>, а не <code>Task*</code>, як описано для інтерактивного сеансу. Для headless-прогонів план задачі тримайте в промпті або файлі специфікації.</p>
+</div>
+<div class="tab-p">
+<p><code>/plan</code> перемикає в режим плану: Codex пропонує план виконання до початку реалізації; поки агент працює, команда недоступна. Інструмент <code>update_plan</code>, яким агент оновлював кроки під час виконання, з v0.152.0 (01.09.2026) вимкнено за замовчуванням:</p>
+<pre class="code" data-lang="toml"><span class="cm"># ~/.codex/config.toml</span>
+[tools.update_plan]
+enabled = <span class="k">true</span></pre>
+<div class="cap">з реліз-нотаток Codex v0.152.0 · не запускалось у цьому уроці (Codex не встановлено)</div>
+</div>
+<div class="tab-p">
+<p>Plan Mode (<code>Shift+Tab</code> у полі чату) складає план до написання коду; план редагується як Markdown, режим рекомендовано для задач, що зачіпають багато файлів. Структуровані to-do-списки агента з'явилися в Cursor 1.2 (03.07.2025); у поточній документації їх окремо не описано. Повідомлення можна поставити в чергу — воно чекає завершення поточної задачі.</p>
+<div class="cap">за документацією й changelog Cursor · не запускалось у цьому уроці</div>
+</div>
+</div>
+</section>
+
+<section class="sec" id="lectern">
+<div class="sec-h"><span class="num">08</span><h2>Lectern<span class="sub">План ітерації, планувальник і оцінка вартості</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 10.4 · I-01, plan_tasks.py, B36</div><div class="pb">
+<p>Зміни зроблено на копії канонічного <code>lectern/</code>; повний diff — <code>console/lectern.diff</code>:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git diff --stat=40 HEAD~1</span>
+ BACKLOG.md                |   5 +-
+ CHANGELOG.md              |   3 +-
+ docs/iterations/I-01.md   |  95 ++
+ ...-dry-run-estimate.json | 126 +++
+ .../spec.md               |   6 +-
+ .../tasks.md              |  20 +
+ scripts/check_estimate.py | 102 ++
+ scripts/plan_tasks.py     | 297 ++++++
+ src/lectern/README.md     |   1 +
+ src/lectern/estimate.py   | 148 +++
+ .../quiz-10.4.jsonl       |   6 +
+ .../quiz-9.1.jsonl        |  10 +
+ tests/test_estimate.py    | 108 ++
+ tests/test_plan_tasks.py  |  84 ++
+ 14 files changed, 1006 insertions(+), 5 deletions(-)
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q &amp;&amp; .venv/bin/ruff check .</span>
+<span class="ok">219 passed</span>
+<span class="ok">All checks passed!</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/trace.py | tail -1</span>
+37 requirements, 44 tests: 0 error(s), 0 warning(s)</pre>
+<div class="cap">реальний вивід · 17.10.2026 · Python 3.12 · <code>check_context.py</code> 0 problems, MCP-контракт 0.3.0 без змін</div></div>
+<ul>
+<li><code>src/lectern/estimate.py</code> (stdlib) — модель циклу, <code>calibrate()</code> з p50/p90, <code>estimate_module()</code>; T5 підключить її до <code>--dry-run</code>. <code>scripts/check_estimate.py</code> — точність на тренувальних і тестових прогонах або прогноз для PDF.</li>
+<li><code>scripts/plan_tasks.py</code> — критичний шлях, хвилі з <code>--wip</code>, перетин файлів, <code>--check</code> плану; у <code>tasks.md</code> — таблиця «Розмір і файли».</li>
+<li><code>docs/iterations/I-01.md</code> — мета, місткість, задачі з оцінками, хвилі, критерії виходу, сигнали перепланування, таблиця обліку.</li>
+<li>spec v3.3: LEC-BUD-001 і AC6 переписано під модель циклу; B36 закрито; нові B46–B49 (профіль на версію промпту, профілі інших артефактів, плановані проти змінених файлів, калібрування годин автора).</li>
+</ul>
+<p><b>Ваш крок:</b> запустіть <code>plan_tasks.py</code> на задачах власної фічі (або на T3–T13), додайте колонку «Файли» і знайдіть хоча б одну пару, яку не можна віддати двом агентам одночасно.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що ламає план ще до першого прогону</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Чим обертається</th><th>Як інакше</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">Брати задачі за номерами</td><td data-th="Чим обертається">реальна модель — у T12, після ~9 год роботи</td><td data-th="Як інакше">скелет і найризикованіша гіпотеза — в першій ітерації</td></tr>
+<tr><td data-th="Помилка">Оцінювати прогін токенами лекції</td><td data-th="Чим обертається">промах у 5–25 разів (−79…−96% входу)</td><td data-th="Як інакше">модель циклу: R·P + (R − 1)·f·L + H</td></tr>
+<tr><td data-th="Помилка">Один профіль вартості назавжди</td><td data-th="Чим обертається">+41…+45% на коротких лекціях після зміни промпту</td><td data-th="Як інакше">профіль на версію промпту, перекалібрування (B46)</td></tr>
+<tr><td data-th="Помилка">«Незалежні — отже паралельно»</td><td data-th="Чим обертається">конфлікт у <code>cli.py</code>, черга на рев'ю</td><td data-th="Як інакше">WIP-ліміт + колонка «Файли» + <code>--check</code></td></tr>
+<tr><td data-th="Помилка">Буфер «20%, бо так прийнято»</td><td data-th="Чим обертається">запас не покриває повторів</td><td data-th="Як інакше">буфер з частки повторів класу (2 з 3)</td></tr>
+<tr><td data-th="Помилка">План лише в чеклісті агента</td><td data-th="Чим обертається">зникає з сесією; на нових моделях чекліста типово немає</td><td data-th="Як інакше">план і облік — файл у репозиторії</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">walking skeleton</span><span class="h">чим не spike?</span></span><span class="b"><span class="t">Постійний наскрізний код</span><span class="d">з'єднує основні компоненти й росте; spike викидають</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">(R − 1)·f·L</span><span class="h">що це в оцінці?</span></span><span class="b"><span class="t">Лекція в історії</span><span class="d">після read_lecture вона їде в кожному наступному запиті</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">p90 профілю</span><span class="h">навіщо?</span></span><span class="b"><span class="t">Ліміт бюджету</span><span class="d">вартість прогону коливається; медіана — для плану, хвіст — для ліміту</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">zero slack</span><span class="h">що означає?</span></span><span class="b"><span class="t">Задача на критичному шляху</span><span class="d">будь-яка її затримка зсуває кінець ітерації</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">T3 ‖ T5?</span><span class="h">можна паралельно?</span></span><span class="b"><span class="t">Ні</span><span class="d">обидві змінюють cli.py: спершу критична T5, T3 — після злиття</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">55 ходів у задачі M</span><span class="h">що робити?</span></span><span class="b"><span class="t">Зупинити й читати лог</span><span class="d">&gt; 2× медіани (24): розрізати або уточнити специфікацію</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. У tasks.md: T6 — інструменти для трьох нових артефактів, T11 — їхні промпти, T7 — генерація, перший реальний прогін (T12) — у кінці. Що взяти першим, щоб за годину автора дізнатися найбільше?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>T6: інструменти — фундамент, на який спираються генерація, асемблер і прогін</span></label><label class="opt ok"><input type="radio" name="q1"><span>Скелет: квіз через dry-run, генерацію й асемблер до реального прогону на 3 PDF</span></label><label class="opt"><input type="radio" name="q1"><span>T11: офлайн-тести промптів дешеві й не вимагають жодного виклику моделі</span></label></div>
+    <div class="why yes">Так. Квіз уже має <code>save_quiz</code> і промпт, тож зріз через усі шари коштує T5 + T7a + T8a + R1 і першим перевіряє H1 і H4 — найдорожчі припущення.</div>
+    <div class="why no">T6 і T11 — шари: після них нічого нового не запускається, а ризик H1 (вартість модуля) лишається відкритим до T12. Спершу — вертикальний зріз до реальної моделі.</div></div>
+  <div class="q"><div class="qt">2. Префікс P = 2 000 токенів, R = 4 запити, лекція L = 9 000 (f = 1), історія H = 6 000. Який вхід прогону за моделлю циклу?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>≈ 41 тис.: префікс у 4 запитах, лекція в 3 після читання, плюс історія</span></label><label class="opt"><input type="radio" name="q2"><span>≈ 17 тис.: префікс, лекція й історія по одному разу, бо повтори покриває кеш</span></label><label class="opt"><input type="radio" name="q2"><span>≈ 9 тис.: токени лекції, а префікс та історія — службова дрібниця</span></label></div>
+    <div class="why yes">Так: 4 × 2 000 + 3 × 9 000 + 6 000 = 41 000. Кеш змінює ціну токена, а не кількість токенів входу.</div>
+    <div class="why no">Кожен запит надсилає весь контекст наново; кеш лише здешевлює повтор. 17 тис. рахує кожен блок один раз, 9 тис. — стара формула AC6, що бачила ≈ 4–21% входу.</div></div>
+  <div class="q"><div class="qt">3. «Читання кешу коштує 0,1× входу, тож довжина лекції на вартість майже не впливає». Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Кеш не працює в headless-режимі, тому кожен запит оплачується за повною ціною входу</span></label><label class="opt"><input type="radio" name="q3"><span>Ціна читання кешу дорівнює ціні входу, а знижка діє лише на запис у кеш</span></label><label class="opt ok"><input type="radio" name="q3"><span>Лекцію спершу записують у кеш за 2× ціни входу, а потім читають у кожному запиті</span></label></div>
+    <div class="why yes">Так. У моделі запис у кеш = C_R − P містить f·L, а читання — (R − 2)·f·L і більше. У вимірі 2 → 11 сторінок вартість зросла з $0,002 до $0,004–0,005.</div>
+    <div class="why no">Кеш у <code>-p</code> працює (у прогонах є <code>cache_read</code>), читання — 0,1×, запис з TTL 1 год — 2×. Лекція потрапляє в обидва доданки, тож її довжина на вартість впливає.</div></div>
+  <div class="q"><div class="qt">4. T3 і T5 — у першій хвилі, обидві змінюють <code>cli.py</code>; T5 на критичному шляху; WIP = 2. Як спланувати?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span>Перша хвиля — T5 і T6, а T3 — після злиття T5, у наступній хвилі</span></label><label class="opt"><input type="radio" name="q4"><span>Обидві в окремих worktree: різні функції одного файлу git зливає сам</span></label><label class="opt"><input type="radio" name="q4"><span>Злити T3 і T5 в одну задачу M, щоб один агент змінив cli.py за раз</span></label></div>
+    <div class="why yes">Так. Критична задача стартує першою, друге місце займає T6 без спільних файлів; T3 має запас 8 год.</div>
+    <div class="why no">Конфлікт злиття в одному файлі — реальний сценарій (4.4: <code>cli.py</code>). Об'єднання двох незалежних результатів ламає правило «одна задача — один перевірний результат».</div></div>
+  <div class="q"><div class="qt">5. Критичний шлях — 9 год, уся робота — 15,5 год, автор має 12 год. «З чотирма агентами ітерація займе 9 годин». Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Нічого: при необмеженій паралельності тривалість дорівнює критичному шляху</span></label><label class="opt"><input type="radio" name="q5"><span>Критичний шлях ігнорує задачі з запасом, тож справжня тривалість ще менша</span></label><label class="opt ok"><input type="radio" name="q5"><span>Ваги — години автора, а рев'ю послідовне: потрібно 15,5 год людини, а є 12</span></label></div>
+    <div class="why yes">Так. Паралельність скорочує календар роботи агентів, але не години людини; план має вкластися і в критичний шлях, і в місткість.</div>
+    <div class="why no">Критичний шлях — нижня межа календаря за умови, що ресурс не обмежений. Тут обмежений автор: 15,5 год послідовного рев'ю не вміщаються у 12.</div></div>
+  <div class="q"><div class="qt">6. Задача класу M (медіана 24 ходи, p80 — 26) іде вже 55 ходів, гейт ще не зелений. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Дати ще 25 ходів: прогрес у лозі видно, а переривання змарнує витрачене</span></label><label class="opt ok"><input type="radio" name="q6"><span>Зупинити й прочитати лог: 55 &gt; 2 × 24 — різати задачу чи уточнити специфікацію</span></label><label class="opt"><input type="radio" name="q6"><span>Перезапустити ту саму задачу на Opus: сильніша модель закриє її швидше</span></label></div>
+    <div class="why yes">Так. Вихід за 2× медіани класу означає, що задача більша за клас або специфікація неоднозначна; ще ходи — та сама проблема дорожче.</div>
+    <div class="why no">Витрачене не повертається (sunk cost), а Opus на задачі S коштував у 86 разів більше за Haiku. Спершу причина з логу.</div></div>
+  <div class="q"><div class="qt">7. Профіль з прогонів 9.1 передбачив для 2-сторінкової лекції 21,8 тис. токенів входу; факт — 15,2 тис. на поточному коді. Найімовірніша причина й дія?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q7"><span>Промпт змінився після 9.1 і історія коротша: перекалібрувати профіль</span></label><label class="opt"><input type="radio" name="q7"><span>Модель лінійна, а лекції нелінійні: переписати оцінку на іншу формулу</span></label><label class="opt"><input type="radio" name="q7"><span>Шум двох прогонів: ±40% — норма для агентів, тож нічого не міняти</span></label></div>
+    <div class="why yes">Так. Нахил на токен лекції збігся (3,6 проти 3,5), зсунувся вільний член — історія; профіль прив'язаний до версії промпту (B46).</div>
+    <div class="why no">Лінійність підтверджено на 2, 4 і 11 сторінках. Розкид двох прогонів однієї лекції — 3–7%, а зсув в одному напрямку в усіх шести: це систематика, не шум.</div></div>
+  <div class="q"><div class="qt">8. Оцінка одного прогону: p50 — $0,0038, p90 — $0,0046; модуль — 12 прогонів. Який <code>--max-budget-usd</code> поставити на модуль?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>12 × p50 ≈ $0,046: медіана найточніше описує середній прогін модуля</span></label><label class="opt"><input type="radio" name="q8"><span>$0,25 з гіпотези H1: у ній уже закладено запас, оцінка тут зайва</span></label><label class="opt ok"><input type="radio" name="q8"><span>Не менше 12 × p90 ≈ $0,055 з запасом: ліміт ставлять за хвостом розподілу</span></label></div>
+    <div class="why yes">Так. За медіанним лімітом приблизно половина модулів зупинялася б на останніх лекціях зі статусом <code>skipped_budget</code>.</div>
+    <div class="why no">Медіана — для плану, ліміт — за хвостом: у вимірі один прогін із шести був дорожчий за p90. H1 — ціль продукту, а не ліміт однієї команди.</div></div>
+  <div class="q"><div class="qt">9. План агента пройшов <code>plan_tasks.py --check</code> з 0 problem(s). Що це гарантує?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Що план оптимальний за тривалістю і вкладається в години автора</span></label><label class="opt ok"><input type="radio" name="q9"><span>Що залежності не порушено, а паралельні групи не ділять файлів</span></label><label class="opt"><input type="radio" name="q9"><span>Що задачі плану разом закривають усі критерії приймання spec</span></label></div>
+    <div class="why yes">Так. Це механічна перевірка таблиці; ризик-перший порядок, демо і місткість перевіряє людина — саме там план Sonnet і програв.</div>
+    <div class="why no"><code>--check</code> не знає ні місткості, ні ризиків, ні приймання: план Sonnet пройшов перевірку, але не мав жодного реального виклику моделі.</div></div>
+  <div class="q"><div class="qt">10. Який із варіантів — придатний критерій виходу ітерації?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q10"><span>Демо: <code>lectern module</code> на 3 PDF дає module.json і report.json з вартістю</span></label><label class="opt"><input type="radio" name="q10"><span>Усі задачі позначено виконаними в чеклісті агента до кінця тижня</span></label><label class="opt"><input type="radio" name="q10"><span>Агенти витратили не більше $5 і відкрили за ітерацію не менше шести pull request</span></label></div>
+    <div class="why yes">Так. Критерій перевіряється командою і показує результат, а не активність.</div>
+    <div class="why no">Чекліст агента живе в сесії й нічого не доводить, а $ і кількість PR міряють активність. Вихід — те, що можна запустити й перевірити: гейт, демо, записаний вимір.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>vertical slice</td><td>Задача, що проходить усі шари системи для вузького випадку й дає щось нове, що можна запустити.</td></tr>
+<tr><td>walking skeleton</td><td>Крихітна наскрізна реалізація, що з'єднує основні компоненти; постійний код, який росте (Cockburn).</td></tr>
+<tr><td>risk-first ordering</td><td>Порядок задач, у якому найдорожче припущення перевіряють першим.</td></tr>
+<tr><td>INVEST</td><td>Independent, Negotiable, Valuable, Estimable, Small, Testable — перевірка нарізки (Wake, 2003).</td></tr>
+<tr><td>reference-class estimation</td><td>Оцінка за розподілом результатів схожих минулих задач, а не за розкладом нової на кроки.</td></tr>
+<tr><td>agent-loop cost model</td><td>Вхід прогону = R·P + (R − 1)·f·L + H: префікс і історія надсилаються на кожному запиті.</td></tr>
+<tr><td>critical path</td><td>Найдовший за вагою ланцюжок незавершених задач; його затримка зсуває кінець.</td></tr>
+<tr><td>parallel waves</td><td>Групи задач, усі залежності яких виконано в попередніх групах; ширина обмежена WIP-лімітом.</td></tr>
+<tr><td>file-overlap conflict risk</td><td>Дві задачі однієї хвилі змінюють той самий файл — кандидат на конфлікт злиття.</td></tr>
+<tr><td>iteration exit criteria</td><td>Перевірні умови завершення ітерації: гейт, демо, записані виміри, облік.</td></tr>
+<tr><td>re-planning signal</td><td>Поріг, після якого план змінюють: ходи &gt; 2× медіани, два червоні гейти, зміна вимоги, гіпотеза за p90.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. План ітерації з даних</h3>
+<p>Для власної фічі (або T3–T13 Lectern) — референсний клас, нарізка зі скелетом, критичний шлях і хвилі, місткість, буфер, критерії виходу, сигнали перепланування; план, запропонований агентом, і ваша рецензія.</p>
+<h3>2. Модель вартості циклу агента</h3>
+<p>Відкалібруйте профіль за запитами одного прогону (з власного логу або з даних завдання), спрогнозуйте вартість для довшого входу і поясніть, де ставити ліміт.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://web.archive.org/web/20140718050559/http://alistair.cockburn.us/Walking+skeleton" target="_blank" rel="noopener">Alistair Cockburn — Walking skeleton</a><span>архів його сайту · визначення з «Crystal Clear» (2004), відмінність від spike; <a href="https://alistaircockburn.com/Bio" target="_blank" rel="noopener">біографія</a>: «(1996) Walking Skeleton»</span></li>
+<li><a href="https://xp123.com/invest-in-good-stories-and-smart-tasks/" target="_blank" rel="noopener">Bill Wake — INVEST in Good Stories, and SMART Tasks</a><span>17.08.2003 · INVEST для історій, SMART для задач</span></li>
+<li><a href="https://arxiv.org/abs/1302.3642" target="_blank" rel="noopener">Bent Flyvbjerg — From Nobel Prize to Project Management: Getting Risks Right</a><span>Project Management Journal 37(3), 2006 · три кроки reference-class forecasting</span></li>
+<li><a href="https://www.cambridge.org/core/books/judgment-under-uncertainty/intuitive-prediction-biases-and-corrective-procedures/3A2F2ECDC508C662BE17C0FE5FD73C90" target="_blank" rel="noopener">Kahneman, Tversky — Intuitive prediction: biases and corrective procedures</a><span>1979, передрук у «Judgment under Uncertainty» (1982) · основа «погляду ззовні»</span></li>
+<li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Claude Code — Best practices</a><span>«Explore first, then plan, then code»; <code>/batch</code> і розподіл змін на субагенти у worktree</span></li>
+<li><a href="https://code.claude.com/docs/en/tools-reference" target="_blank" rel="noopener">Claude Code — Tools reference</a><span>TaskCreate/TaskGet/TaskList/TaskUpdate, TodoWrite, «Task tool availability»</span></li>
+<li><a href="https://code.claude.com/docs/en/env-vars" target="_blank" rel="noopener">Claude Code — Environment variables</a><span><code>CLAUDE_CODE_ENABLE_TASKS</code>, <code>CLAUDE_CODE_ENABLE_TODO_TOOLS</code>, <code>CLAUDE_CODE_TASK_LIST_ID</code></span></li>
+<li><a href="https://code.claude.com/docs/en/interactive-mode" target="_blank" rel="noopener">Claude Code — Interactive mode</a><span><code>Ctrl+T</code> — чекліст задач</span></li>
+<li><a href="https://code.claude.com/docs/en/worktrees" target="_blank" rel="noopener">Claude Code — Worktrees</a><span>паралельні сеанси в окремих git worktree (<code>--worktree</code>, <code>-w</code>); <a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">субагенти</a></span></li>
+<li><a href="https://learn.chatgpt.com/docs/developer-commands?surface=cli" target="_blank" rel="noopener">Codex — команди CLI</a><span><code>/plan</code>; <a href="https://github.com/openai/codex/releases/tag/rust-v0.152.0" target="_blank" rel="noopener">v0.152.0</a> — <code>update_plan</code> вимкнено за замовчуванням (01.09.2026)</span></li>
+<li><a href="https://cursor.com/docs/agent/plan-mode" target="_blank" rel="noopener">Cursor — Plan Mode</a><span>план до коду, <code>Shift+Tab</code>; to-do-списки агента — <a href="https://cursor.com/en-US/changelog/1-2" target="_blank" rel="noopener">changelog 1.2</a>, 03.07.2025</span></li>
+<li><a href="https://github.com/github/spec-kit/blob/main/templates/tasks-template.md" target="_blank" rel="noopener">GitHub Spec Kit — tasks template</a><span>маркер <code>[P]</code>: «different files, no dependencies»</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 10.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 10.4 · Senomi<br><br><a href="lesson-50.html">← Урок 10.3</a> · <a href="index.html">Зміст курсу</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

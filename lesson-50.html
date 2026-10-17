@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 10.3. Bootstrap репозиторію: структура, CLAUDE.md, специфікації, CI, хуки</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 10.3 · Модуль 10</div>
+<h1>Bootstrap репозиторію: структура, CLAUDE.md, специфікації, CI, хуки</h1>
+<p class="lead">Новий репозиторій за одну сесію стає готовим для агентів: одна команда середовища, одна команда перевірки, правила, межі дозволів і CI, що запускає ті самі скрипти. Чотири справжні bootstrap-прогони Claude показують, що дає специфікація репозиторію проти вільного промпту, а Lectern отримує CI, lockfile і pre-commit.</p>
+<div class="hero-meta"><span class="chip">SDLC, фаза 1 — підготовка проєкту з Claude</span><span class="chip t">≈ 70 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#order"><b>01</b>Порядок bootstrap</a><a href="#spec"><b>02</b>Bootstrap-специфікація</a><a href="#experiment"><b>03</b>Експеримент</a><a href="#check"><b>04</b>Одна перевірка на всіх</a><a href="#ci"><b>05</b>CI, що дзеркалить локальне</a><a href="#lock"><b>06</b>Lockfile</a><a href="#template"><b>07</b>Шаблон репозиторію</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>зібрати новий репозиторій у правильному порядку і пояснити, чому саме так;</li>
+    <li>написати bootstrap-специфікацію, за якою агент будує репозиторій, і перевірити результат зі свіжого клону;</li>
+    <li>звести перевірки до одного скрипта, який запускають хук, агент і CI;</li>
+    <li>написати CI без власної логіки: закріплені дії, мінімальні права, кеш за lockfile, жодних секретів;</li>
+    <li>обрати спосіб фіксації залежностей і винести повторюване в шаблон репозиторію.</li>
+  </ul>
+</div>
+
+<section class="sec" id="order">
+<div class="sec-h"><span class="num">01</span><h2>Порядок bootstrap<span class="sub">Одинадцять кроків, кожен спирається на попередній</span></h2></div>
+<p><b>Bootstrap</b> — це стан репозиторію, у якому перша сесія агента вже має одну команду середовища, одну команду перевірки, записані правила, межі дозволів і gate у CI. Порядок визначають посилання між артефактами. Інструкція, що називає неіснуючу команду, — саме та розбіжність, яку ловить <code>check_context.py</code> (5.4). Дозвіл на <code>Bash(scripts/check.sh)</code> без самого скрипта нічого не дає. Required check можна вибрати лише за назвою job, який уже існує.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 640" role="img" aria-label="Порядок bootstrap: фундамент, контекст агента, процес — одинадцять кроків">
+  <rect x="16" y="10" width="14" height="14" rx="3" class="bx t"/>
+  <text x="36" y="22" class="tx s">пише агент за специфікацією</text>
+  <rect x="236" y="10" width="14" height="14" rx="3" class="bx m"/>
+  <text x="256" y="22" class="tx s">вирішує людина</text>
+  <text x="16" y="50" class="tx s">ФУНДАМЕНТ</text>
+  <rect x="16" y="58" width="328" height="40" rx="8" class="bx m"/>
+  <text x="28" y="74" class="tx b">1 · Репозиторій, ліцензія, .gitignore</text>
+  <text x="28" y="90" class="tx s">ліцензію обирає людина; .gitignore — до першого .venv</text>
+  <rect x="16" y="106" width="328" height="40" rx="8" class="bx t"/>
+  <text x="28" y="122" class="tx b">2 · Розкладка + setup однією командою</text>
+  <text x="28" y="138" class="tx s">scripts/setup.sh: від клону до робочого середовища</text>
+  <rect x="16" y="154" width="328" height="40" rx="8" class="bx t"/>
+  <text x="28" y="170" class="tx b">3 · Лінтер, формат, типи</text>
+  <text x="28" y="186" class="tx s">правила до першого коду, а не після сотні файлів</text>
+  <rect x="16" y="202" width="328" height="40" rx="8" class="bx t"/>
+  <text x="28" y="218" class="tx b">4 · Smoke-тест</text>
+  <text x="28" y="234" class="tx s">перший сигнал «зелено / червоно» для агента</text>
+  <text x="16" y="266" class="tx s">КОНТЕКСТ АГЕНТА</text>
+  <rect x="16" y="274" width="328" height="40" rx="8" class="bx t"/>
+  <text x="28" y="290" class="tx b">5 · AGENTS.md / CLAUDE.md</text>
+  <text x="28" y="306" class="tx s">називає лише команди, які вже існують</text>
+  <rect x="16" y="322" width="328" height="40" rx="8" class="bx m"/>
+  <text x="28" y="338" class="tx b">6 · Settings і дозволи</text>
+  <text x="28" y="354" class="tx s">.claude/ — protected path: агент сам не запише</text>
+  <rect x="16" y="370" width="328" height="40" rx="8" class="bx m"/>
+  <text x="28" y="386" class="tx b">7 · Хуки агента і git</text>
+  <text x="28" y="402" class="tx s">запускають ту саму перевірку, що й CI</text>
+  <text x="16" y="434" class="tx s">ПРОЦЕС</text>
+  <rect x="16" y="442" width="328" height="40" rx="8" class="bx t"/>
+  <text x="28" y="458" class="tx b">8 · docs/: ADR і специфікації</text>
+  <text x="28" y="474" class="tx s">скелет, шаблон і ADR 0001 про стек</text>
+  <rect x="16" y="490" width="328" height="40" rx="8" class="bx t"/>
+  <text x="28" y="506" class="tx b">9 · CI = ті самі скрипти</text>
+  <text x="28" y="522" class="tx s">setup → check, без власної логіки в YAML</text>
+  <rect x="16" y="538" width="328" height="40" rx="8" class="bx m"/>
+  <text x="28" y="554" class="tx b">10 · Захист гілки, required checks</text>
+  <text x="28" y="570" class="tx s">налаштування GitHub і CODEOWNERS — не файл агента</text>
+  <rect x="16" y="586" width="328" height="40" rx="8" class="bx a"/>
+  <text x="28" y="602" class="tx b">11 · Перша задача за специфікацією</text>
+  <text x="28" y="618" class="tx s">проганяє весь ланцюжок на справжній зміні</text>
+</svg>
+<figcaption>Кожен крок використовує попередні: інструкції цитують команди з кроків 2–4, дозволи відкривають саме їх, хуки й CI їх запускають, required checks називають job із кроку 9.</figcaption>
+</figure>
+<p>Розподіл ролей задає не смак, а harness. У Claude Code запис у <b>protected paths</b> ніколи не схвалюється автоматично. Серед захищених шляхів — <code>.git</code>, <code>.claude</code>, <code>.husky</code>, <code>.devcontainer</code>, <code>.vscode</code>, <code>.pre-commit-config.yaml</code>, <code>lefthook.yml</code>, <code>.mcp.json</code>. У режимі <code>dontAsk</code> такий запис відхиляється, а правила <code>permissions.allow</code> його не відкривають: перевірка спрацьовує раніше за них. Без запитів туди пише лише <code>bypassPermissions</code>. Отже, конфігурацію, яка виконує код (хуки git) або розширює права агента (settings, MCP), пише людина.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Артефакт</th><th>Хто</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Артефакт">Розкладка, скрипти, тести, <code>ci.yml</code>, чернетки ADR</td><td data-th="Хто">агент за специфікацією</td><td data-th="Чому">Перевіряється командою зі свіжого клону</td></tr>
+<tr><td data-th="Артефакт">Ліцензія, стек, версії дій</td><td data-th="Хто">людина, у специфікації</td><td data-th="Чому">Юридичне й архітектурне рішення; без явних версій агент обрав v4/v5 за поточної v7</td></tr>
+<tr><td data-th="Артефакт"><code>.claude/settings.json</code>, <code>.pre-commit-config.yaml</code>, <code>.mcp.json</code></td><td data-th="Хто">агент пише чернетку в staging, людина переносить</td><td data-th="Чому">Protected paths; це межа довіри, а не рутина</td></tr>
+<tr><td data-th="Артефакт">Захист гілки, required checks, секрети</td><td data-th="Хто">людина в налаштуваннях GitHub</td><td data-th="Чому">Не файл репозиторію; права адміністратора агентові не потрібні</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Що захист не покриває</span>
+<p>Захист перевіряє запис файлів інструментами агента, а не те, що змінює запущена команда. В експерименті нижче обидва «вільні» прогони перевели git на хуки з репозиторію через <code>core.hooksPath</code>. Перший записав <code>git config</code> у свій <code>scripts/setup.sh</code> і запустив його, другий виконав <code>git config</code> напряму, бо моє правило <code>Bash(git *)</code> було надто широким. В обох випадках <code>.git/config</code> змінився без жодного запиту. Скрипти bootstrap рев'юйте так само, як settings, а git дозволяйте підкомандами (<code>Bash(git add *)</code>, <code>Bash(git commit *)</code>).</p>
+</div>
+</section>
+
+<section class="sec" id="spec">
+<div class="sec-h"><span class="num">02</span><h2>Bootstrap-специфікація<span class="sub">Контракт, який перевіряють командами</span></h2></div>
+<p>Промпт «зроби репозиторій, готовий до агентів і CI» змушує модель ухвалити десяток рішень, які ви потім рев'юїте. <b>Bootstrap-специфікація</b> переносить ці рішення до вас. На пів сторінки в ній є п'ять блоків:</p>
+<ol class="steps">
+<li><b>Продукт</b> — 3–4 рядки: вхід, вихід, коди виходу. Без них агент вигадає формат.</li>
+<li><b>Фіксований стек</b> — мова, розкладка, інструменти і що заборонено («pip + venv, без uv, poetry, tox, Makefile»).</li>
+<li><b>Контракт репозиторію</b> — пронумеровані пункти, кожен перевіряється командою зі свіжого клону: що робить <code>setup.sh</code>, які кроки в <code>check.sh</code>, точний склад <code>ci.yml</code> з версіями дій.</li>
+<li><b>Межі harness</b> — що агент не може записати сам і куди класти чернетку.</li>
+<li><b>Done і поза межами</b> — команда приймання, коміт; що не робити (Docker, матриця, поріг покриття).</li>
+</ol>
+<pre class="code" data-lang="markdown">## Repository contract — I will verify exactly this from a fresh clone
+1. `scripts/setup.sh` creates `.venv` with python3.12, installs `requirements/dev.txt`
+   with `--require-hashes`, then the package with `--no-deps -e .`.
+2. `scripts/check.sh` runs `ruff check .`, `ruff format --check .`, `pytest -q` with `.venv/bin`
+   tools; runs every step, then exits 1 if any failed. No network, no secrets.
+3. `.github/workflows/ci.yml`: … `actions/checkout@v7`, `actions/setup-python@v7`
+   (python 3.12, `cache: pip`, `cache-dependency-path: requirements/dev.txt`),
+   `PYTHON=python scripts/setup.sh`, `scripts/check.sh`. Nothing else: CI logic lives in scripts.
+4. Claude Code never auto-approves writes to `.pre-commit-config.yaml` or `.claude/` (protected
+   paths), so write them as `bootstrap/pre-commit-config.yaml` and `bootstrap/claude-settings.json`;
+   `scripts/install-agent-config.sh` copies them into place — a human runs it after review.</pre>
+<p>Специфікацію пишуть англійською, бо вона йде агентові як є. Повний текст (415 слів) лежить у <code>console/bootstrap/bootstrap-spec.md</code>. Версії дій вписано явно: без них модель обирає версії сама, і в обох вільних прогонах це були <code>checkout@v4</code> і <code>setup-python@v5</code> за поточної <b>v7</b>.</p>
+<div class="note tip"><span class="lbl">Як повторювати</span>
+<p>Тримайте специфікацію в skill <code>/bootstrap</code> (6.1). Стек і контракт команди лежать у SKILL.md, а з аргументу береться лише абзац «Продукт». Скрипт перевірки зі свіжого клону (<code>console/bootstrap/measure.sh</code>) кладіть поруч: skill без приймання дає неперевірені звіти.</p>
+</div>
+</section>
+
+<section class="sec" id="experiment">
+<div class="sec-h"><span class="num">03</span><h2>Експеримент<span class="sub">Специфікація проти вільного промпту, 4 прогони</span></h2></div>
+<p>Задача: <code>quizlint</code>, CLI, що перевіряє JSON-квізи формату Lectern. По два прогони <code>claude -p --model sonnet</code> у порожніх теках: зі специфікацією і з вільним промптом («ready for development with AI coding agents and CI: structure, instructions for agents, tests, linting, CI, git hooks»). Ізоляція й межі були однакові для всіх прогонів.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — boot/runs/spec-1</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Bootstrap the repository described in bootstrap-spec.md …" --model sonnet --setting-sources project --strict-mcp-config --tools "Read,Write,Edit,Glob,Grep,Bash" --allowedTools "Read" "Write" "Edit" "Glob" "Grep" "Bash(python3.12 *)" "Bash(.venv/bin/*)" "Bash(git *)" "Bash(mkdir *)" "Bash(chmod *)" "Bash(ls *)" "Bash(cat *)" "Bash(scripts/*)" --permission-mode dontAsk --max-turns 80 --max-budget-usd 2.00 --append-system-prompt "$TOOLS_NOTE" --output-format stream-json --verbose</span></pre>
+<div class="cap">реальна команда · 17.10.2026 · Claude Code 2.1.302 · повністю — <code>console/bootstrap/run.sh</code></div></div>
+<p><b>Спроба 0 провалилася вся, $0,62.</b> Усі чотири агенти почали з одного виклику Bash, що створював усі файли через <code>cat &gt; … &lt;&lt;EOF</code>. Allowlist без голого <code>Bash</code> його відхилив, і це правильно: через такий виклик агент обходить правила Edit (B25). Записи <code>.pre-commit-config.yaml</code> і <code>.claude/settings.json</code> упали на protected paths. Жоден прогін не дійшов до коміту, і всі чесно зупинилися, а не шукали обхід. У спробі 1 до системного промпту обох груп додано одне речення: «файли — через Write/Edit; Bash лише для python3.12, .venv/bin/*, git, mkdir, chmod, ls, cat, scripts/*». Специфікація отримала пункт 4. Це речення підказало вільним прогонам теки <code>scripts/</code> і <code>.venv</code>, тож їхня схожість зі специфікацією частково завдячує йому.</p>
+<p><b>Приймання однакове для всіх:</b> <code>git clone</code> результату в нову теку, далі <code>scripts/setup.sh</code>, <code>scripts/check.sh</code>, кроки <code>run:</code> з <code>ci.yml</code> по черзі (<code>act</code> не встановлено, тож їх виконує <code>console/ci_local.py</code>; на місці <code>setup-python</code> — свіжий venv на PATH), actionlint, pre-commit і чотири файли-проби для CLI.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що міряли</th><th>spec-1</th><th>spec-2</th><th>free-1</th><th>free-2</th></tr></thead>
+<tbody>
+<tr><td data-th="Що міряли">Вартість · ходи · час</td><td data-th="spec-1">$0,302 · 43 · 117 с</td><td data-th="spec-2">$0,293 · 41 · 146 с</td><td data-th="free-1">$0,186 · 23 · 88 с</td><td data-th="free-2">$0,185 · 28 · 83 с</td></tr>
+<tr><td data-th="Що міряли">Файлів · тестів</td><td data-th="spec-1">27 · 10</td><td data-th="spec-2">27 · 9</td><td data-th="free-1">15 · 22</td><td data-th="free-2">15 · 18</td></tr>
+<tr><td data-th="Що міряли">setup зі свіжого клону</td><td data-th="spec-1"><b>падає</b></td><td data-th="spec-2">ok, 9 с</td><td data-th="free-1">ok, 8 с</td><td data-th="free-2">ok, 8 с</td></tr>
+<tr><td data-th="Що міряли">check і кроки CI локально</td><td data-th="spec-1">ok після 1 виправлення</td><td data-th="spec-2">ok</td><td data-th="free-1">ok</td><td data-th="free-2">ok</td></tr>
+<tr><td data-th="Що міряли">Версії дій</td><td data-th="spec-1">v7 · v7</td><td data-th="spec-2">v7 · v7</td><td data-th="free-1">v4 · v5</td><td data-th="free-2">v4 · v5</td></tr>
+<tr><td data-th="Що міряли"><code>permissions</code>, <code>timeout</code></td><td data-th="spec-1">так</td><td data-th="spec-2">так</td><td data-th="free-1">ні</td><td data-th="free-2">ні</td></tr>
+<tr><td data-th="Що міряли">Залежності</td><td data-th="spec-1">lock, 129 хешів</td><td data-th="spec-2">lock, 133 хеші</td><td data-th="free-1">діапазони <code>&gt;=</code></td><td data-th="free-2">діапазони <code>&gt;=</code></td></tr>
+<tr><td data-th="Що міряли">Логіка CI</td><td data-th="spec-1">setup → check</td><td data-th="spec-2">setup → check</td><td data-th="free-1">5 кроків у YAML, копія check.sh</td><td data-th="free-2">pip у Python раннера → check</td></tr>
+<tr><td data-th="Що міряли">Хуки git</td><td data-th="spec-1">чернетка для людини</td><td data-th="spec-2">чернетка для людини</td><td data-th="free-1">повний check на коміт через <code>core.hooksPath</code></td><td data-th="free-2">те саме</td></tr>
+<tr><td data-th="Що міряли">Формат входу і коди виходу</td><td data-th="spec-1">за специфікацією</td><td data-th="spec-2">за специфікацією</td><td data-th="free-1">13 правил QZ000–QZ012; битий JSON → 1</td><td data-th="free-2">лише список верхнього рівня, <code>{"items": …}</code> відхиляє</td></tr>
+</tbody></table></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>measure/spec-1 — свіжий клон</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/setup.sh</span>
+<span class="er">ERROR: In --require-hashes mode, all requirements must have their versions pinned with ==. These do not:</span>
+    setuptools from https://files.pythonhosted.org/…/setuptools-84.0.0-py3-none-any.whl (from pip-tools==7.6.2-&gt;-r requirements/dev.txt (line 49))</pre>
+<div class="cap">реальний вивід · 17.10.2026 · у звіті агента: «scripts/setup.sh and scripts/check.sh pass»</div></div>
+<p><b>Висновки.</b> spec-1 звітував про успіх, бо у своїй теці перевикористав старий <code>.venv</code>. У свіжому клоні <code>pip-compile</code> без <code>--allow-unsafe</code> лишив <code>setuptools</code> без піна, і <code>--require-hashes</code> відмовив. Знадобилося одне виправлення (перегенерувати lock з <code>--allow-unsafe</code>), spec-2 дійшов до цього сам. Вільні прогони на 37% дешевші, тестів у них удвічі більше, і за власними мірками вони зелені. Але вони самі вирішили продуктові питання: формат входу, коди виходу, набір правил. Інфраструктурних рішень вийшло з десяток, і кожне треба рев'ювити або переробляти: застарілі мажори дій, відсутні права й таймаут, залежності без фіксації, хук на кожен коміт через зміну <code>.git/config</code>. Мажори v4 і v5 написані під Node 20. З 16.06.2026 раннери типово запускають такі дії на Node 24, а видалення Node 20 GitHub призначив на 23.09.2026.</p>
+<div class="note fact"><span class="lbl">Виміряно · 17.10.2026</span>
+<p>8 прогонів, $1,59 разом: спроба 0 — $0,62, спроба 1 — $0,97. Специфікація коштує +$0,11 і +16 ходів на прогін. Звіт агента «усе проходить» без приймання зі свіжого клону помилився в 1 з 2 прогонів зі специфікацією. n = 2 на групу: це ілюстрація механізмів, а не статистика.</p>
+</div>
+</section>
+
+<section class="sec" id="check">
+<div class="sec-h"><span class="num">04</span><h2>Одна перевірка на всіх<span class="sub">check.sh, pre-commit і агент</span></h2></div>
+<p><b>Скрипт перевірки однією командою</b> — єдине місце, де записано, що таке «зелено». Його викликають агент (як Done в AGENTS.md), Stop-хук (6.2), CI і людина перед PR. Друга копія списку перевірок, у YAML чи в інструкції, рано чи пізно розійдеться з першою. Так вийшло у free-1: <code>check.sh</code> і <code>ci.yml</code> перелічують ті самі п'ять інструментів окремо.</p>
+<pre class="code" data-lang="sh"><span class="cm">#!/bin/sh</span>
+<span class="cm"># Lectern: повна перевірка без мережі й без моделі (ADR 0014)</span>
+set -u
+cd "$(dirname "$0")/.."
+PY=${LECTERN_PY:-.venv/bin/python}
+failed=""
+step() { name=$1; shift; echo "== $name: $*"; "$@" || failed="$failed $name"; }
+step lint "$PY" -m ruff check .
+step tests "$PY" -m pytest -q -p no:cacheprovider
+step context "$PY" scripts/check_context.py
+<span class="k">if</span> [ -n "${LECTERN_BASE:-}" ]; <span class="k">then</span> step trace "$PY" scripts/trace.py --require-refs "$LECTERN_BASE"
+<span class="k">else</span> step trace "$PY" scripts/trace.py; <span class="k">fi</span>
+step tasks "$PY" scripts/plan_tasks.py docs/specs/module-from-pdf/tasks.md
+step mcp-contract "$PY" scripts/mcp_contract.py check
+<span class="k">if</span> [ -n "$failed" ]; <span class="k">then</span> echo "FAILED:$failed"; exit 1; <span class="k">fi</span>
+echo "all checks passed"</pre>
+<ul>
+<li><b>Усі кроки, потім код виходу.</b> Fail-fast показує агентові одну проблему за запуск. Скрипт, що доходить до кінця, показує всі, а це менше ітерацій циклу.</li>
+<li><b>Команда перед кожним кроком</b> (<code>== tests: …</code>): агент повторює лише впалий крок, не вгадуючи прапорців.</li>
+<li><b>Один інтерпретатор</b> з <code>.venv</code>, тобто версії з lock, ті самі, що в CI. Ruff 0.17.1 з lock знайшов у новому коді Lectern <code>PLW1510</code> (<code>subprocess.run</code> без <code>check=</code>), і локально, і в CI він дасть ту саму відповідь.</li>
+<li><b>Без мережі, секретів і моделі</b>: ті самі результати на ноутбуці, у fork-PR і в агентному sandbox.</li>
+</ul>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Коли</th><th>Що</th><th>Час, Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">pre-commit</td><td data-th="Коли">кожен коміт</td><td data-th="Що">ruff на змінених файлах, <code>check_context.py</code>, ключі, приватні ключі, великі файли, маркери конфліктів</td><td data-th="Час, Lectern">2–3,6 с (теплий кеш)</td></tr>
+<tr><td data-th="Рівень"><code>scripts/check.sh</code></td><td data-th="Коли">Done агента, перед PR</td><td data-th="Що">усе офлайн: 230 тестів, контекст, трасування, граф задач, контракт MCP</td><td data-th="Час, Lectern">19–26 с</td></tr>
+<tr><td data-th="Рівень">CI</td><td data-th="Коли">PR і push у main</td><td data-th="Що">setup → check → pre-commit на всіх файлах; окремо lock</td><td data-th="Час, Lectern">≈ 54 с локально</td></tr>
+</tbody></table></div>
+<p><b>pre-commit</b> — фреймворк, що бере хуки git з <code>.pre-commit-config.yaml</code> і ставить кожному ізольоване середовище. Факти з документації pre-commit.com: локальні хуки задаються через <code>repo: local</code>; <code>language: system</code> з версії 4.4.0 зветься <code>unsupported</code>, і старий псевдонім обіцяють прибрати; <code>pygrep</code> блокує коміт за регулярним виразом без жодного встановлення; <code>rev</code> має бути незмінним посиланням (тег або SHA), а <code>autoupdate --freeze</code> записує SHA. Ruff у Lectern запускається з <code>.venv</code>, а не з окремого <code>rev</code> ruff-pre-commit: так у репозиторії одна версія ruff, а не дві.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — lectern (справжні імена файлів)</span></div>
+<pre><span class="ps">$ </span><span class="c">git commit -m "feat: config"</span>     <span class="d"># src/lectern/leak.py: KEY = "AKIA…"</span>
+ruff check … <span class="ok">Passed</span>
+context files match the repo … (no files to check)Skipped
+no API keys or tokens … <span class="er">Failed</span>
+- hook id: no-secrets
+- exit code: 1
+
+src/lectern/leak.py:1:KEY = "AKIAABCDEFGHIJKLMNOP"
+
+detect private key … <span class="ok">Passed</span></pre>
+<div class="cap">реальний вивід · pre-commit 4.7.0 · 17.10.2026 · ключ фейковий · рядки з крапок скорочено до «…» · <code>console/lectern/</code></div></div>
+<p>Той самий регулярний вираз збігається з фейковим ключем у <code>tests/test_hooks.py</code> (перевірено <code>grep</code>). Це фікстура хука <code>no_secrets.py</code>, тож файл внесено в <code>exclude</code> з коментарем, чому. Хуки агента (6.2) і хуки git спрацьовують у різних точках. PostToolUse бачить кожну правку агента, pre-commit — кожен коміт будь-кого. Перші ловлять помилку на ходу, другі не пускають її в історію.</p>
+</section>
+
+<section class="sec" id="ci">
+<div class="sec-h"><span class="num">05</span><h2>CI, що дзеркалить локальне<span class="sub">ci.yml без власної логіки</span></h2></div>
+<p><b>CI дзеркалить локальне</b>, коли кожен його крок — скрипт, який так само запускають людина й агент. Тоді червоний CI відтворюється однією командою, і агент лагодить його без доступу до логів GitHub.</p>
+<pre class="code" data-lang="yaml"><span class="k">on</span>:
+  pull_request:
+  push:
+    branches: [main]
+<span class="k">permissions</span>:
+  contents: read
+<span class="k">concurrency</span>:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+<span class="k">jobs</span>:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 <span class="cm"># v7.0.1</span>
+        with:
+          fetch-depth: 0 <span class="cm"># trace.py читає трейлери Refs з git log</span>
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 <span class="cm"># v7.0.0</span>
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/ci.txt
+      - run: scripts/setup.sh
+        env: { PYTHON: python }
+      - run: scripts/check.sh
+        env:
+          LECTERN_BASE: ${{ github.event_name == 'pull_request' &amp;&amp; format('origin/{0}', github.base_ref) || '' }}
+      - run: .venv/bin/pre-commit run --all-files --show-diff-on-failure
+  lock:
+    <span class="cm"># checkout і setup-python ті самі; один крок:</span>
+      - run: scripts/lock.sh --check</pre>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Рядок</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td><code>permissions: contents: read</code></td><td>GitHub радить типово давати <code>GITHUB_TOKEN</code> лише читання і розширювати права для окремих jobs</td></tr>
+<tr><td>Дія за повним SHA + тег у коментарі</td><td>Рекомендація з security-документації: тег можна пересунути, коміт — ні. Новіший шар — lockfile дій <code>.github/workflows/actions.lock</code> (<code>gh actions-lock</code>), поки в public preview</td></tr>
+<tr><td><code>fetch-depth: 0</code></td><td>checkout типово бере один коміт, а <code>trace.py</code> і перевірка <code>Refs</code> читають історію гілки</td></tr>
+<tr><td><code>persist-credentials: false</code></td><td>job нічого не пушить, тож токен на диску не потрібен</td></tr>
+<tr><td><code>cache: pip</code> за lock</td><td>setup-python кешує глобальний каталог pip, ключ — хеш <code>cache-dependency-path</code>. Ключ за точними пінами змінюється лише разом із lock</td></tr>
+<tr><td>Без матриці</td><td>Продукт працює на одній версії Python і одній ОС. Матриця множить хвилини, а нового сигналу не дає</td></tr>
+</tbody></table></div>
+<p><b>Тести без секретів</b> — вимога до коду, а не до CI. Для workflow з fork-PR GitHub не передає раннеру жодного секрету, крім <code>GITHUB_TOKEN</code>; для подій Dependabot секретів немає взагалі. Тест, якому потрібен ключ API, на таких PR падає або тихо пропускається. Тому моделі в тестах підробні (FakeClient, 2.5), а все, що справді ходить у мережу, — окремий workflow, не required.</p>
+<h3>Required status checks</h3>
+<p>Захист гілки або ruleset вимагає, щоб названі checks пройшли до злиття. Три факти з документації GitHub змінюють те, як пишуть workflow:</p>
+<ul>
+<li><b>strict</b> (гілка має бути актуальною з базовою) проти <b>loose</b>: loose пропускає PR, який після злиття ламається через несумісну зміну в базі;</li>
+<li>назви jobs мають бути унікальними в усіх workflow, інакше результат неоднозначний і злиття блокується;</li>
+<li>check зі статусом <b>skipped</b> вважається пройденим. Job, який на цьому PR не запустився через умову <code>if:</code>, дає зелений gate без жодної перевірки.</li>
+</ul>
+<p>Тому в Lectern два jobs без умов, і обидва required. Правило для CODEOWNERS (8.3) прив'язує до перевірки людину, а required checks — машину.</p>
+<h3>actionlint і локальний прогін</h3>
+<p><b>actionlint</b> — статичний лінтер workflow: ключі, вирази <code>${{ }}</code>, типи контексту, входи відомих дій. Версія 1.7.12 поставлена з <code>actionlint-py</code> у тимчасовий venv.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — копія ci.yml з трьома помилками</span></div>
+<pre><span class="ps">$ </span><span class="c">actionlint -oneline</span>
+ci.yml:20:5: unexpected key "timeout-minute" for "job" section. … [syntax-check]
+ci.yml:38:89: property "base_reff" is not defined in object type {…} [expression]
+<span class="d"># третя помилка — cache-dependency-paths — не знайдена</span>
+<span class="ps">$ </span><span class="c">actionlint -oneline</span>   <span class="d"># та сама помилка входу, setup-python@v6</span>
+ci.yml:30:11: input "cache-dependency-paths" is not defined in action "actions/setup-python@v6" …</pre>
+<div class="cap">реальний вивід · 17.10.2026 · скорочено · <code>console/actionlint.txt</code></div></div>
+<p>Помилку у вході дії actionlint знаходить лише для версій, які знає його вбудований каталог. setup-python@v6 він ловить, а @v7 (липень 2026) і будь-яку дію, закріплену за SHA, пропускає. Виходить, що безпечне закріплення вимикає одну з перевірок. Інтеграція зі shellcheck потребує бінарника <code>shellcheck</code>, якого на цій машині не було. Workflow Lectern проходить actionlint з 0 проблем.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — lectern, кроки run: з ci.yml</span></div>
+<pre><span class="ps">$ </span><span class="c">python ci_local.py .</span>
+== ci.yml :: check
+  1. skip  uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+  2. skip  uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+  3. <span class="ok">ok</span>    Setup (the same command as for people and agents)  (17.1 s)
+  4. <span class="ok">ok</span>    Check  (25.8 s)
+  5. <span class="ok">ok</span>    Git hooks on all files  (3.6 s)
+== ci.yml :: lock
+  3. <span class="ok">ok</span>    Lockfile matches pyproject.toml  (7.2 s)
+steps failed: 0</pre>
+<div class="cap">реальний вивід · macOS · скорочено · <code>act</code> не встановлено, тому кроки виконує власний скрипт <code>console/ci_local.py</code> · у Docker linux/amd64 (дерево до уроку 10.4) setup → check → pre-commit → lock теж зелені: 212 passed, 1 skipped</div></div>
+<div class="note warn"><span class="lbl">Пропущений тест — теж сигнал</span>
+<p>На Linux один тест вимоги <code>LEC-ING-001</code> пропускається: генератор PDF-фікстур шукає шрифт за шляхом macOS. Required check буде зеленим без доказу цієї вимоги, тож у беклозі з'явився B57. Перший прогін на платформі CI порівнюйте з локальним не лише за exit code, а й за кількістю skipped.</p>
+</div>
+<p><b>AI-рев'ю на етапі bootstrap</b> підключають окремим workflow з <code>anthropics/claude-code-action@v1</code> (тег v1.0.252 від 16.10.2026; налаштування — <code>/install-github-app</code> у Claude Code). Йому потрібен секрет, тож до required він не входить і запускається поза fork-PR, а в <code>claude_args</code> лише вузькі <code>--allowedTools</code>. Тест Lectern <code>test_ci_policy.py</code> валить збірку на голому <code>Bash</code> у будь-якому allow-списку скриптів і workflow. Глибше — у 12.2.</p>
+</section>
+
+<section class="sec" id="lock">
+<div class="sec-h"><span class="num">06</span><h2>Lockfile<span class="sub">Діапазони в pyproject, точні версії в lock</span></h2></div>
+<p><code>pyproject.toml</code> задає сумісність (<code>anthropic&gt;=1.14,&lt;2</code>). <b>Lockfile</b> задає одне конкретне середовище: точні версії всіх транзитивних залежностей і sha256 кожного файла. Без нього агент у понеділок і CI у вівторок ставлять різні пакети. Тоді «у мене зелено» перестає щось означати, а помилка з'являється в чужому PR. З <code>--require-hashes</code> pip відмовляється ставити будь-що без піна і хеша. Саме це зупинило spec-1.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Спосіб</th><th>Як працює</th><th>Для Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Спосіб"><code>uv.lock</code>, <code>uv sync --locked</code></td><td data-th="Як працює">Універсальний lock для всіх Python-маркерів, комітиться в репозиторій. <code>--locked</code> — помилка, якщо lock застарів; <code>uv lock --check</code> — те саме для CI</td><td data-th="Для Lectern">Технічно найкращий; uv немає в інструментах курсу (B58)</td></tr>
+<tr><td data-th="Спосіб">pip-tools: <code>pip-compile --generate-hashes</code></td><td data-th="Як працює">Результат може відрізнятися між середовищами; генерувати на кожному цільовому окремо. Читає extras з pyproject, 7.6.2 не читає <code>[dependency-groups]</code></td><td data-th="Для Lectern"><b>Обрано</b> (ADR 0014): лише pip, перевіряється в CI</td></tr>
+<tr><td data-th="Спосіб"><code>pip lock</code> → <code>pylock.toml</code></td><td data-th="Як працює">У pip 26.2.1 позначено EXPERIMENTAL; чинний лише для поточних Python і платформи</td><td data-th="Для Lectern">Рано</td></tr>
+<tr><td data-th="Спосіб"><code>pip freeze</code></td><td data-th="Як працює">Друкує пакети, встановлені в поточному venv: без хешів і без зв'язку з pyproject</td><td data-th="Для Lectern">Ні</td></tr>
+</tbody></table></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>uv — той самий контракт</span></div>
+<pre><span class="ps">$ </span><span class="c">uv lock</span>
+<span class="ps">$ </span><span class="c">uv sync --locked --all-extras --dev</span>
+<span class="ps">$ </span><span class="c">uv lock --check</span>
+<span class="ps">$ </span><span class="c">uv export --format requirements.txt</span></pre>
+<div class="cap">команди з офіційної документації uv · не запускались у цьому уроці</div></div>
+<p><code>scripts/lock.sh</code> генерує <code>requirements/dev.in</code> з <code>[dependency-groups].dev</code>, щоб список не дублювався руками. Потім pip-compile пише <code>requirements/ci.txt</code>: extras <code>serve</code>, <code>mcp</code>, <code>rag</code> і група dev. З <code>--check</code> скрипт перегенеровує lock поверх наявного (піни зберігаються) і робить <code>git diff --exit-code</code>.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar m"><span class="k">перша генерація, macOS arm64</span><span class="tr"><i style="--v:94%"></i><b class="in" style="--v:94%">8 хв 21 с</b></span></div>
+  <div class="bar m"><span class="k">перша генерація, Linux aarch64</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">8 хв 52 с</b></span></div>
+  <div class="bar t"><span class="k">lock.sh --check, кеш, macOS</span><span class="tr"><i style="--v:2%"></i><b style="--v:2%">7–11 с</b></span></div>
+  <div class="bar t"><span class="k">lock.sh --check, linux/amd64 (емуляція)</span><span class="tr"><i style="--v:7%"></i><b style="--v:7%">38 с</b></span></div>
+  <div class="bar t"><span class="k">setup.sh з lock, холодний кеш pip</span><span class="tr"><i style="--v:9%"></i><b style="--v:9%">46 с</b></span></div>
+</div>
+<figcaption>Час операцій з lock Lectern, 17.10.2026. Довга лише перша генерація без кешу pip-tools; перевірка поверх наявного lock триває секунди.</figcaption>
+</figure>
+<p>60 пакетів, 1059 хешів (лише numpy — 66 колес). Файли з macOS і Linux aarch64 ідентичні байт у байт, на linux/amd64 <code>--check</code> розбіжностей не знайшов. Для цього набору залежностей платформа lock не змінює, але це властивість набору, а не pip-compile: job <code>lock</code> перевіряє її на кожному PR. Нова залежність (<code>rich</code>) без перегенерації дала <code>requirements/ci.txt | 16 +++++++++++++++-</code> і код 1 за 7 с.</p>
+</section>
+
+<section class="sec" id="template">
+<div class="sec-h"><span class="num">07</span><h2>Шаблон репозиторію<span class="sub">Що виносити, що генерувати заново</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Механізм</th><th>Що робить</th><th>Оновлення з шаблону</th></tr></thead>
+<tbody>
+<tr><td data-th="Механізм"><b>Template repository</b> GitHub</td><td data-th="Що робить">Новий репозиторій отримує файли типової гілки, за бажанням — усі гілки; історії не пов'язані; файли Git LFS не підтримуються</td><td data-th="Оновлення з шаблону">Ні: між непов'язаними історіями немає PR і злиття</td></tr>
+<tr><td data-th="Механізм">cookiecutter 2.7.1</td><td data-th="Що робить">Генерує проєкт із шаблону з підстановками</td><td data-th="Оновлення з шаблону">У документації не описано</td></tr>
+<tr><td data-th="Механізм">copier 9.19.1</td><td data-th="Що робить">Те саме, відповіді зберігаються в <code>.copier-answers.yml</code></td><td data-th="Оновлення з шаблону"><code>copier update</code>: шаблон і проєкт — git-репозиторії з тегами; конфлікти — маркери в файлі або <code>.rej</code></td></tr>
+</tbody></table></div>
+<p>Виносити в шаблон варто те, що не залежить від продукту: <code>scripts/setup.sh</code>, <code>check.sh</code>, <code>lock.sh</code>, <code>ci.yml</code>, конфіг pre-commit, тест політики CI, скелет AGENTS.md, шаблони ADR і специфікації, PR-шаблон, bootstrap-специфікацію з прийманням. Не виносити lock (його генерують заново з нових діапазонів) і конкретні дозволи та CODEOWNERS (вони залежать від проєкту і команди).</p>
+<p>Шаблон старіє так само, як знання моделі: вільні прогони взяли дії на два мажори старші за поточні. Тому шаблону потрібен власний CI. Раз на тиждень він генерує зразковий проєкт і проганяє на ньому приймання (setup → check → кроки CI → actionlint), а <code>copier update</code> або skill <code>/bootstrap</code> розносить оновлення в уже створені репозиторії.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern отримує CI, lock і pre-commit</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 10.3 · <code>scripts/</code>, <code>dot-github/workflows/</code></div><div class="pb">
+<p>Lectern жив без CI дев'ять модулів: перевірки були, але їх ніхто не запускав примусово. Зміни (19 файлів, diff без lock — <code>console/lectern/lectern-10.3.diff</code>; у наборі курсу <code>.github/</code> лежить як <code>dot-github/</code>, конфіг pre-commit — як <code>dot-pre-commit-config.yaml</code>):</p>
+<ol class="steps">
+<li><b>B39, lock.</b> <code>requirements/ci.txt</code> (60 пакетів, хеші), <code>scripts/lock.sh [--check]</code>, <code>pre-commit</code> у групі dev. Рішення і відхилені варіанти — ADR 0014 (0013 — рішення 10.2 про сховище задач).</li>
+<li><b>Одна команда середовища і одна перевірки.</b> <code>scripts/setup.sh</code>, <code>scripts/check.sh</code> (6 кроків, включно з графом задач з 10.4). У <code>CLAUDE.kit.md</code> Done тепер означає <code>all checks passed</code>; settings дозволяють <code>Bash(scripts/check.sh)</code> і питають перед правкою <code>requirements/**</code> та workflow.</li>
+<li><b>CI.</b> Jobs <code>check</code> і <code>lock</code>, дії за SHA, лише читання, без секретів; actionlint — 0 проблем.</li>
+<li><b>B23.</b> <code>trace.py --require-refs BASE</code>: коміт гілки, що змінює <code>src/</code>, має трейлер <code>Refs: LEC-…</code> або явний <code>Refs: none</code>. Рефакторинг дозволений, але рішення «без вимог» записане. +2 тести.</li>
+<li><b>B25, частина CI.</b> <code>tests/test_ci_policy.py</code> сканує <code>scripts/**/*.sh</code> і workflow: жодного голого <code>Bash</code> в allow-списку, жодного <code>--dangerously-skip-permissions</code>.</li>
+<li><b>pre-commit.</b> ruff і <code>check_context.py</code> з <code>.venv</code>, pygrep на ключі, <code>detect-private-key</code>, великі файли, маркери конфліктів.</li>
+</ol>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — lectern після 10.4 + 10.3</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/check.sh</span>
+== lint: .venv/bin/python -m ruff check .
+All checks passed!
+== tests: .venv/bin/python -m pytest -q -p no:cacheprovider
+230 passed in 21.13s
+== context: .venv/bin/python scripts/check_context.py
+checked 9 files (31 commands, 45 paths, 16 symbols): 0 problem(s)
+== trace: .venv/bin/python scripts/trace.py
+37 requirements, 44 tests: 0 error(s), 0 warning(s)
+== tasks: .venv/bin/python scripts/plan_tasks.py docs/specs/module-from-pdf/tasks.md
+<span class="d">… граф задач, хвилі, критичний шлях …</span>
+== mcp-contract: .venv/bin/python scripts/mcp_contract.py check
+contract unchanged (0.3.0)
+<span class="ok">all checks passed</span></pre>
+<div class="cap">реальний вивід · 17.10.2026 · вивід trace і plan_tasks скорочено</div></div>
+<p><b>У беклог:</b> B57 — тест <code>LEC-ING-001</code> пропускається на Linux через шлях до шрифту macOS; B58 — перехід на <code>uv.lock</code>, коли uv стане обов'язковим; B59 — actionlint не перевіряє входи дій, закріплених за SHA, тож входи треба звіряти з їхніми <code>action.yml</code> окремо.</p>
+<p><b>Ваш крок:</b> застосуйте diff у своїй копії, перейменуйте <code>dot-github/</code> → <code>.github/</code> і <code>dot-pre-commit-config.yaml</code> → <code>.pre-commit-config.yaml</code>, виконайте <code>scripts/setup.sh</code>, <code>scripts/check.sh</code> і <code>.venv/bin/pre-commit run --all-files</code>. Потім зробіть у гілці коміт у <code>src/</code> без трейлера і переконайтеся, що <code>LECTERN_BASE=main scripts/check.sh</code> його зупиняє.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що робити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що робити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Агент пише «setup і check проходять», а в CI падає встановлення</td><td data-th="Причина">Перевірка в теці з уже наявним <code>.venv</code></td><td data-th="Що робити">Приймання — лише зі свіжого <code>git clone</code>; у CI <code>.venv</code> щоразу новий</td></tr>
+<tr><td data-th="Симптом">CI зелений, локально червоно (або навпаки)</td><td data-th="Причина">Логіка в YAML розійшлася з <code>check.sh</code>; різні версії інструментів</td><td data-th="Що робити">У CI тільки виклики скриптів; інструменти з lock</td></tr>
+<tr><td data-th="Симптом">PR злито, хоча перевірка не виконувалася</td><td data-th="Причина">Required job пропущено через умову <code>if:</code>, а skipped вважається пройденим</td><td data-th="Що робити">Required jobs без умов; умовні кроки — всередині job</td></tr>
+<tr><td data-th="Симптом">Fork-PR падають на тестах</td><td data-th="Причина">Тестам потрібен ключ API, а fork-PR секретів не отримують</td><td data-th="Що робити">Фейкові клієнти в тестах; мережеві перевірки — окремий необов'язковий workflow</td></tr>
+<tr><td data-th="Симптом">Bootstrap зупинився на «permission denied» для <code>.claude/settings.json</code></td><td data-th="Причина">Protected path: у <code>dontAsk</code> такий запис відхиляється, allow-правила не допомагають</td><td data-th="Що робити">Чернетка в <code>bootstrap/</code>, людина переносить після рев'ю</td></tr>
+<tr><td data-th="Симптом">actionlint зелений, а дія отримала невідомий вхід</td><td data-th="Причина">Для SHA-пінів і нових мажорів actionlint не знає входів</td><td data-th="Що робити">Звіряти входи з <code>action.yml</code> закріпленої версії</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">required job з if:</span><span class="h">на PR не запустився — що з gate?</span></span><span class="b"><span class="t">Зелений</span><span class="d">skipped вважається пройденим; умову переносять у кроки</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">.pre-commit-config.yaml</span><span class="h">чому агент не записав?</span></span><span class="b"><span class="t">Protected path</span><span class="d">у dontAsk запис відхиляється, allow-правила його не відкривають</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">--require-hashes</span><span class="h">що зламало spec-1?</span></span><span class="b"><span class="t">setuptools без піна</span><span class="d">pip-compile без --allow-unsafe; у свіжому клоні pip відмовив</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">fetch-depth: 0</span><span class="h">навіщо в Lectern?</span></span><span class="b"><span class="t">Історія для Refs</span><span class="d">checkout типово бере один коміт, trace.py читає трейлери з git log</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">check.sh</span><span class="h">fail-fast чи всі кроки?</span></span><span class="b"><span class="t">Усі кроки</span><span class="d">агент бачить усі проблеми за один запуск, код виходу — наприкінці</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">checkout@v4</span><span class="h">що з цим робити?</span></span><span class="b"><span class="t">Задати версію</span><span class="d">поточна v7; без версії в специфікації модель обирає сама</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Агент завершив bootstrap і пише: «scripts/setup.sh і scripts/check.sh проходять». Що зробити, перш ніж приймати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Попросити агента запустити check.sh ще раз і вставити останній рядок виводу у звіт</span></label><label class="opt ok"><input type="radio" name="q1"><span>Склонувати результат у нову теку і там прогнати setup, check і кроки CI</span></label><label class="opt"><input type="radio" name="q1"><span>Повірити звіту, бо check.sh повертає ненульовий код на будь-якій помилці</span></label></div>
+    <div class="why yes">Так. Приймання зі свіжого клону ловить те, що ховає вже наявний .venv: так spec-1 «пройшов» у своїй теці і впав у новій.</div>
+    <div class="why no">Повторний запуск у тій самій теці перевіряє той самий забруднений стан: старий .venv приховав непіннутий setuptools у spec-1. Код виходу каже правду лише про середовище, в якому скрипт запустили.</div></div>
+  <div class="q"><div class="qt">2. Required job <code>integration</code> має <code>if: github.event_name == 'push'</code>. Відкрили PR. Що з gate?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Job пропущено, а skipped вважається пройденим, тож PR можна злити без нього</span></label><label class="opt"><input type="radio" name="q2"><span>PR чекатиме безкінечно: required check у статусі pending блокує злиття</span></label><label class="opt"><input type="radio" name="q2"><span>GitHub все одно запустить job, бо для required checks умова if ігнорується</span></label></div>
+    <div class="why yes">Так. За документацією required check має бути successful, skipped або neutral. Умову переносять у кроки, а job лишають безумовним.</div>
+    <div class="why no">GitHub зараховує skipped як пройдений статус і не ігнорує if. Тому зелений gate тут нічого не перевірив.</div></div>
+  <div class="q"><div class="qt">3. У <code>claude -p --permission-mode dontAsk</code> агент не може записати <code>.claude/settings.json</code>, хоча в allow є <code>Edit(.claude/**)</code>. Чому і що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Для нового файла потрібне правило <code>Write(.claude/**)</code>, а не Edit: додати його в allow</span></label><label class="opt"><input type="radio" name="q3"><span>Settings читаються на старті сесії; перезапустити claude -p з тим самим правилом</span></label><label class="opt ok"><input type="radio" name="q3"><span>Це protected path: allow його не відкриває; чернетку пише агент, переносить людина</span></label></div>
+    <div class="why yes">Так. Перевірка protected paths спрацьовує до allow-правил; у dontAsk запис відхиляється, автоматично його дозволяє лише bypassPermissions.</div>
+    <div class="why no">Ні Write-правило, ні перезапуск не допоможуть: protected path перевіряється раніше за будь-які allow. Конфігурацію, що розширює права агента, переносить людина.</div></div>
+  <div class="q"><div class="qt">4. <code>ci.yml</code> і <code>check.sh</code> окремо перелічують ті самі інструменти. CI червоний, локально зелено. Перший крок?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Додати в CI повтор упалого кроку, бо розбіжність, найімовірніше, випадкова</span></label><label class="opt ok"><input type="radio" name="q4"><span>Замінити кроки в YAML викликом check.sh і ставити інструменти з lock</span></label><label class="opt"><input type="radio" name="q4"><span>Додати матрицю ОС і версій Python, щоб відтворити збій на іншій комбінації</span></label></div>
+    <div class="why yes">Так. Дві копії списку перевірок і різні версії інструментів — найчастіша причина розбіжності. Одна копія прибирає її назавжди.</div>
+    <div class="why no">Повтор ховає детерміновану розбіжність, а матриця множить хвилини, нічого не пояснюючи. Причина — дві копії логіки і версії поза lock.</div></div>
+  <div class="q"><div class="qt">5. Тест ходить в API моделі з ключем із секретів. Контриб'ютори з fork кажуть, що CI на їхніх PR червоний. Що робити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Підмінити клієнт фейком, а живий виклик винести в окремий необов'язковий workflow</span></label><label class="opt"><input type="radio" name="q5"><span>Перевести workflow на pull_request_target, щоб fork-PR отримували секрети</span></label><label class="opt"><input type="radio" name="q5"><span>Дозволити в налаштуваннях репозиторію передавати секрети workflow з fork</span></label></div>
+    <div class="why yes">Так. Workflow з fork не отримують секретів, крім GITHUB_TOKEN. Тест, якому потрібен ключ, не може бути частиною обов'язкового gate.</div>
+    <div class="why no">pull_request_target запускає код fork із секретами базового репозиторію, і checkout v7 саме тому відмовляється таке робити без allow-unsafe-pr-checkout. Тест без секретів — властивість коду, а не налаштувань CI.</div></div>
+  <div class="q"><div class="qt">6. Команда: усі мають uv, CI на Linux, розробники на macOS і Windows. Який lock?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>pip-compile на macOS: він однаковий для всіх платформ, раз так вийшло в Lectern</span></label><label class="opt"><input type="radio" name="q6"><span>pip freeze зі свіжого venv у CI: він точно збігається з тим, що ставить раннер</span></label><label class="opt ok"><input type="radio" name="q6"><span>uv.lock і uv sync --locked: один lock для всіх маркерів, перевірка в CI</span></label></div>
+    <div class="why yes">Так. uv.lock універсальний і комітиться; --locked падає, якщо lock застарів.</div>
+    <div class="why no">pip-compile пише lock під поточне середовище: збіг у Lectern — властивість конкретного набору, а не гарантія. pip freeze фіксує випадковий стан без хешів і зв'язку з pyproject.</div></div>
+  <div class="q"><div class="qt">7. actionlint дає 0 проблем, хоча в <code>actions/setup-python@&lt;SHA&gt;</code> вхід написано з помилкою. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>actionlint перевіряє лише YAML-синтаксис і вирази, а входи дій не перевіряє ніколи</span></label><label class="opt ok"><input type="radio" name="q7"><span>Він знає входи лише версій зі свого каталогу, а SHA-піни й нові мажори пропускає</span></label><label class="opt"><input type="radio" name="q7"><span>GitHub відхиляє невідомі входи ще при парсингу, тому actionlint їх не дублює</span></label></div>
+    <div class="why yes">Так. На @v6 та сама помилка знайдена, на @v7 і SHA — ні. Входи закріплених дій звіряють з їхнім action.yml.</div>
+    <div class="why no">Для setup-python@v6 actionlint 1.7.12 помилку у вході знайшов, тож входи він перевіряє, але лише для відомих версій. SHA і v7 у його каталог не входять.</div></div>
+  <div class="q"><div class="qt">8. У pre-commit ruff підключено через ruff-pre-commit <code>rev: v0.17.1</code>, а в lock — інша версія ruff. Наслідок?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Жодного: pre-commit бачить requirements/ci.txt і бере звідти версію ruff</span></label><label class="opt"><input type="radio" name="q8"><span>Жодного: правила ruff між версіями однакові, змінюється лише швидкість</span></label><label class="opt ok"><input type="radio" name="q8"><span>Хук і check.sh можуть розійтися; краще локальний хук з ruff з .venv</span></label></div>
+    <div class="why yes">Так. Дві версії інструмента — дві думки про той самий код. Локальний хук з .venv тримає одну версію з lock.</div>
+    <div class="why no">pre-commit ставить хук із rev у власне середовище і lock не читає. Між версіями ruff з'являються нові правила і змінюються типові налаштування, тож та сама зміна може пройти хук і впасти в check.sh.</div></div>
+  <div class="q"><div class="qt">9. Колега хоче почати bootstrap із CLAUDE.md, «щоб агент одразу знав правила», а скрипти написати потім. Що не так?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Інструкції назвуть команди, яких ще немає: агент їх виконає, check_context упаде</span></label><label class="opt"><input type="radio" name="q9"><span>CLAUDE.md можна генерувати лише через /init, коли в репозиторії вже є код</span></label><label class="opt"><input type="radio" name="q9"><span>Нічого: порядок неважливий, якщо все потрапляє в один PR до злиття</span></label></div>
+    <div class="why yes">Так. Інструкції посилаються на команди, тому пишуться після кроків 2–4 і перевіряються скриптом контексту.</div>
+    <div class="why no">/init — лише один зі способів отримати чернетку. Порядок важить і в межах одного PR: агент працює з проміжним станом, і інструкція з неіснуючою командою відправляє його в глухий кут.</div></div>
+  <div class="q"><div class="qt">10. Вільні прогони дешевші на 37% і мають удвічі більше тестів. Навіщо тоді специфікація?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Тести вільних прогонів у свіжому клоні не проходили, а специфікація це гарантує</span></label><label class="opt ok"><input type="radio" name="q10"><span>Вільний прогін сам ухвалює продуктові й інфраструктурні рішення, які треба рев'ювити</span></label><label class="opt"><input type="radio" name="q10"><span>Прогони зі специфікацією були швидшими і робили менше ходів, тож дешевші в підсумку</span></label></div>
+    <div class="why yes">Так. Формат входу, коди виходу, версії дій, відсутній lock, хук через .git/config — усе це рішення агента. Специфікація переносить їх до вас.</div>
+    <div class="why no">Вільні прогони в свіжому клоні якраз пройшли, а впав spec-1; прогони зі специфікацією довші (41–43 ходи проти 23–28). Цінність — у тому, хто ухвалює рішення.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>порядок bootstrap</td><td>Фундамент → контекст агента → процес: кожен артефакт посилається лише на вже наявні команди й jobs.</td></tr>
+<tr><td>bootstrap-специфікація</td><td>Пів сторінки для агента: продукт, фіксований стек, контракт репозиторію з перевіркою командами, межі harness, done.</td></tr>
+<tr><td>one-command check</td><td>Єдиний <code>check.sh</code>, який запускають агент, хук, CI і людина; проганяє всі кроки, потім код виходу.</td></tr>
+<tr><td>CI дзеркалить локальне</td><td>Кожен крок CI — скрипт, що так само запускається локально; у YAML немає власної логіки.</td></tr>
+<tr><td>lockfile</td><td>Точні версії всіх залежностей (і хеші), з яких відтворюють середовище; діапазони лишаються в pyproject.</td></tr>
+<tr><td>pre-commit (фреймворк)</td><td>Хуки git з <code>.pre-commit-config.yaml</code>, кожен в ізольованому середовищі; швидка підмножина повної перевірки.</td></tr>
+<tr><td>required status checks</td><td>Checks, які мають пройти до злиття в захищену гілку; skipped вважається пройденим.</td></tr>
+<tr><td>actionlint</td><td>Статичний лінтер workflow GitHub Actions: ключі, вирази, типи, входи відомих версій дій.</td></tr>
+<tr><td>template repository</td><td>Репозиторій GitHub, з якого створюють нові з тими самими файлами, але з непов'язаною історією.</td></tr>
+<tr><td>тести без секретів</td><td>Тести, яким не потрібні ключі: зовнішні сервіси підмінено фейками, тож вони однакові в fork-PR, sandbox і локально.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Bootstrap-специфікація для власного проєкту</h3>
+<p>Напишіть специфікацію (≤ 450 слів) для нового репозиторію: продукт, стек, контракт із перевіркою командами, межі harness, done. Додайте план приймання зі свіжого клону і розподіл «агент / людина».</p>
+<h3>2. Аудит CI на дзеркальність</h3>
+<p>За наведеними в завданні <code>ci.yml</code> і <code>check.sh</code> знайдіть розбіжності, ризики gate і безпеки, запропонуйте виправлений workflow.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">Claude Code — Permission modes</a><span>protected paths: список, поведінка в кожному режимі, allow-правила їх не відкривають</span></li>
+<li><a href="https://docs.github.com/en/actions/reference/security/secure-use" target="_blank" rel="noopener">GitHub Actions — Secure use reference</a><span>закріплення дій за SHA, мінімальні права GITHUB_TOKEN</span></li>
+<li><a href="https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles" target="_blank" rel="noopener">GitHub Actions — Workflow dependency lockfiles</a><span>public preview · <code>.github/workflows/actions.lock</code>, <code>gh actions-lock</code></span></li>
+<li><a href="https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets" target="_blank" rel="noopener">GitHub Actions — Using secrets</a><span>секрети не передаються у workflow з fork, крім GITHUB_TOKEN; Dependabot</span></li>
+<li><a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches" target="_blank" rel="noopener">GitHub — About protected branches</a><span>required status checks: strict/loose, skipped = пройдено, унікальні назви jobs</span></li>
+<li><a href="https://github.com/actions/checkout" target="_blank" rel="noopener">actions/checkout</a><span>v7.0.1 (20.07.2026): fetch-depth, persist-credentials, відмова від fork-коду в pull_request_target</span></li>
+<li><a href="https://github.com/actions/setup-python" target="_blank" rel="noopener">actions/setup-python</a><span>v7.0.0 (20.07.2026): cache, cache-dependency-path</span></li>
+<li><a href="https://github.blog/changelog/2026-09-23-deprecation-of-node-20-on-github-actions-runners/" target="_blank" rel="noopener">GitHub Changelog — Deprecation of Node 20 on Actions runners</a><span>Node 24 типово з 16.06.2026, видалення Node 20 — 23.09.2026</span></li>
+<li><a href="https://pre-commit.com/" target="_blank" rel="noopener">pre-commit</a><span>4.7.0 · repo: local, unsupported (колишня system, 4.4.0), pygrep, rev, autoupdate --freeze</span></li>
+<li><a href="https://pip-tools.pypa.io/en/latest/" target="_blank" rel="noopener">pip-tools</a><span>7.6.2 · pip-compile, --generate-hashes, lock під кожне середовище</span></li>
+<li><a href="https://docs.astral.sh/uv/concepts/projects/layout/" target="_blank" rel="noopener">uv — Project structure and files</a><span>uv.lock: універсальний, комітиться; <a href="https://docs.astral.sh/uv/concepts/projects/sync/" target="_blank" rel="noopener">locking and syncing</a>: --locked, lock --check, export</span></li>
+<li><a href="https://docs.astral.sh/uv/guides/integration/github/" target="_blank" rel="noopener">uv — Using uv in GitHub Actions</a><span>setup-uv, enable-cache, uv sync --locked</span></li>
+<li><a href="https://github.com/rhysd/actionlint" target="_blank" rel="noopener">actionlint</a><span>1.7.12 (30.03.2026) · статичні перевірки workflow; обгортка <a href="https://pypi.org/project/actionlint-py/" target="_blank" rel="noopener">actionlint-py</a></span></li>
+<li><a href="https://github.com/anthropics/claude-code-action" target="_blank" rel="noopener">anthropics/claude-code-action</a><span>v1.0.252 (16.10.2026) · /install-github-app, prompt, claude_args</span></li>
+<li><a href="https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-template-repository" target="_blank" rel="noopener">GitHub — Creating a template repository</a><span>що копіюється, непов'язані історії, без LFS</span></li>
+<li><a href="https://copier.readthedocs.io/en/stable/updating/" target="_blank" rel="noopener">copier — Updating a project</a><span>9.19.1 · copier update, .copier-answers.yml, конфлікти inline/.rej</span></li>
+<li><a href="https://cookiecutter.readthedocs.io/en/stable/" target="_blank" rel="noopener">cookiecutter</a><span>2.7.1 · генерація проєкту з шаблону</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 10.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 10.3 · Senomi<br><br><a href="lesson-49.html">← Урок 10.2</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-51.html">Урок 10.4 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

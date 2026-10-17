@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 10.2. Архітектура й ADR; вибір стеку; ризики</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 10.2 · Модуль 10</div>
+<h1>Архітектура й ADR; вибір стеку; ризики</h1>
+<p class="lead">Прототип варіанта тепер коштує центи, тож рішення на старті проєкту можна приймати за виміром: та сама задача в трьох стеках (12 прогонів, $0,16), два паралельні спайки сховища для Lectern ($0,64) і ADR 0013 з їхніми числами. Реєстр ризиків складає агент, а чистять докази: 30 ризиків, 4 загальні, жодного закритого, плюс 3, яких агент не побачив, зокрема ризики постачальника моделі.</p>
+<div class="hero-meta"><span class="chip">SDLC, фаза 1 — підготовка проєкту з Claude</span><span class="chip t">≈ 65 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Припустімо, кожна компанія має приблизно три токени інновацій.</p><cite>Dan McKinley, «Choose Boring Technology», 30.03.2015 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#start"><b>01</b>Рішення на старті</a><a href="#criteria"><b>02</b>Вибір стеку</a><a href="#stack-run"><b>03</b>Експеримент</a><a href="#spikes"><b>04</b>Спайки</a><a href="#tools"><b>05</b>Три інструменти</a><a href="#risks"><b>06</b>Реєстр ризиків</a><a href="#vendor"><b>07</b>Ризик постачальника моделі</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>обирати стек за критеріями, які змінили агенти, і перевіряти «знайомість моделі» виміром, а не вірою;</li>
+    <li>генерувати варіанти з агентом і вирішувати між ними паралельними спайками за правилом «spike → decide → delete»;</li>
+    <li>записувати рішення в ADR з числами спайків і тригерами перегляду;</li>
+    <li>вести реєстр ризиків: ймовірність × вплив, власник, пом'якшення, тригер — і чистити чернетку агента доказами;</li>
+    <li>оцінювати ризики постачальника моделі: депрекацію, ціни, аліаси, збої.</li>
+  </ul>
+</div>
+
+<section class="sec" id="start">
+<div class="sec-h"><span class="num">01</span><h2>Рішення на старті<span class="sub">Що агент здешевив, а що ні</span></h2></div>
+<p>Формат ADR і його життєвий цикл — урок 5.4; матриця атрибутів якості, межі, бюджети й зворотність рішень — урок 9.1; ліцензія як вимога (ADR 0008) — урок 8.5. Тут ідеться про набір рішень, які приймають до першого рядка коду, і про те, як агент змінює спосіб їх приймати.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рішення на старті</th><th>Чому дорого змінити потім</th><th>Доказ до ADR</th></tr></thead>
+<tbody>
+<tr><td data-th="Рішення на старті">Мова й фреймворк</td><td data-th="Чому дорого змінити потім">Агент продовжує стиль і стек наявного коду: кожен новий модуль множить ціну переходу</td><td data-th="Доказ до ADR">Та сама типова задача в 2–3 стеках, n ≥ 4</td></tr>
+<tr><td data-th="Рішення на старті">Сховище стану</td><td data-th="Чому дорого змінити потім">Міграція даних — одностороннє рішення</td><td data-th="Доказ до ADR">Спайки з однаковим виміром відмов</td></tr>
+<tr><td data-th="Рішення на старті">Форма розгортання (CLI, сервіс, хмара)</td><td data-th="Чому дорого змінити потім">Клієнти будують на контрактах</td><td data-th="Доказ до ADR">Прототип контракту + перший клієнт</td></tr>
+<tr><td data-th="Рішення на старті">Постачальник і модель</td><td data-th="Чому дорого змінити потім">Промпти, evals і умови даних прив'язані до моделі</td><td data-th="Доказ до ADR">Прогін вашого eval-набору на 2+ моделях</td></tr>
+</tbody></table></div>
+<p>Що змінилося: прототип варіанта коштує центи й хвилини. Два спайки сховища для Lectern нижче коштували $0,22 і $0,42 і зайняли 1,5 і 3,5 хвилини паралельно. Тому зібрати докази вийшло дешевше, ніж сперечатися про варіанти. Не змінилося інше: агент пропонує варіанти зі своїм упередженням, а вимір за вас він не придумає.</p>
+</section>
+
+<section class="sec" id="criteria">
+<div class="sec-h"><span class="num">02</span><h2>Вибір стеку<span class="sub">Критерії, які змінили агенти</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Критерій</th><th>Що змінили агенти</th><th>Як перевірити</th></tr></thead>
+<tbody>
+<tr><td data-th="Критерій"><b>Знайомість моделі з екосистемою</b></td><td data-th="Що змінили агенти">Агент швидше й дешевше пише на тому, що часто бачив у навчальних даних. Упередження вимірне: у дослідженні 8 LLM обирали Python у 58% задач ініціалізації високопродуктивних проєктів, де він не найкращий вибір, ні разу не обрали Rust і брали NumPy без потреби до 45% випадків</td><td data-th="Як перевірити">Власний експеримент (наступний розділ); завантаження з PyPI чи npm як проксі популярності</td></tr>
+<tr><td data-th="Критерій"><b>Типи й швидкі тести</b></td><td data-th="Що змінили агенти">Це зворотний зв'язок агента (урок 9.4). GitHub пояснює вихід TypeScript на перше місце (серпень 2025, за кількістю контриб'юторів) зокрема тим, що типи ловлять помилки LLM до продакшну</td><td data-th="Як перевірити">Час повного <code>test</code>; чи ловить <code>mypy</code>/<code>tsc</code> помилку раніше за тест</td></tr>
+<tr><td data-th="Критерій"><b>Ліцензія</b></td><td data-th="Що змінили агенти">Агент додає залежність за хвилину, а AGPL у мережевому сервісі вирішує юрист (урок 8.5). Ліцензія може змінитися вже після вибору: Redis у березні 2024 перейшов на SSPL, у травні 2025 додав AGPLv3 з Redis 8, а AWS і Google тепер підтримують власний форк</td><td data-th="Як перевірити">Перевірка ліцензій залежностей у CI; тригер «зміна ліцензії» в реєстрі ризиків</td></tr>
+<tr><td data-th="Критерій"><b>Керованість (operability)</b></td><td data-th="Що змінили агенти">Агент генерує код, але вночі не чергує: кожна нова технологія приносить свої відмови, бекапи й моніторинг</td><td data-th="Як перевірити">Хто і за яким runbook відновлює систему о третій ночі</td></tr>
+<tr><td data-th="Критерій"><b>Навички команди</b></td><td data-th="Що змінили агенти">Вузьке місце тепер рев'ю: код на стеку, якого не знає жоден рев'юер, ніхто не перевірить</td><td data-th="Як перевірити">Хто в команді читає diff на цьому стеку</td></tr>
+<tr><td data-th="Критерій"><b>Lock-in</b></td><td data-th="Що змінили агенти">До ціни переходу (урок 3.2) додалися промпти, evals, skills та інструменти агента під конкретну бібліотеку</td><td data-th="Як перевірити">Перелік того, що доведеться переписати при заміні</td></tr>
+</tbody></table></div>
+<blockquote class="q-src">
+<p>Технологію, яку ви додаєте в компанію, доводиться супроводжувати. Цей багаж ми називаємо «експлуатацією» (operations) і, меншою мірою, «когнітивним навантаженням».</p>
+<p class="orig">“Adding technology to your company comes with a cost. … We call the baggage "operations" and to a lesser extent "cognitive overhead."”</p>
+<cite>Dan McKinley, «Choose Boring Technology», 30.03.2015</cite>
+</blockquote>
+<p>У Мак-Кінлі «нудна» технологія — та, чиї режими відмов добре відомі. Для агента відомі ті режими відмов, які є в його навчальних даних і документації, тож нудний стек дешевший і для людей, і для агента. Токен інновацій варто витрачати там, де ваша продуктова перевага. У Lectern це перевірка цитат кодом (ADR 0004), а не сховище чи вебфреймворк.</p>
+<div class="note warn"><span class="lbl">Пастка</span>
+<p>Якщо обирати стек за «агент його знає», упередження моделі стає вашою архітектурою. Автори дослідження прямо пишуть, що моделі віддають перевагу знайомому перед доречним. Знайомість — це множник вартості й часу на кожній задачі, а не причина брати мову, яка не тягне навантаження. Множник вимірюють.</p>
+</div>
+</section>
+
+<section class="sec" id="stack-run">
+<div class="sec-h"><span class="num">03</span><h2>Експеримент<span class="sub">Одна задача, три стеки, 12 прогонів</span></h2></div>
+<p>Перевіримо, у чому проявляється знайомість моделі. Задача <code>TASK.md</code>: HTTP API на два ендпоінти з валідацією трьох полів, власним форматом помилки <code>422</code> і послідовними id. Агент сам пише тест і запускає його. Прийом — 16 прихованих тестів, які стукають по HTTP і тому однакові для будь-якого стеку. Залежності встановлено заздалегідь, встановлювати інші агентові заборонено.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Стек</th><th>Версія</th><th>Завантажень за місяць</th></tr></thead>
+<tbody>
+<tr><td data-th="Стек">Python + FastAPI</td><td data-th="Версія">0.143.3</td><td data-th="Завантажень за місяць">381,6 млн (PyPI)</td></tr>
+<tr><td data-th="Стек">Python + BlackSheep</td><td data-th="Версія">2.6.4</td><td data-th="Завантажень за місяць">37 тис. (PyPI) — у ~10 000 разів менше</td></tr>
+<tr><td data-th="Стек">Node.js 24 + Express</td><td data-th="Версія">5.3.0</td><td data-th="Завантажень за місяць">635,5 млн (npm)</td></tr>
+</tbody></table></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/stack</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Read TASK.md and implement it in this directory." --model haiku \
+    --setting-sources project --strict-mcp-config --permission-mode acceptEdits \
+    --allowedTools Read Write Edit Glob Grep Bash \
+    --disallowedTools "Bash(pip *)" "Bash(.venv/bin/pip *)" "Bash(npm install *)" WebFetch WebSearch \
+    --max-turns 40 --max-budget-usd 0.60 --output-format stream-json --verbose &gt; run.jsonl</span>
+<span class="ps">$ </span><span class="c">python3 summary.py runs</span>
+blacksheep: ok 4/4 · turns 16.5 (13–20)
+  $0.0209 · probes 3.5 · tests 6.5
+express: ok 4/4 · turns 11 (9–12)
+  $0.0106 · probes 0 · tests 1
+fastapi: ok 4/4 · turns 10 (8–12)
+  $0.0102 · probes 0 · tests 2.5</pre>
+<div class="cap">реальний вивід · 17.10.2026 · Claude Code 2.1.302, claude-haiku-5-5 · ok = 16/16 прихованих тестів · probes = виклики inspect/hasattr/dir до бібліотеки · tests = запуски тестів агентом · медіани, у дужках розмах (лише для turns) · усі 12 прогонів — $0,16 · список --disallowedTools скорочено</div></div>
+<figure class="fig">
+<div class="bars">
+  <div class="bar t"><span class="k">FastAPI · медіана вартості</span><span class="tr"><i style="--v:48.8%"></i><b style="--v:48.8%">$0,0102</b></span></div>
+  <div class="bar t"><span class="k">Express</span><span class="tr"><i style="--v:50.7%"></i><b style="--v:50.7%">$0,0106</b></span></div>
+  <div class="bar p"><span class="k">BlackSheep</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">$0,0209</b></span></div>
+  <div class="bar t"><span class="k">FastAPI · медіана часу</span><span class="tr"><i style="--v:57.2%"></i><b style="--v:57.2%">46,6 с</b></span></div>
+  <div class="bar t"><span class="k">Express</span><span class="tr"><i style="--v:53%"></i><b style="--v:53%">43,1 с</b></span></div>
+  <div class="bar p"><span class="k">BlackSheep</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">81,4 с</b></span></div>
+</div>
+<figcaption>n = 4 на стек, одна модель, одна маленька задача. Масштаб кожної групи — від найбільшого значення.</figcaption>
+</figure>
+<p>Розрив у знайомстві проявився не провалами, а розвідкою. Усі 12 реалізацій пройшли 16 з 16 тестів. На BlackSheep агент перед кодом робив від 2 до 5 викликів до самої бібліотеки (<code>inspect.signature(TestClient.post)</code>, <code>hasattr(app.router, 'post')</code>), переписував тестовий клієнт і запускав тести 5–8 разів проти 1–3. Вийшло вдвічі дорожче й у 1,8 раза довше. На FastAPI і Express він одразу писав код.</p>
+<div class="note warn"><span class="lbl">Межі висновку</span>
+<p>n = 4, одна задача на ~200 рядків, одна модель. Бібліотека лежала локально, тож агент міг дослідити її код. Без коду й документації або на більшій задачі розрив може бути іншим, і цей експеримент цього не міряв. Express і FastAPI відрізняються ще й мовою. Завантаження — лише проксі частки бібліотеки в навчальних даних. Висновок такий: знайомість — це множник вартості й часу, і його варто переміряти на своїй задачі, перш ніж брати нішевий стек на критичний шлях.</p>
+</div>
+<p>Множник можна зменшити, якщо дати агентові документацію бібліотеки в контекст (skill з прикладами API, урок 6.1) і повторити той самий вимір. Що окупиться, покаже різниця в цифрах.</p>
+</section>
+
+<section class="sec" id="spikes">
+<div class="sec-h"><span class="num">04</span><h2>Спайки<span class="sub">Варіанти генерує агент, вирішує вимір</span></h2></div>
+<p><b>Генерація варіантів.</b> Просіть в агента щонайменше три варіанти, серед яких обов'язково «нічого не міняти», і для кожного — умову, за якої він програє. Без цієї вимоги агент пропонує популярне або те, що вже є в репозиторії. Дослідження, які не залежать одне від одного (ліцензії, бенчмарки, відомі відмови), відправляйте паралельним субагентам. Вбудований Explore у Claude Code працює лише на читання і повертає в основну сесію тільки підсумок.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 520" role="img" aria-label="Від питання до ADR через паралельні спайки">
+  <defs>
+    <marker id="l49a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="40" y="8" width="280" height="50" rx="10" class="bx m"/>
+  <text x="180" y="29" text-anchor="middle" class="tx b">1 · Питання ADR</text>
+  <text x="180" y="47" text-anchor="middle" class="tx s">«яке сховище задач у lectern serve?»</text>
+  <path d="M180 58 V 78" class="ln a" marker-end="url(#l49a)"/>
+  <rect x="40" y="82" width="280" height="50" rx="10" class="bx"/>
+  <text x="180" y="103" text-anchor="middle" class="tx b">2 · Варіанти (агент + людина)</text>
+  <text x="180" y="121" text-anchor="middle" class="tx s">≥ 3, серед них «нічого не міняти»</text>
+  <path d="M180 132 V 152" class="ln a" marker-end="url(#l49a)"/>
+  <rect x="40" y="156" width="280" height="50" rx="10" class="bx a"/>
+  <text x="180" y="177" text-anchor="middle" class="tx b">3 · Вимір — до спайків</text>
+  <text x="180" y="195" text-anchor="middle" class="tx s">один скрипт для всіх: bench.py, M1–M4</text>
+  <path d="M120 206 V 230" class="ln a" marker-end="url(#l49a)"/>
+  <path d="M240 206 V 230" class="ln a" marker-end="url(#l49a)"/>
+  <rect x="14" y="234" width="158" height="62" rx="10" class="bx t"/>
+  <text x="93" y="256" text-anchor="middle" class="tx b">4a · worktree A</text>
+  <text x="93" y="273" text-anchor="middle" class="tx s">JSON-файли</text>
+  <text x="93" y="288" text-anchor="middle" class="tx s">claude -p -w spike-json</text>
+  <rect x="188" y="234" width="158" height="62" rx="10" class="bx t"/>
+  <text x="267" y="256" text-anchor="middle" class="tx b">4b · worktree B</text>
+  <text x="267" y="273" text-anchor="middle" class="tx s">SQLite</text>
+  <text x="267" y="288" text-anchor="middle" class="tx s">claude -p -w spike-sqlite</text>
+  <path d="M93 296 V 320" class="ln a" marker-end="url(#l49a)"/>
+  <path d="M267 296 V 320" class="ln a" marker-end="url(#l49a)"/>
+  <rect x="40" y="324" width="280" height="50" rx="10" class="bx a"/>
+  <text x="180" y="345" text-anchor="middle" class="tx b">5 · Той самий вимір на кожному</text>
+  <text x="180" y="363" text-anchor="middle" class="tx s">+ «що не зроблено» зі звіту агента</text>
+  <path d="M180 374 V 394" class="ln a" marker-end="url(#l49a)"/>
+  <rect x="40" y="398" width="280" height="50" rx="10" class="bx m"/>
+  <text x="180" y="419" text-anchor="middle" class="tx b">6 · Рішення → ADR з числами</text>
+  <text x="180" y="437" text-anchor="middle" class="tx s">і тригери перегляду</text>
+  <path d="M180 448 V 468" class="ln a" marker-end="url(#l49a)"/>
+  <rect x="40" y="472" width="280" height="42" rx="10" class="bx p"/>
+  <text x="180" y="498" text-anchor="middle" class="tx b">7 · Спайки видалити, писати з тестами</text>
+</svg>
+<figcaption>Вимір, визначений до спайків, — те, що відрізняє спайк від «зробимо й подивимось»: інакше кожен варіант міряють тим, у чому він сильний.</figcaption>
+</figure>
+<p><b>Правило «spike → decide → delete».</b> Кожен спайк має чотири атрибути:</p>
+<ol class="steps">
+<li>питання, на яке відповість ADR;</li>
+<li>вимір, написаний до спайків і однаковий для всіх;</li>
+<li>обмеження часу: у профілі процесу Lectern спайк має рівень P0, живе в worktree не довше 7 днів і ніколи не зливається в <code>main</code> (урок 8.4);</li>
+<li>після рішення код видаляють, а числа переносять в ADR. Реалізацію пишуть заново, з тестами.</li>
+</ol>
+<p>Код спайка видаляють, бо він за визначенням пропускає крайові випадки. Обидва агенти нижче самі перелічили, чого не зробили: SSE з чужого процесу, повторне використання pid, міграцію старих файлів.</p>
+
+<h3>Справжні спайки: сховище задач <code>lectern serve</code></h3>
+<p><code>Store</code> (урок 6.5) тримає задачі в <code>dict</code> процесу і після кожної події переписує JSON-файл задачі цілком. Відкрите питання — лишати файли чи переходити на базу. Спершу написано <code>bench.py</code>: справжній <code>create_app</code>, фейковий агент без LLM і чотири виміри. Потім два агенти отримали однакові вимоги R1–R4 (тести зелені; після <code>kill -9</code> черга виконується без дій клієнта; задачу видно з другого процесу; лише стандартна бібліотека) і різні варіанти.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">for v in json sqlite; do
+    claude -p "$(cat ../prompt-$v.txt)" -w spike-$v --model sonnet \
+      --setting-sources project --strict-mcp-config --permission-mode acceptEdits \
+      --allowedTools Read Write Edit Glob Grep "Bash(~/venv/bin/python *)" "Bash(git diff*)" \
+      --max-turns 40 --max-budget-usd 2.00 --output-format stream-json --verbose &gt; ../run-$v.jsonl &amp;
+  done; wait</span>
+<span class="ps">$ </span><span class="c">for v in json sqlite; do jq -r 'select(.type=="result") | "\(.num_turns) turns · $\(.total_cost_usd*100|round/100) · \(.duration_ms/1000|floor) s"' ../run-$v.jsonl; done</span>
+13 turns · $0.22 · 90 s
+29 turns · $0.42 · 210 s
+<span class="ps">$ </span><span class="c">jq -r '[.label, .m1_done_after_kill, .m2_20_events_s, .m2_2000_events_s, .m3_seen_by_other_process, .m4_agent_runs_for_one_job] | join(" ")' bench.jsonl</span>
+baseline 0/6 0.38 5.5 http404 1
+json 6/6 0.33 5.03 done 2
+sqlite 6/6 0.39 5.02 done 1
+baseline-r2 0/6 0.4 6.84 http404 1
+json-r2 6/6 0.41 5.2 done 2
+sqlite-r2 6/6 0.39 5.11 done 1</pre>
+<div class="cap">реальний вивід · 17.10.2026 · claude-sonnet-5-5 · шлях до venv скорочено, у --allowedTools прибрано правила git status і wc · два повтори виміру</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Вимір</th><th>Зараз</th><th>A: JSON</th><th>B: SQLite</th></tr></thead>
+<tbody>
+<tr><td data-th="Вимір">M1: 6 задач, <code>kill -9</code> під час першої, рестарт; завершено без дій клієнта</td><td data-th="Зараз">0/6</td><td data-th="A: JSON">6/6</td><td data-th="B: SQLite">6/6</td></tr>
+<tr><td data-th="Вимір">M2: задача з 20 / 2000 подіями</td><td data-th="Зараз">0,4 с / 5,5–6,8 с</td><td data-th="A: JSON">0,3–0,4 с / 5,0–5,2 с</td><td data-th="B: SQLite">0,4 с / 5,0–5,1 с</td></tr>
+<tr><td data-th="Вимір">M3: задачу з процесу A видно в процесі B</td><td data-th="Зараз">404</td><td data-th="A: JSON">так</td><td data-th="B: SQLite">так</td></tr>
+<tr><td data-th="Вимір">M4: B стартує, поки A виконує задачу; запусків агента</td><td data-th="Зараз">1</td><td data-th="A: JSON"><b>2</b></td><td data-th="B: SQLite">1</td></tr>
+<tr><td data-th="Вимір">Зміна <code>service.py</code></td><td data-th="Зараз">—</td><td data-th="A: JSON">+25 / −5</td><td data-th="B: SQLite">+53 / −14</td></tr>
+</tbody></table></div>
+<p>Три висновки, яких без виміру не було б:</p>
+<ul>
+<li><b>M2 — не проблема.</b> Жоден варіант не прибрав квадратичної ціни запису, бо обидва пишуть задачу цілком на кожну подію. Але справжні задачі з уроку 9.3 мають 1–33 події, тож оптимізувати тут нічого. У реєстр іде тригер «понад 200 подій».</li>
+<li><b>M4 вимірює дизайн, а не технологію.</b> B записує pid власника і не чіпає задачу живого процесу. A ставить у чергу все незавершене, тож агент запускається двічі, і за LLM ви платите двічі. Спайк міряє реалізацію, тому треба спитати, чи може переможений варіант позичити механізм переможця. pid власника A позичить за кілька рядків, а запит ідемпотентності з індексом по задачах усіх процесів — ні, бо доведеться читати всі файли.</li>
+<li><b>«Нудний» переможець.</b> SQLite є в стандартній бібліотеці: жодної нової залежності, жодного нового сервісу для експлуатації. Рішення записано в ADR 0013, спайки видалено:</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git worktree remove --force --force .claude/worktrees/spike-json &amp;&amp; git worktree remove --force --force .claude/worktrees/spike-sqlite &amp;&amp; git branch -D worktree-spike-json worktree-spike-sqlite</span>
+Deleted branch worktree-spike-json (was aa31df8).
+Deleted branch worktree-spike-sqlite (was aa31df8).</pre>
+<div class="cap">реальний вивід · подвійний --force потрібен для worktree зі статусом locked · diff обох спайків збережено як доказ поруч з ADR</div></div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">05</span><h2>Три інструменти<span class="sub">Паралельні спайки й дослідження</span></h2></div>
+<p>Механіку worktree в усіх трьох інструментах розібрано в уроці 4.4. Тут — що з неї брати для рішень на старті.</p>
+<div class="tabs">
+<input type="radio" name="sp-t" id="sp-t1" checked><input type="radio" name="sp-t" id="sp-t2"><input type="radio" name="sp-t" id="sp-t3">
+<div class="tab-l"><label for="sp-t1">Claude Code</label><label for="sp-t2">Codex</label><label for="sp-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Дослідження:</b> паралельні субагенти. Документація дає приклад «Research the authentication, database, and API modules in parallel using separate subagents»: кожен працює у своєму контексті, а основна сесія отримує підсумки. Explore і Plan мають лише інструменти читання.</li>
+<li><b>Спайки:</b> <code>claude -p … -w NAME</code> — по worktree на варіант, як у прогоні вище. Інтерактивно — <code>claude --worktree NAME</code> у кількох терміналах; фонові сесії — <code>claude --bg</code>.</li>
+<li><b>План до коду:</b> <code>--permission-mode plan</code> — агент читає й пропонує план, але нічого не редагує, доки ви його не схвалите. Це зручний спосіб отримати варіанти без жодної зміни на диску.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Альтернатива з тієї самої сесії:</b> <code>codex exec fork &lt;SESSION_ID&gt; --worktree "try an alternative approach"</code> копіює контекст збереженої сесії в новий worktree. Так зручно відгалузити варіант B від розмови, у якій зібрано вимоги.</li>
+<li><b>Хмара:</b> <code>codex cloud exec --env ENV_ID --attempts 1-4</code> — best-of-N, кілька спроб однієї задачі; кожна задача має власний робочий простір.</li>
+<li><b>Дослідження:</b> субагенти — попросіть їх явно або опишіть делегування в <code>AGENTS.md</code>; <code>/subagents</code> перемикає між їхніми потоками. Документація попереджає, що субагенти витрачають більше токенів, ніж один агент.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec fork &lt;SESSION_ID&gt; --worktree "try an alternative approach"</span>
+<span class="ps">$ </span><span class="c">codex cloud exec --env ENV_ID --attempts 3 "…"</span></pre>
+<div class="cap">команди з офіційної документації Codex · не запускались у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<ul>
+<li><b><code>/best-of-n</code></b> запускає ту саму задачу на кількох моделях одночасно, кожну у власному worktree. Він лише порівнює прогони: зміни в основний checkout ви переносите самі через <code>/apply-worktree</code>.</li>
+<li><b><code>/worktree</code></b> переносить решту чату в окремий checkout; прибирає його <code>/delete-worktree</code>. Типова межа — 25 worktree на машину для всіх проєктів.</li>
+</ul>
+</div>
+</div>
+<div class="note tip"><span class="lbl">Best-of-N ≠ спайки</span>
+<p>Best-of-N обирає між реалізаціями <b>одного</b> промпту. Для архітектурного рішення потрібні <b>різні</b> промпти на варіант і один вимір, написаний заздалегідь. Інакше ви порівнюєте, як модель реалізує одну ідею, а не самі ідеї.</p>
+</div>
+</section>
+
+<section class="sec" id="risks">
+<div class="sec-h"><span class="num">06</span><h2>Реєстр ризиків<span class="sub">Ймовірність × вплив, власник, тригер</span></h2></div>
+<p>Ризики окремих рішень лягають в їхні ADR (урок 9.1). <b>Реєстр ризиків</b> — це один живий список ризиків проєкту, де в кожного є власник і сигнал. Рядок реєстру:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Поле</th><th>Що писати</th><th>Приклад з Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Поле">Сценарій</td><td data-th="Що писати">причина → подія → наслідок</td><td data-th="Приклад з Lectern">рестарт сервісу → задачі в черзі стають <code>failed</code> → автор надсилає їх знову й чекає вдруге</td></tr>
+<tr><td data-th="Поле">Ймовірність × вплив</td><td data-th="Що писати">1–5 кожне, бал — добуток; ймовірність бажано з частоти, а не з відчуття</td><td data-th="Приклад з Lectern">4 × 3 = 12</td></tr>
+<tr><td data-th="Поле">Власник</td><td data-th="Що писати">одна роль, не «команда»</td><td data-th="Приклад з Lectern">інженер бекенду</td></tr>
+<tr><td data-th="Поле">Пом'якшення</td><td data-th="Що писати">що вже є (з доказом) + план</td><td data-th="Приклад з Lectern">ADR 0013</td></tr>
+<tr><td data-th="Поле">Тригер</td><td data-th="Що писати">спостережуваний сигнал з порогом</td><td data-th="Приклад з Lectern">задачі з <code>error.reason = server_restart</code></td></tr>
+</tbody></table></div>
+<p>Робочі пороги балу: ≥ 15 — план із датою; 8–14 — власник і тригер; ≤ 6 — прийняти й записати чому. Пороги обирає команда; важливо, щоб від балу залежала дія. Тригер перетворює реєстр з документа на моніторинг: ризик переглядають тоді, коли спрацював сигнал, а не раз на квартал.</p>
+
+<h3>Реєстр від агента: 30 ризиків, перевірених доказами</h3>
+<p>Pre-mortem (урок 10.1) — природна задача для агента: потрібна ширина по категоріях, і її легко перевірити. Перша сесія Sonnet, лише з правами читання репозиторію, уявила провал через 12 місяців у п'яти категоріях: технічні, продуктові, безпека, вартість, постачальник. Друга, окрема сесія отримала реєстр з правилом «немає доказу — немає <code>mitigated</code>» і звірила кожен ризик із репозиторієм.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat ../prompt-gen.txt)" --model sonnet --setting-sources project --strict-mcp-config \
+    --allowedTools Read Glob Grep --disallowedTools Edit Write Bash WebFetch WebSearch \
+    --max-budget-usd 1.50 --json-schema "$(cat ../schema-gen.json)" --output-format json &gt; ../gen.json</span>
+<span class="ps">$ </span><span class="c">jq -r '"\(.structured_output.risks|length) risks · \(.num_turns) turns · $\(.total_cost_usd*100|round/100)"' gen.json</span>
+30 risks · 8 turns · $0.26
+<span class="ps">$ </span><span class="c">jq -r '[.structured_output.risks[] | "\(.likelihood)x\(.impact)"] | group_by(.) | map("\(.[0]):\(length)") | join("  ")' gen.json</span>
+2x4:1  2x5:1  3x2:1  3x3:5  3x4:9  3x5:2  4x3:3  4x4:6  4x5:2
+<span class="ps">$ </span><span class="c">jq -r '[.structured_output.verdicts[].verdict] | group_by(.) | map("\(.[0]): \(length)") | join("  ")' prune.json</span>
+generic: 4  open: 3  partial: 23</pre>
+<div class="cap">реальний вивід · 17.10.2026 · claude-sonnet-5-5 · перевірка — окрема сесія, 15 ходів, $0,30 · у першій команді прибрано --max-turns 30</div></div>
+<div class="cols">
+<div class="cmp good"><h4>У чому агент допоміг</h4><ul>
+<li>30 ризиків у 5 категоріях за 76 секунд;</li>
+<li>17 з 30 прив'язані до елементів BACKLOG, ADR чи гіпотез специфікації;</li>
+<li>перевірка дала докази з рядками, і вибірка підтвердилась: MCP по HTTP слухає лише 127.0.0.1 (<code>mcp_server.py:208–209</code>), lockfile немає (B39), <code>validate()</code> не ловить «усі перелічені» (B37);</li>
+<li>4 загальні ризики (ресурс соло-розробника, монетизація, конкуренти, відповідальність за зміст) винесено в PRD, урок 10.1.</li>
+</ul></div>
+<div class="cmp bad"><h4>У чому помилився</h4><ul>
+<li><b>Стиснення оцінок:</b> ймовірність лише 2–4, ніколи 1 чи 5; 9 з 30 ризиків отримали 3 × 4. Таким балом неможливо впорядкувати ризики;</li>
+<li>переважно переказав беклог, тобто ризики, які ви вже знаєте;</li>
+<li>не побачив ризиків, яких немає в репозиторії. Три з них додала людина: втрату черги при рестарті (спайк: 0/6), поріг ціни Haiku 5.5 на промптах понад 100 тис. токенів (×5) і те, що аліас моделі в різних провайдерів означає різні моделі.</li>
+</ul></div>
+</div>
+<p>Результат: 30 → 26 після перевірки (жоден ризик не закрито повністю, 23 частково, 3 відкриті) + 3 від людини = 29 рядків у <code>docs/risks.md</code>. Наслідок R31 виміряно (0 з 6 задач), а не оцінено. Агент дає ширину, людина — калібрування й ризики, які видно лише ззовні репозиторію.</p>
+</section>
+
+<section class="sec" id="vendor">
+<div class="sec-h"><span class="num">07</span><h2>Ризик постачальника моделі<span class="sub">Депрекація, ціни, аліаси, умови</span></h2></div>
+<p>У звичайної залежності ви самі вирішуєте, коли оновлюватися. У моделі за API графік задає постачальник.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ризик</th><th>Факт (перевірено 17.10.2026)</th><th>Що робити</th></tr></thead>
+<tbody>
+<tr><td data-th="Ризик">Депрекація й вимкнення</td><td data-th="Факт (перевірено 17.10.2026)">Anthropic повідомляє щонайменше за 60 днів до вимкнення публічної моделі; запити до вимкненої моделі <b>падають</b>, а застарілі моделі «ймовірно, менш надійні». Приклад: Sonnet 4.5 застаріла 30.09.2026, вимкнення — 30.11.2026. На Bedrock і Google Cloud графік свій</td><td data-th="Що робити">id моделі в конфігурації, а не в коді; eval-набір для міграції готовий заздалегідь; дата вимкнення — тригер у реєстрі</td></tr>
+<tr><td data-th="Ризик">«Not sooner than»</td><td data-th="Факт (перевірено 17.10.2026)">Для активних моделей таблиця дає нижню межу, а не дату: у Haiku 4.5 — «не раніше 15.10.2026», і 17.10 вона ще активна</td><td data-th="Що робити">Рахувати від дати оголошення депрекації (+60 днів), а не від цієї межі</td></tr>
+<tr><td data-th="Ризик">Ваги ≠ доступ</td><td data-th="Факт (перевірено 17.10.2026)">З листопада 2025 Anthropic зобов'язалась зберігати ваги публічних моделей, але API вимкненої моделі від цього не запрацює</td><td data-th="Що робити">Не закладати «стару модель» як fallback</td></tr>
+<tr><td data-th="Ризик">Ціна</td><td data-th="Факт (перевірено 17.10.2026)">Між поколіннями ціна рухається в обидва боки: Haiku 3.5 — $0,80 / $4, Haiku 4.5 — $1 / $5, Haiku 5.5 — $0,10 / $0,50 за 1 млн токенів. У Haiku 5.5 промпт понад 100 тис. токенів коштує $0,50 / $2,50, тобто вп'ятеро дорожче; US-only inference — ×1,1</td><td data-th="Що робити">Бюджет прив'язаний до id моделі; найбільший запит прогону — метрика з тригером</td></tr>
+<tr><td data-th="Ризик">Аліаси</td><td data-th="Факт (перевірено 17.10.2026)">У Claude Code <code>haiku</code> — це Haiku 5.5 на Claude API і Haiku 4.5 на Bedrock і Google Cloud. Аліас «оновлюється з часом», тобто модель змінюється без вашого коміту</td><td data-th="Що робити">Аліас — для інтерактивної роботи; у продакшні, batch і evals — повний id (<code>claude-haiku-5-5</code>)</td></tr>
+<tr><td data-th="Ризик">Збої</td><td data-th="Факт (перевірено 17.10.2026)">Fallback на іншого провайдера (урок 9.3) під тим самим аліасом дає <b>іншу модель</b> за іншою ціною</td><td data-th="Що робити">Fallback проходить той самий гейт і eval, що й основна модель</td></tr>
+<tr><td data-th="Ризик">Параметри API</td><td data-th="Факт (перевірено 17.10.2026)"><code>temperature</code>, <code>top_p</code>, <code>top_k</code> з нетиповим значенням на моделях від 4.7 повертають 400</td><td data-th="Що робити">Перехід на нову модель — прогін тестів інтеграції, а не заміна рядка</td></tr>
+<tr><td data-th="Ризик">Умови даних</td><td data-th="Факт (перевірено 17.10.2026)">Хто бачить дані і скільки їх зберігають, залежить від договору (урок 3.3)</td><td data-th="Що робити">Маршрут за класом даних (ADR 0005); зміна умов — тригер</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: ADR 0013 і docs/risks.md</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 10.2 · рішення й ризики в репозиторії</div><div class="pb">
+<p>Два файли в scratch-копії, обидва для злиття в <code>lectern/</code>:</p>
+<ol class="steps">
+<li><b><code>docs/adr/0013-job-store-sqlite.md</code></b> — «Сховище задач <code>lectern serve</code>: SQLite зі стандартної бібліотеки». Контекст — таблиця M1–M4 з цього уроку і вартість спайків. Рішення: <code>jobs.db</code> у WAL; задача мертвого власника знову стає в чергу, задачу живого не чіпаємо; задача зберігається одним JSON-рядком; одноразовий імпорт <code>jobs/*.json</code>. Тригери перегляду: другий хост (B10, модуль 15) і понад 200 подій на задачу.</li>
+<li><b><code>docs/risks.md</code></b> — 29 ризиків з балом, власником, станом і доказом, пом'якшенням і тригером; 4 загальні винесено в PRD. Верх реєстру:</li>
+</ol>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>ID · бал</th><th>Ризик</th><th>Тригер</th></tr></thead>
+<tbody>
+<tr><td data-th="ID · бал">R1 · 4×5</td><td data-th="Ризик">Гейт перевіряє, що цитата дослівна, але не те, що питання з неї випливає</td><td data-th="Тригер">частка «report this question» понад 2% питань</td></tr>
+<tr><td data-th="ID · бал">R9 · 4×5</td><td data-th="Ризик">Немає перевіреного попиту й реальних слухачів (відкрито, B31)</td><td data-th="Тригер">—, доки немає подій слухачів</td></tr>
+<tr><td data-th="ID · бал">R21 · 4×4</td><td data-th="Ризик">Вартість модуля на реальних PDF не виміряна</td><td data-th="Тригер">модуль дорожчий за $0,25 (H1)</td></tr>
+<tr><td data-th="ID · бал">R31 · 4×3</td><td data-th="Ризик">Рестарт губить чергу (закривається ADR 0013)</td><td data-th="Тригер">задачі з <code>server_restart</code></td></tr>
+<tr><td data-th="ID · бал">R32 · 3×4</td><td data-th="Ризик">Поріг ціни Haiku 5.5 понад 100 тис. токенів промпту</td><td data-th="Тригер">найбільший запит прогону понад 80 тис.</td></tr>
+</tbody></table></div>
+<p>Запропоновано в BACKLOG: реалізувати ADR 0013 з тестами (SIGKILL, два процеси, міграція); повні id моделей у <code>serve</code> і <code>batch_generate.sh</code> (R33); тариф понад 100 тис. токенів в <code>estimate.py</code> і метрика найбільшого запиту в <code>measure_pipeline.py</code> (R32). <b>Ваш крок:</b> додайте в реєстр один ризик, якого немає ні в агента, ні тут, з доказом і тригером.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Кожен спайк «переміг» за своїми метриками</td><td data-th="Причина">Вимір придумали після спайків</td><td data-th="Що зробити">Скрипт виміру — до першого рядка спайка, однаковий для всіх</td></tr>
+<tr><td data-th="Симптом">Код спайка вже в <code>main</code>, а крайові випадки випливають у продакшні</td><td data-th="Причина">«Працює — то навіщо переписувати»</td><td data-th="Що зробити">Спайк не зливають; числа — в ADR, реалізацію пишуть з тестами</td></tr>
+<tr><td data-th="Симптом">ADR обґрунтовує вибір технологією, а різниця була в дизайні</td><td data-th="Причина">Спайк виміряв реалізацію (M4 — pid власника, а не SQLite)</td><td data-th="Що зробити">Перевірити, чи може переможений варіант позичити механізм</td></tr>
+<tr><td data-th="Симптом">Стек обрано, «бо агент його знає», а він не тягне навантаження</td><td data-th="Причина">Упередження моделі стало архітектурою</td><td data-th="Що зробити">Знайомість — множник вартості, а не критерій відбору; міряти</td></tr>
+<tr><td data-th="Симптом">Реєстр ризиків — 30 рядків з балами 12</td><td data-th="Причина">Оцінки агента стиснуті до середини шкали</td><td data-th="Що зробити">Ймовірність — з частоти або виміру; бал має визначати дію</td></tr>
+<tr><td data-th="Симптом">«Ризик закрито», а доказу немає</td><td data-th="Причина">Пом'якшення записано як намір</td><td data-th="Що зробити">Окрема сесія перевірки з правилом «немає доказу — немає <code>mitigated</code>»</td></tr>
+<tr><td data-th="Симптом">Модель змінилася сама, evals ніхто не запускав</td><td data-th="Причина">Аліас у продакшні</td><td data-th="Що зробити">Повний id у конфігурації; зміна моделі — подія з прогоном evals</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">spike → decide → delete</span><span class="h">що лишається?</span></span><span class="b"><span class="t">Числа в ADR</span><span class="d">код спайка видаляють, реалізацію пишуть з тестами</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">вимір спайка</span><span class="h">коли писати?</span></span><span class="b"><span class="t">До спайків</span><span class="d">один скрипт для всіх варіантів, інакше кожен міряють своїм</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">знайомість моделі</span><span class="h">як проявилась?</span></span><span class="b"><span class="t">Розвідкою, не провалами</span><span class="d">BlackSheep: 12/12 ок, але ×2 вартість і 2–5 викликів inspect</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">тригер ризику</span><span class="h">приклад</span></span><span class="b"><span class="t">Сигнал з порогом</span><span class="d">найбільший запит прогону понад 80 тис. токенів</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">аліас haiku</span><span class="h">у продакшні?</span></span><span class="b"><span class="t">Ні — повний id</span><span class="d">аліас означає різні моделі в різних провайдерів і змінюється з часом</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">best-of-N</span><span class="h">для архітектури?</span></span><span class="b"><span class="t">Ні — різні промпти</span><span class="d">best-of-N порівнює реалізації однієї ідеї, а не варіанти</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Команда обирає між FastAPI і нішевим фреймворком. Тимлід каже: «на нішевому агент не впорається». Що показав експеримент уроку і як вчинити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Нішевий стек заборонити: агент на ньому провалює приховані тести вдвічі частіше, ніж на популярному</span></label><label class="opt ok"><input type="radio" name="q1"><span>Виміряти на своїй типовій задачі: розрив проявився як множник вартості й часу, а не як провали тестів</span></label><label class="opt"><input type="radio" name="q1"><span>Брати нішевий: агент компенсує незнайомство читанням коду, тож різниці ні в результаті, ні в ціні немає</span></label></div>
+    <div class="why yes">Так. 12 з 12 реалізацій пройшли 16/16 тестів, але на BlackSheep агент витратив удвічі більше і в 1,8 раза довше працював. При n = 4 і одній задачі це сигнал переміряти на своїй задачі, а не закон.</div>
+    <div class="why no">Провалів не було на жодному стеку, тож «заборонити» вимір не підтримує. Але й «різниці немає» хибно: медіана $0,0209 проти $0,0102 і 5–8 запусків тестів проти 1–3.</div></div>
+  <div class="q"><div class="qt">2. Два агенти зробили спайки сховища, і кожен у звіті обрав метрики, за якими його варіант кращий. Що не так з процесом?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Вимір пишуть до спайків, один для всіх: інакше кожен варіант міряють тим, у чому він сильний</span></label><label class="opt"><input type="radio" name="q2"><span>Нічого: агент найкраще знає сильні сторони свого варіанта, тож його метрики найточніші</span></label><label class="opt"><input type="radio" name="q2"><span>Метрики треба брати з README бібліотек, бо бенчмарки їхніх авторів надійніші за будь-який спайк</span></label></div>
+    <div class="why yes">Так. У прогоні уроку bench.py написано до спайків, і він однаково міряв M1–M4 для поточного стану, A і B.</div>
+    <div class="why no">Самообрані метрики гарантують, що «переможе» кожен. Бенчмарки авторів міряють не ваше навантаження: тут вирішили рестарт і два процеси, а не пропускна здатність.</div></div>
+  <div class="q"><div class="qt">3. Спайк B (SQLite) запускає агента для задачі один раз, а спайк A (JSON) — двічі, коли стартує другий процес (M4). Що записати в ADR?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Що SQLite усуває подвійні запуски, а JSON-файли непридатні для будь-якого сервісу, де працюють два процеси</span></label><label class="opt"><input type="radio" name="q3"><span>Що різниця випадкова: два повтори — це замало, тож M4 у рішенні не враховувати взагалі</span></label><label class="opt ok"><input type="radio" name="q3"><span>Що різницю дав pid власника, який A позичила б, а вирішальне — запит з індексом по всіх процесах</span></label></div>
+    <div class="why yes">Так. Спайк міряє реалізацію, а не технологію. Чесний ADR відділяє одне від іншого і називає перевагу, яку переможений варіант не позичить дешево.</div>
+    <div class="why no">M4 відтворився в обох повторах (2 і 2 запуски), тож він не випадковий. Але й технологія тут ні до чого: pid власника можна писати і в JSON-файл.</div></div>
+  <div class="q"><div class="qt">4. Агент склав реєстр, де 9 з 30 ризиків мають 3 × 4, а ймовірність ніколи не буває 1 чи 5. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Прийняти як є: середні оцінки — ознака обережності, а реєстр і не мусить впорядковувати ризики</span></label><label class="opt ok"><input type="radio" name="q4"><span>Брати ймовірність з частоти чи виміру там, де вони є: стиснутий бал не дає порядку дій</span></label><label class="opt"><input type="radio" name="q4"><span>Попросити агента перерозподілити бали, щоб вони рівномірно покрили шкалу від 1 до 5</span></label></div>
+    <div class="why yes">Так. Бал потрібен, щоб від нього залежала дія (план, тригер, прийняття). Калібрують його даними, а не перерозподілом.</div>
+    <div class="why no">Рівномірний розподіл на замовлення — те саме відчуття, тільки розтягнуте. А реєстр без порядку не підказує, що робити першим.</div></div>
+  <div class="q"><div class="qt">5. Чому реєстр перевіряла окрема сесія з правилом «немає доказу — немає mitigated»?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Генератор схильний видавати намір за пом'якшення; свіжий контекст із вимогою доказу ловить, чого в репозиторії немає</span></label><label class="opt"><input type="radio" name="q5"><span>Окрема сесія дешевша, бо не несе контексту генерації, а правило про доказ лише скорочує обсяг звіту для людини</span></label><label class="opt"><input type="radio" name="q5"><span>Друга сесія — це незалежна думка іншої, сильнішої моделі, а правило про доказ потрібне лише для однакового формату</span></label></div>
+    <div class="why yes">Так. Результат — 0 закритих, 23 частково, 3 відкриті, 4 загальні, і вибіркова перевірка доказів підтвердилась.</div>
+    <div class="why no">Перевірка коштувала більше за генерацію ($0,30 проти $0,26), і модель була та сама — Sonnet. Цінність саме в свіжому контексті й обов'язковому доказі.</div></div>
+  <div class="q"><div class="qt">6. Продакшн Lectern викликає модель через аліас haiku, і команда додає fallback на Bedrock. Що зміниться для fallback-запитів?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Нічого: аліас гарантує ту саму модель і ціну в усіх провайдерів, змінюється лише кінцева точка</span></label><label class="opt"><input type="radio" name="q6"><span>Fallback не запрацює: на Bedrock аліасів немає, тож запити з аліасом там завжди повертають помилку</span></label><label class="opt ok"><input type="radio" name="q6"><span>На Bedrock haiku — це Haiku 4.5: інша модель і ціна, тож fallback має пройти той самий гейт і eval</span></label></div>
+    <div class="why yes">Так. За документацією Claude Code, на Claude API haiku — це Haiku 5.5, на Bedrock і Google Cloud — Haiku 4.5, у якої ціна на Claude API в 10 разів вища.</div>
+    <div class="why no">Аліас означає «рекомендовану версію для провайдера» і змінюється з часом. Помилки не буде, буде інша модель — і це гірше, бо мовчки.</div></div>
+  <div class="q"><div class="qt">7. Модель у вашому продакшні отримала статус Deprecated з датою вимкнення. Що з цього випливає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Після дати запити самі переключаться на рекомендовану заміну, тож досить оновити бюджет</span></label><label class="opt ok"><input type="radio" name="q7"><span>Після дати запити падатимуть; є щонайменше 60 днів прогнати evals на заміні й змінити id</span></label><label class="opt"><input type="radio" name="q7"><span>Ваги збережено назавжди, тож модель лишиться доступною в API на старих умовах до кінця договору</span></label></div>
+    <div class="why yes">Так. «Requests to retired models will fail», повідомлення — щонайменше за 60 днів. Наприклад, Sonnet 4.5: депрекація 30.09.2026, вимкнення 30.11.2026.</div>
+    <div class="why no">Автоматичного переключення немає. Збереження ваг (зобов'язання з листопада 2025) не повертає вимкненій моделі доступу через API.</div></div>
+  <div class="q"><div class="qt">8. Продуктова перевага Lectern — перевірка цитат кодом. Що обрати сховищем задач?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Нудне, з відомими режимами відмов і без нового сервісу: токен інновацій іде на перевірку цитат</span></label><label class="opt"><input type="radio" name="q8"><span>Найновіше з найкращими бенчмарками: код однаково напише агент, а експлуатацію візьме на себе хмара</span></label><label class="opt"><input type="radio" name="q8"><span>Те, що агент запропонував першим, бо це найзнайоміше моделі рішення і тому найдешевше в розробці</span></label></div>
+    <div class="why yes">Так. За Мак-Кінлі, технологія приносить експлуатаційний багаж, а «токенів інновацій» мало. SQLite зі стандартної бібліотеки не додає ні залежності, ні сервісу.</div>
+    <div class="why no">Агент пише код, але не чергує вночі. А перший варіант агента відбиває його упередження до популярного, а не ваші вимоги.</div></div>
+  <div class="q"><div class="qt">9. Спайк показав, що 2000 подій на задачу записуються 5 с (квадратично), а реальні задачі мають 1–33 події. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Переписати збереження подій зараз: квадратична складність — дефект незалежно від навантаження</span></label><label class="opt"><input type="radio" name="q9"><span>Прибрати M2 з ADR: вимір на нереалістичному навантаженні лише вводить читача в оману</span></label><label class="opt ok"><input type="radio" name="q9"><span>Не оптимізувати, але записати тригер «понад 200 подій на задачу» в ADR і реєстр ризиків</span></label></div>
+    <div class="why yes">Так. Вимір показав межу, і тригер скаже, коли до неї наблизились. До того часу оптимізація — робота без ефекту.</div>
+    <div class="why no">Оптимізувати те, що не болить, — витрачати час дарма. Але й прибирати вимір не можна: без нього ніхто не знатиме, де межа.</div></div>
+  <div class="q"><div class="qt">10. Треба порівняти два архітектурні варіанти. Колега пропонує /best-of-n у Cursor або --attempts 4 у Codex. Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Нічого: best-of-N для того й створено, щоб порівнювати архітектурні варіанти, просто дорожче</span></label><label class="opt ok"><input type="radio" name="q10"><span>Best-of-N обирає між реалізаціями одного промпту; варіантам потрібні різні промпти й один вимір</span></label><label class="opt"><input type="radio" name="q10"><span>Обидві функції працюють лише з однією моделлю, тож порівнюють випадковість семплінгу, а не варіанти</span></label></div>
+    <div class="why yes">Так. Best-of-N дає кілька спроб однієї задачі. Для рішення потрібні різні постановки й однаковий вимір, написаний заздалегідь.</div>
+    <div class="why no">/best-of-n у Cursor якраз запускає кілька моделей, кожну у своєму worktree. Проблема не в моделях, а в тому, що промпт і, отже, варіант той самий.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>критерії вибору стеку в епоху агентів</td><td>Знайомість моделі, типи й швидкі тести, ліцензія, керованість, навички команди, lock-in — кожен з перевіркою.</td></tr>
+<tr><td>знайомість моделі з екосистемою</td><td>Наскільки часто стек траплявся моделі; проявляється як множник вартості й часу агента.</td></tr>
+<tr><td>спайк під архітектурне рішення</td><td>Одноразовий прототип варіанта, що відповідає на питання ADR заздалегідь визначеним виміром.</td></tr>
+<tr><td>spike → decide → delete</td><td>Спайк → рішення з числами в ADR → код спайка видалити, реалізацію писати з тестами.</td></tr>
+<tr><td>паралельні спайки у worktree</td><td>Кожен варіант — окремий агент в окремому worktree з тим самим виміром.</td></tr>
+<tr><td>реєстр ризиків</td><td>Живий список ризиків проєкту: сценарій, ймовірність × вплив, власник, пом'якшення, тригер, стан.</td></tr>
+<tr><td>ймовірність × вплив</td><td>Бал ризику 1–25, від якого залежить дія: план, тригер або прийняття.</td></tr>
+<tr><td>тригер ризику</td><td>Спостережуваний сигнал з порогом, за яким ризик переглядають.</td></tr>
+<tr><td>ризик депрекації моделі</td><td>Постачальник вимикає модель за своїм графіком; запити до вимкненої моделі падають.</td></tr>
+<tr><td>нудна технологія</td><td>Технологія з добре відомими режимами відмов; токени інновацій — лише туди, де перевага продукту.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Рішення на старті: спайки й ADR</h3>
+<p>Оберіть одне відкрите рішення свого проєкту або Lectern. Згенеруйте з агентом щонайменше три варіанти, серед яких «нічого не міняти». Напишіть вимір до спайків, зробіть два спайки й запишіть ADR з таблицею вимірів, розбором «технологія чи дизайн» і тригерами перегляду.</p>
+<h3>2. Реєстр ризиків: агент проти доказів</h3>
+<p>Отримайте від агента pre-mortem-реєстр на 15–30 ризиків, перевірте його окремою сесією за доказами, порахуйте результат «до / після», додайте ризики, яких не видно з репозиторію, включно з ризиком постачальника моделі, і для кожного залишеного ризику назвіть власника й тригер.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://mcfunley.com/choose-boring-technology" target="_blank" rel="noopener">Dan McKinley — Choose Boring Technology</a><span>30.03.2015 · токени інновацій, «нудне» як відомі режими відмов, ціна експлуатації</span></li>
+<li><a href="https://arxiv.org/abs/2503.17181" target="_blank" rel="noopener">Twist et al. — A Study of LLMs' Preferences for Libraries and Programming Languages</a><span>arXiv 2503.17181, v1 21.03.2025, v4 04.06.2026 · 8 LLM, упередження до Python і популярних бібліотек</span></li>
+<li><a href="https://github.blog/news-insights/octoverse/octoverse-a-new-developer-joins-github-every-second-as-ai-leads-typescript-to-1/" target="_blank" rel="noopener">GitHub Octoverse 2025</a><span>28.10.2025 · TypeScript — перша мова за контриб'юторами з серпня 2025; типи й код від LLM</span></li>
+<li><a href="https://redis.io/blog/agplv3/" target="_blank" rel="noopener">Redis — Redis is now available under the AGPLv3</a><span>01.05.2025 · SSPL з березня 2024, AGPL з Redis 8: ліцензія змінюється після вибору</span></li>
+<li><a href="https://pypistats.org/packages/fastapi" target="_blank" rel="noopener">PyPI Stats — fastapi</a><span>завантаження за місяць; порівняйте з <a href="https://pypistats.org/packages/blacksheep" target="_blank" rel="noopener">blacksheep</a></span></li>
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Subagents</a><span>Explore і Plan лише читають; паралельне дослідження окремими субагентами</span></li>
+<li><a href="https://code.claude.com/docs/en/common-workflows" target="_blank" rel="noopener">Claude Code — Common workflows</a><span>паралельні сесії з <code>--worktree</code>, plan mode, делегування дослідження</span></li>
+<li><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code — Model configuration</a><span>на що вказують аліаси в кожного провайдера і як закріпити версію</span></li>
+<li><a href="https://learn.chatgpt.com/docs/developer-commands" target="_blank" rel="noopener">Codex — CLI commands</a><span><code>codex exec fork … --worktree</code>, <code>codex cloud exec --attempts 1-4</code></span></li>
+<li><a href="https://cursor.com/docs/configuration/worktrees" target="_blank" rel="noopener">Cursor — Worktrees</a><span><code>/worktree</code>, <code>/best-of-n</code>, <code>/apply-worktree</code>, межа 25 worktree</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/model-deprecations" target="_blank" rel="noopener">Claude — Model deprecations</a><span>щонайменше 60 днів повідомлення; запити до вимкнених моделей падають; таблиця дат</span></li>
+<li><a href="https://www.anthropic.com/research/deprecation-commitments" target="_blank" rel="noopener">Anthropic — Commitments on model deprecation and preservation</a><span>04.11.2025 · збереження ваг публічних моделей</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude — Pricing</a><span>Haiku 5.5: $0,10 / $0,50 до 100 тис. токенів промпту, $0,50 / $2,50 понад</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 10.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 10.2 · Senomi<br><br><a href="lesson-48.html">← Урок 10.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-50.html">Урок 10.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

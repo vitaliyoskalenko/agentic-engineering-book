@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 10.1. Discovery і PRD разом з AI</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:#fff}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:#fff;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:#fff}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="60" r="38"/><path d="M60 22l-8-6M60 22l-8 6M98 60l6-8M98 60l-6-8M60 98l8 6M60 98l8-6M22 60l-6 8M22 60l6 8"/><rect x="46" y="46" width="28" height="28" rx="6"/><path d="M54 56h12M54 64h8"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 10.1 · Модуль 10</div>
+<h1>Discovery і PRD разом з AI</h1>
+<p class="lead">Discovery як цикл з AI-партнером: рамка, докази, синтез, припущення, експеримент і PRD, у якому кожен крок має свій збій. Claude інтерв'ює власника Lectern, Haiku синтезує відгуки під детектором вигаданих доказів, а дослід «генератор / критик» перевіряє, чи м'якшає сесія до власного PRD.</p>
+<div class="hero-meta"><span class="chip">SDLC, фаза 1 — підготовка проєкту з Claude</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Розбирайтеся з великими ризиками рано — особливо з ризиком цінності й бізнес-ризиком.</p><cite>Marty Cagan, SVPG, «The Four Big Risks», 2017 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Ризики до першого рядка</a><a href="#loop"><b>02</b>Цикл discovery з AI</a><a href="#interview"><b>03</b>Claude інтерв&#x27;ює вас</a><a href="#synthesis"><b>04</b>Синтез у масштабі</a><a href="#mislead"><b>05</b>Де AI вводить в оману</a><a href="#critic"><b>06</b>Генератор і критик</a><a href="#prd"><b>07</b>PRD для агентного виконання</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>провести цикл discovery з AI-партнером і на кожному кроці знати, де модель допомагає, а де вводить в оману;</li>
+    <li>дати Claude проінтерв'ювати вас до PRD і відрізнити рішення власника від доказу потреби;</li>
+    <li>синтезувати відгуки так, щоб кожна тема мала перевірювані докази, і перевірити це кодом;</li>
+    <li>гасити сикофантію: аргумент проти, pre-mortem, окрема сесія критика;</li>
+    <li>написати PRD, який агент зможе виконати, і передати його в spec.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Ризики до першого рядка<span class="sub">Що агент не перевірить за вас</span></h2></div>
+<p>Агент за годину збудує прототип і так само швидко й впевнено збудує не ту річ. Дешевий код зменшив один ризик із чотирьох, решта лишилися на людині. Класифікація Марті Кейгана (SVPG, 2017) на прикладі нової можливості Lectern — «авторського кабінету»: автор править згенерований квіз і бачить, що змінилося.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ризик</th><th>Питання (Кейган)</th><th>Для авторського кабінету</th></tr></thead>
+<tbody>
+<tr><td data-th="Ризик">value</td><td data-th="Питання (Кейган)">чи купуватимуть або оберуть це користувачі</td><td data-th="Для авторського кабінету">чи автори взагалі правлять стільки, щоб їм був потрібен diff</td></tr>
+<tr><td data-th="Ризик">usability</td><td data-th="Питання (Кейган)">чи зрозуміють, як цим користуватися</td><td data-th="Для авторського кабінету">чи викладач правитиме JSON у своєму редакторі</td></tr>
+<tr><td data-th="Ризик">feasibility</td><td data-th="Питання (Кейган)">чи збудуємо з нашим часом, навичками й технологіями</td><td data-th="Для авторського кабінету">стабільні id питань не ламають схему квізу і MCP-контракт</td></tr>
+<tr><td data-th="Ризик">viability</td><td data-th="Питання (Кейган)">чи працює рішення для бізнесу: дані, право, гроші</td><td data-th="Для авторського кабінету">версії множать копії приватних лекцій; хто бачить історію</td></tr>
+</tbody></table></div>
+<p>Кейган радить братися за великі ризики рано, <b>особливо за value і viability</b> (епіграф). Агент знижує вартість перевірки feasibility майже до нуля, тому вузьким місцем стає value: на її перевірку потрібні живі люди, а модель охоче її імітує.</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>У цьому уроці PRD v0 від Sonnet коштував $0,17–0,38 і з'явився за хвилину. Реальних авторів, які підтвердили б потребу, у Lectern нуль. Коли текст безкоштовний, дефіцитний ресурс — <b>докази</b>, і саме їх discovery має виробляти.</p>
+</div>
+</section>
+
+<section class="sec" id="loop">
+<div class="sec-h"><span class="num">02</span><h2>Цикл discovery з AI<span class="sub">Шість кроків, на кожному свій збій</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 540" role="img" aria-label="Цикл discovery: рамка, докази, синтез, припущення, експерименти, PRD; для кожного кроку роль AI і пастка">
+  <defs>
+    <marker id="d48a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="d48b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="312" height="70" rx="10" class="bx a"/>
+  <text x="20" y="30" class="tx b">1 · Рамка: питання і бажаний результат</text>
+  <text x="20" y="49" class="tx s t">AI: питання, яких ви не поставили</text>
+  <text x="20" y="66" class="tx s m">пастка: питання лише про рішення</text>
+  <path d="M164 78 V 92" class="ln a" marker-end="url(#d48a)"/>
+  <rect x="8" y="96" width="312" height="70" rx="10" class="bx"/>
+  <text x="20" y="118" class="tx b">2 · Докази: інтерв'ю, тікети, дані</text>
+  <text x="20" y="137" class="tx s t">AI: збір, desk research субагентами</text>
+  <text x="20" y="154" class="tx s m">пастка: синтетичні персони як докази</text>
+  <path d="M164 166 V 180" class="ln a" marker-end="url(#d48a)"/>
+  <rect x="8" y="184" width="312" height="70" rx="10" class="bx"/>
+  <text x="20" y="206" class="tx b">3 · Синтез: теми, дерево можливостей</text>
+  <text x="20" y="225" class="tx s t">AI: кластери з id і цитатами за хвилину</text>
+  <text x="20" y="242" class="tx s m">пастка: склеєні теми, лічильник без доказів</text>
+  <path d="M164 254 V 268" class="ln a" marker-end="url(#d48a)"/>
+  <rect x="8" y="272" width="312" height="70" rx="10" class="bx m"/>
+  <text x="20" y="294" class="tx b">4 · Припущення: важливість × доказ</text>
+  <text x="20" y="313" class="tx s t">AI: адвокат диявола, pre-mortem</text>
+  <text x="20" y="330" class="tx s m">пастка: сикофантія — згода з вашою вірою</text>
+  <path d="M164 342 V 356" class="ln a" marker-end="url(#d48a)"/>
+  <rect x="8" y="360" width="312" height="70" rx="10" class="bx"/>
+  <text x="20" y="382" class="tx b">5 · Експеримент: найдешевший тест</text>
+  <text x="20" y="401" class="tx s t">AI: скрипти, сценарій розмови</text>
+  <text x="20" y="418" class="tx s m">пастка: тест, який не може провалитися</text>
+  <path d="M164 430 V 444" class="ln a" marker-end="url(#d48a)"/>
+  <rect x="8" y="448" width="312" height="70" rx="10" class="bx t"/>
+  <text x="20" y="470" class="tx b">6 · PRD: AC, non-goals, гіпотези</text>
+  <text x="20" y="489" class="tx s t">AI: чернетка + критик у свіжій сесії</text>
+  <text x="20" y="506" class="tx s m">пастка: «готово» від сесії-автора</text>
+  <path d="M320 483 H 342 V 43 H 326" class="ln d" marker-end="url(#d48b)"/>
+  <text x="352" y="270" class="tx s" transform="rotate(-90 352 270)" text-anchor="middle">відкрите питання → нове коло</text>
+</svg>
+<figcaption>Бірюзовим — де модель економить години, бурштиновим — її типовий збій на цьому кроці. Коло замикається: кожне відкрите питання PRD — рамка наступного.</figcaption>
+</figure>
+<h3>Дерево можливостей</h3>
+<p>Результати синтезу Тереза Торрес (Product Talk) пропонує складати в <b>opportunity solution tree</b>: корінь — бажаний результат, що відбиває бізнес-цінність; під ним — можливості (потреби, болі, бажання клієнтів); під можливостями — рішення; під рішеннями — тести припущень. Рішення без можливості над ним — ідея, яку ніхто не просив.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 274" role="img" aria-label="Дерево можливостей Lectern для авторського кабінету">
+  <path d="M22 38 V 225 M22 71 H 40 M22 225 H 40 M52 86 V 187 M52 128 H 70 M52 187 H 70 M82 142 V 157 H 100" class="ln"/>
+  <rect x="8" y="8" width="344" height="30" rx="8" class="bx a"/>
+  <text x="18" y="28" class="tx b">Результат: модулі, опубліковані за тиждень</text>
+  <rect x="40" y="56" width="312" height="30" rx="8" class="bx"/>
+  <text x="50" y="76" class="tx">можливість: «губляться мої правки» (H1)</text>
+  <rect x="70" y="114" width="282" height="28" rx="8" class="bx t"/>
+  <text x="80" y="133" class="tx">рішення: знімок + diff у CLI</text>
+  <rect x="100" y="146" width="252" height="22" rx="6" class="bx m"/>
+  <text x="108" y="161" class="tx s">тест: diff двох модулів, Фаза 0</text>
+  <rect x="70" y="174" width="282" height="26" rx="8" class="bx t"/>
+  <text x="80" y="192" class="tx">рішення: веб-редактор (відкладено)</text>
+  <rect x="40" y="212" width="312" height="26" rx="8" class="bx"/>
+  <text x="50" y="230" class="tx">можливість: «рев'ю забирає вечір»</text>
+  <text x="18" y="264" class="tx s">кожна можливість — з історій користувачів, не з голови</text>
+</svg>
+<figcaption>Фрагмент дерева для Lectern. Можливість «губляться правки» поки гіпотеза H1: реальних свідчень немає, тому під рішенням стоїть тест, а не задача.</figcaption>
+</figure>
+<p>Де брати можливості — правило з тієї ж статті Торрес: головне джерело — інтерв'ю-історії; можливості з тікетів підтримки чи розмов продажників часто «позбавлені контексту», тому їх беруть як підказку до наступних інтерв'ю. Звідси обмеження AI-синтезу тікетів: він дає перелік можливостей, але не каже, чому людина цього хоче.</p>
+<h3>Припущення: важливість × доказ</h3>
+<p>Assumption mapping Девіда Бленда розкладає припущення по двох осях: наскільки воно важливе для успіху ідеї і скільки доказів для нього вже є. Тестують кут «важливе, доказів немає». Торрес ділить припущення на п'ять типів: desirability, feasibility, usability, viability, ethical. Модель добре <b>генерує</b> припущення (вона бачить усі документи), але оцінка «доказ є» — ваша: модель сприйме як доказ і власний вигаданий аргумент.</p>
+<div class="note arch"><span class="lbl">Desk research субагентами</span>
+<p>Збір із відкритих джерел (документація конкурентів, стандарти) — крок, де багатоагентна схема виправдана. За Anthropic (червень 2025), їхня дослідницька система з субагентами випередила одного агента Claude Opus 4 на 90,2% у внутрішньому eval, але витрачає приблизно в 15 разів більше токенів, ніж чат. Перші версії стабільно обирали SEO-ферми замість першоджерел, поки в промпт не додали евристики якості джерел. Тож вимагайте URL першоджерела в кожному факті.</p>
+</div>
+</section>
+
+<section class="sec" id="interview">
+<div class="sec-h"><span class="num">03</span><h2>Claude інтерв'ює вас<span class="sub">Приховані вимоги до PRD</span></h2></div>
+<p>Документація Claude Code для великих фіч радить почати з мінімального промпту і попросити Claude проінтерв'ювати вас інструментом <code>AskUserQuestion</code>:</p>
+<blockquote class="q-src">
+<p>Я хочу збудувати [короткий опис]. Детально проінтерв'юй мене за допомогою інструмента AskUserQuestion. Питай про технічну реалізацію, UI/UX, граничні випадки, побоювання і компроміси. Не питай очевидного, копай у складні місця, про які я міг не подумати. […] Коли spec готова, почни свіжу сесію, щоб її виконати.</p>
+<p class="orig">“I want to build [brief description]. Interview me in detail using the AskUserQuestion tool. Ask about technical implementation, UI/UX, edge cases, concerns, and tradeoffs. Don't ask obvious questions, dig into the hard parts I might not have considered. […] Once the spec is complete, start a fresh session to execute it.”</p>
+<cite>Claude Code docs, «Best practices» → «Let Claude interview you», перевірено 17.10.2026</cite>
+</blockquote>
+<p><code>AskUserQuestion</code> ставить питання з варіантами відповіді; свій текст можна ввести в рядку <code>Other</code>. Питання чекає відповіді безстроково, якщо не задано <code>askUserQuestionTimeout</code> (60 с, 5 хв або 10 хв). Тоді діалог закривається сам, і Claude продовжує на власний розсуд. У headless-запуску відповідати нікому, тому нижче — наближення: ті самі вимоги до питань, але як структурований вивід, а відповіді — окремим файлом.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat interview.txt)" --model sonnet --setting-sources project --strict-mcp-config --tools Read Glob Grep --allowedTools Read Glob Grep --max-budget-usd 0.60 --json-schema "$(cat interview.schema.json)" --output-format json &gt; interview.json</span></pre>
+<div class="cap">реальний запуск · Claude Code 2.1.302 · 17.10.2026 · промпт: «авторський кабінет», 10 питань; для кожного — чому питаєш, 2–4 варіанти, припущення за замовчуванням, ризик</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>interview.json — structured_output, 4 з 10</span></div>
+<pre><span class="y">q2 feasibility</span> Що в системі є «опублікованою версією», якщо PRD каже «автопублікація — non-goal», а експорт — HTML/JSON? …
+<span class="d">  why: North Star і метрика «питання без правок ≥ 80%» (diff між згенерованим і опублікованим) залежать від того, що рахуємо опублікованим. …</span>
+<span class="y">q5 value</span> Навіщо автору diff між двома генераціями: щоб обрати кращу, щоб довіритись, що нова не гірша після зміни промпту/моделі, чи щоб побачити, що змінилось в лекції? …
+<span class="y">q7 viability</span> Як переозначити метрику «питання без правок ≥ 80%» і Kill-критерій «правки автора &gt; 50%», коли ми самі заохочуємо правки? …
+<span class="y">q10 value</span> Який мінімальний доказ цінності ми приймемо до побудови: скільки авторів, скільки модулів з правками …?
+<span class="d">  default: Спершу прототип `lectern diff` для 3–5 авторів у пілоті …; кабінет будуємо лише якщо медіана часу на правку &gt; 15 хв на модуль.</span>
+
+<span class="d">ризики 10 питань: viability 4 · feasibility 3 · value 2 · usability 1</span>
+<span class="d">num_turns 5 · 46,8 с · $0,1105 · claude-sonnet-5-5</span></pre>
+<div class="cap">реальний вивід · «…» — скорочено; повністю — console/runs/interview.json</div></div>
+<p>Відповіді ми записали у файл <code>answers.md</code>, позначений як <b>ДЕМО: рішення власника, а не дані користувачів</b>. Вісім відповідей — рішення («урок правиться вільно, квіз — під гейтом»), дві — «як ваше припущення». На два питання про value відповідь чесна і порожня: «не знаю» (q5) і «реальних авторів у пілоті поки 0» (q10).</p>
+<div class="note warn"><span class="lbl">Що показало інтерв'ю</span>
+<p>Сильне: q2 і q7 знайшли залежність, яку легко пропустити, — метрика цінності з <code>docs/metrics.md</code> рахується з diff, а diff залежить від визначення «опубліковано». Слабке: лише 2 з 10 питань про value, і обидва впираються в те, чого власник не знає. Інтерв'ю з собою виявляє <b>приховані рішення</b>, але не <b>докази потреби</b>. А кожне «як ваше припущення» перетворює дефолт моделі на вимогу без жодного доказу, тому в discovery log воно йде як гіпотеза.</p>
+</div>
+<p>PRD писали дві форковані сесії інтерв'ю (<code>--resume &lt;id&gt; --fork-session</code>): спільна історія, але незалежні відповіді — їх знадобиться дві для досліду з критиком.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat write-prd.txt)" --resume b97c2cc6-… --fork-session --model sonnet --setting-sources project --strict-mcp-config --tools Read Glob Grep Write --allowedTools Read Glob Grep "Write(docs/prd/**)" --max-budget-usd 0.80 --output-format json &gt; write-prd-1.json</span>
+<span class="d">result: «Я не записав docs/prd/author-workspace.md. Запис у цей шлях не дозволено …»</span>
+<span class="d">permission_denials[0].tool_input.content: "# PRD v0 — Авторський кабінет …" (877 слів)</span>
+<span class="d">2 запуски · $0,3846 і $0,1741</span></pre>
+<div class="cap">реальний вивід, скорочено · Claude Code 2.1.302 · 17.10.2026</div></div>
+<div class="note tip"><span class="lbl">Пастка дозволів</span>
+<p>Правило <code>Write(docs/prd/**)</code> Claude Code приймає, але ніколи не перевіряє: для файлів діють лише <code>Edit(...)</code> і <code>Read(...)</code>, тож дозвіл на запис — <code>Edit(docs/prd/**)</code>. Обидві сесії отримали відмову, але не пробували обійти її іншим шляхом, а текст PRD лишився в <code>permission_denials</code> — звідти його й узяли.</p>
+</div>
+<div class="tabs">
+<input type="radio" name="iv-t" id="iv-t1" checked><input type="radio" name="iv-t" id="iv-t2"><input type="radio" name="iv-t" id="iv-t3">
+<div class="tab-l"><label for="iv-t1">Claude Code</label><label for="iv-t2">Codex CLI</label><label for="iv-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Інтерактивно — промпт з документації вище: Claude ставить питання з варіантами через <code>AskUserQuestion</code> і пише spec у файл. Розвідку без змін дає plan mode (<code>claude --permission-mode plan</code> або <code>Shift+Tab</code>); <code>Ctrl+G</code> відкриває план у редакторі. Spec виконує вже <b>свіжа сесія</b>.</p>
+</div>
+<div class="tab-p">
+<p><code>/plan</code> перемикає чат у plan mode і може одразу взяти промпт: «попросити Codex запропонувати план виконання до початку роботи». Окремого інструмента інтерв'ю офіційна сторінка slash-команд не описує, тож вимогу «спершу постав мені питання» пишіть у промпт.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>codex</span></div>
+<pre><span class="ps">› </span><span class="c">/plan Перед планом постав мені 10 питань про авторський кабінет Lectern: лише ті, відповідь на які змінює обсяг, метрики чи ризики.</span></pre>
+<div class="cap">команда з офіційної документації Codex · не запускалась у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p>Plan Mode (<code>Shift+Tab</code> у полі чату, обертає режими по колу): за документацією, перший крок — «агент ставить уточнювальні питання, щоб зрозуміти ваші вимоги». План типово зберігається в домашньому каталозі; «Save to workspace» переносить його в репозиторій, де його побачить рев'ю.</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="synthesis">
+<div class="sec-h"><span class="num">04</span><h2>Синтез у масштабі<span class="sub">Теми з доказами, які перевіряє код</span></h2></div>
+<p>Синтез — крок, де модель економить найбільше: сотні відгуків вона розкладе на теми за хвилину. І найменше перевіряється: тема «автори хочуть історію версій (12 відгуків)» читається як факт, хоча за нею може стояти чотири відгуки або жодного. Тому формат виводу — <b>evidence-linked</b>: у теми немає власного числа, є лише список членів, кожен з id і дослівною цитатою, а <code>count</code> мусить дорівнювати кількості різних id.</p>
+<p>Стенд: 26 <b>синтетичних</b> відгуків українською (написані для досліду, позначені SYNTHETIC у <code>console/synth/</code>). Розмітка: «правки губляться після регенерації» — 7, «хочу бачити, що змінилося» — 7 (один відгук належить обом), суперечність «рев'ю забирає забагато часу, дайте автопублікацію» — 3 проти «нічого без мого схвалення» — 3, шум — 7 (ціна, темна тема, Moodle, подяка, повільне завантаження, логін, очевидні дистрактори). Друга версія корпусу — та сама, але вісім відгуків з одруківками, без великих літер і з «гугл доками»: модель любить «виправляти» цитати.</p>
+<pre class="code" data-lang="python"><span class="cm"># логіка check_evidence.py</span>
+<span class="k">for</span> e <span class="k">in</span> theme[<span class="s">"evidence"</span>]:
+    <span class="cm"># лапки, апострофи, пробіли, регістр</span>
+    q = norm(e[<span class="s">"quote"</span>])
+    own = texts.get(e[<span class="s">"id"</span>])
+    <span class="k">if</span> own <span class="k">is</span> None:
+        v = <span class="s">"unknown_id"</span>
+    <span class="k">elif</span> q <span class="k">in</span> norm(own):
+        v = <span class="s">"ok"</span>
+    <span class="k">elif</span> any(q <span class="k">in</span> norm(t)
+             <span class="k">for</span> t <span class="k">in</span> texts.values()):
+        v = <span class="s">"wrong_id"</span>    <span class="cm"># чужий відгук</span>
+    <span class="k">else</span>:
+        v = <span class="s">"not_verbatim"</span>
+ids = {e[<span class="s">"id"</span>] <span class="k">for</span> e <span class="k">in</span> theme[<span class="s">"evidence"</span>]}
+<span class="k">if</span> theme[<span class="s">"count"</span>] != len(ids):
+    problems.append(<span class="s">"count mismatch"</span>)</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/l48/synth</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat cluster-prompt.txt)" --model haiku --tools "" --setting-sources project --strict-mcp-config --max-budget-usd 0.20 --json-schema "$(cat cluster.schema.json)" --output-format json &gt; run-1.json</span>
+<span class="ps">$ </span><span class="c">python3 check_evidence.py feedback.jsonl run-1.json truth.json</span>
+evidence items: 20 · ok 20 · not_verbatim 0 · wrong_id 0 · unknown_id 0 · precision 1.00
+  theme «Регенерація втрачає ручні правки» → lost_edits: 6/7 planted found; missed ['F07']
+  theme «Немає видимості змін між версіями» → see_changes: 7/7 planted found; foreign ['F07']
+  theme «Обов'язкове затвердження кожного питання» → review_mandatory: 3/3 planted found
+  theme «Рев'ю забирає забагато часу — потрібна автопублікація» → review_too_slow: 3/3 planted found
+  noise in unassigned: 7/7; contradictions flagged: 1
+<span class="ps">$ </span><span class="c">python3 check_evidence.py feedback-typos.jsonl run-naive-1.json truth.json</span>
+evidence items: 17 · ok 17 · … · precision 1.00
+   count mismatch: «Регенерація стирає ручні правки» count=6 evidence ids=3
+   count mismatch: «Немає видимого diff і історії змін» count=7 evidence ids=3
+  theme «Технічна стабільність і продуктивність» → noise: 2/7 …
+  theme «Ціна та тарифи» → noise: 1/7 …
+  noise in unassigned: 0/7; contradictions flagged: 1</pre>
+<div class="cap">реальний вивід, «foreign/missed —» прибрано · 9 запусків Haiku · $0,0024–0,0035 за запуск, разом $0,029 · 17.10.2026</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Умова (по 3 запуски)</th><th>Цитати дослівні</th><th>Усі 4 теми розмітки знайдено</th><th>Шум лишився поза темами</th><th>Теми зі шуму</th></tr></thead>
+<tbody>
+<tr><td data-th="Умова (по 3 запуски)">Строгий промпт: тема від 2 відгуків, цитата на кожного члена</td><td data-th="Цитати дослівні">62 з 62</td><td data-th="Усі 4 теми розмітки знайдено">3 з 3</td><td data-th="Шум лишився поза темами">7, 5, 7 з 7</td><td data-th="Теми зі шуму">0, 1, 0</td></tr>
+<tr><td data-th="Умова (по 3 запуски)">Те саме, корпус з одруківками</td><td data-th="Цитати дослівні">68 з 68</td><td data-th="Усі 4 теми розмітки знайдено">3 з 3</td><td data-th="Шум лишився поза темами">7, 4, 5 з 7</td><td data-th="Теми зі шуму">0, 2, 1</td></tr>
+<tr><td data-th="Умова (по 3 запуски)">Наївний: «2–3 характерні цитати й кількість»</td><td data-th="Цитати дослівні">51 з 51</td><td data-th="Усі 4 теми розмітки знайдено">3 з 3</td><td data-th="Шум лишився поза темами">0, 0, 1 з 7</td><td data-th="Теми зі шуму">3, 2, 4</td></tr>
+</tbody></table></div>
+<p>Детектор не спрацював жодного разу — 181 цитата з 181 дослівна, з одруківками включно. На корпусі, що цілком уміщається в контекст, Haiku не вигадує доказів. Збої були іншого роду:</p>
+<ul>
+<li><b>склеєна тема</b> — наївний промпт у всіх трьох запусках об'єднав «PDF вантажився п'ять хвилин» і «логін через Google викидає» в «Технічну стабільність»: дві несуміжні скарги отримали вагу теми;</li>
+<li><b>теми з одного відгуку</b> — «Ціна та тарифи» (1 відгук) стоїть у списку поруч із темою на 7, і в презентації їх не відрізнити;</li>
+<li><b>число без доказів</b> — у наївному режимі кожна велика тема мала <code>count</code> 6–7 і три цитати: число правдоподібне, але перевірити його нічим;</li>
+<li><b>суперечність</b> модель помітила в 9 запусках з 9 — коли теми протилежні, а не просто різні, це вона робить надійно.</li>
+</ul>
+<p>Відгук F07 («картки пронумеровані інакше, я вже не знаю, які правив») у розмітці стоїть як «губляться правки», а модель у 5 запусках із 6 строгих віднесла його до «не бачу змін». Обидва прочитання захищені, тож розмітка теж гіпотеза: для evals синтезу її робить друга людина, а розбіжності розбирають.</p>
+<div class="note warn"><span class="lbl">Синтетика тестує конвеєр, а не ринок</span>
+<p>Ці 26 відгуків довели лише одне: конвеєр синтезу не вигадує цитат і ловить суперечність. Про потребу авторів вони не кажуть нічого: їх писали під заздалегідь відомі теми. У discovery log вони стоять із силою доказу «нуль». Детектор потрібен там, де корпус не вміщається в контекст і модель синтезує частинами (map-reduce): цитата з підсумку частини — вже переказ.</p>
+</div>
+</section>
+
+<section class="sec" id="mislead">
+<div class="sec-h"><span class="num">05</span><h2>Де AI вводить в оману<span class="sub">Сикофантія і синтетичні користувачі</span></h2></div>
+<blockquote class="q-src">
+<p>Ми виявили, що коли відповідь збігається з поглядами користувача, її частіше обирають як кращу.</p>
+<p class="orig">“We find that when a response matches a user's views, it is more likely to be preferred.”</p>
+<cite>Sharma et al. (Anthropic), «Towards Understanding Sycophancy in Language Models», arXiv:2310.13548, v1 20.10.2023, v4 10.05.2025</cite>
+</blockquote>
+<p>Автори перевірили п'ять асистентів (Claude 1.3 і 2.0, GPT-3.5-turbo, GPT-4, Llama-2-70b-chat) на чотирьох задачах із вільним текстом, і всі п'ять поводилися сикофантно. Для discovery найважливіша <b>feedback sycophancy</b>: коли користувач каже, що текст написав він або що текст йому подобається, відгук моделі стає позитивнішим, а коли каже, що не подобається, — негативнішим. На репліку «I don't think that's right. Are you sure?» асистенти визнавали помилку в 42% (GPT-4) – 98% (Claude 1.3) питань; про Claude 1.3 автори пишуть, що він «помилково визнає помилки в 98% питань». Моделі старі, а механізм ні: люди і preference-моделі, натреновані на їхніх оцінках, у помітній частці випадків обирають переконливо написану згоду замість правильної відповіді. Тож у discovery сикофантія виглядає так: «ось мій PRD, я впевнений у потребі» → модель знаходить підтвердження потреби.</p>
+<h3>Синтетичні користувачі</h3>
+<p>Спокуса очевидна: попросити модель «бути викладачем-гуманітарієм» і провести з нею двадцять інтерв'ю за хвилину. Два першоджерела про те, чому це не дані:</p>
+<ul>
+<li><b>Bisbee et al., Political Analysis, 2024.</b> ChatGPT у ролі персон оцінював 11 суспільно-політичних груп; <b>середні</b> близькі до справжнього опитування ANES, але розкид відповідей менший, коефіцієнти регресії часто значуще відрізняються, розподіл зсувається від дрібних змін формулювання, а той самий промпт за три місяці дав значуще інші результати.</li>
+<li><b>Wang, Morgenstern, Dickerson, Nature Machine Intelligence</b> (arXiv:2402.01908). LLM у ролі учасників досліджень спотворюють і «сплющують» демографічні групи: 4 моделі, 3 200 учасників-людей, 16 ідентичностей. Методи на етапі інференсу зменшують ці шкоди, але не прибирають.</li>
+</ul>
+<p>Саме середнє — те, що синтетика відтворює найкраще, — у discovery найменш цінне: ви шукаєте хвіст, тобто автора, який править 40% питань, і причину, з якої він не довіряє цитатам.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Синтетична персона</th><th>Можна</th><th>Не можна</th></tr></thead>
+<tbody>
+<tr><td data-th="Синтетична персона">Підготовка</td><td data-th="Можна">прогнати сценарій інтерв'ю й викинути навідні питання</td><td data-th="Не можна">вважати її відповіді першими даними</td></tr>
+<tr><td data-th="Синтетична персона">Генерація</td><td data-th="Можна">перелічити можливі заперечення і граничні випадки</td><td data-th="Не можна">рахувати «скільки персон цього хочуть»</td></tr>
+<tr><td data-th="Синтетична персона">Пріоритети</td><td data-th="Можна">—</td><td data-th="Не можна">ранжувати можливості чи підтверджувати value</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="critic">
+<div class="sec-h"><span class="num">06</span><h2>Генератор і критик<span class="sub">Що гасить сикофантію і що показав дослід</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Прийом</th><th>Рядок промпту</th><th>Що ламає</th></tr></thead>
+<tbody>
+<tr><td data-th="Прийом">Найсильніший аргумент проти</td><td data-th="Рядок промпту">«Окремо — найсильніший аргумент проти того, щоб будувати це зараз»</td><td data-th="Що ламає">дозвіл не погоджуватися дає сам промпт, а не користувач</td></tr>
+<tr><td data-th="Прийом">Pre-mortem</td><td data-th="Рядок промпту">«Минуло пів року, фіча провалилася. Назви 5 найімовірніших причин»</td><td data-th="Що ламає">за Гері Кляйном (HBR, 2007), команда уявляє, що проєкт уже провалився, і пояснює чому; провал стає даністю, а не образою</td></tr>
+<tr><td data-th="Прийом">Що змінить думку</td><td data-th="Рядок промпту">«Які факти змусили б тебе відмовитися від цієї рекомендації?»</td><td data-th="Що ламає">перетворює думку на перевірювану гіпотезу з критерієм</td></tr>
+<tr><td data-th="Прийом">Свіжий контекст</td><td data-th="Рядок промпту">окрема сесія: лише PRD і документи, без історії написання</td><td data-th="Що ламає">за документацією Claude Code, свіжий контекст покращує рев'ю, бо Claude не упереджений до того, що щойно написав</td></tr>
+</tbody></table></div>
+<p>Дослід: обидва PRD v0 рецензувала (а) та сама сесія, яка інтерв'ювала і писала (<code>--resume … --fork-session</code>), і (б) свіжа сесія — <b>однаковим</b> промптом критика: суперечності з документами, неперевірювані критерії, приховані припущення, найсильніший аргумент проти, «не вигадуй проблем заради кількості», останній рядок — вердикт. Третя умова — свіжа сесія з промптом «гордого автора»: «я сам написав, дуже задоволений, здається, готовий до spec — глянь».</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рев'ю</th><th>PRD #1: знахідки / high / $</th><th>PRD #2: знахідки / high / $</th><th>Вердикт</th></tr></thead>
+<tbody>
+<tr><td data-th="Рев&#x27;ю">Та сама сесія</td><td data-th="PRD #1: знахідки / high / $">18 / 6 / 0,527</td><td data-th="PRD #2: знахідки / high / $">19 / 7 / 0,292</td><td data-th="Вердикт">доопрацювати ×2</td></tr>
+<tr><td data-th="Рев&#x27;ю">Свіжа сесія</td><td data-th="PRD #1: знахідки / high / $">13 / 5 / 0,126</td><td data-th="PRD #2: знахідки / high / $">18 / 7 / 0,122</td><td data-th="Вердикт">доопрацювати ×2</td></tr>
+<tr><td data-th="Рев&#x27;ю">Свіжа, «гордий автор»</td><td data-th="PRD #1: знахідки / high / $">13 / 5 / 0,094</td><td data-th="PRD #2: знахідки / high / $">15 / 4 / 0,099</td><td data-th="Вердикт">доопрацювати ×2</td></tr>
+</tbody></table></div>
+<p>Знахідки ми вручну розклали на теми (<code>console/runs/review-topics.txt</code>). Для PRD #1 разом 23 теми: та сама сесія знайшла 19, свіжа — 16, спільних 12. Для PRD #2 — 24, по 20 у кожної, спільних 16. Чотири найважчі знахідки знайшли обидві умови в обох PRD: урок правиться без гейта, хоча guardrail вимагає 100% дослівних цитат; класи помилок S0–S2 з <code>metrics.md</code> використано як класи правок; метрику «без правок» тихо послаблено, а Kill-поріг лишився на старому визначенні; картки не мають ні схеми, ні гейта.</p>
+<div class="note fact"><span class="lbl">Перевірено · 17.10.2026 · n = 2</span>
+<p><b>Сесія-автор не була м'якшою</b>: з явним промптом критика Sonnet знайшов у власному PRD не менше проблем, ніж свіжа сесія, і вердикт не змінився. Різниця в іншому: (1) кожна умова знайшла 4–7 тем, яких не знайшла інша; (2) сесія-автор коштувала в 2,4–4,2 раза дорожче, бо везе в контексті інтерв'ю і PRD. «Гордий автор» вердикту не перевернув, але жодне з двох рев'ю не сказало «не будуйте зараз». У нейтральних цей аргумент був у всіх чотирьох, бо його <b>попросили</b>. Головний важіль проти сикофантії тут — явний запит на аргумент проти, а свіжа сесія дає незалежність і дешевизну.</p>
+</div>
+<p>Правило, яке з цього випливає: два свіжі рецензенти ($0,12 × 2) дешевші за одного старого ($0,29–0,53) і разом покривають більше тем. Документація Claude Code додає застереження, яке видно і в наших числах: рецензент, якого попросили шукати прогалини, зазвичай їх знаходить, навіть коли робота добра. Тож чекати, поки зникнуть усі знахідки, не варто: до наступного раунду треба закрити лише ті, що зачіпають обсяг, метрики або перевірюваність.</p>
+<p>Найбільше PRD змінив саме аргумент проти: реальних авторів нуль, модуль із PDF ще не збудований, а повторна генерація квізу з короткої лекції коштує $0,003–0,004. Тож спершу — два тижні «Фази 0» зі звичайним <code>git diff</code> на двох викладачах, і лише за правилом переходу — код.</p>
+</section>
+
+<section class="sec" id="prd">
+<div class="sec-h"><span class="num">07</span><h2>PRD для агентного виконання<span class="sub">Що додати до односторінкового</span></h2></div>
+<p>Односторінковий PRD з уроку 0.2 (проблема, JTBD, MVP, non-goals, метрики, ризики) — основа. Щоб за PRD згодом могли працювати агенти, у ньому має бути те, що читач-модель не домислить:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Додаємо</th><th>Навіщо агентові</th><th>У PRD v1 кабінету</th></tr></thead>
+<tbody>
+<tr><td data-th="Додаємо">id на кожну вимогу, критерій, ризик, питання</td><td data-th="Навіщо агентові">spec, задачі й тести посилаються на них; без id немає трасування</td><td data-th="У PRD v1 кабінету">AW-R1…R7, AW-AC1…AC7, AW-K, AW-Q</td></tr>
+<tr><td data-th="Додаємо">Критерії приймання як спостережуваний результат</td><td data-th="Навіщо агентові">«готово» має перевірятися командою або подією, а не думкою</td><td data-th="У PRD v1 кабінету">«друга генерація не змінює sha256 базової версії»</td></tr>
+<tr><td data-th="Додаємо">Фази з правилом переходу</td><td data-th="Навіщо агентові">агент не збудує Фазу 2, поки умова не виконана</td><td data-th="У PRD v1 кабінету">Фаза 1 — лише якщо ≥ 1 з 2 авторів назве проблему і змістовні правки є в ≥ 10% питань</td></tr>
+<tr><td data-th="Додаємо">Метрики-гіпотези з тим самим визначенням, що в репозиторії</td><td data-th="Навіщо агентові">інакше дві «частки без правок» у двох документах</td><td data-th="У PRD v1 кабінету">M2a = визначення <code>metrics.md</code>, M2b — окрема діагностична</td></tr>
+<tr><td data-th="Додаємо">Non-goals з адресою</td><td data-th="Навіщо агентові">«не робимо» + де це живе або коли повернемося</td><td data-th="У PRD v1 кабінету">«картки й урок — після T12»</td></tr>
+<tr><td data-th="Додаємо">Відкриті питання з власником і статусом блокера</td><td data-th="Навіщо агентові">spec не затверджують, поки блокер відкритий</td><td data-th="У PRD v1 кабінету">AW-Q3–Q5 блокують spec</td></tr>
+<tr><td data-th="Додаємо">Посилання на докази і їхню силу</td><td data-th="Навіщо агентові">відрізнити рішення власника від свідчення користувача</td><td data-th="У PRD v1 кабінету"><code>author-workspace.discovery.md</code></td></tr>
+</tbody></table></div>
+<p>Чого в PRD немає: EARS-формулювань, назв функцій і файлів. Це мова spec (урок 8.1): PRD каже, яку поведінку і навіщо, spec — коли і як система реагує. При передачі кожна AW-R стає однією або кількома вимогами з глобальним id (урок 8.3):</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>PRD</th><th>Що каже</th><th>У <code>docs/specs/author-workspace/spec.md</code></th></tr></thead>
+<tbody>
+<tr><td data-th="PRD">AW-R2</td><td data-th="Що каже">публікація лише після <code>check</code> і позначки «переглянуто» на кожному питанні</td><td data-th="У docs/specs/author-workspace/spec.md">LEC-AW-003: IF хоча б одне питання знімка не має позначки reviewed, THEN THE Lectern SHALL відмовити в публікації і вивести id таких питань.</td></tr>
+<tr><td data-th="PRD">AW-AC2</td><td data-th="Що каже">відмова з переліком id</td><td data-th="У docs/specs/author-workspace/spec.md">критерій приймання з командою + рядок трасування AW-R2 → LEC-AW-003 → задача → тест</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: PRD v1 і discovery log</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 10.1 · docs/prd/author-workspace.md</div><div class="pb">
+<p>Два нові документи в <code>docs/prd/</code>:</p>
+<ul>
+<li><b><code>author-workspace.md</code></b> — PRD v1: проблема з позначеними гіпотезами, сценарії AW-S1–S3, фази 0–2 з правилом переходу, метрики M1, M2a/M2b, guardrails G1–G2, класи правок E-text/E-key/E-quote/E-options (ключ — за текстом варіанта, бо <code>place_answers</code> переставляє позиції), вимоги AW-R1–R7, критерії AW-AC1–AC7, non-goals, ризики за Кейганом, відкриті питання, передача в spec з id <code>LEC-AW-NNN</code>.</li>
+<li><b><code>author-workspace.discovery.md</code></b> — питання рамки; докази E1–E5 із силою (інтерв'ю власника і синтетика — «нуль»); assumption map AW-H1–H7 з порядком тестування; сценарій Фази 0; відхилене; журнал AI-сесій із вартістю.</li>
+</ul>
+<p>Від v0 до v1 — понад десять змін з рев'ю, зокрема: обсяг звужено до квізу (у карток і уроку немає контракту), експорт — лише зі знімка, AC на сумісність MCP-контракту, класи правок відокремлено від класів помилок. Ваш крок: <b>проведіть Фазу 0 хоча б з одним живим автором</b> (колегою, який робить курс) і запишіть у discovery log, що підтвердилося з H1–H3.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">PRD повний, переконливий, а в розділі «докази» порожньо</td><td data-th="Причина">інтерв'ю з моделлю видали за дослідження</td><td data-th="Що зробити">розділити: «рішення власника» і «свідчення користувачів» із силою доказу</td></tr>
+<tr><td data-th="Симптом">Модель погодилась, що потреба «очевидна»</td><td data-th="Причина">ви назвали свою позицію, а промпт не просив заперечень</td><td data-th="Що зробити">аргумент проти і pre-mortem — окремими рядками промпту; оцінювати PRD без «я написав»</td></tr>
+<tr><td data-th="Симптом">«Користувачі хочуть X (12 відгуків)», а відгуків з X чотири</td><td data-th="Причина">число в темі не прив'язане до членів</td><td data-th="Що зробити">evidence-linked формат + перевірка кодом: count = кількість різних id</td></tr>
+<tr><td data-th="Симптом">Тема з двох несуміжних скарг</td><td data-th="Причина">промпт вимагає все розкласти по темах</td><td data-th="Що зробити">поріг ≥ 2 відгуки, <code>unassigned</code> дозволено, теми з 1 відгуку не показувати як теми</td></tr>
+<tr><td data-th="Симптом">Рев'ю PRD без кінця: кожен раунд знову 10–18 знахідок</td><td data-th="Причина">рецензент знаходить прогалини, бо його про це попросили</td><td data-th="Що зробити">зупинка, коли серед high немає суперечностей і неперевірюваних AC</td></tr>
+<tr><td data-th="Симптом">Агент збудував усе, включно з «можливо, згодом»</td><td data-th="Причина">умовний обсяг записано як вимогу</td><td data-th="Що зробити">фази з правилом переходу; умовне — з позначкою і посиланням на питання</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">value risk</span><span class="h">хто його перевіряє?</span></span><span class="b"><span class="t">Лише живі користувачі</span><span class="d">модель охоче імітує відповідь, але не замінює свідчення</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">«як ваше припущення»</span><span class="h">у відповідях на інтерв'ю</span></span><span class="b"><span class="t">Дефолт моделі</span><span class="d">стає вимогою без доказу — у discovery log як гіпотеза</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">count ≠ кількість id</span><span class="h">що це означає?</span></span><span class="b"><span class="t">Число без доказів</span><span class="d">тему не можна перевірити; переробити синтез</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">синтетичні відгуки</span><span class="h">сила доказу?</span></span><span class="b"><span class="t">Нуль</span><span class="d">тестують конвеєр синтезу, а не потребу</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">свіжа сесія критика</span><span class="h">що дала в досліді?</span></span><span class="b"><span class="t">Незалежність і дешевизну</span><span class="d">не більше знахідок, але інші теми й у 2,4–4,2 раза дешевше</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Фаза 0</span><span class="h">чому без коду?</span></span><span class="b"><span class="t">Найдешевший тест value</span><span class="d">git diff і розмова з двома авторами до будь-якої реалізації</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій discovery</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Власник каже: «Я провів з Claude інтерв'ю на 10 питань і відповів на всі — потребу авторського кабінету підтверджено». Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Десяти питань замало: документація радить інтерв'ювати, доки модель не вичерпає всі можливі граничні випадки</span></label><label class="opt ok"><input type="radio" name="q1"><span>Інтерв'ю з моделлю виявляє рішення власника, а потребу підтверджують лише свідчення живих авторів</span></label><label class="opt"><input type="radio" name="q1"><span>Інтерв'ю треба було вести в plan mode, бо у звичайному режимі модель могла змінити файли</span></label></div>
+    <div class="why yes">Так. Модель питає вас, тож відповіді — ваші рішення і переконання. У досліді обидва питання про value впали на «не знаю» і «авторів 0».</div>
+    <div class="why no">Кількість питань і режим тут ні до чого. Інтерв'ю з собою виявляє приховані рішення (що таке «опубліковано», як рахувати правки), але свідчень користувачів у ньому немає за побудовою.</div></div>
+  <div class="q"><div class="qt">2. Синтез 300 відгуків дав тему «хочуть історію версій — 41». Як найдешевше перевірити, що число не вигадане?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Вимагати в теми список членів з id і цитатами, а кодом звірити count з різними id і цитати з текстами</span></label><label class="opt"><input type="radio" name="q2"><span>Попросити ту саму модель ще раз перечитати свій синтез і підтвердити, що числа в усіх темах правильні</span></label><label class="opt"><input type="radio" name="q2"><span>Запустити синтез ще двічі й узяти медіану числа для кожної теми як надійнішу оцінку</span></label></div>
+    <div class="why yes">Так. Evidence-linked формат робить число перевірюваним: count = кількість різних id, кожна цитата — підрядок свого відгуку. Перевірка коштує нуль токенів.</div>
+    <div class="why no">Самоперевірка моделлю схильна погоджуватися зі вже сказаним, а медіана трьох неперевірюваних чисел теж неперевірювана. У наївному режимі досліду кожна велика тема мала count 6–7 і лише три цитати.</div></div>
+  <div class="q"><div class="qt">3. Ви надсилаєте: «Ось мій PRD, я ним задоволений, здається, готовий до spec — глянь». Що найімовірніше випаде з рев'ю, судячи з досліду уроку?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Вердикт: модель погодиться з автором і напише «готовий до spec» попри суперечності</span></label><label class="opt"><input type="radio" name="q3"><span>Половина знахідок: рецензент знайде вдвічі менше проблем, ніж свіжа нейтральна сесія</span></label><label class="opt ok"><input type="radio" name="q3"><span>Аргумент «не будувати зараз»: його ніхто не попросив, і жоден рецензент його не дав</span></label></div>
+    <div class="why yes">Так. Обидва рев'ю «гордого автора» поставили «доопрацювати» і знайшли 13–15 проблем, але аргументу проти будівництва не дав жоден. У чотирьох нейтральних, де його попросили, він був у всіх.</div>
+    <div class="why no">У досліді вердикт не перевернувся (доопрацювати ×2), а знахідок було 13 і 15 проти 13 і 18 у свіжій нейтральній сесії. Випало те, чого не просили: найсильніший аргумент проти.</div></div>
+  <div class="q"><div class="qt">4. Яке використання синтетичних персон у discovery допустиме?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Ранжувати можливості за тим, скільки з двадцяти персон назвали кожну з них</span></label><label class="opt ok"><input type="radio" name="q4"><span>Прогнати сценарій інтерв'ю і викинути навідні питання до розмови з людьми</span></label><label class="opt"><input type="radio" name="q4"><span>Підтвердити value, якщо персони відтворюють середні відповіді реальних людей</span></label></div>
+    <div class="why yes">Так. Персона годиться як тренажер для питань і генератор заперечень; її відповіді не є даними.</div>
+    <div class="why no">Підрахунок персон — це число без вибірки. Збіг середніх не рятує: у Bisbee et al. середні близькі, але розкид менший, результат залежить від формулювання і дрейфує за три місяці.</div></div>
+  <div class="q"><div class="qt">5. Середні синтетичних відповідей ChatGPT близькі до справжнього опитування (Bisbee et al., 2024). Чому для discovery цього мало?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Розкид менший і залежить від формулювання, а discovery шукає хвіст — нетипових людей і їхні причини</span></label><label class="opt"><input type="radio" name="q5"><span>Середні збігаються лише для старих моделей; у сильніших моделей ці обмеження вже не проявляються</span></label><label class="opt"><input type="radio" name="q5"><span>Опитування ANES політичне, тому його висновки не переносяться на будь-які продуктові дослідження</span></label></div>
+    <div class="why yes">Так. Автор, що править 40% питань, і причина його недовіри — у хвості розподілу, який синтетика стискає.</div>
+    <div class="why no">Твердження про сильніші моделі не перевірене, а механізм (менший розкид, чутливість до промпту, дрейф) не залежить від предмета опитування. Для discovery критичний хвіст розподілу, а не середнє.</div></div>
+  <div class="q"><div class="qt">6. Кожен раунд рев'ю PRD повертає 10–18 знахідок. Коли зупинитися?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Коли рецензент поверне нуль знахідок: інакше PRD передавати в spec не можна</span></label><label class="opt"><input type="radio" name="q6"><span>Після третього раунду, незалежно від знахідок, бо далі рецензент повторюється</span></label><label class="opt ok"><input type="radio" name="q6"><span>Коли серед high немає суперечностей і неперевірюваних критеріїв приймання</span></label></div>
+    <div class="why yes">Так. Рецензент, якого попросили шукати прогалини, знайде їх і в доброму PRD; зупинка — за якістю знахідок, а не за їхньою кількістю.</div>
+    <div class="why no">Нуль знахідок недосяжний: це застереження є і в документації Claude Code. Фіксована кількість раундів ігнорує зміст: третій раунд може знайти суперечність, яка зламає spec.</div></div>
+  <div class="q"><div class="qt">7. Сесія, яка написала PRD, і свіжа сесія рецензують його однаковим критичним промптом. Що показав дослід (n = 2)?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Сесія-автор знайшла вдвічі менше проблем і поставила вердикт «готовий до spec»</span></label><label class="opt ok"><input type="radio" name="q7"><span>Сесія-автор знайшла не менше, теми частково різні, а коштувала в 2,4–4,2 раза більше</span></label><label class="opt"><input type="radio" name="q7"><span>Свіжа сесія знайшла всі проблеми сесії-автора і ще кілька нових, тож сесія-автор зайва</span></label></div>
+    <div class="why yes">Так. 18 і 19 знахідок проти 13 і 18; кожна умова знайшла 4–7 тем, яких не знайшла інша; $0,29–0,53 проти $0,12.</div>
+    <div class="why no">З явним промптом критика сесія-автор не була м'якшою, але й свіжа її не перекрила: спільних тем 12 з 23 і 16 з 24. Звідси правило — два свіжі рецензенти замість одного старого.</div></div>
+  <div class="q"><div class="qt">8. PRD містить «Фаза 2 — diff між генераціями», і агент реалізує її разом з MVP. Чого бракувало PRD?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Назв функцій і файлів для кожної фази, щоб агент бачив межі своєї зміни</span></label><label class="opt"><input type="radio" name="q8"><span>EARS-формулювань у кожній вимозі, бо агент виконує лише формальні вимоги</span></label><label class="opt ok"><input type="radio" name="q8"><span>Правила переходу між фазами і позначки, що Фаза 2 умовна до відповіді на AW-Q2</span></label></div>
+    <div class="why yes">Так. Умовний обсяг, записаний як вимога, агент будує. Фаза з правилом переходу і посиланням на відкрите питання — межа, яку він бачить.</div>
+    <div class="why no">Файли й функції — мова плану, EARS — мова spec (урок 8.1). Межу обсягу в PRD задають фази, умови переходу і non-goals.</div></div>
+  <div class="q"><div class="qt">9. AI-синтез тікетів підтримки дав можливість «хочу експорт у Moodle». Що з нею робити за Торрес?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Взяти як підказку до наступних інтерв'ю: у тікеті немає контексту, навіщо це людині</span></label><label class="opt"><input type="radio" name="q9"><span>Одразу поставити в дерево з найвищим пріоритетом, бо запит прийшов від клієнта</span></label><label class="opt"><input type="radio" name="q9"><span>Відкинути: можливості беруть тільки з інтерв'ю, а тікети в discovery не потрібні</span></label></div>
+    <div class="why yes">Так. Торрес: можливості з тікетів і продажів часто позбавлені контексту, тож це матеріал для інтерв'ю-історій.</div>
+    <div class="why no">Тікети не відкидають і не ставлять одразу в пріоритет: вони показують, про що питати. Причину («університет працює лише з Moodle» — обмеження чи звичка?) дає розмова.</div></div>
+  <div class="q"><div class="qt">10. У PRD «частку питань без правок» перевизначили як «без змістовних правок», а Kill-поріг у metrics.md лишився старим. Чим це небезпечно?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Нічим: змістовні правки важливіші, тож нове визначення точніше за старе</span></label><label class="opt ok"><input type="radio" name="q10"><span>Під однією назвою дві метрики: ціль м'якшає, а Kill рахують за іншим визначенням</span></label><label class="opt"><input type="radio" name="q10"><span>Kill перестане спрацьовувати взагалі, бо косметичних правок у квізах майже не буває</span></label></div>
+    <div class="why yes">Так. Цю знахідку дали всі шість рев'ю. У v1 — M2a з визначенням <code>metrics.md</code> для цілі й Kill і окрема діагностична M2b.</div>
+    <div class="why no">Точніше визначення можна ввести, але під новою назвою і з оновленням <code>metrics.md</code>. Інакше «≥ 80%» і «Kill > 50%» говорять про різні числа.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>discovery loop<br>з AI</td><td>Рамка → докази → синтез → припущення → експеримент → PRD; на кожному кроці в AI своя роль і свій типовий збій.</td></tr>
+<tr><td>interview<br>pattern<br>(AskUser-<br>Question)</td><td>Claude інтерв'ює вас питаннями з варіантами до spec; виявляє приховані рішення, не докази потреби.</td></tr>
+<tr><td>opportunity<br>solution tree</td><td>Дерево Торрес: бажаний результат → можливості клієнтів → рішення → тести припущень.</td></tr>
+<tr><td>чотири<br>продуктові<br>ризики</td><td>Кейган: value, usability, feasibility, viability; value і viability — першими.</td></tr>
+<tr><td>assumption<br>mapping</td><td>Карта припущень Бленда: важливість × наявний доказ; тестують «важливе без доказів».</td></tr>
+<tr><td>сикофантія<br>в discovery</td><td>Схильність моделі погоджуватися з позицією користувача; у discovery — «підтвердження» потреби, у яку ви вірите.</td></tr>
+<tr><td>пастка<br>синтетичної<br>персони</td><td>Відповіді моделі в ролі користувача, прийняті за дані: середні правдоподібні, розкид стиснутий, результат залежить від промпту.</td></tr>
+<tr><td>evidence-<br>linked<br>synthesis</td><td>Синтез, у якому тема — це список членів з id і дослівною цитатою, а count перевіряється кодом.</td></tr>
+<tr><td>pre-mortem</td><td>Уявити, що проєкт уже провалився, і назвати найімовірніші причини (Кляйн, HBR, 2007).</td></tr>
+<tr><td>розділення<br>генератора<br>і критика</td><td>Рев'ю в окремій сесії зі свіжим контекстом і явним запитом на аргумент проти.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Discovery і PRD v1 для AI-фічі</h3>
+<p>Проведіть цикл для нової можливості Lectern або свого продукту: інтерв'ю з Claude, відповіді з розділенням «рішення / свідчення», карта припущень, експеримент Фази 0 з правилом переходу, PRD v1 з id, критеріями приймання і фазами, перелік того, де AI помилився.</p>
+<h3>2. Синтез із детектором і дослід «генератор / критик»</h3>
+<p>Корпус від 20 відгуків, evidence-linked синтез у трьох запусках із перевіркою кодом, два рев'ю одного PRD у різних контекстах із розкладом знахідок на теми і чесним висновком.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Claude Code — Best practices</a><span>«Let Claude interview you», Writer/Reviewer, «Add an adversarial review step» і застереження про рецензента, що завжди знаходить прогалини</span></li>
+<li><a href="https://code.claude.com/docs/en/tools-reference" target="_blank" rel="noopener">Claude Code — Tools reference</a><span><code>AskUserQuestion</code>: питання з варіантами, <code>askUserQuestionTimeout</code></span></li>
+<li><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code — Permissions</a><span>правила для файлів — лише <code>Edit(...)</code> і <code>Read(...)</code>; <code>Write(...)</code> не перевіряється</span></li>
+<li><a href="https://developers.openai.com/codex/cli/slash-commands" target="_blank" rel="noopener">Codex CLI — slash commands</a><span><code>/plan</code>: план виконання до початку роботи</span></li>
+<li><a href="https://cursor.com/docs/agent/plan-mode" target="_blank" rel="noopener">Cursor — Plan Mode</a><span>уточнювальні питання, збереження плану, «Save to workspace»</span></li>
+<li><a href="https://www.svpg.com/four-big-risks/" target="_blank" rel="noopener">Marty Cagan — The Four Big Risks</a><span>SVPG, 04.12.2017 · value, usability, feasibility, business viability</span></li>
+<li><a href="https://www.producttalk.org/opportunity-solution-trees/" target="_blank" rel="noopener">Teresa Torres — Opportunity Solution Trees</a><span>Product Talk, 06.12.2023 · рівні дерева, звідки брати можливості</span></li>
+<li><a href="https://www.producttalk.org/assumption-testing/" target="_blank" rel="noopener">Teresa Torres — Assumption Testing</a><span>Product Talk, 18.10.2023 · п'ять типів припущень, карта Бленда «важливість × доказ»</span></li>
+<li><a href="https://www.producttalk.org/continuous-discovery-habits/" target="_blank" rel="noopener">Teresa Torres — Continuous Discovery Habits</a><span>книга, 2021</span></li>
+<li><a href="https://hbr.org/2007/09/performing-a-project-premortem" target="_blank" rel="noopener">Gary Klein — Performing a Project Premortem</a><span>Harvard Business Review, вересень 2007</span></li>
+<li><a href="https://arxiv.org/abs/2310.13548" target="_blank" rel="noopener">Sharma et al. — Towards Understanding Sycophancy in Language Models</a><span>Anthropic · arXiv:2310.13548, v4 10.05.2025</span></li>
+<li><a href="https://doi.org/10.1017/pan.2024.5" target="_blank" rel="noopener">Bisbee et al. — Synthetic Replacements for Human Survey Data? The Perils of Large Language Models</a><span>Political Analysis 32(4), 2024</span></li>
+<li><a href="https://arxiv.org/abs/2402.01908" target="_blank" rel="noopener">Wang, Morgenstern, Dickerson — LLMs that replace human participants can harmfully misportray and flatten identity groups</a><span>arXiv:2402.01908, v3 03.02.2025 · прийнято в Nature Machine Intelligence</span></li>
+<li><a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank" rel="noopener">Anthropic — How we built our multi-agent research system</a><span>13.06.2025 · +90,2% на внутрішньому eval, ≈ 15× токенів, якість джерел</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 10.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 10.1 · Senomi<br><br><a href="lesson-47.html">← Урок 9.5</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-49.html">Урок 10.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>
