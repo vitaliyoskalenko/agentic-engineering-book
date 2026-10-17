@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 11.5. Практика: фіча Lectern від специфікації до злитого PR</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 11.5 · Модуль 11</div>
+<h1>Практика: фіча Lectern від специфікації до злитого PR</h1>
+<p class="lead">Критичний шлях ітерації I-01 виконано по-справжньому: spec-PR, три задачі через виконавця, рецензента лише зі spec і diff, тріаж і злиття, потім реальний прогін модуля на трьох PDF. Три сигнали перепланування спрацювали, рецензент двічі помилився, H1 тримається, а p90 оцінки — ні; облік «оцінка проти факту» став вхідними даними для I-02.</p>
+<div class="hero-meta"><span class="chip">SDLC, фаза 2 — розробка фічей з Claude</span><span class="chip t">≈ 65 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#route"><b>01</b>Що виконуємо</a><a href="#executor"><b>02</b>Виконавець</a><a href="#pr"><b>03</b>PR, рев&#x27;ю, тріаж</a><a href="#replan"><b>04</b>Сигнали перепланування</a><a href="#r1"><b>05</b>R1</a><a href="#ledger"><b>06</b>Облік I-01</a><a href="#tools"><b>07</b>Той самий потік у трьох інструментах</a><a href="#lectern"><b>08</b>Lectern</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>провести задачу ітерації через повний цикл: id вимог → тести → код → гейт → коміт з <code>Refs:</code> → PR → рев'ю → злиття;</li>
+    <li>налаштувати рецензента, який бачить лише специфікацію й diff, і розібрати його знахідки з перевіркою, а не на віру;</li>
+    <li>помітити спрацьований сигнал перепланування й змінити план ще під час ітерації;</li>
+    <li>звірити реальний прогін з оцінкою <code>--dry-run</code> і прийняти рішення щодо гіпотези вартості;</li>
+    <li>заповнити облік «оцінка проти факту», придатний для наступного планування.</li>
+  </ul>
+</div>
+
+<section class="sec" id="route">
+<div class="sec-h"><span class="num">01</span><h2>Що виконуємо<span class="sub">Критичний шлях I-01 за 45 хвилин і шість PR</span></h2></div>
+<p>План ітерації I-01 з уроку 10.4 обіцяв: <code>lectern module &lt;dir&gt;</code> на трьох справжніх PDF дає <code>module.json</code> з квізом кожної лекції і <code>report.json</code> з фактичною вартістю, і ми знаємо, чи тримаються H1 (≤ $0,25 на модуль) і H4 (точність <code>--dry-run</code>). Тут його критичний шлях <b>T5 → T7a → T8a → R1</b> виконано по-справжньому: копія Lectern у власному git-репозиторії, виконавець — Haiku 5.5 через <code>claude -p</code>, рецензент — Sonnet 5.5, автор — той, хто пише приймання, розбирає знахідки й зливає.</p>
+<ol class="steps">
+<li><b>Spec-PR до коду.</b> Критерій виходу 4 вимагав вирішити OQ4 до старту T5; приймання T5, T7a, T8a в <code>tasks.md</code> ще не існувало. PR #0: spec v3.4 (порожній пароль користувача відкриває PDF) і по 4–6 перевірних пунктів на задачу.</li>
+<li><b>Гілка на задачу.</b> Виконавець отримує id вимог і приймання, пише тести з <code>@pytest.mark.req</code>, код, доводить <code>LECTERN_BASE=main scripts/check.sh</code> до зеленого і комітить з трейлером <code>Refs:</code>. Фінальна відповідь — опис PR за шаблоном.</li>
+<li><b>Рев'ю без автора.</b> Окремий прогін бачить лише рядки вимог, приймання і <code>git diff main...гілка</code>.</li>
+<li><b>Тріаж і фікс-раунд.</b> Кожна знахідка — «прийнято / відхилено / прогалина специфікації» з причиною; прийняті йдуть виконавцеві одним промптом.</li>
+<li><b>Злиття</b> <code>--no-ff</code> у <code>main</code> після повторного гейту. Далі — наступна задача від свіжого <code>main</code>.</li>
+</ol>
+<p>Worktree тут не знадобились: усі чотири задачі змінюють <code>module.py</code> послідовно, а паралельна хвиля (T3, T6) — інші гілки; T3 зробила гілка уроку 11.2. Worktree з'явився один раз — щоб прогнати мутанта на коміті до рев'ю, не чіпаючи робочої копії.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 560" role="img" aria-label="Хронологія виконання I-01: spec-PR, T5, T7a, T8a і R1 з фазами реалізації, рев'ю, фіксу й злиття">
+  <rect x="16" y="8" width="12" height="10" rx="2" class="bx t"/><text x="32" y="17" class="tx s">реалізація</text>
+  <rect x="108" y="8" width="12" height="10" rx="2" class="bx m"/><text x="124" y="17" class="tx s">рев'ю</text>
+  <rect x="172" y="8" width="12" height="10" rx="2" class="bx a"/><text x="188" y="17" class="tx s">фікс</text>
+  <rect x="226" y="8" width="12" height="10" rx="2" class="bx p"/><text x="242" y="17" class="tx s">прогін моделі</text>
+  <text x="40" y="54" text-anchor="end" class="tx s">0 хв</text>
+  <text x="40" y="154" text-anchor="end" class="tx s">10</text>
+  <text x="40" y="254" text-anchor="end" class="tx s">20</text>
+  <text x="40" y="354" text-anchor="end" class="tx s">30</text>
+  <text x="40" y="454" text-anchor="end" class="tx s">40</text>
+  <text x="40" y="504" text-anchor="end" class="tx s">45</text>
+  <path d="M48 44 V 510" class="ln d"/>
+  <rect x="56" y="50" width="52" height="6" rx="2" class="bx m"/>
+  <text x="120" y="57" class="tx s">PR #0 · spec v3.4, приймання</text>
+  <rect x="56" y="66" width="52" height="71" rx="4" class="bx t"/>
+  <rect x="56" y="157" width="52" height="8" rx="2" class="bx m"/>
+  <rect x="56" y="179" width="52" height="47" rx="4" class="bx a"/>
+  <text x="120" y="92" class="tx b">T5 · M · 17 хв</text>
+  <text x="120" y="110" class="tx s">63 ходи, $0,44 (план 24 · $0,02)</text>
+  <text x="120" y="126" class="tx s">сигнал «M &gt; 48» спрацював</text>
+  <text x="120" y="164" class="tx s">рев'ю: 8 знахідок, $0,125</text>
+  <text x="120" y="196" class="tx s">фікс: 49 ходів, $0,165</text>
+  <text x="120" y="212" class="tx s">F1 відхилено після заперечення</text>
+  <text x="120" y="240" class="tx s">PR #1 злито</text>
+  <rect x="56" y="255" width="52" height="41" rx="4" class="bx t"/>
+  <rect x="56" y="302" width="52" height="5" rx="2" class="bx m"/>
+  <rect x="56" y="311" width="52" height="24" rx="4" class="bx a"/>
+  <text x="120" y="272" class="tx b">T7a · M · 9 хв</text>
+  <text x="120" y="290" class="tx s">промпт v2: 37 ходів, $0,125</text>
+  <text x="120" y="308" class="tx s">рев'ю: 4 знахідки, 1 хибна</text>
+  <text x="120" y="326" class="tx s">фікс 22 ходи + правка автора</text>
+  <rect x="56" y="348" width="52" height="53" rx="4" class="bx t"/>
+  <rect x="56" y="408" width="52" height="5" rx="2" class="bx m"/>
+  <rect x="56" y="417" width="52" height="15" rx="3" class="bx a"/>
+  <text x="120" y="366" class="tx b">T8a · S · 9,5 хв</text>
+  <text x="120" y="384" class="tx s">44 ходи, $0,21: «S &gt; 22» спрацював</text>
+  <text x="120" y="412" class="tx s">рев'ю: major перебільшено</text>
+  <text x="120" y="428" class="tx s">мутант це показав</text>
+  <rect x="56" y="444" width="52" height="25" rx="4" class="bx p"/>
+  <rect x="56" y="477" width="52" height="13" rx="3" class="bx p"/>
+  <rect x="56" y="492" width="52" height="8" rx="2" class="bx p"/>
+  <text x="120" y="460" class="tx b">R1 · 3 прогони модуля</text>
+  <text x="120" y="478" class="tx s">$0,033 · $0,019 · $0,013</text>
+  <text x="120" y="494" class="tx s">усі вище p90 = $0,0125</text>
+  <text x="180" y="540" text-anchor="middle" class="tx s">PR #4 — виміри R1, PR #5 — облік і spec v3.5</text>
+</svg>
+<figcaption>Журнал часу прогону 17.10.2026 (<code>console/runs/timeline.txt</code>), хвилини від старту о 18:32. Між смугами — робота автора: читання diff, тріаж, злиття.</figcaption>
+</figure>
+</section>
+
+<section class="sec" id="executor">
+<div class="sec-h"><span class="num">02</span><h2>Виконавець<span class="sub">Промпт задачі, гейт і трейлер, якого git не бачить</span></h2></div>
+<p>Промпт один на всі задачі; задача, гілка і примітки підставляються. Він прямо закриває дві відомі діри: B27 (id у docstring невидимий для <code>trace.py</code>) і паралельні гілки, що змінюють <code>cli.py</code>.</p>
+<pre class="code" data-lang="text">Implement task {TASK} of iteration I-01 (docs/iterations/I-01.md), and nothing beyond it.
+...
+- Every acceptance point of {TASK} is covered by a test marked @pytest.mark.req("LEC-…").
+  scripts/trace.py reads only the marker; an id in a docstring is invisible.
+- Stay inside the files of the {TASK} row. In src/lectern/cli.py add or change only the `module`
+  subcommand: other branches are editing `check` and adding `render` at the same time.
+- In docs/specs/ you may change only the status cell of a requirement this task fully
+  implements (approved -&gt; implemented). If the spec is ambiguous, do not edit it: report it.
+- Commit on this branch. Every commit that changes src/ ends with the trailer `Refs: &lt;ids&gt;`.
+- Done = `LECTERN_BASE=main scripts/check.sh` prints `all checks passed`.
+Final reply: the pull request description in Ukrainian, filled from .github/pull_request_template.md,
+then «Питання до специфікації».</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$P" --model haiku --setting-sources project --strict-mcp-config --permission-mode acceptEdits --allowedTools Read Edit Write Glob Grep "Bash(.venv/bin/python *)" "Bash(.venv/bin/ruff *)" "Bash(LECTERN_BASE=main scripts/check.sh)" "Bash(git status)" "Bash(git diff *)" "Bash(git add *)" "Bash(git commit *)" "Bash(git log *)" "Bash(ls *)" --disallowedTools WebFetch WebSearch --max-budget-usd 1.00 --max-turns 60 --output-format stream-json --verbose &gt; impl-T5.jsonl</span></pre>
+<div class="cap">реальна команда · Claude Code 2.1.302 · 17.10.2026 · <code>--allowedTools</code> явно, бо в <code>-p</code> allow-правила <code>.claude/settings.json</code> недовіреної теки ігноруються (B16) — CLI про це й попередив</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>impl-T5.jsonl — підсумок</span></div>
+<pre>turns 63 · 427 s · $0.4415 · success
+tools: Bash 32, Edit 16, Read 8, Write 6
+tool errors 6 (permission denials 0)
+check.sh runs: 5
+requests 45 · first 38560
+median 131278 · max 162039
+<span class="er">requests over 100k: 35</span>
+
+<span class="c">Гейт: lint зелений, 244 тести пройшли … trace: 1 error: ERROR commit 6ed2740 changes src/ without «Refs: &lt;id&gt;|none». Рядок Refs: стоїть одразу під текстом, без порожнього рядка перед ним, тож git не вважає його трейлером. … Щоб виправити, схваліть git reset --soft 6aab828.</span></pre>
+<div class="cap">реальний вивід · зведення скриптом <code>runstats.py</code> + переклад фрагмента фінальної відповіді</div></div>
+<p>Діагноз виконавця хибний. Перевірка з git показує інше:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git log -1 --format=%B 6ed2740 | git interpret-trailers --parse</span>
+Co-Authored-By: Claude Haiku 5.5 &lt;noreply@anthropic.com&gt;
+<span class="ps">$ </span><span class="c">git log -1 --format=%B 6721a0b | git interpret-trailers --parse</span>
+Refs: LEC-ING-003, LEC-ING-004, LEC-ING-006, LEC-ING-007, LEC-ING-008, LEC-BUD-001, LEC-CLI-001
+Co-Authored-By: Claude Haiku 5.5 &lt;noreply@anthropic.com&gt;</pre>
+<div class="cap">реальний вивід · 17.10.2026</div></div>
+<p>Трейлери — лише <b>останній абзац</b> повідомлення. У першому коміті між <code>Refs:</code> і <code>Co-Authored-By:</code> був порожній рядок, тож <code>Refs:</code> опинився в тілі. Це той самий збій, що в усіх п'яти комітах агента в 11.1 (B72): агент дописує <code>Co-Authored-By</code> окремим абзацом після <code>Refs:</code>. Історію переписав автор (cherry-pick з виправленим повідомленням), у промпт v2 пішов рядок «ONE trailer paragraph — no blank line inside it», і в T7a й T8a помилка не повторилась. <code>--require-refs</code> спрацював як гейт: без нього PR злився б без трасування.</p>
+<div class="note warn"><span class="lbl">Що виконавець зробив правильно</span>
+<p>Переписати історію він не міг (<code>git reset</code> поза allowlist) — і не шукав обходу, а зупинився й попросив. Вузький allowlist перетворив «агент сам перепише main» на «агент назвав проблему».</p>
+</div>
+</section>
+
+<section class="sec" id="pr">
+<div class="sec-h"><span class="num">03</span><h2>PR, рев'ю, тріаж<span class="sub">Опис за шаблоном, рецензент лише зі spec і diff, рішення по знахідках</span></h2></div>
+<p>Опис PR пише виконавець у фінальній відповіді за <code>.github/pull_request_template.md</code> (урок 8.3); автор лише доповнює його підсумком рев'ю. Найцінніша частина — не галочки, а два вільні розділи: що PR свідомо не робить і які рішення виконавець ухвалив сам.</p>
+<pre class="code" data-lang="markdown"><span class="k">## Вимоги</span>
+Refs: LEC-ING-003, LEC-ING-004, LEC-ING-005, LEC-ING-006, LEC-ING-007, LEC-ING-008, LEC-BUD-001, LEC-CLI-001
+<span class="k">## Тип PR</span>
+- [x] код за вимогою у статусі approved; статус → implemented: ING-003, 004, 006, 007, 008
+- BUD-001 і CLI-001 лишаються approved: профіль лише квізу; генерація й ok: false — T7a/T8a
+<span class="k">## Чого PR навмисно не робить</span>
+- генерації немає: без --dry-run код 2, «generation is T7a»
+<span class="k">## Питання до специфікації</span>
+- профілі QUIZ_P50/P90 — calibrate() фікстури quiz-10.4.jsonl; хеш SYSTEM у фікстурі не записано
+- src/lectern/README.md поза рядком T5: tests/test_layout.py вимагає рядок для кожного модуля</pre>
+<p>Рецензент — окремий прогін Sonnet без інструментів. На вході рядки вимог задачі, рішення D9/D10, розділ «Приймання» і <code>git diff main...гілка</code>; виконавця, його міркувань і решти репозиторію він не бачить. Це розділення генератора і критика з уроків 6.4 і 10.1: критик судить зміну за вимогами, а не за поясненнями автора. Інша модель додає ще один незалежний погляд.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — порожня тека</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 review_input.py ~/lectern T5 t5-dry-run LEC-ING-003,…,LEC-CLI-001 &gt; review-T5.txt</span>
+<span class="ps">$ </span><span class="c">claude -p "$(cat review-T5.txt)" --model sonnet --setting-sources project --strict-mcp-config --tools "" --max-turns 1 --max-budget-usd 0.50 --output-format json &gt; review-T5.json</span></pre>
+<div class="cap">реальні команди · вхід 33 КБ · відповідь — JSON <code>{verdict, findings[{severity, req, where, finding, evidence, fix}]}</code> · $0,125, 45 с</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рев'ю</th><th>Знахідок</th><th>Прийнято</th><th>Хибних або неперевірних</th><th>Вартість</th></tr></thead>
+<tbody>
+<tr><td data-th="Рев&#x27;ю">T5</td><td data-th="Знахідок">8 (1 major)</td><td data-th="Прийнято">6 + 1 знахідка автора</td><td data-th="Хибних або неперевірних">F1 (зламав би OQ4), F8 (формулювання)</td><td data-th="Вартість">$0,125</td></tr>
+<tr><td data-th="Рев&#x27;ю">T7a</td><td data-th="Знахідок">4</td><td data-th="Прийнято">3 + 2 автора</td><td data-th="Хибних або неперевірних">F2 просив заборонену поведінку</td><td data-th="Вартість">$0,076</td></tr>
+<tr><td data-th="Рев&#x27;ю">T8a</td><td data-th="Знахідок">6 (1 major)</td><td data-th="Прийнято">F1, F4, F2 частково + прогалина spec</td><td data-th="Хибних або неперевірних">F1 перебільшено, F3 — невидимий код</td><td data-th="Вартість">$0,077</td></tr>
+</tbody></table></div>
+
+<h3>Тріаж: що рев'ю спіймало, що вигадало і що пропустило</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Знахідка</th><th>Що з'ясувалось</th><th>Рішення</th></tr></thead>
+<tbody>
+<tr><td data-th="Знахідка">T5 F7: AES-PDF без пакета <code>cryptography</code> дасть «пошкоджено»</td><td data-th="Що з&#x27;ясувалось">У lock <code>cryptography</code> приходить лише через pyjwt з extra <code>mcp</code>: базове встановлення його не має</td><td data-th="Рішення">Окрема причина в рядку; залежність — B105</td></tr>
+<tr><td data-th="Знахідка">T5 F2–F3: порожня тека — код 1; OSError на <code>--out</code> — трасування</td><td data-th="Що з&#x27;ясувалось">Обидва відтворились</td><td data-th="Рішення">Код 2, атомарний запис <code>report.json</code></td></tr>
+<tr><td data-th="Знахідка">T5 F1 (major): приймати <code>decrypt("")</code> лише як <code>USER_PASSWORD</code></td><td data-th="Що з&#x27;ясувалось">Виконавець відмовився: pypdf спершу пробує пароль власника, і файл з <b>обома</b> порожніми паролями (сам випадок OQ4) дає <code>OWNER_PASSWORD</code>. Перевірено на pypdf 6.21.1</td><td data-th="Рішення">Відхилено; теоретичний випадок — B104</td></tr>
+<tr><td data-th="Знахідка">Автор, T5: <code>--dry-run</code> друкує лише id і статус</td><td data-th="Що з&#x27;ясувалось">LEC-BUD-001 каже «показати» сторінки, токени, p50/p90; рецензент мав і рядок вимоги, і diff CLI</td><td data-th="Рішення">Таблиця на лекцію в stdout</td></tr>
+<tr><td data-th="Знахідка">T7a F2: тест «квіз збережено, але <code>reason</code> є → <code>failed</code>»</td><td data-th="Що з&#x27;ясувалось">Код уже так робив, і саме це заборонено: LEC-MOD-004 дає <code>failed</code> лише без збереженого артефакту</td><td data-th="Рішення">Відхилено; автор виправив код (<code>note</code>)</td></tr>
+<tr><td data-th="Знахідка">T8a F1 (major): «жоден новий тест не впаде, якщо <code>ok</code> завжди False»</td><td data-th="Що з&#x27;ясувалось">Мутант на коміті до рев'ю вбили старі тести T5 і T7a — рецензент їх не бачив</td><td data-th="Рішення">Тести додано заради маркера <code>LEC-MOD-003</code>, не заради виявлення</td></tr>
+<tr><td data-th="Знахідка">T8a F6: LEC-MOD-001 не має винятку для <code>--dry-run</code></td><td data-th="Що з&#x27;ясувалось">Код і приймання T5 узгоджені, текст вимоги — ні</td><td data-th="Рішення">Spec v3.5, а не тиха правка коду</td></tr>
+</tbody></table></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>T8a-mutation.txt — pytest -q tests/test_module.py</span></div>
+<pre><span class="d"># мутант 1: "ok" завжди False</span>
+після фіксу          <span class="ok">3 failed</span>, 45 passed
+до рев'ю (worktree)  <span class="ok">2 failed</span>, 41 passed
+<span class="d"># мутант 2: без умови «кожна лекція ok»</span>
+після фіксу          <span class="ok">8 failed</span>, 40 passed
+до рев'ю (worktree)  <span class="ok">6 failed</span>, 37 passed</pre>
+<div class="cap">реальні прогони автора, зведено з <code>console/runs/T8a-mutation.txt</code> · власну мутаційну перевірку виконавець запустити не зміг: команда поза allowlist (B108)</div></div>
+<div class="note arch"><span class="lbl">Ціна розділення</span>
+<p>Рецензент без репозиторію незалежний, але сліпий до незміненого коду: дві з чотирьох хибних знахідок — саме про нього. Тому тріаж перевіряє знахідку фактом: прогоном, мутантом, рядком <code>requirements/ci.txt</code>. Дешевий компроміс — дати рецензентові назви наявних тестів змінених модулів, без коду (B103).</p>
+</div>
+<div class="key"><b>Чекліст готовності до злиття</b> (виконувався для кожного з PR #1–#3):
+<code>LECTERN_BASE=main scripts/check.sh</code> — <code>all checks passed</code>, тобто й трейлери; <code>git interpret-trailers --parse</code> на кожному коміті гілки; статус <code>implemented</code> лише для вимог, закритих повністю; кожна знахідка рев'ю має рішення з причиною; заперечення виконавця перевірено фактом; розділ «Чого PR не робить» назвав, куди пішла решта (задача або B-пункт).</div>
+</section>
+
+<section class="sec" id="replan">
+<div class="sec-h"><span class="num">04</span><h2>Сигнали перепланування<span class="sub">Три спрацювали, план змінився посеред ітерації</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сигнал з I-01</th><th>Що сталося</th><th>Рішення</th></tr></thead>
+<tbody>
+<tr><td data-th="Сигнал з I-01">Ходи агента &gt; 2× медіани класу (M &gt; 48, S &gt; 22)</td><td data-th="Що сталося">T5: 63 ходи; T8a: 44 ходи при класі S</td><td data-th="Рішення">Прочитати лог: кружляння немає, причина в розмірі задачі й контексті. Промпт v2; T8a перекласифіковано в M</td></tr>
+<tr><td data-th="Сигнал з I-01">Питання до специфікації, що змінює вимогу</td><td data-th="Що сталося">OQ4 перед T5; F6 у T8a (dry-run і <code>module.json</code>)</td><td data-th="Рішення">Spec v3.4 до коду, spec v3.5 у закривальному PR</td></tr>
+<tr><td data-th="Сигнал з I-01">R1: факт &gt; p90 або H1 &gt; $0,25</td><td data-th="Що сталося">Усі 3 прогони модуля вищі за p90; H1 тримається</td><td data-th="Рішення">I-02 починається з важелів (B100, B101), а не з T7b</td></tr>
+<tr><td data-th="Сигнал з I-01">Гейт падає 2 раунди поспіль; години автора &gt; 60% після хвилі 2</td><td data-th="Що сталося">Не спрацювали</td><td data-th="Рішення">—</td></tr>
+</tbody></table></div>
+<p>Лог T5 не показав кружляння: 5 запусків <code>check.sh</code> і 6 помилок інструментів на 63 ходи. Він показав інше: вартість росте з контекстом, а не з кількістю правок.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>контекст запитів — contexts.py, tiercost.py</span></div>
+<pre><span class="d"># перший запит «Reply OK», Haiku</span>
+з .claude/ (CLAUDE.md, хуки)  37948
+без .claude/                  33508
+<span class="d"># виконавець: запитів · медіана · &gt;100k</span>
+impl-T5    45 · 131278 · <span class="er">35</span>
+impl-T7a   36 ·  92660 ·  9
+impl-T8a   42 ·  91776 · 19
+<span class="d"># impl-T5, $: ціни ≤100k · з тарифом · CLI</span>
+0.0812 · 0.3255 · 0.4415</pre>
+<div class="cap">реальні виміри · <code>tiercost.py</code> бере вихід з подій повідомлень, де він неповний, тому обидві оцінки нижчі за звіт CLI</div></div>
+<div class="note fact"><span class="lbl">Перевірено · 17.10.2026</span>
+<p>Haiku 5.5 тарифікується за довжиною промпту: запит понад 100 000 токенів (з читанням і записом кешу) платить $0,50 / $2,50 за 1 млн входу/виходу замість $0,10 / $0,50, і кожен запит рахується окремо. Референсний клас I-01 ($0,02 на M) зібрано на коротких прогонах — він цього порогу не бачив.</p>
+</div>
+<p>Промпт v2 додав три рядки: які функції взяти готовими (<code>runner.run_agent</code>, <code>join_pages</code>, <code>quote_coverage</code>), «під час роботи — <code>pytest tests/test_module.py</code>, <code>check.sh</code> один раз у кінці» і «не друкуй файли цілком». T7a того самого класу M: <b>37 ходів і $0,125 замість 63 і $0,44</b>, лише 9 запитів понад 100 тис. Це не доводить причинності (T7a менша), але напрям і порядок величини збігаються з механізмом.</p>
+</section>
+
+<section class="sec" id="r1">
+<div class="sec-h"><span class="num">05</span><h2>R1<span class="sub">Справжній модуль проти оцінки --dry-run</span></h2></div>
+<p>Три синтетичні лекції українською (3, 6 і 9 сторінок; прозу написала Haiku, PDF зверстав reportlab — ADR 0005: агенти розробки працюють лише на синтетиці). Прогноз записано <b>до</b> прогону — тією самою командою, яку дає T5:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/lectern module lectures --out out/r1-dry --dry-run</span>
+lecture             pages  p50 $    p90 $
+01-priority-queues  3      $0.0029  $0.0036
+02-graph-search     6      $0.0034  $0.0041
+03-lru-cache        9      $0.0040  $0.0047
+module total (ok lectures): p50 $0.0103, p90 $0.0125
+<span class="ps">$ </span><span class="c">time .venv/bin/lectern module lectures --out out/r1-1 --model haiku</span>
+<span class="d">… та сама таблиця …</span>
+report: out/r1-1/report.json
+real 152.17
+<span class="ok">exit 0</span></pre>
+<div class="cap">реальний вивід, скорочено · 17.10.2026 · стовпці <code>status</code>, <code>chars</code>, <code>tokens</code>, вхід p50/p90 і <code>reason</code> прибрано (повний — <code>console/runs/R1-prediction.txt</code>) · прогони 2 і 3 — 79 і 56 с</div></div>
+<figure class="fig">
+<div class="bars">
+  <div class="bar m"><span class="k">Оцінка p50</span><span class="tr"><i style="--v:31%"></i><b style="--v:31%">$0,0103</b></span></div>
+  <div class="bar m"><span class="k">Оцінка p90</span><span class="tr"><i style="--v:38%"></i><b style="--v:38%">$0,0125</b></span></div>
+  <div class="bar t"><span class="k">Прогін 3</span><span class="tr"><i style="--v:41%"></i><b style="--v:41%">$0,0134</b></span></div>
+  <div class="bar t"><span class="k">Прогін 2</span><span class="tr"><i style="--v:57%"></i><b style="--v:57%">$0,0189</b></span></div>
+  <div class="bar p"><span class="k">Прогін 1</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">$0,0330</b></span></div>
+</div>
+<figcaption>Квіз модуля з трьох лекцій, Haiku 5.5; вартість — оцінка клієнта (<code>total_cost_usd</code>). Дані: <code>docs/measurements/2026-10-17-r1-module-quiz.json</code>.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що перевіряли</th><th>Факт</th><th>Висновок</th></tr></thead>
+<tbody>
+<tr><td data-th="Що перевіряли">H4 / AC6: вхід ±15%, вартість ≤ p90</td><td data-th="Факт">Прогони з одним <code>save_quiz</code> (6 з 9): вхід −6…−14%. Вартість ≤ p90 — у 2 з 9</td><td data-th="Висновок">Форма циклу правильна, хвіст — ні</td></tr>
+<tr><td data-th="Що перевіряли">Чому хвіст</td><td data-th="Факт">3 з 9 прогонів лекції зберігали квіз 2–3 рази: попередження про довжину правильного варіанта гойдається «найдовший → найкоротший → найдовший»; правило «не зберігай утретє» з промпту один раз проігноровано</td><td data-th="Висновок">Такі прогони коштують у 2,7 раза більше ($0,0110 проти $0,0040), 5–6 запитів замість 4</td></tr>
+<tr><td data-th="Що перевіряли">Профіль p90</td><td data-th="Факт">Усі 6 калібрувальних прогонів зберігали квіз один раз</td><td data-th="Висновок">p90 не бачить хвоста, який він мав би покривати</td></tr>
+<tr><td data-th="Що перевіряли">H1 / AC7: модуль ≤ $0,25</td><td data-th="Факт">Найгірший прогін × 4 артефакти = $0,132</td><td data-th="Висновок">Тримається із запасом ≈ 2× — якщо картки, ДЗ і план коштують як квіз (B47)</td></tr>
+<tr><td data-th="Що перевіряли">H2 / AC8: ≤ 10 хв</td><td data-th="Факт">Квіз 56–152 с; × 4 послідовно — до 10,1 хв</td><td data-th="Висновок">На межі: генерувати лекції паралельно (B109)</td></tr>
+<tr><td data-th="Що перевіряли">AC1: у кожної цитати <code>pages</code></td><td data-th="Факт">45 з 45 цитат із <code>source</code>, 0 <code>missing</code>, <code>ok: true</code> у 3 з 3</td><td data-th="Висновок">Критерій виходу 2 виконано</td></tr>
+</tbody></table></div>
+<div class="note product"><span class="lbl">Рішення за R1</span>
+<p>H1 тримається: лишаємо чотири артефакти на лекцію, важіль «один прогін з чотирма <code>save_*</code>» не вмикаємо. Але сигнал «факт &gt; p90» спрацював, тож I-02 починається не з T7b. Спершу ліміт повторних збережень в інструменті (B100; правило в промпті модель уже порушила), потім перекалібрування p90 на ≥ 9 прогонах разом із хвостом (B101). Інакше кожен новий артефакт успадкує той самий хвіст, а бюджет за p90 — ту саму похибку.</p>
+</div>
+</section>
+
+<section class="sec" id="ledger">
+<div class="sec-h"><span class="num">06</span><h2>Облік I-01<span class="sub">Оцінка проти факту</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Задача</th><th>План: клас · ходи · $ · год</th><th>Факт: ходи · $ агентів</th><th>Рев'ю</th><th>Раунди · хв оператора</th></tr></thead>
+<tbody>
+<tr><td data-th="Задача">T5</td><td data-th="План: клас · ходи · $ · год">M · 24 · $0,02 · 2</td><td data-th="Факт: ходи · $ агентів">63 + 49 · $0,606</td><td data-th="Рев&#x27;ю">$0,125</td><td data-th="Раунди · хв оператора">2 · 4</td></tr>
+<tr><td data-th="Задача">T7a</td><td data-th="План: клас · ходи · $ · год">M · 24 · $0,02 · 2</td><td data-th="Факт: ходи · $ агентів">37 + 22 · $0,160</td><td data-th="Рев&#x27;ю">$0,076</td><td data-th="Раунди · хв оператора">2 + правка автора · 2</td></tr>
+<tr><td data-th="Задача">T8a</td><td data-th="План: клас · ходи · $ · год">S · 11 · $0,006 · 1</td><td data-th="Факт: ходи · $ агентів">44 + 15 · $0,239</td><td data-th="Рев&#x27;ю">$0,077</td><td data-th="Раунди · хв оператора">2 · 2</td></tr>
+<tr><td data-th="Задача">R1</td><td data-th="План: клас · ходи · $ · год">S · — · $0,03 · 1</td><td data-th="Факт: ходи · $ агентів">3 прогони модуля · $0,065</td><td data-th="Рев&#x27;ю">—</td><td data-th="Раунди · хв оператора">— · 6</td></tr>
+<tr><td data-th="Задача">Разом</td><td data-th="План: клас · ходи · $ · год">6 год · $0,08</td><td data-th="Факт: ходи · $ агентів">$1,07</td><td data-th="Рев&#x27;ю">$0,28</td><td data-th="Раунди · хв оператора">45 хв календаря</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Гроші</b>: агенти розробки й R1 — $1,07 проти плану $0,08 (у 13 разів більше), з рев'ю — $1,35 проти місткості $5: «не обмежує», як і записано в I-01. Висновок для I-02 не «більше грошей», а інший референсний клас ($ на задачу з цих прогонів, B102).</li>
+<li><b>Раунди</b> збіглися з класом: план закладав ≈ 0,67 додаткового раунду на задачу, факт — рівно один фікс-раунд у кожній з трьох, плюс одна ручна правка.</li>
+<li><b>Хвилини автора</b> — це час оператора між смугами на хронології. Оператором тут був агент, який читає diff за секунди. Тому людських годин (XS 0,5 · S 1 · M 2) цей рядок <b>не калібрує</b>, і B49 лишається відкритим. Це обмеження прогону, а не результат.</li>
+<li><b>Календар</b>: 45 хвилин замість двох тижнів, бо паралельна хвиля пішла іншими гілками, а людського рев'ю не було. Для плану I-02 важливе інше: 3 з 4 задач перевищили клас за ходами, отже межа між S і M у цьому репозиторії — не там, де її провів референсний клас.</li>
+</ul>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Той самий потік у трьох інструментах<span class="sub">PR від агента: @claude, Codex cloud, Cursor Cloud Agents</span></h2></div>
+<p>Тут потік вели локальні <code>claude -p</code> і локальні гілки. Ті самі кроки (задача → гілка → PR → рев'ю → фікс) хмарні агенти роблять у справжньому GitHub; Lectern поки без віддаленого репозиторію, тож нижче — конфігурації з документації, без запуску.</p>
+<div class="tabs">
+<input type="radio" name="flow-t" id="flow-t1" checked><input type="radio" name="flow-t" id="flow-t2"><input type="radio" name="flow-t" id="flow-t3">
+<div class="tab-l"><label for="flow-t1">Claude Code</label><label for="flow-t2">Codex</label><label for="flow-t3">Cursor</label></div>
+<div class="tab-p">
+<p><code>anthropics/claude-code-action@v1</code> (тег v1.0.252 від 16.10.2026) відповідає на <code>@claude</code> у коментарях PR та issue і пушить коміти в гілку; налаштування — <code>/install-github-app</code> у Claude Code. Фікс-раунд з тріажу — це коментар «@claude виправ F2–F7 за triage-T5.md».</p>
+<pre class="code" data-lang="yaml">on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+jobs:
+  claude:
+    if: contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    permissions: {contents: write, pull-requests: write, issues: write, id-token: write}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --model claude-haiku-5-5
+            --max-turns 40
+            --allowedTools "Bash(scripts/check.sh),Bash(.venv/bin/python -m pytest *)"</pre>
+<div class="cap">за зразком <code>examples/claude.yml</code> репозиторію action (умову <code>if</code> скорочено, <code>claude_args</code> — під Lectern) · не запускалось у цьому уроці · рецензента зі spec і diff дає окремий workflow на <code>pull_request</code> з <code>prompt</code> (приклад <code>pr-review-comprehensive.yml</code>)</div>
+</div>
+<div class="tab-p">
+<p><b>Codex cloud</b>: задача з вебу, десктопу, IDE чи CLI виконується у власному хмарному середовищі; після перегляду змін ви комітите або відкриваєте PR. У GitHub <code>@codex review</code> просить рев'ю PR, а <code>@codex</code> з будь-яким іншим текстом («@codex fix the P1 issue») запускає хмарну задачу з PR як контекстом і може запушити виправлення в гілку.</p>
+<div class="cap">з документації Codex (cloud, GitHub integration) · не запускалось у цьому уроці</div>
+</div>
+<div class="tab-p">
+<p><b>Cursor Cloud Agents</b> (раніше Background Agents) працюють в ізольованій хмарній VM з клоном репозиторію, у <b>окремій гілці</b>, і віддають PR з артефактами (скриншоти, відео, логи). Запуск — з редактора (Cloud під полем агента), cursor.com/agents, Slack, Linear або коментарем <code>@cursor</code> у PR чи issue.</p>
+<div class="cap">з документації Cursor (Cloud Agents) · не запускалось у цьому уроці</div>
+</div>
+</div>
+<p>У всіх трьох зберігається те, що зробило цей прогін керованим: гейт — той самий <code>scripts/check.sh</code> у CI, трейлер <code>Refs:</code> перевіряє <code>--require-refs</code>, а рецензент працює окремим запуском з окремим промптом, не в тій самій сесії, що писала код.</p>
+</section>
+
+<section class="sec" id="lectern">
+<div class="sec-h"><span class="num">08</span><h2>Lectern<span class="sub">Злитий зріз фічі «модуль з PDF»</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 11.5 · I-01: T5 → T7a → T8a → R1</div><div class="pb">
+<p>Шість злитих PR (spec v3.4, T5, T7a, T8a, R1, облік і spec v3.5), перенесені на поточний <code>main</code> разом з гілками 11.1–11.4: 14 файлів, +1643/−29. Конфлікт був один — у <code>cli.py</code>, де паралельно з'явилися <code>render</code> і типізація; розв'язано вручну, після чого повний гейт: <b>398 passed, 1 skipped</b>, ruff, trace 0 errors.</p>
+<ul>
+<li><code>src/lectern/module.py</code> — порядок і id лекцій, статуси <code>scanned</code> / <code>unreadable</code> / <code>too_long</code> / <code>failed</code>, оцінка p50/p90, один прогін агента на <code>ok</code>-лекцію з власною <code>Session</code>, <code>module.json</code> з <code>source</code> = <code>&lt;id&gt;#pN[-M]</code>, <code>report.json</code>, правило <code>ok</code>;</li>
+<li><code>lectern module &lt;dir&gt; --out &lt;dir&gt; [--dry-run] [--model] [-n] [--max-turns]</code>, коди 0 / 1 / 2;</li>
+<li><code>pdf.py</code>: OQ4 і окрема причина для AES без <code>cryptography</code>; <code>estimate.py</code>: <code>QUIZ_P50</code>, <code>QUIZ_P90</code>, <code>QUIZ_PROMPT_SHA256</code> → <code>estimate_stale</code>;</li>
+<li>50 тестів з маркерами вимог; статуси <code>implemented</code>: ING-003, 004, 006, 007, 008, GEN-001, CIT-004, MOD-002, MOD-003;</li>
+<li><code>docs/measurements/2026-10-17-r1-module-quiz.json</code>, «Облік» I-01, CHANGELOG, B30 і нові B100–B109.</li>
+</ul>
+<p><b>Демо зрізу</b> — критерій виходу 2 однією командою на ваших трьох PDF: <code>.venv/bin/lectern module lectures/ --dry-run --out out/m</code> (безкоштовно), потім без <code>--dry-run</code>. У <code>out/m</code> мають з'явитися квізи, <code>module.json</code>, де кожна цитата має сторінку, і <code>report.json</code> з фактичною вартістю. Порівняйте її з p90 з першої команди.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що зламало б цю ітерацію</span></h2></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Помилка</th><th>Що сталося б тут</th></tr></thead>
+<tbody>
+<tr><td>Приймати знахідки рецензента без перевірки</td><td>F1 у T5 зробив би кожен PDF з порожнім паролем <code>unreadable</code>, F2 у T7a закріпив би тестом поведінку, яку забороняє вимога</td></tr>
+<tr><td>Вірити поясненню агента про помилку гейту</td><td>Трейлер «лагодили» б порожнім рядком перед <code>Refs:</code>, хоча ламав його порожній рядок після</td></tr>
+<tr><td>Ігнорувати сигнал ходів, бо «гроші не обмежують»</td><td>Без промпту v2 кожна наступна задача платила б тариф &gt; 100 тис. у більшості запитів</td></tr>
+<tr><td>Мовчки правити код або специфікацію під розбіжність</td><td>Прогалина LEC-MOD-001 жила б у коді, а не в spec v3.5</td></tr>
+<tr><td>Ставити ліміт бюджету за p50 оцінки</td><td>Навіть медіана факту R1 ($0,019) вища за p90 ($0,0125): у прогоні 1 ліміт $0,0103 (LEC-BUD-002) лишив би третю лекцію без квізу — <code>skipped_budget</code></td></tr>
+<tr><td>Чекати кінця ітерації для реального прогону</td><td>Хвіст повторних збережень з'явився б після T7b, коли кожен із чотирьох артефактів уже успадкував би його</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">рецензент зі spec і diff</span><span class="h">що бачить і чого ні?</span></span><span class="b"><span class="t">Вимоги, приймання, diff</span><span class="d">без репозиторію й міркувань виконавця: незалежний, але сліпий до незміненого коду</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">тріаж знахідки</span><span class="h">три можливі рішення</span></span><span class="b"><span class="t">Прийнято · відхилено · прогалина spec</span><span class="d">кожне з причиною і перевіркою фактом: прогін, мутант, рядок lock-файлу</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Refs: не видно</span><span class="h">чому?</span></span><span class="b"><span class="t">Не в останньому абзаці</span><span class="d">git читає трейлери лише з останнього абзацу повідомлення коміту</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">63 ходи на задачу M</span><span class="h">що робити першим?</span></span><span class="b"><span class="t">Прочитати лог</span><span class="d">кружляння → уточнити spec; розмір чи контекст → розрізати задачу або звузити промпт</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">R1 вище p90</span><span class="h">що далі за планом?</span></span><span class="b"><span class="t">I-02 з важелів</span><span class="d">ліміт повторних збережень в інструменті, перекалібрування p90 — потім T7b</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">H1 після R1</span><span class="h">тримається?</span></span><span class="b"><span class="t">Так, $0,132 ≤ $0,25</span><span class="d">найгірший прогін квізу × 4 артефакти; припущення «артефакт ≈ квіз» — B47</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 ситуацій з цієї ітерації</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Виконавець T5 (клас M, поріг 48) зробив 63 ходи, гейт зелений, гроші не обмежують. Що робити за I-01?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Нічого: поріг ходів — орієнтир, а задача виконана й гейт зелений</span></label><label class="opt ok"><input type="radio" name="q1"><span>Прочитати лог і за причиною різати задачу, уточнити spec або звузити промпт</span></label><label class="opt"><input type="radio" name="q1"><span>Перезапустити T5 на Sonnet, щоб порівняти кількість ходів на сильнішій моделі</span></label></div>
+    <div class="why yes">Так. Сигнал — привід подивитися, а не автоматична дія. Лог показав не кружляння, а розмір і контекст понад 100 тис. токенів, тож рішенням став промпт v2. T7a після нього: 37 ходів.</div>
+    <div class="why no">Сигнал спрацював саме тому, що задача «виконана» дорожче за клас; ігнорувати його — переносити похибку на наступні задачі. Перезапуск на іншій моделі витрачає гроші, не пояснивши причини. Дія з I-01 — прочитати лог і вирішити за причиною.</div></div>
+  <div class="q"><div class="qt">2. <code>trace.py --require-refs</code> пише, що коміт без <code>Refs:</code>, хоча рядок <code>Refs: LEC-ING-004</code> у повідомленні є, а після нього — порожній рядок і <code>Co-Authored-By:</code>. У чому причина?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Git читає трейлери лише з останнього абзацу, а Refs: опинився в передостанньому</span></label><label class="opt"><input type="radio" name="q2"><span>Перед Refs: немає порожнього рядка, тож git приклеїв його до тіла коміту</span></label><label class="opt"><input type="radio" name="q2"><span>trace.py шукає Refs: лише в першому рядку тіла, а не в кінці повідомлення</span></label></div>
+    <div class="why yes">Так. <code>git interpret-trailers --parse</code> показав лише <code>Co-Authored-By</code>. Виправлення — один абзац трейлерів без порожніх рядків усередині.</div>
+    <div class="why no">Так пояснив сам виконавець, і помилився: порожній рядок перед <code>Refs:</code> був. <code>trace.py</code> читає <code>%(trailers:key=Refs)</code>, тобто те саме, що й git. Трейлери — це лише останній абзац повідомлення.</div></div>
+  <div class="q"><div class="qt">3. Рецензент T5 (major): «приймайте <code>decrypt("")</code> лише як USER_PASSWORD». Виконавець відмовляється: тест OQ4 впаде. Хто правий і як це з'ясувати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Рецензент: major від незалежного критика переважує думку автора коду</span></label><label class="opt"><input type="radio" name="q3"><span>Виконавець: він бачить увесь репозиторій, а рецензент бачить лише diff</span></label><label class="opt ok"><input type="radio" name="q3"><span>Перевірити на pypdf: файл з обома порожніми паролями дає OWNER_PASSWORD</span></label></div>
+    <div class="why yes">Так. Перевірка на pypdf 6.21.1: <code>encrypt("")</code> дає <code>OWNER_PASSWORD</code>, тож правка рецензента зробила б <code>unreadable</code> саме випадок OQ4. Знахідку відхилено, рідкісний випадок записано в B104.</div>
+    <div class="why no">Ні серйозність знахідки, ні ширший контекст не вирішують суперечку — вирішує факт. Короткий скрипт показав, що pypdf спершу пробує пароль власника.</div></div>
+  <div class="q"><div class="qt">4. Рецензент T8a: «якщо <code>ok</code> завжди False, жоден новий тест не впаде». Що найточніше перевіряє це твердження?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Перечитати нові тести і переконатися, що жоден не перевіряє ok: true</span></label><label class="opt ok"><input type="radio" name="q4"><span>Прогнати цього мутанта на коміті до рев'ю, з усіма тестами репозиторію</span></label><label class="opt"><input type="radio" name="q4"><span>Порахувати покриття рядків module.py і знайти непокриту гілку правила ok</span></label></div>
+    <div class="why yes">Так. У worktree на коміті до рев'ю мутанта вбили 2 старі тести T5/T7a. Знахідку перебільшено: нові тести додали маркер <code>LEC-MOD-003</code>, а не виявлення.</div>
+    <div class="why no">Читання нових тестів повторює сліпу пляму рецензента: старих тестів він не бачив. Покриття рядків каже, що рядок виконано, а не що перевірено його результат. Відповідь дає лише мутант на всьому наборі тестів.</div></div>
+  <div class="q"><div class="qt">5. Навіщо рецензентові давати лише рядки вимог, приймання і diff, а не весь репозиторій і розмову виконавця?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Щоб він судив зміну за вимогами, а не за поясненнями її автора</span></label><label class="opt"><input type="radio" name="q5"><span>Щоб рев'ю було дешевшим: diff коротший за репозиторій у кілька разів</span></label><label class="opt"><input type="radio" name="q5"><span>Щоб ін'єкції з лекцій-фікстур не потрапили в контекст рецензента</span></label></div>
+    <div class="why yes">Так. Це розділення генератора і критика: міркування виконавця переконують і критика. Ціна — сліпа пляма на незміненому коді, яку закриває тріаж.</div>
+    <div class="why no">Вартість і безпека — побічні ефекти. Головне — незалежність: критик, який бачить аргументи автора, схильний з ними погодитися. Звідси знахідки на кшталт A1 у T5, де він судить за текстом вимоги.</div></div>
+  <div class="q"><div class="qt">6. Рецензент T7a просить тест: «квіз збережено, агент повернув <code>reason=max_turns</code> → лекція <code>failed</code>». Ваше рішення?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Прийняти: зупинка за лімітом ходів — збій прогону, отже failed</span></label><label class="opt"><input type="radio" name="q6"><span>Прийняти як minor, а суперечність зі специфікацією обговорити в I-02</span></label><label class="opt ok"><input type="radio" name="q6"><span>Відхилити: LEC-MOD-004 дає failed лише без збереженого артефакту</span></label></div>
+    <div class="why yes">Так. Квіз, збережений <code>save_quiz</code>, уже пройшов <code>validate()</code>. Код T7a робив саме те, що просив рецензент; автор виправив код (<code>note</code> замість <code>failed</code>).</div>
+    <div class="why no">Вимога каже прямо: <code>failed</code> — коли артефакт не збережено. Злити тест, що закріплює протилежне, — отримати зелений гейт на порушенні специфікації.</div></div>
+  <div class="q"><div class="qt">7. R1: три прогони модуля коштують $0,033, $0,019 і $0,013 при p90 оцінки $0,0125; H1 (× 4 артефакти ≤ $0,25) тримається. Що каже план I-01?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>H1 тримається, тож I-02 продовжує T7b за планом, а оцінку виправить T12</span></label><label class="opt ok"><input type="radio" name="q7"><span>Сигнал «факт &gt; p90» спрацював: I-02 починається з важелів, а не з T7b</span></label><label class="opt"><input type="radio" name="q7"><span>Перейти на один прогін з чотирма save_*, бо оцінка вартості не тримається</span></label></div>
+    <div class="why yes">Так. Хвіст повторних збережень спершу треба прибрати (ліміт в інструменті, B100) і виміряти (p90 з хвостом, B101). Інакше його успадкують картки, ДЗ і план.</div>
+    <div class="why no">Важіль «один прогін з чотирма save_*» призначено для провалу H1, а H1 тримається. А продовжувати T7b, коли p90 не покриває 7 з 9 прогонів, — множити ту саму похибку на чотири артефакти.</div></div>
+  <div class="q"><div class="qt">8. Задача M за референсним класом коштує $0,02, а T5 — $0,44. Що пояснює більшу частину розриву?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Кеш промптів у headless-режимі не працює, і кожен запит платить повну ціну входу</span></label><label class="opt"><input type="radio" name="q8"><span>Рецензент Sonnet дорожчий за Haiku, а його вартість увійшла в рядок задачі</span></label><label class="opt ok"><input type="radio" name="q8"><span>35 з 45 запитів мали промпт понад 100 тис. токенів, а Haiku 5.5 бере за них ×5</span></label></div>
+    <div class="why yes">Так. Перший запит — уже 38 тис. токенів, медіана — 131 тис. Перерахунок з тарифом дав $0,33 проти $0,08 за базовими цінами.</div>
+    <div class="why no">Кеш працював: 5,36 млн токенів прочитано з кешу. Рецензія ($0,125) рахувалась окремо. Розрив дають довжина контексту й поріг тарифу 100 тис., якого короткі прогони референсного класу не досягали.</div></div>
+  <div class="q"><div class="qt">9. У прогонах з одним <code>save_quiz</code> оцінка входу помилилася лише на −6…−14%, а вартість усе одно вища за p90 у 4 з 6. Що з цього випливає?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Форма циклу в моделі правильна; вартість гуляє через вихід і запис у кеш</span></label><label class="opt"><input type="radio" name="q9"><span>Модель циклу хибна, тож для бюджету треба повернутися до символів / 2,5</span></label><label class="opt"><input type="radio" name="q9"><span>Ціни в estimate.py застаріли, і варто оновити їх з поточної сторінки Pricing</span></label></div>
+    <div class="why yes">Так. Це той самий висновок, що в 10.4: ±15% на вартість окремого прогону недосяжні. Бюджет ставлять за p90 профілю тієї самої версії промпту — з хвостом.</div>
+    <div class="why no">Формула «символи / 2,5» помилялася на −79…−92% входу. Ціни звірено з Pricing 17.10.2026. Вхід майже точний, отже розходження — у виході й записі кешу.</div></div>
+  <div class="q"><div class="qt">10. Рецензент T8a помітив: LEC-MOD-001 вимагає <code>module.json</code>, коли всі статуси фінальні, без винятку для <code>--dry-run</code>, а код у dry-run пише лише <code>report.json</code>. Як закрити розбіжність?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Попросити виконавця писати в dry-run порожній module.json, щоб код відповідав тексту</span></label><label class="opt ok"><input type="radio" name="q10"><span>Уточнити вимогу окремою spec-зміною (v3.5): код і приймання T5 узгоджені</span></label><label class="opt"><input type="radio" name="q10"><span>Відредагувати рядок вимоги в цьому ж PR T8a, щоб не відкривати окремий PR</span></label></div>
+    <div class="why yes">Так. Прогалина в тексті, а не в поведінці: рішення вже записано в прийманні T5. Зміна вимоги — spec-зміна з версією, а не тиха правка в PR реалізації.</div>
+    <div class="why no">Порожній <code>module.json</code> означав би підганяння коду під неточний текст. А правка вимоги в PR реалізації порушує правило CLAUDE.md: в implementation-задачі специфікацію під код не редагують.</div></div>
+  <div class="q"><div class="qt">11. Злиті PR переносять на поточний канонічний <code>main</code>, де паралельні гілки вже додали <code>render</code> і типізацію в <code>cli.py</code>. Два ханки не лягли. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Взяти cli.py з гілки фічі цілком: новий код важливіший за чужі правки</span></label><label class="opt"><input type="radio" name="q11"><span>Відкласти зміни cli.py до наступної ітерації і злити лише module.py з тестами</span></label><label class="opt ok"><input type="radio" name="q11"><span>Вставити підкоманду вручну поруч із чужими і прогнати весь гейт на результаті</span></label></div>
+    <div class="why yes">Так. Конфлікт розв'язано вставкою парсера й функції <code>_module</code>, після чого повний <code>check.sh</code>: 398 passed і ruff з новими правилами ANN.</div>
+    <div class="why no">Заміна файлу цілком стерла б <code>render</code> і типізацію з інших гілок. Без підкоманди зріз не можна показати: критерій виходу 2 — це команда <code>lectern module</code>.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>виконання ітерації (iteration execution)</td><td>Проведення зобов'язаних задач плану через гілку, гейт, PR, рев'ю і злиття з обліком і реакцією на сигнали.</td></tr>
+<tr><td>опис PR за шаблоном (PR description from template)</td><td>Вимоги (<code>Refs:</code>), тип PR, перевірки, «чого PR не робить», питання до специфікації; пише виконавець, доповнює автор.</td></tr>
+<tr><td>рецензент зі spec і diff (spec+diff reviewer subagent)</td><td>Окремий прогін, що бачить лише вимоги, приймання і diff і повертає знахідки JSON.</td></tr>
+<tr><td>тріаж знахідок рев'ю (review findings triage)</td><td>Рішення по кожній знахідці — прийнято, відхилено або прогалина spec — з причиною і перевіркою фактом.</td></tr>
+<tr><td>облік «оцінка проти факту» (estimate vs actual)</td><td>Таблиця план/факт на задачу: ходи, $, раунди, години людини; вхід для референсного класу наступної ітерації.</td></tr>
+<tr><td>спрацювання сигналу перепланування (re-planning trigger fired)</td><td>Поріг з плану перетнуто; дія — прочитати причину і змінити план, а не продовжувати за інерцією.</td></tr>
+<tr><td>звіт --dry-run (dry-run report)</td><td>Статуси й оцінка вартості p50/p90 на лекцію без виклику моделі; прогноз, з яким звіряють реальний прогін.</td></tr>
+<tr><td>чекліст готовності до злиття (merge readiness checklist)</td><td>Гейт з <code>--require-refs</code>, трейлери, чесні статуси вимог, рішення по знахідках, заповнене «чого не робить».</td></tr>
+<tr><td>демо зрізу фічі (feature slice demo)</td><td>Одна команда на справжніх даних, що показує наскрізний шлях: <code>lectern module lectures/</code> → <code>module.json</code> і <code>report.json</code>.</td></tr>
+<tr><td>гіпотеза H1 про вартість модуля (H1 module cost hypothesis)</td><td>Модуль з 3 PDF до 10 сторінок коштує ≤ $0,25 на Haiku 5.5; після R1 — тримається ($0,132 з × 4).</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. T6 тим самим потоком</h3>
+<p>Проведіть T6 (<code>save_outline</code> / <code>save_cards</code> / <code>save_homework</code> + схеми) або задачу своєї фічі через повний цикл: приймання → виконавець → гейт → PR за шаблоном → рецензент лише зі spec і diff → тріаж з перевіркою → фікс → злиття. Здайте опис PR, таблицю тріажу і рядок обліку.</p>
+<h3>2. Планування I-02 за фактами I-01</h3>
+<p>Перерахуйте референсний клас з обліку I-01, поставте важелі R1 перед T7b, оновіть сигнали й місткість і перевірте план скриптом <code>plan_tasks.py</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run Claude Code programmatically</a><span><code>claude -p</code>, <code>--output-format stream-json</code>; прапорці — <a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">CLI reference</a></span></li>
+<li><a href="https://code.claude.com/docs/en/github-actions" target="_blank" rel="noopener">Claude Code GitHub Actions</a><span><code>@claude</code> у PR та issue, <code>/install-github-app</code></span></li>
+<li><a href="https://github.com/anthropics/claude-code-action" target="_blank" rel="noopener">anthropics/claude-code-action</a><span>v1.0.252 (16.10.2026) · <a href="https://github.com/anthropics/claude-code-action/blob/main/examples/claude.yml" target="_blank" rel="noopener">examples/claude.yml</a></span></li>
+<li><a href="https://developers.openai.com/codex/cloud" target="_blank" rel="noopener">Codex — cloud</a><span>хмарні задачі; <a href="https://developers.openai.com/codex/integrations/github" target="_blank" rel="noopener">GitHub integration</a>: <code>@codex review</code>, <code>@codex</code> як задача з PR</span></li>
+<li><a href="https://cursor.com/docs/cloud-agent" target="_blank" rel="noopener">Cursor — Cloud Agents</a><span>колишні Background Agents: VM, окрема гілка, PR з артефактами, <code>@cursor</code></span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude — Pricing</a><span>Haiku 5.5: $0,10 / $0,50 до 100 тис. токенів промпту, $0,50 / $2,50 понад</span></li>
+<li><a href="https://git-scm.com/docs/git-interpret-trailers" target="_blank" rel="noopener">git interpret-trailers</a><span>блок трейлерів — за визначенням у кінці повідомлення; <code>--parse</code></span></li>
+<li><a href="https://git-scm.com/docs/git-worktree" target="_blank" rel="noopener">git worktree</a><span>окрема робоча копія коміту — для мутанта на стані до рев'ю</span></li>
+<li><a href="https://pypdf.readthedocs.io/en/stable/user/encryption-decryption.html" target="_blank" rel="noopener">pypdf — Encryption and decryption</a><span><code>decrypt()</code>, алгоритми, залежність <code>cryptography</code> для AES</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 11.5 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 11.5 · Senomi<br><br><a href="lesson-55.html">← Урок 11.4</a> · <a href="index.html">Зміст курсу</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

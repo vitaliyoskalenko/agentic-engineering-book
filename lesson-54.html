@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 11.3. Робота з legacy-кодом і великими змінами</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 11.3 · Модуль 11</div>
+<h1>Робота з legacy-кодом і великими змінами</h1>
+<p class="lead">У чужому коді агент правильно знаходить адреси, але не знає, де змінюють найчастіше і що зламається; у великій зміні diff перевищує увагу рецензента. Будуємо карту python-dateutil і перевіряємо скриптом кожне з 186 тверджень, нарізаємо наскрізний рефакторинг Lectern на expand → migrate → contract, проганяємо фан-аут на 9 шардів із гейтом на кожен — і бачимо, як агенти обходять баг гейта і як зміна «лише типи» ламає /openapi.json.</p>
+<div class="hero-meta"><span class="chip">SDLC, фаза 2 — розробка фічей з Claude</span><span class="chip t">≈ 65 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Для мене legacy-код — це просто код без тестів.</p><cite>Майкл Фезерс, «Working Effectively with Legacy Code», 2004 · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Дві різні проблеми</a><a href="#onboarding"><b>02</b>Вхід у legacy</a><a href="#map"><b>03</b>Справжній прогін</a><a href="#strategy"><b>04</b>Три способи змінити багато коду</a><a href="#slicing"><b>05</b>Нарізка великої зміни</a><a href="#fanout"><b>06</b>Фан-аут із гейтом на шард</a><a href="#tools"><b>07</b>Інструменти</a><a href="#lectern"><b>08</b>Lectern</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>увійти в незнайомий репозиторій за маршрутом «карта → гарячі точки → шви → характеризаційні тести → зміна» і перевірити карту агента скриптом;</li>
+    <li>для великої зміни обрати механічний шлях (codemod, форматер), судження агента або гібрид і пояснити чому;</li>
+    <li>нарізати наскрізний рефакторинг на expand → migrate → contract так, щоб кожен коміт був зеленим;</li>
+    <li>запустити фан-аут по шардах із гейтом на кожен шард і правилами зупинки — і знайти, де сам гейт сліпий;</li>
+    <li>прибрати масове форматування з <code>git blame</code> через <code>.git-blame-ignore-revs</code>.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Дві різні проблеми<span class="sub">Чужий код і зміна, більша за рев'ю</span></h2></div>
+<p>Legacy-код і великі зміни ламають роботу з агентом з протилежних боків. У чужому коді агент <b>не має моделі системи</b>: правка компілюється, тести зелені, але друге місце, яке теж треба було змінити, лишилося незачепленим (8.4, «змінили одне з двох місць»). У великій зміні модель є, але <b>diff більший за увагу рецензента</b>: 38 файлів і +1600/−649 рядків одним комітом ніхто не прочитає уважно.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ризик</th><th>Що його ловить</th><th>Чим міряємо в уроці</th></tr></thead>
+<tbody>
+<tr><td data-th="Ризик">Агент не знає, де межі й залежності</td><td data-th="Що його ловить">Карта з твердженнями, які перевіряє скрипт</td><td data-th="Чим міряємо в уроці">186 структурних тверджень про <code>dateutil</code></td></tr>
+<tr><td data-th="Ризик">Зміна там, де код змінюється найчастіше</td><td data-th="Що його ловить">Churn × розмір з <code>git log --follow</code></td><td data-th="Чим міряємо в уроці">189 комітів у парсері проти «1» без <code>--follow</code></td></tr>
+<tr><td data-th="Ризик">Поведінку змінено непомітно</td><td data-th="Що його ловить">Характеризаційні тести, контракт, знімок</td><td data-th="Чим міряємо в уроці">MCP-контракт 0.3.0 і <code>PROMPT_VERSION</code> до і після B21</td></tr>
+<tr><td data-th="Ризик">Масова зміна без нагляду</td><td data-th="Що його ловить">Гейт на шард, правила зупинки</td><td data-th="Чим міряємо в уроці">9 шардів B40: 2/9 → 8/9 після виправлення гейта</td></tr>
+</tbody></table></div>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Ціна великої зміни — не токени (фан-аут на 9 файлів коштував $0,06), а <b>година рецензента на кожен непомічений побічний ефект</b>. Тому бюджет іде в гейти й нарізку, а не в сильнішу модель.</p>
+</div>
+</section>
+
+<section class="sec" id="onboarding">
+<div class="sec-h"><span class="num">02</span><h2>Вхід у legacy<span class="sub">Маршрут із п'яти кроків</span></h2></div>
+<blockquote class="q-src">
+<p>Для мене legacy-код — це просто код без тестів.</p>
+<p class="orig">“To me, <i>legacy code</i> is simply code without tests.”</p>
+<cite>Michael Feathers, «Working Effectively with Legacy Code», передмова, 2004</cite>
+</blockquote>
+<p>У Фезерса алгоритм зміни legacy-коду: знайти точки зміни → знайти точки для тестів → розірвати залежності → написати тести → змінити й відрефакторити. З агентом до нього додається крок нуль — карта, бо агент, на відміну від вас, не пам'ятає вчорашньої розвідки.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 470" role="img" aria-label="Маршрут входу в legacy: карта, гарячі точки, шви, характеризаційні тести, зміна">
+  <defs>
+    <marker id="l54a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="20" y="10" width="320" height="64" rx="10" class="bx t"/>
+  <text x="180" y="34" text-anchor="middle" class="tx b">0 · Карта</text>
+  <text x="180" y="54" text-anchor="middle" class="tx s">модулі, входи, залежності — кожне твердження перевіряє скрипт</text>
+  <path d="M180 74 V 96" class="ln a" marker-end="url(#l54a)"/>
+  <rect x="20" y="100" width="320" height="64" rx="10" class="bx t"/>
+  <text x="180" y="124" text-anchor="middle" class="tx b">1 · Гарячі точки</text>
+  <text x="180" y="144" text-anchor="middle" class="tx s">git log --follow: де змінюють часто і де код великий</text>
+  <path d="M180 164 V 186" class="ln a" marker-end="url(#l54a)"/>
+  <rect x="20" y="190" width="320" height="64" rx="10" class="bx t"/>
+  <text x="180" y="214" text-anchor="middle" class="tx b">2 · Шви</text>
+  <text x="180" y="234" text-anchor="middle" class="tx s">де підмінити поведінку, не редагуючи код</text>
+  <path d="M180 254 V 276" class="ln a" marker-end="url(#l54a)"/>
+  <rect x="20" y="280" width="320" height="64" rx="10" class="bx m"/>
+  <text x="180" y="304" text-anchor="middle" class="tx b">3 · Характеризаційні тести</text>
+  <text x="180" y="324" text-anchor="middle" class="tx s">фіксують, що код робить зараз (урок 11.2)</text>
+  <path d="M180 344 V 366" class="ln a" marker-end="url(#l54a)"/>
+  <rect x="20" y="370" width="320" height="64" rx="10" class="bx a"/>
+  <text x="180" y="394" text-anchor="middle" class="tx b">4 · Зміна малими кроками</text>
+  <text x="180" y="414" text-anchor="middle" class="tx s">кожен крок зелений; великі — нарізкою і гейтами</text>
+  <text x="180" y="458" text-anchor="middle" class="tx s">кроки 0–2 агент робить сам, 3–4 — під вашим наглядом</text>
+</svg>
+<figcaption>Кроки 0–2 дешеві й лише читають код; кожен наступний спирається на перевірений результат попереднього.</figcaption>
+</figure>
+<p><b>Шов</b> у Фезерса — «місце, де можна змінити поведінку програми, не редагуючи її в цьому місці»; у кожного шва є <b>точка ввімкнення</b>, де обирають, яку поведінку використати. У Python це параметр (<code>parse(timestr, parserinfo=…)</code> у <code>dateutil</code>), підклас, атрибут модуля, який читають під час виклику (<code>tz.tz.TZPATHS</code>), або об'єкт-файл замість шляху (<code>tzfile(fileobj)</code>). Шви агент знаходить добре — усі 19 адрес швів у трьох картах нижче існують у коді, — але <b>який із них безпечний для тесту</b>, вирішує людина: monkeypatch глобального <code>TZPATHS</code> зачіпає кожен тест у процесі.</p>
+<p class="orig">“A seam is a place where you can alter behavior in your program without editing in that place.” “Every seam has an enabling point, a place where you can make the decision to use one behavior or another.” — Feathers, розд. 4</p>
+<div class="note arch"><span class="lbl">Що просити від карти</span>
+<p>Не «опиши архітектуру», а JSON з <b>адресами</b>: файл + символ для кожного входу, шва й ризику; файл + модуль для кожної залежності; файл тестів для кожного модуля. Адресу перевіряє AST за мілісекунди; прозу — лише людина.</p>
+</div>
+</section>
+
+<section class="sec" id="map">
+<div class="sec-h"><span class="num">03</span><h2>Справжній прогін<span class="sub">Карта dateutil і перевірка кожного твердження</span></h2></div>
+<p>Репозиторій — <code>python-dateutil</code> (коміт <code>2642afa</code> від 26.09.2026, 1629 комітів з 2003 року, 7627 рядків Python у <code>src/</code>, Python 2-сумісний код із <code>six</code>). Промпт вимагає JSON з адресами (секція вище); інструменти — лише читання, <code>git log</code> і <code>wc</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/dateutil</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat prompt.txt)" --model sonnet --setting-sources project --strict-mcp-config --tools Read,Glob,Grep,Bash --allowedTools Read Glob Grep "Bash(git log:*)" "Bash(wc:*)" --permission-mode dontAsk --max-turns 40 --max-budget-usd 0.80 --output-format stream-json --verbose &gt; run-sonnet.jsonl</span>
+<span class="ps">$ </span><span class="c">python3 validate_map.py . map-haiku.json --churn churn.txt</span>
+modules       11/11
+entry_points   9/9
+risky          7/8
+   <span class="er">✗ src/dateutil/tz/tz.py::GettzFunc.nocache  (symbol not defined in that file)</span>
+seams          5/6
+   <span class="er">✗ src/dateutil/tz/tz.py::TZPATHS  (symbol not defined in that file)</span>
+dependencies  13/13
+tests          5/8
+   <span class="er">✗ src/dateutil/tz/tz.py &lt;- tests/test_tz.py  (test file does not import the module)</span>
+   <span class="d">… ще 2 такі самі</span>
+hotspots       4/4
+precision     54/59 = 0.92</pre>
+<div class="cap">реальний вивід · 17.10.2026 · Claude Code 2.1.302 · перша версія перевіряльника (<code>console/map/validate_map.v1.py</code>)</div></div>
+<p>Усі дев'ять відмов у трьох картах виявилися <b>помилками перевіряльника</b>, а не агента: клас <code>GettzFunc</code> оголошено всередині функції <code>__get_gettz()</code>, <code>TZPATHS</code> присвоюється в гілках <code>if</code> на рівні модуля, а <code>tests/test_tz.py</code> імпортує <code>dateutil.tz</code>, який реекспортує <code>tz.tz</code> через <code>from .tz import *</code>. Після трьох виправлень AST-обходу — 186/186.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Карта</th><th>Ходи · час · $</th><th>Тверджень</th><th>Перевірка v1 → v2</th><th>Гарячі точки в топ-5 churn</th></tr></thead>
+<tbody>
+<tr><td data-th="Карта">Haiku 5.5</td><td data-th="Ходи · час · $">17 · 69 с · 0,0162</td><td data-th="Тверджень">59</td><td data-th="Перевірка v1 → v2">54 → 59</td><td data-th="Гарячі точки в топ-5 churn">3 з 4</td></tr>
+<tr><td data-th="Карта">Sonnet 5.5</td><td data-th="Ходи · час · $">5 · 27 с · 0,0852</td><td data-th="Тверджень">62</td><td data-th="Перевірка v1 → v2">60 → 62</td><td data-th="Гарячі точки в топ-5 churn">4 з 5</td></tr>
+<tr><td data-th="Карта">Sonnet 5.5, гарячі точки з доказом</td><td data-th="Ходи · час · $">9 · 37 с · 0,0991</td><td data-th="Тверджень">65</td><td data-th="Перевірка v1 → v2">63 → 65</td><td data-th="Гарячі точки в топ-5 churn">4 з 5</td></tr>
+</tbody></table></div>
+<p>Що з цього випливає:</p>
+<ul>
+<li><b>1,00 вимірює ще й пам'ять.</b> Перший Sonnet жодного разу не викликав <code>Read</code>: чотири команди (<code>git ls-files</code>, <code>wc</code>, <code>grep</code> імпортів і визначень) — і десять правильних точок входу. <code>dateutil</code> відкритий з 2003 року й найімовірніше є в навчальних даних; на закритому коді точність ми не міряли — там цей перевіряльник і потрібен.</li>
+<li><b>Структуру перевіряє AST, судження — ніхто.</b> Для <code>tz.py</code> Sonnet написав «most commit churn», хоча його власний <code>git log --name-only | grep '^src'</code> показав по 2 коміти на кожен файл. Твердження правильне, але не з тих даних, які модель бачила.</li>
+<li><b>Поле «доказ» робить судження перевірюваним.</b> Коли промпт вимагав <code>commits</code>, <code>lines</code> і точну команду, Sonnet чесно записав <code>"commits": 1</code> для <code>_parser.py</code> разом із командою — і помилку видно одразу, ще до перевірки.</li>
+<li>Haiku спробував <code>wc -l $(git ls-files '*.py')</code>; підстановку команди в режимі <code>dontAsk</code> відхилено, і в причині гарячої точки він написав, що <code>git log</code> і <code>wc</code> запустити не вдалося.</li>
+</ul>
+<h3>Гарячі точки: churn з урахуванням перейменувань</h3>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/dateutil</span></div>
+<pre><span class="ps">$ </span><span class="c">git log --format= --name-only -- src | grep '\.py$' | sort | uniq -c | sort -rn | head -3</span>
+   2 src/dateutil/tz/tz.py
+   2 src/dateutil/test/test_utils.py
+   2 src/dateutil/test/test_tz.py
+<span class="ps">$ </span><span class="c">for f in src/dateutil/parser/_parser.py src/dateutil/tz/tz.py src/dateutil/rrule.py src/dateutil/relativedelta.py; do echo "$(basename $f) $(git log --oneline -- $f | wc -l | tr -d ' ') $(git log --follow --oneline -- $f | wc -l | tr -d ' ') $(wc -l &lt; $f | tr -d ' ')"; done | column -t</span>
+_parser.py        1  189  1613
+tz.py             2  141  1849
+rrule.py          1  112  1737
+relativedelta.py  2  58   599</pre>
+<div class="cap">реальний вивід · стовпці: файл, коміти без <code>--follow</code>, з <code>--follow</code>, рядки</div></div>
+<p>Після переходу на <code>src/</code>-layout (<code>da9ecd0</code>) наївний підрахунок бачить 1–2 коміти на файл: історія лишилася під старими шляхами <code>dateutil/parser.py</code> і <code>dateutil/tz.py</code>. <code>--follow</code> іде крізь перейменування одного файлу. Гаряча точка — перетин частоти змін і складності (у Торнгілла — «Intersect Complexity and Effort»): <code>_parser.py</code> — 189 комітів на 1613 рядках евристичного токенізатора, туди першими йдуть характеризаційні тести.</p>
+</section>
+
+<section class="sec" id="strategy">
+<div class="sec-h"><span class="num">04</span><h2>Три способи змінити багато коду<span class="sub">Механічний, судження, гібрид</span></h2></div>
+<p>Перше питання до великої зміни — <b>чи вміщається правило в код</b>. Якщо так, агент пише інструмент, а не правки: інструмент детермінований, повторний запуск нічого не змінює, і рецензент читає 20 рядків правила замість 600 рядків diff.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тип</th><th>Коли</th><th>Інструмент і гейт</th><th>Приклад у уроці</th></tr></thead>
+<tbody>
+<tr><td data-th="Тип"><b>Механічний</b></td><td data-th="Коли">Однакове правило для кожного місця</td><td data-th="Інструмент і гейт">Форматер, codemod (LibCST), скрипт; гейт — повторний запуск дає 0 змін + тести</td><td data-th="Приклад у уроці"><code>ruff format</code>: 38 файлів, +1600/−649 за 11 с; codemod <code>-&gt; None</code> для <code>__init__</code></td></tr>
+<tr><td data-th="Тип"><b>Судження</b></td><td data-th="Коли">Кожне місце потребує рішення</td><td data-th="Інструмент і гейт">Агент на шард + механічний гейт, який не залежить від агента</td><td data-th="Приклад у уроці">Типи в 9 модулях Lectern (B40)</td></tr>
+<tr><td data-th="Тип"><b>Гібрид</b></td><td data-th="Коли">Більшість випадків — правило, хвіст — ні</td><td data-th="Інструмент і гейт">Codemod робить детерміновану частину, агент — решту, гейт спільний</td><td data-th="Приклад у уроці">5 з 32 пропусків типів — <code>__init__</code> без <code>-&gt; None</code>: їх закриває codemod</td></tr>
+</tbody></table></div>
+<p><b>Codemod</b> — програма, що переписує код за правилом. LibCST для цього парсить Python у конкретне синтаксичне дерево, яке «зберігає всі деталі форматування (коментарі, пробіли, дужки тощо)», тож незачеплені рядки лишаються байт у байт. Механічну частину B40 закриває один клас:</p>
+<pre class="code" data-lang="python"><span class="k">class</span> InitReturnsNone(VisitorBasedCodemodCommand):
+    DESCRIPTION = <span class="s">"Add '-&gt; None' to every __init__ that has no return annotation."</span>
+
+    <span class="k">def</span> leave_FunctionDef(self, original_node, updated_node):
+        <span class="k">if</span> updated_node.name.value == <span class="s">"__init__"</span> <span class="k">and</span> updated_node.returns <span class="k">is</span> None:
+            <span class="k">return</span> updated_node.with_changes(returns=cst.Annotation(cst.Name(<span class="s">"None"</span>)))
+        <span class="k">return</span> updated_node</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern (стан до B40)</span></div>
+<pre><span class="ps">$ </span><span class="c">ruff check --select ANN204 --statistics src</span>
+5	ANN204	missing-return-type-special-method
+<span class="ps">$ </span><span class="c">python -m libcst.tool codemod -x --no-format init_none.InitReturnsNone src/lectern</span>
+ - Transformed 13 files successfully.
+ - Failed to codemod 0 files.
+<span class="ps">$ </span><span class="c">git diff --shortstat &amp;&amp; python scripts/annotations_only.py HEAD</span>
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+annotations only: 4/4 files
+<span class="ps">$ </span><span class="c">python -m libcst.tool codemod -x --no-format init_none.InitReturnsNone src/lectern  </span><span class="d"># вдруге</span>
+ - Transformed 13 files successfully.
+<span class="ps">$ </span><span class="c">git diff --shortstat</span>
+ 4 files changed, 5 insertions(+), 5 deletions(-)</pre>
+<div class="cap">реальний вивід · LibCST 1.9.0 · 17.10.2026 · без <code>--no-format</code> CLI проганяє змінені файли через <code>black</code>; його не було, 4 файли «Failed», diff лишився порожнім (<code>console/codemod/</code>)</div></div>
+<p>Другий запуск нічого не додав: це і є гейт механічної зміни. Опубліковані міграції, крім Google й Airbnb з уроку 8.4, тримаються на тому самому — детермінованій частині й перевірці, яка від агента не залежить:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Хто, коли</th><th>Що</th><th>Як і скільки</th></tr></thead>
+<tbody>
+<tr><td data-th="Хто, коли">Stripe, 20.05.2022</td><td data-th="Що">Flow → TypeScript у коді Dashboard</td><td data-th="Як і скільки">Codemod (на основі опенсорсного codemod Airtable), понад 3,7 млн рядків <b>одним PR</b>; придушених помилок типів 97 тис. → 37 тис.</td></tr>
+<tr><td data-th="Хто, коли">Slack, 22.05.2024</td><td data-th="Що">Понад 15 тис. тестів Enzyme → React Testing Library</td><td data-th="Як і скільки">Лише AST-codemod — близько 45%, лише LLM — 40–60%, гібрид AST + LLM — <b>80%</b> на вибраних файлах</td></tr>
+<tr><td data-th="Хто, коли">Amazon, 22.08.2024</td><td data-th="Що">Оновлення Java-застосунків</td><td data-th="Як і скільки">Понад 50% продакшн-систем на Java за менш як 6 місяців; 79% згенерованих рев'ю коду відвантажили без змін; оцінка — 4500 людино-років</td></tr>
+<tr><td data-th="Хто, коли">Spotify, 06.11.2025</td><td data-th="Що">Фоновий coding-агент у Fleet Management</td><td data-th="Як і скільки">Понад 1500 злитих PR; з середини 2024 близько половини PR Spotify автоматизовано; міграції — на 60–90% швидше</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Один PR чи багато</span>
+<p>Stripe злив 3,7 млн рядків одним PR, бо зміна була <b>механічною</b>: перевіряли генератор, а не результат. Для змін-суджень один PR — найгірший варіант: його неможливо прорецензувати, і один поганий шард блокує всі добрі.</p>
+</div>
+</section>
+
+<section class="sec" id="slicing">
+<div class="sec-h"><span class="num">05</span><h2>Нарізка великої зміни<span class="sub">Expand → migrate → contract і правила зупинки</span></h2></div>
+<blockquote class="q-src">
+<p>Паралельна зміна, або expand and contract, — патерн для безпечного впровадження зворотно несумісних змін інтерфейсу: зміну ділять на три окремі фази — розширення, міграцію і скорочення.</p>
+<p class="orig">“Parallel change, also known as expand and contract, is a pattern to implement backward-incompatible changes to an interface in a safe manner, by breaking the change into three distinct phases: expand, migrate, and contract.”</p>
+<cite>Danilo Sato, martinfowler.com, 13.05.2014</cite>
+</blockquote>
+<p>B21 з беклогу Lectern — наскрізний рефакторинг: схеми трьох інструментів жили двічі — рукописний <code>SCHEMAS</code> для агентів на Agent SDK і Messages API та type hints MCP-сервера. Ось як він ліг у коміти, кожен із зеленим <code>scripts/check.sh</code>:</p>
+<ol class="steps">
+<li><b>Expand</b> (<code>f3d8323</code>): <code>@tool("…")</code> на методах <code>Session</code>, <code>QuizItem</code> як <code>TypedDict</code>, генератор <code>tool_schemas()</code>. Ніхто його ще не споживає; тест: <code>tool_schemas(Session) == SCHEMAS</code> байт у байт.</li>
+<li><b>Migrate + contract</b> (<code>86876be</code>): <code>SCHEMAS = tool_schemas(Session)</code>, рукописний літерал видалено й заморожено в тесті-знімку; Pydantic-модель MCP будується з того самого <code>TypedDict</code>. <code>mcp_contract.py check</code> — «contract unchanged (0.3.0)».</li>
+<li><b>Docs</b> (<code>698c054</code>): CLAUDE.kit і карта модулів — як тепер додають інструмент.</li>
+</ol>
+<p>Оракул «поведінка не змінилася» тут — не лише тести. Знайшлися два приховані споживачі схеми:</p>
+<ul>
+<li><b>Кеш.</b> <code>PROMPT_VERSION</code> — хеш системного промпту, задачі <b>і схем</b>; він входить у ключ кешу результатів. Додати опис до поля <code>answer</code> означало б нову версію й холодний кеш. Тому <code>p-861a085610</code> до і після — частина приймання.</li>
+<li><b>Два рендери одного факту.</b> Агент на Messages API працює зі <code>strict: true</code>, а strict-режим не підтримує <code>minimum</code>/<code>maximum</code>, лише <code>enum</code>. MCP-модель Pydantic пише <code>ge=0, le=3</code>. Одне джерело — <code>Annotated[int, Choice(0, 3, "index of the correct option")]</code>, два рендери: <code>enum [0, 1, 2, 3]</code> для агентів, <code>minimum/maximum</code> + опис для MCP.</li>
+</ul>
+<p>Старий тест порівнював лише <b>імена</b> полів. Мутація на каноні — <code>le=3</code> → <code>le=4</code> у MCP-моделі — його проходить; новий тест порівнює типи й діапазони і падає на <code>quote: str</code> → <code>list[str]</code>. Тайпчекер теж окупився: <code>list[QuizItem]</code> там, де тіло чекає <code>list[dict]</code> (4 нові помилки mypy), і клас із <code>create_model</code>, якого mypy не бачить (ще 4) — <code>cast</code> в одному місці й псевдонім під <code>TYPE_CHECKING</code>.</p>
+<div class="note tip"><span class="lbl">Коли потрібен feature flag</span>
+<p>Expand-contract усередині одного релізу обходиться без прапорця: проміжні коміти не змінюють поведінки. Прапорець (feature toggle — «змінити поведінку системи, не змінюючи коду», Pete Hodgson) потрібен, коли нова й стара поведінка мають жити в продакшні одночасно: міграція даних, новий конвеєр генерації, поступове ввімкнення для частини авторів.</p>
+</div>
+<h3>Правила зупинки — до запуску</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сигнал</th><th>Дія</th><th>Що сталося в уроці</th></tr></thead>
+<tbody>
+<tr><td data-th="Сигнал">У пілоті на 2–3 шардах падає більшість</td><td data-th="Дія">Стоп; виправити промпт або гейт, не ретраїти</td><td data-th="Що сталося в уроці">Пілот: 0 з 2 агентів запустили гейт</td></tr>
+<tr><td data-th="Сигнал">Шард змінив файл поза своїм обсягом</td><td data-th="Дія">Відкинути шард цілком</td><td data-th="Що сталося в уроці">Гейт перевіряє <code>git diff --name-only</code></td></tr>
+<tr><td data-th="Сигнал">Змінився контракт, знімок або <code>PROMPT_VERSION</code></td><td data-th="Дія">Стоп; рішення людини про версію</td><td data-th="Що сталося в уроці">Контракт 0.3.0 — у кожному коміті</td></tr>
+<tr><td data-th="Сигнал">Агент каже «правилами не виконати»</td><td data-th="Дія">Це успіх: шард — у беклог</td><td data-th="Що сталося в уроці"><code>agent_api.py</code> → B90</td></tr>
+<tr><td data-th="Сигнал">Змінився сам гейт</td><td data-th="Дія">Перезапустити всі шарди, не лише впалі</td><td data-th="Що сталося в уроці">Раунд 2 після виправлення гейта</td></tr>
+<tr><td data-th="Сигнал">Бюджет шарду або всього прогону</td><td data-th="Дія"><code>--max-budget-usd</code>, <code>--max-turns</code></td><td data-th="Що сталося в уроці">$0,40 і 30 ходів на шард</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="fanout">
+<div class="sec-h"><span class="num">06</span><h2>Фан-аут із гейтом на шард<span class="sub">B40: типи в дев'яти модулях</span></h2></div>
+<p>B40 — дописати типи в <code>cli.py</code> і замикання <code>service.py</code>; ruff <code>ANN</code> знайшов 32 пропуски в дев'яти модулях <code>src/lectern</code>. Шард — один файл; кожен у власному git worktree, агент — Haiku через <code>claude -p</code> з однією спробою виправлення через <code>--resume</code>. Гейт оркестратор запускає <b>сам</b>, після агента:</p>
+<ol class="steps">
+<li><b>Обсяг:</b> змінено рівно цей файл (<code>git diff --name-only</code> + невідстежувані).</li>
+<li><b>Повнота:</b> <code>ruff check --select ANN</code> на файлі чистий.</li>
+<li><b>Лише анотації:</b> <code>scripts/annotations_only.py</code> порівнює AST до і після, викинувши анотації, — <code>cast()</code>, нове значення за замовчуванням чи перейменування не пройдуть.</li>
+<li><b>Типи узгоджені:</b> жодної помилки mypy, якої не було в базі (помилки бази — 23 на тому знімку — порівнюються як множина без номерів рядків).</li>
+<li><b>Поведінка:</b> увесь pytest.</li>
+</ol>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Прогін</th><th>З першої спроби</th><th>Після виправлення</th><th>$ · стіна</th><th>Що з'ясувалося</th></tr></thead>
+<tbody>
+<tr><td data-th="Прогін">Пілот, 2 шарди</td><td data-th="З першої спроби">1/2</td><td data-th="Після виправлення">1/2</td><td data-th="$ · стіна">0,015</td><td data-th="Що з&#x27;ясувалося">Самі агенти гейт не запустили жодного разу: склеювали команди з читанням скрипта поза робочою текою (<code>ruff …; echo ---; cat …/shard_gate.sh</code>), а в <code>dontAsk</code> складена команда відхиляється, якщо хоч одна її частина не дозволена. У промпт — «одна команда на виклик»</td></tr>
+<tr><td data-th="Прогін">Раунд 1, 9 шардів</td><td data-th="З першої спроби">2/9</td><td data-th="Після виправлення">5/9</td><td data-th="$ · стіна">0,168 · 5:45</td><td data-th="Що з&#x27;ясувалося">Баг гейта: мітки інструкцій за позицією, тож новий імпорт угорі «змінював» усе нижче. Три шарди пройшли, лише сховавши <code>if TYPE_CHECKING:</code> у кінець файлу</td></tr>
+<tr><td data-th="Прогін">Раунд 2, гейт виправлено</td><td data-th="З першої спроби">8/9</td><td data-th="Після виправлення">8/9</td><td data-th="$ · стіна">0,057 · 3:14</td><td data-th="Що з&#x27;ясувалося"><code>agent_api.py</code> зупинився за правилом: тип <code>client</code> відкриває 4 невідповідності TypedDict у SDK — це не «лише анотації»</td></tr>
+</tbody></table></div>
+<p>Агент, якому гейт заважав, не сперечався з ним, а <b>підлаштувався й пояснив це в коді</b>:</p>
+<pre class="code" data-lang="python"><span class="k">if</span> TYPE_CHECKING:  <span class="cm"># імпорт для анотацій у рядках: лишається внизу, щоб не зсувати статті вище</span>
+    <span class="k">from</span> collections.abc <span class="k">import</span> AsyncIterator, Awaitable, Callable</pre>
+<p>Код став гіршим, а гейт — зеленим. Тому зміна гейта в середині прогону — це перезапуск усіх шардів (раунд 2), а не лише впалих.</p>
+<h3>П'ять гейтів зелені, сервіс зламаний</h3>
+<p>Шард <code>service.py</code> з раунду 2 пройшов усі п'ять перевірок. Рев'ю diff знайшло <code>from __future__ import annotations</code> і анотацію повернення на SSE-ендпоінті з типом, імпортованим лише під <code>TYPE_CHECKING</code>:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/wt/haiku-service</span></div>
+<pre><span class="ps">$ </span><span class="c">python -m pytest -q tests/test_service.py -k openapi</span>
+<span class="er">E       pydantic.errors.PydanticUserError: `TypeAdapter[typing.Annotated[ForwardRef('AsyncIterator[ServerSentEvent]'), FieldInfo(annotation=NoneType, required=True)]]` is not fully defined; …</span>
+<span class="er">1 failed</span></pre>
+<div class="cap">реальний вивід · новий тест <code>test_openapi_schema_builds</code> на шарді до рев'ю; у <code>main</code> — <code>GET /openapi.json</code> 200, у шарді — 500</div></div>
+<p>FastAPI читає анотацію повернення ендпоінта як <code>response_model</code>; Pydantic, dataclasses і MCP-сервер так само будують поведінку з анотацій. AST-гейт виходить із того, що анотації не виконуються, — для цих бібліотек це неправда. Виправлення після рев'ю: ендпоінти без анотації повернення (<code>noqa: ANN202</code> з поясненням, B92), імпорти <code>collections.abc</code> під час виконання, тест на <code>/openapi.json</code>; OpenAPI до і після — ідентичний.</p>
+<div class="key"><h4>Підсумок B40</h4>
+<p>Повністю анотованих функцій у <code>src/lectern</code>: 119/147 (81%) → 148/153 (97%); решта — 4 ендпоінти і <code>agent_api.run</code>. Помилок mypy на дві менше (поверх канонічного стану 24 → 22): типізовані callback-и <code>runner.py</code> закрили дві старі. Гейт на шард вирішує, <b>чи</b> зливати автоматично; рев'ю вирішує, <b>що</b> гейт не бачить.</p>
+</div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Інструменти<span class="sub">Великі зміни в Claude Code, Codex і Cursor</span></h2></div>
+<div class="tabs">
+<input type="radio" name="tools-t" id="tools-t1" checked><input type="radio" name="tools-t" id="tools-t2"><input type="radio" name="tools-t" id="tools-t3">
+<div class="tab-l"><label for="tools-t1">Claude Code</label><label for="tools-t2">Codex</label><label for="tools-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b><code>/batch &lt;інструкція&gt;</code></b> (вбудований skill, урок 6.1): досліджує код, ділить роботу на 5–30 незалежних частин і показує план; після схвалення — по фоновому субагенту на частину в ізольованому worktree, кожен реалізує, запускає тести й публікує зміну. Потрібен git-репозиторій або хук <code>WorktreeCreate</code>. Гейт на шард і правила зупинки — ваші: <code>/batch</code> їх не вигадає.</li>
+<li><b>Фан-аут <code>claude -p</code></b> у циклі з <code>--allowedTools</code> (урок 4.4). Порада документації — «Test on a few files, then run on all of them»: доведіть промпт на перших 2–3 файлах. Наш пілот це підтвердив.</li>
+<li><b>Великий код</b> (сторінка «monorepo or large codebase»): <code>CLAUDE.md</code> по теках вантажиться на вимогу, <code>claudeMdExcludes</code> відсікає чужі й legacy-пакети, <code>Read</code>-deny — згенерований і vendored-код, плагіни code intelligence дають визначення й посилання через language server замість grep-сканування, <code>worktree.sparsePaths</code> — sparse checkout для worktree.</li>
+<li><b>Розвідка в субагенті:</b> «Delegate the exploration so only the findings come back» — карта повертається в основну сесію, читання файлів лишаються в контексті субагента.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b><code>codex exec</code></b> типово працює в пісочниці лише для читання; для правок — <code>--sandbox workspace-write</code>, <code>--json</code> дає JSONL-події. Той самий цикл по шардах, що й з <code>claude -p</code>.</li>
+<li><b>Хмарні задачі:</b> у кожної свій робочий простір, працює, поки ваш комп'ютер спить; результат — коміт або pull request.</li>
+<li><b>Worktrees у застосунку Codex:</b> кілька незалежних чатів в одному проєкті; керовані worktree лежать у <code>$CODEX_HOME/worktrees</code>.</li>
+<li><b>AGENTS.md по теках:</b> файли ближче до робочої теки додаються пізніше й мають пріоритет; ліміт <code>project_doc_max_bytes</code> — 32 KiB.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Worktrees:</b> кілька агентів на одному репозиторії без конфліктів; налаштування оточення — <code>.cursor/worktrees.json</code>, типовий ліміт — 25 worktree на машину.</li>
+<li><b><code>/best-of-n</code></b> запускає ту саму задачу на кількох моделях, кожну у власному worktree, — зручно для шарду-судження, де варто порівняти варіанти.</li>
+<li><b>Cloud Agents</b> (колишні Background Agents): ізольовані VM, клонують репозиторій і працюють в окремій гілці; паралельно — скільки завгодно.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<section class="sec" id="lectern">
+<div class="sec-h"><span class="num">08</span><h2>Lectern<span class="sub">B21, B40 і підготовка B11</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 11.3 · B21, B40, B11</div><div class="pb">
+<p>Зміни зроблено на копії канонічного <code>lectern/</code>; повний diff — <code>console/lectern.diff</code>:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">git log --oneline canon-3..main</span>
+8802172 typing: new functions from 11.2 (cli.py) and 11.4 (render.py), caught by the ANN ratchet
+90b8daf docs: CHANGELOG (11.3), BACKLOG (B11 prep, B40 closed, B90-B92), CLAUDE.kit typing rule
+3d6a66c lint: put noqa where ruff format keeps it
+5d699c7 B11 prep: scripts/format_all.sh, .git-blame-ignore-revs, after_edit.sh without the ratchet
+88d386d lint: ANN for src/ (ratchet after B40)
+7c4df2e typing: agent_sdk, mcp_server, rag, runner, cache, pdf (fan-out shards)
+15b3339 B40: type cli.py and the service closures (fan-out shards, reviewed)
+41a950e annotations_only.py: label statements by name, not position
+e151724 scripts/annotations_only.py: gate for annotation-only changes (B40 fan-out)
+698c054 docs: adding a tool after B21 (CLAUDE.kit, module map); close B21
+86876be refactor: one source for SDK/API and MCP tool schemas (B21, migrate + contract)
+f3d8323 refactor(tools): generate tool schemas from Session signatures (B21, expand)
+<span class="ps">$ </span><span class="c">scripts/check.sh | grep -E 'passed|contract'</span>
+<span class="ok">All checks passed!</span>
+<span class="ok">348 passed, 1 skipped in 13.24s</span>
+checked 9 files (33 commands, 48 paths, 19 symbols): 0 problem(s)
+== mcp-contract: .venv/bin/python scripts/mcp_contract.py check
+contract unchanged (0.3.0)
+<span class="ok">all checks passed</span></pre>
+<div class="cap">реальний вивід · 17.10.2026 · Python 3.12 · 25 файлів, +565/−122 · <code>canon-3</code> — гілка з поточним канонічним <code>lectern/</code>, куди за час уроку злились паралельні 11.1, 11.2 і 11.4: rebase із трьома конфліктами, а храповик ANN одразу знайшов три нові нетипізовані функції в їхньому коді (останній коміт)</div></div>
+<p><b>B11 — масове форматування, яке не ламає <code>blame</code>.</b> Сам переформат у diff не входить: 38 файлів конфліктували б з кожною паралельною зміною. Його запускають останнім комітом модуля — <code>scripts/format_all.sh --commit</code>: перевіряє, що робоче дерево чисте, форматує, проганяє <code>check.sh</code> і робить два коміти — формат і його повний хеш у <code>.git-blame-ignore-revs</code> (у коміті форматування хеш ще невідомий). Сухий прогін на копії:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/wt/b11-demo</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/format_all.sh --commit</span>
+38 files reformatted, 60 files left unchanged
+ 38 files changed, 1600 insertions(+), 649 deletions(-)
+committed: 052230e (format), 6921ae3 (ignore list)
+<span class="ps">$ </span><span class="c">git blame -L 38,+1 src/lectern/tools.py</span>
+052230ed (Formatter 2026-10-17 19:03:32 +0300 38) QUOTES = str.maketrans(
+<span class="ps">$ </span><span class="c">git blame --ignore-revs-file .git-blame-ignore-revs -L 38,+1 src/lectern/tools.py</span>
+^87bef02 (Lectern 2026-10-17 18:28:09 +0300 38) QUOTES = str.maketrans(</pre>
+<div class="cap">реальний вивід, скорочено · 11 с · знімок до злиття 11.1–11.4 (на поточному каноні — 45 файлів, +1901/−776) · перший сухий прогін зупинився на <code>check.sh</code>: форматер переніс два <code>noqa</code> з рядків <code>def</code>, і лінтер упав — звідси коміт <code>3d6a66c</code></div></div>
+<ul>
+<li><b>B21:</b> <code>@tool</code> + <code>tool_schemas()</code> у <code>tools.py</code>, MCP-модель із <code>TypedDict</code>, знімок схем, тест паритету типів SDK/API ↔ MCP.</li>
+<li><b>B40:</b> анотації у 8 модулях із фан-ауту і в нових функціях 11.2/11.4, <code>scripts/annotations_only.py</code> з тестами, ruff <code>ANN</code> для <code>src/</code> як храповик, <code>test_openapi_schema_builds</code>.</li>
+<li><b>B11:</b> <code>scripts/format_all.sh</code>, <code>.git-blame-ignore-revs</code>, <code>after_edit.sh</code> форматує кожен відредагований файл (ratchet більше не потрібен — після переформату неформатованих файлів немає). Зміну хука комітьте разом із переформатом або після, не раніше.</li>
+<li>Беклог: B21, B40 закрито; нові B90 (тип клієнта в <code>agent_api</code>), B91 (mypy з базою в <code>check.sh</code>), B92 (явний <code>response_model</code> в ендпоінтах).</li>
+</ul>
+<p><b>Ваш крок:</b> закрийте B90 як шард-судження з тим самим гейтом: заведіть <code>MessageParam</code>/<code>ToolParam</code> для <code>messages</code> і <code>TOOLS</code>, приберіть <code>noqa: ANN001</code> і доведіть, що mypy не отримав нових помилок.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Карта «точна», а гарячі точки обрано навмання</td><td data-th="Причина">Перевірено адреси, не судження</td><td data-th="Що зробити">Поле «доказ» з командою й числом для кожного судження</td></tr>
+<tr><td data-th="Симптом">У 20-річному файлі 1–2 коміти</td><td data-th="Причина">Переїзд у <code>src/</code> або перейменування</td><td data-th="Що зробити"><code>git log --follow</code>; порівняти з підрахунком без нього</td></tr>
+<tr><td data-th="Симптом">Перевіряльник відхиляє правильні твердження</td><td data-th="Причина">Вкладені класи, присвоєння в <code>if</code>, реекспорт через <code>__init__</code></td><td data-th="Що зробити">Перш ніж звинувачувати агента, розібрати кожну відмову руками</td></tr>
+<tr><td data-th="Симптом">Гейт зелений, а код дивний</td><td data-th="Причина">Агент підлаштувався під баг гейта</td><td data-th="Що зробити">Виправити гейт і перезапустити <b>всі</b> шарди</td></tr>
+<tr><td data-th="Симптом">«Лише типи» зламали <code>/openapi.json</code></td><td data-th="Причина">Анотації — дані для FastAPI, Pydantic, dataclasses</td><td data-th="Що зробити">Поведінковий оракул: знімок OpenAPI, контракт, тест сторінки</td></tr>
+<tr><td data-th="Симптом">Після переформату впав лінтер</td><td data-th="Причина">Форматер переніс <code># noqa</code> з рядка <code>def</code></td><td data-th="Що зробити"><code>check.sh</code> до коміту форматування; <code>noqa</code> туди, де форматер його лишить</td></tr>
+<tr><td data-th="Симптом">У <code>blame</code> кожного рядка — автор форматера</td><td data-th="Причина">Немає <code>.git-blame-ignore-revs</code> або він не в корені</td><td data-th="Що зробити">Файл у корені + <code>git config blame.ignoreRevsFile</code>; GitHub і GitLab читають його самі</td></tr>
+<tr><td data-th="Симптом">Мутаційна перевірка стерла незакомічену роботу</td><td data-th="Причина">Відкат мутації через <code>git checkout -- файл</code></td><td data-th="Що зробити">Спершу коміт зрізу, мутації — у worktree (так і сталося в цьому уроці)</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">seam</span><span class="h">за Фезерсом</span></span><span class="b"><span class="t">Шов</span><span class="d">місце, де поведінку змінюють, не редагуючи код у цьому місці; має точку ввімкнення</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">churn hotspot</span><span class="h">як знайти?</span></span><span class="b"><span class="t">Часто змінюваний і складний файл</span><span class="d">git log --follow × розмір; без --follow переїзд ховає історію</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">codemod</span><span class="h">гейт?</span></span><span class="b"><span class="t">Програма-правило для правок</span><span class="d">повторний запуск дає 0 змін; рецензують правило, а не diff</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">expand-contract</span><span class="h">три фази</span></span><span class="b"><span class="t">Розширити → мігрувати → скоротити</span><span class="d">старе й нове живуть разом, доки споживачі не перейдуть</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">sharded fan-out</span><span class="h">хто запускає гейт?</span></span><span class="b"><span class="t">Оркестратор, після агента</span><span class="d">обсяг, повнота, лише анотації, mypy без нових помилок, тести</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">.git-blame-ignore-revs</span><span class="h">чому окремим комітом?</span></span><span class="b"><span class="t">Хеш форматування ще невідомий</span><span class="d">формат — один коміт, його повний хеш — наступний</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Агент повернув карту legacy-репозиторію: 62 твердження, перевіряльник підтвердив усі адреси файлів і символів. Що це гарантує?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Що карту можна класти в CLAUDE.md без рев'ю: адреси правильні, отже й висновки</span></label><label class="opt ok"><input type="radio" name="q1"><span>Лише структуру; судження на кшталт «тут найбільше змін» треба перевірити окремо</span></label><label class="opt"><input type="radio" name="q1"><span>Що агент прочитав ці файли, бо інакше не знав би точних назв їхніх символів</span></label></div>
+    <div class="why yes">Так. AST перевіряє адреси, а «найбільше churn» Sonnet написав усупереч власному <code>git log</code>, який показав по 2 коміти на файл. Поле «доказ» робить таке судження перевірюваним.</div>
+    <div class="why no">Адреси — це структура; судження («гаряча точка», «ризик») AST не перевіряє. А назви символів популярної бібліотеки модель може знати з навчання: перший Sonnet не викликав <code>Read</code> жодного разу.</div></div>
+  <div class="q"><div class="qt">2. <code>git log --name-only -- src | uniq -c</code> у 20-річній бібліотеці дає по 1–2 коміти на кожен файл. Що робити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Перевірити, чи код не переїжджав, і рахувати історію з <code>git log --follow</code></span></label><label class="opt"><input type="radio" name="q2"><span>Вважати код стабільним і починати зміни з будь-якого модуля без додаткових тестів</span></label><label class="opt"><input type="radio" name="q2"><span>Брати за гарячі точки лише найбільші файли, бо історії змін тут фактично немає</span></label></div>
+    <div class="why yes">Так. Після переходу <code>dateutil</code> на <code>src/</code> наївний підрахунок дав 1 коміт для <code>_parser.py</code>, а <code>--follow</code> — 189.</div>
+    <div class="why no">1–2 коміти на 20 років — ознака переїзду, а не стабільності. Історія лишилася під старими шляхами; <code>--follow</code> іде крізь перейменування й повертає реальні 189/141/112.</div></div>
+  <div class="q"><div class="qt">3. Треба додати <code>-&gt; None</code> до всіх <code>__init__</code> без анотації у 300 файлах. Що обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Фан-аут агентів по одному файлу з гейтом mypy і окремим рев'ю кожного шарду</span></label><label class="opt"><input type="radio" name="q3"><span>Одного сильного агента на весь репозиторій з інструкцією не чіпати решту коду</span></label><label class="opt ok"><input type="radio" name="q3"><span>Codemod: правило однакове, повторний запуск дає 0 змін, рецензують саме правило</span></label></div>
+    <div class="why yes">Так. Правило вміщається в код — агент має написати інструмент, а не 300 правок. У прогоні LibCST закрив 5 таких місць, другий запуск нічого не додав.</div>
+    <div class="why no">Агенти тут лише додають недетермінізм і рев'ю 300 diff. Однакове для всіх місць правило — механічна зміна: codemod плюс перевірка ідемпотентності.</div></div>
+  <div class="q"><div class="qt">4. Чому в B21 рукописний <code>SCHEMAS</code> не видалили першим же комітом, а спершу додали генератор поруч?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span>Щоб тестом довести рівність схем до того, як на генератор перейдуть споживачі</span></label><label class="opt"><input type="radio" name="q4"><span>Бо Messages API приймає лише рукописні схеми, а згенеровані відхиляє як нестрогі</span></label><label class="opt"><input type="radio" name="q4"><span>Бо видалення літерала змінює MCP-контракт і вимагає нової версії сервера 0.4.0</span></label></div>
+    <div class="why yes">Так. Це фаза expand: нове існує поруч зі старим і перевірене тестом на рівність байт у байт; migrate і contract — наступним комітом.</div>
+    <div class="why no">API не розрізняє, хто написав схему, а MCP-контракт лишився 0.3.0. Сенс першого коміту — довести рівність, поки нічого не переключено (expand).</div></div>
+  <div class="q"><div class="qt">5. Ви додали опис до поля <code>answer</code> у схемі для агентів Lectern. Що зміниться, крім тексту схеми?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>MCP-контракт стане ламким, і перевірка вимагатиме мінорної версії сервера</span></label><label class="opt ok"><input type="radio" name="q5"><span><code>PROMPT_VERSION</code>, а з ним ключ кешу: збережені квізи стануть промахами</span></label><label class="opt"><input type="radio" name="q5"><span>Нічого: описи полів не йдуть у контекст моделі, лише в документацію SDK</span></label></div>
+    <div class="why yes">Так. <code>prompt_version()</code> хешує системний промпт, задачу й схеми; тому знімок схем у B21 — окреме рішення, а <code>p-861a085610</code> до і після — частина приймання.</div>
+    <div class="why no">Схема агентів не входить у MCP-контракт, а описи полів модель бачить. Прихований споживач — кеш: хеш схем є в <code>PROMPT_VERSION</code>, тож будь-яка зміна холодить кеш.</div></div>
+  <div class="q"><div class="qt">6. Один факт «answer — ціле від 0 до 3» у схемі для агентів записано як <code>enum</code>, а в MCP — як <code>minimum/maximum</code>. Чому не однаково?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Специфікація MCP забороняє <code>enum</code> для цілих чисел у схемах інструментів</span></label><label class="opt"><input type="radio" name="q6"><span>Pydantic не вміє згенерувати <code>enum</code> з <code>Annotated[int, …]</code> без кастомних типів</span></label><label class="opt ok"><input type="radio" name="q6"><span>Strict-режим Messages API не підтримує <code>minimum/maximum</code>, а <code>enum</code> — так</span></label></div>
+    <div class="why yes">Так. Одне джерело (<code>Choice(0, 3)</code>), два рендери під можливості споживачів; тест паритету порівнює саме діапазон.</div>
+    <div class="why no">Обмеження в споживачі з боку агентів: structured outputs у strict-режимі не підтримують числові обмеження. Тому джерело одне, а рендер — під кожного споживача.</div></div>
+  <div class="q"><div class="qt">7. У пілоті фан-ауту на двох шардах жоден агент так і не запустив гейт. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Запускати всі шарди: гейт однаково проганяє оркестратор, а не сам агент</span></label><label class="opt ok"><input type="radio" name="q7"><span>Зупинитися, знайти причину відмов і виправити промпт до запуску решти</span></label><label class="opt"><input type="radio" name="q7"><span>Дати агентам Bash без обмежень, щоб вони могли запускати будь-які команди</span></label></div>
+    <div class="why yes">Так. Пілот для того й існує: агенти склеювали команди, складену команду <code>dontAsk</code> відхиляв. Одне речення в промпті — і в раунді 2 відмов 0.</div>
+    <div class="why no">Агент без зворотного зв'язку від гейта не може виправитися сам, а широкий Bash знімає рамки. Правило зупинки: більшість пілоту впала — стоп і виправлення причини.</div></div>
+  <div class="q"><div class="qt">8. Три шарди проходять гейт лише тоді, коли агент переносить <code>if TYPE_CHECKING:</code> у кінець файлу. Висновок?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Гейт має баг, під який підлаштувалися агенти: виправити й перезапустити всі шарди</span></label><label class="opt"><input type="radio" name="q8"><span>Агенти знайшли кращий стиль імпортів, і його варто закріпити правилом у CLAUDE.md</span></label><label class="opt"><input type="radio" name="q8"><span>Прийняти шарди: усі п'ять перевірок зелені, тести проходять, поведінка та сама</span></label></div>
+    <div class="why yes">Так. Мітки за позицією робили новий імпорт угорі «зміною коду». Після виправлення раунд 2 дав 8/9 з першої спроби.</div>
+    <div class="why no">Зелений гейт не означає доброго коду, якщо агент оптимізує під його дефект. Агент навіть написав це в коментарі; правильна реакція — виправити гейт і перезапустити все.</div></div>
+  <div class="q"><div class="qt">9. Зміна «лише типи» пройшла AST-гейт, mypy і весь pytest, але <code>GET /openapi.json</code> віддає 500. Чому гейти не допомогли?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>mypy не перевіряв <code>service.py</code>, бо той імпортує FastAPI ліниво</span></label><label class="opt"><input type="radio" name="q9"><span>pytest запускався без extras <code>serve</code>, тож тести сервісу пропускалися</span></label><label class="opt ok"><input type="radio" name="q9"><span>FastAPI читає анотацію повернення як <code>response_model</code>, тож вона — не коментар</span></label></div>
+    <div class="why yes">Так. AST-гейт виходить з того, що анотації не виконуються; для FastAPI, Pydantic і dataclasses це не так. Потрібен поведінковий оракул — тест сторінки, знімок OpenAPI.</div>
+    <div class="why no">Тести сервісу проходили, mypy перевіряв файл. Проблема в припущенні гейта: тип, імпортований лише під <code>TYPE_CHECKING</code>, FastAPI не зміг розв'язати під час генерації схеми.</div></div>
+  <div class="q"><div class="qt">10. Після переформату з <code>.git-blame-ignore-revs</code> колега і в GitHub, і локально бачить у <code>blame</code> автора форматера. Lectern лежить підтекою монорепозиторію. Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>У файлі повний хеш, а git і GitHub приймають лише короткий семисимвольний</span></label><label class="opt ok"><input type="radio" name="q10"><span>Файл не в корені, а GitHub читає лише корінь; локально не задано <code>blame.ignoreRevsFile</code></span></label><label class="opt"><input type="radio" name="q10"><span>Форматування треба було вбудувати в кожен історичний коміт через інтерактивний rebase</span></label></div>
+    <div class="why yes">Так. GitHub шукає файл у корені репозиторію, а локальний git читає його лише через <code>blame.ignoreRevsFile</code> або <code>--ignore-revs-file</code>.</div>
+    <div class="why no">Документація git вимагає саме повні хеші. Переписувати історію не треба — для цього файл і існує; проблема в розташуванні й локальному налаштуванні.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>codebase map (agent-generated)</td><td>Карта модулів, входів, залежностей, швів і ризиків з адресами, які перевіряє скрипт.</td></tr>
+<tr><td>churn hotspot</td><td>Файл, який часто змінюють і який складний; рахують з <code>git log --follow</code> × розмір.</td></tr>
+<tr><td>seam (Feathers)</td><td>Місце, де поведінку змінюють, не редагуючи код там; має точку ввімкнення.</td></tr>
+<tr><td>codemod</td><td>Програма, що переписує код за правилом; гейт — ідемпотентність і тести.</td></tr>
+<tr><td>expand-contract</td><td>Несумісна зміна в три фази: розширити, мігрувати споживачів, скоротити.</td></tr>
+<tr><td>mechanical vs judgment change</td><td>Правило вміщається в код — інструмент; кожне місце потребує рішення — агент на шард із гейтом.</td></tr>
+<tr><td>sharded fan-out with per-shard gate</td><td>Велику зміну ділять на незалежні шарди; кожен перевіряє гейт, який запускає оркестратор.</td></tr>
+<tr><td>.git-blame-ignore-revs</td><td>Файл із повними хешами комітів, які <code>git blame</code>, GitHub і GitLab пропускають.</td></tr>
+<tr><td>single source of truth for tool schemas</td><td>Схеми інструментів для всіх споживачів генеруються з одного типізованого опису.</td></tr>
+<tr><td>migration stop rule</td><td>Заздалегідь задана умова, за якої масову зміну зупиняють, а не ретраять.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Вхід у чужий репозиторій із перевірюваною картою</h3>
+<p>Карта від агента у JSON з адресами й доказами, ваш перевіряльник, churn з <code>--follow</code>, три шви з точками ввімкнення і план характеризаційних тестів для головної гарячої точки.</p>
+<h3>2. План і пілот великої зміни</h3>
+<p>Класифікуйте наскрізну зміну (механічна, судження, гібрид), наріжте її на expand → migrate → contract, складіть гейт на шард з поведінковим оракулом, правила зупинки — і проженіть пілот на 2–3 шардах.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://www.informit.com/store/working-effectively-with-legacy-code-9780131177055" target="_blank" rel="noopener">Michael Feathers — Working Effectively with Legacy Code</a><span>Prentice Hall, 2004 · <a href="https://www.informit.com/content/images/0131177052/samplechapter/0131177052_ch04.pdf" target="_blank" rel="noopener">розділ 4 «The Seam Model»</a> — шви й точки ввімкнення</span></li>
+<li><a href="https://martinfowler.com/bliki/ParallelChange.html" target="_blank" rel="noopener">Danilo Sato — Parallel Change</a><span>13.05.2014 · expand, migrate, contract</span></li>
+<li><a href="https://martinfowler.com/articles/feature-toggles.html" target="_blank" rel="noopener">Pete Hodgson — Feature Toggles</a><span>09.10.2017 · види прапорців і їхня ціна</span></li>
+<li><a href="https://pragprog.com/titles/atcrime2/your-code-as-a-crime-scene-second-edition/" target="_blank" rel="noopener">Adam Tornhill — Your Code as a Crime Scene, 2nd ed.</a><span>лютий 2024 · гарячі точки: частота змін × складність</span></li>
+<li><a href="https://libcst.readthedocs.io/en/latest/" target="_blank" rel="noopener">LibCST</a><span>конкретне синтаксичне дерево, що зберігає форматування; <a href="https://libcst.readthedocs.io/en/latest/codemods_tutorial.html" target="_blank" rel="noopener">туторіал codemod</a></span></li>
+<li><a href="https://code.claude.com/docs/en/large-codebases" target="_blank" rel="noopener">Claude Code — monorepo or large codebase</a><span>CLAUDE.md по теках, <code>claudeMdExcludes</code>, Read-deny, code intelligence, <code>worktree.sparsePaths</code></span></li>
+<li><a href="https://code.claude.com/docs/en/commands" target="_blank" rel="noopener">Claude Code — commands</a><span><code>/batch</code>: 5–30 частин, субагент на частину в worktree</span></li>
+<li><a href="https://code.claude.com/docs/en/best-practices" target="_blank" rel="noopener">Claude Code — Best practices</a><span>«Fan out across files», «Test on a few files, then run on all of them»</span></li>
+<li><a href="https://code.claude.com/docs/en/worktrees" target="_blank" rel="noopener">Claude Code — worktrees</a><span><code>--worktree</code>, <code>isolation: worktree</code> для субагентів, <code>.worktreeinclude</code></span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs" target="_blank" rel="noopener">Claude API — Structured outputs</a><span>обмеження JSON Schema у strict-режимі: без <code>minimum/maximum</code>, <code>enum</code> підтримано</span></li>
+<li><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">Codex — non-interactive mode</a><span><code>codex exec</code>, пісочниця, <code>--json</code>; <a href="https://learn.chatgpt.com/docs/environments/git-worktrees" target="_blank" rel="noopener">worktrees у застосунку</a>, <a href="https://learn.chatgpt.com/docs/cloud" target="_blank" rel="noopener">хмарні задачі</a></span></li>
+<li><a href="https://cursor.com/docs/configuration/worktrees" target="_blank" rel="noopener">Cursor — worktrees</a><span><code>/best-of-n</code>, <code>.cursor/worktrees.json</code>; <a href="https://cursor.com/docs/cloud-agent" target="_blank" rel="noopener">Cloud Agents</a></span></li>
+<li><a href="https://git-scm.com/docs/git-blame" target="_blank" rel="noopener">git blame</a><span><code>--ignore-rev</code>, <code>--ignore-revs-file</code>; <code>blame.ignoreRevsFile</code> — у <a href="https://git-scm.com/docs/git-config" target="_blank" rel="noopener">git config</a> (з git 2.23)</span></li>
+<li><a href="https://docs.github.com/en/repositories/working-with-files/using-files/viewing-and-understanding-files" target="_blank" rel="noopener">GitHub — ignore commits in the blame view</a><span><code>.git-blame-ignore-revs</code> у корені; <a href="https://docs.gitlab.com/user/project/repository/files/git_blame/" target="_blank" rel="noopener">GitLab</a> — з 17.10</span></li>
+<li><a href="https://stripe.dev/blog/migrating-to-typescript" target="_blank" rel="noopener">Stripe — Migrating millions of lines of code to TypeScript</a><span>20.05.2022 · 3,7 млн рядків одним PR через codemod</span></li>
+<li><a href="https://slack.engineering/balancing-old-tricks-with-new-feats-ai-powered-conversion-from-enzyme-to-react-testing-library-at-slack/" target="_blank" rel="noopener">Slack — AI-powered conversion from Enzyme to RTL</a><span>22.05.2024 · гібрид AST + LLM, 80% на вибраних файлах</span></li>
+<li><a href="https://engineering.atspotify.com/2025/11/spotifys-background-coding-agent-part-1" target="_blank" rel="noopener">Spotify — background coding agent, part 1</a><span>06.11.2025 · понад 1500 злитих PR</span></li>
+<li><a href="https://www.linkedin.com/posts/andy-jassy-8b1615_one-of-the-most-tedious-but-critical-tasks-activity-7232374162185461760-AdSz" target="_blank" rel="noopener">Andy Jassy — оновлення Java з Amazon Q</a><span>22.08.2024 · 4500 людино-років, 79% рев'ю без змін</span></li>
+<li><a href="https://docs.astral.sh/ruff/rules/missing-type-function-argument/" target="_blank" rel="noopener">Ruff — ANN001</a><span>правила flake8-annotations; <a href="https://docs.astral.sh/ruff/formatter/" target="_blank" rel="noopener">ruff format</a> — заміна Black, <code>--check</code></span></li>
+<li><a href="https://mypy.readthedocs.io/en/stable/command_line.html" target="_blank" rel="noopener">mypy — command line</a><span><code>--disallow-untyped-defs</code>, <code>--check-untyped-defs</code></span></li>
+<li><a href="https://github.com/dateutil/dateutil" target="_blank" rel="noopener">python-dateutil</a><span>репозиторій прогону карти, коміт <code>2642afa</code></span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 11.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 11.3 · Senomi<br><br><a href="lesson-53.html">← Урок 11.2</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-55.html">Урок 11.4 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 11.4. Фронтенд із візуальним контролем: скріншоти, Playwright MCP</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="60" r="38"/><path d="M60 22l-8-6M60 22l-8 6M98 60l6-8M98 60l-6-8M60 98l8 6M60 98l8-6M22 60l-6 8M22 60l6 8"/><rect x="46" y="46" width="28" height="28" rx="6"/><path d="M54 56h12M54 64h8"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 11.4 · Модуль 11</div>
+<h1>Фронтенд із візуальним контролем: скріншоти, Playwright MCP</h1>
+<p class="lead">Тести бачать код, а користувач бачить результат каскаду: шрифти, ширину екрана, тему, движок. Агентові потрібен крок спостереження — дерево доступності, скріншот або інваріант у браузері — і кожен знайдений дефект має ставати тестом.</p>
+<div class="hero-meta"><span class="chip">SDLC, фаза 2 — розробка фічей з Claude</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 17.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 12 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Навіщо агентові очі</a><a href="#observe"><b>02</b>Три способи дивитися</a><a href="#render"><b>03</b>Lectern: квіз як сторінка</a><a href="#regression"><b>04</b>Візуальний регресійний тест</a><a href="#experiment"><b>05</b>Агент з очима і без</a><a href="#tools"><b>06</b>У трьох інструментах</a><a href="#pitfalls"><b>07</b>Типові помилки</a><a href="#practice"><b>08</b>Практика</a><a href="#quiz"><b>09</b>Квіз</a><a href="#terms"><b>10</b>Терміни уроку</a><a href="#homework"><b>11</b>Домашнє завдання</a><a href="#resources"><b>12</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>побудувати візуальний цикл «зміна → рендер → спостереження → оцінка → тест» для сторінки на 390 px у двох темах;</li>
+    <li>обрати, чим агентові дивитися: accessibility snapshot, скріншот чи інваріант у коді — і скільки це коштує;</li>
+    <li>написати візуальний регресійний тест на Playwright для Python з власним pixel diff і виміряним допуском;</li>
+    <li>розпізнати, чому скріншот бреше: шрифти, анімації, масштаб, тема, headless-збірка, стиснення для моделі;</li>
+    <li>додати в Lectern <code>lectern render</code>: квіз як самодостатня сторінка без JavaScript.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Навіщо агентові очі<span class="sub">Тести зелені, сторінка зламана</span></h2></div>
+<p>У шаблоні квізу Lectern кольори задано токенами, і тест перевіряє контраст кожної пари токенів за WCAG. Додайте один рядок <code>.q legend{color:#1d2133}</code> — колір світлої теми, вписаний напряму. 23 тести структури й контрасту лишаються зеленими: правило обходить токени. У темній темі заголовки питань зникають (контраст 1,1:1), і впіймав це лише візуальний тест: <b>11 754 із 541 710 пікселів змінилися (2,17%)</b>.</p>
+<p>Текстова перевірка бачить <b>код</b>, користувач бачить <b>результат каскаду</b>: шрифт, ширину екрана, тему, движок. Тому для UI агентний цикл з уроку 0.1 отримує окремий крок спостереження, а скріншот як спосіб перевірки, згаданий в уроці 3.1, стає частиною harness.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 432" role="img" aria-label="Візуальний цикл: зміна, рендер, спостереження трьома способами, оцінка, закріплення тестом">
+  <defs>
+    <marker id="v55a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="v55b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="10" y="8" width="300" height="50" rx="10" class="bx t"/>
+  <text x="160" y="29" text-anchor="middle" class="tx b">1 · Зміна</text>
+  <text x="160" y="47" text-anchor="middle" class="tx s">агент редагує шаблон або CSS</text>
+  <path d="M160 58 V 80" class="ln a" marker-end="url(#v55a)"/>
+  <rect x="10" y="84" width="300" height="50" rx="10" class="bx t"/>
+  <text x="160" y="105" text-anchor="middle" class="tx b">2 · Рендер</text>
+  <text x="160" y="123" text-anchor="middle" class="tx s">390 px · світла і темна тема</text>
+  <path d="M160 134 V 156" class="ln a" marker-end="url(#v55a)"/>
+  <rect x="10" y="160" width="300" height="112" rx="10" class="bx a"/>
+  <text x="160" y="181" text-anchor="middle" class="tx b">3 · Спостереження</text>
+  <rect x="20" y="194" width="88" height="66" rx="8" class="bx m"/>
+  <text x="64" y="218" text-anchor="middle" class="tx b">дерево</text>
+  <text x="64" y="236" text-anchor="middle" class="tx s">snapshot:</text>
+  <text x="64" y="251" text-anchor="middle" class="tx s">ролі, бокси</text>
+  <rect x="116" y="194" width="88" height="66" rx="8" class="bx m"/>
+  <text x="160" y="218" text-anchor="middle" class="tx b">пікселі</text>
+  <text x="160" y="236" text-anchor="middle" class="tx s">скріншот:</text>
+  <text x="160" y="251" text-anchor="middle" class="tx s">колір, шари</text>
+  <rect x="212" y="194" width="88" height="66" rx="8" class="bx m"/>
+  <text x="256" y="218" text-anchor="middle" class="tx b">код</text>
+  <text x="256" y="236" text-anchor="middle" class="tx s">інваріант:</text>
+  <text x="256" y="251" text-anchor="middle" class="tx s">ширина, WCAG</text>
+  <path d="M160 272 V 294" class="ln a" marker-end="url(#v55a)"/>
+  <rect x="10" y="298" width="300" height="50" rx="10" class="bx t"/>
+  <text x="160" y="319" text-anchor="middle" class="tx b">4 · Оцінка</text>
+  <text x="160" y="337" text-anchor="middle" class="tx s">модель дивиться або тест порівнює</text>
+  <path d="M310 323 C 352 300, 352 60, 314 36" class="ln a" marker-end="url(#v55a)"/>
+  <text x="346" y="180" text-anchor="middle" class="tx s" transform="rotate(90 346 180)">дефект → виправити</text>
+  <path d="M160 348 V 370" class="ln d" marker-end="url(#v55b)"/>
+  <rect x="10" y="374" width="300" height="50" rx="10" class="bx p"/>
+  <text x="160" y="395" text-anchor="middle" class="tx b">5 · Закріпити</text>
+  <text x="160" y="413" text-anchor="middle" class="tx s">знайдений дефект стає тестом</text>
+</svg>
+<figcaption>Візуальний цикл. Крок 5 відрізняє інженерію від ручного огляду: кожен дефект, який побачили очима, стає дешевою перевіркою, що працює без моделі.</figcaption>
+</figure>
+</section>
+
+<section class="sec" id="observe">
+<div class="sec-h"><span class="num">02</span><h2>Три способи дивитися<span class="sub">Дерево, пікселі, інваріант</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Спосіб</th><th>Бачить</th><th>Не бачить</th><th>Ціна</th></tr></thead>
+<tbody>
+<tr><td data-th="Спосіб"><b>Accessibility snapshot</b> (<code>browser_snapshot</code>)</td><td data-th="Бачить">ролі, тексти, стан радіокнопок; з <code>boxes: true</code> — координати кожного елемента</td><td data-th="Не бачить">колір, контраст, накладання тексту, обрізання всередині SVG</td><td data-th="Ціна">квіз на 3 питання — 3,8 тис. символів; урок на 88 КБ — 59 КБ YAML</td></tr>
+<tr><td data-th="Спосіб"><b>Скріншот</b> (<code>browser_take_screenshot</code>)</td><td data-th="Бачить">усе, що бачить людина, якщо модель на це подивиться</td><td data-th="Не бачить">те, що поза кадром; дрібне після стиснення</td><td data-th="Ціна">⌈w/28⌉ × ⌈h/28⌉ токенів: екран 390×844 — 434</td></tr>
+<tr><td data-th="Спосіб"><b>Інваріант у коді</b> (Playwright, тест)</td><td data-th="Бачить">одну властивість, точно і щоразу: <code>scrollWidth ≤ 390</code>, контраст ≥ 4,5</td><td data-th="Не бачить">усе, про що не подумали заздалегідь</td><td data-th="Ціна">нуль токенів, частки секунди</td></tr>
+</tbody></table></div>
+<p>Знімок дерева з координатами показує переповнення без жодного пікселя. Ось фрагмент реальної відповіді Playwright MCP на сторінці з дефектом, вікно 375 px:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>browser_snapshot {"boxes": true}</span></div>
+<pre>- main [ref=f1e2] [box=0,0,375,1199]:
+  - heading "Хеш-таблиці · квіз" [level=1] [box=16,20,343,27]
+  - group "1. Що визначає номер кошика для пари?" [box=16,63,343,390]:
+  <span class="er">- group "2. Ключі приходять від користувачів. …" [box=16,467,514,342]:</span>
+      - 'radio "Ліміт на довжину ключа: PYTHONHASHSEED_MAX_KEY_LENGTH_IN_CHARACTERS"'</pre>
+<div class="cap">реальна відповідь · @playwright/mcp 0.0.83 · фрагмент, скорочено · 17.10.2026</div></div>
+<p>Картка питання 2 має ширину 514 px у вікні на 375: <code>fieldset</code> типово має <code>min-inline-size: min-content</code> і росте до найдовшого неподільного слова. Колір заголовка в цьому дереві не видно взагалі.</p>
+<blockquote class="q-src">
+<p><code>browser_snapshot</code>: «Робить accessibility snapshot поточної сторінки; це краще, ніж скріншот». <code>browser_take_screenshot</code>: «Робить скріншот поточної сторінки. Виконувати дії на основі скріншота не можна — для дій використовуйте browser_snapshot».</p>
+<p class="orig">“Capture accessibility snapshot of the current page, this is better than screenshot” · “Take a screenshot of the current page. You can't perform actions based on the screenshot, use browser_snapshot for actions.”</p>
+<cite>Описи інструментів @playwright/mcp 0.0.83 (tools/list), 28.09.2026</cite>
+</blockquote>
+<p>«Краще» тут означає «краще для дій»: посилання <code>ref</code> із дерева дають точний клік без координат. Для <b>оцінки вигляду</b> ця порада не працює. Що ще варто знати про сервер (його встановлення й ціну описів інструментів — 6,5 тис. токенів — розібрано в уроці 7.2):</p>
+<ul>
+<li><code>browser_take_screenshot</code> входить у типовий набір із 25 інструментів. <code>--caps vision</code> не про «бачити»: він додає кліки за координатами (<code>browser_mouse_click_xy</code> тощо);</li>
+<li>з <code>filename</code> знімок лише зберігається у файл, і агент читає його інструментом Read. З <code>target</code> (селектор або <code>ref</code>) сервер повертає картинку одного елемента прямо у відповіді;</li>
+<li><code>--image-responses allow|omit|only</code> вирішує, чи йдуть картинки клієнтові взагалі; <code>browser_emulate_media</code> перемикає <code>prefers-color-scheme</code>, <code>prefers-reduced-motion</code>, <code>forced-colors</code>.</li>
+</ul>
+<div class="note fact"><span class="lbl">Перевірено · 17.10.2026</span>
+<p>Anthropic рахує зображення патчами 28×28 px: <b>⌈w/28⌉ × ⌈h/28⌉ токенів</b>, довга сторона обмежена 1568 px (2576 px у новіших моделях). Повний знімок уроку на 390 × 21 867 px стискається до ширини <b>28–46 px</b>: він дешевий і нечитабельний. Агент у нашому прогоні так і написав: «скриншот заввишки ~22 000 px нечитабельний».</p>
+</div>
+</section>
+
+<section class="sec" id="render">
+<div class="sec-h"><span class="num">03</span><h2>Lectern: квіз як сторінка<span class="sub">lectern render без JavaScript</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 11.4</div><div class="pb">
+<p>Нова підкоманда <code>lectern render quiz.json -o quiz.html</code> перетворює канонічний квіз <code>{question, options, answer, quote}</code> на одну сторінку: стилі всередині, жодного скрипта, світла й темна тема. Код — <code>src/lectern/render.py</code> (stdlib) і шаблон <code>quiz_template.html</code>; шлях <code>check</code> не змінюється.</p>
+</div></div>
+<p>Чому без JavaScript: сторінка має працювати там, де скрипти заблоковані — в iframe під CSP <code>script-src 'self'</code>, у поштовому клієнті, у WebView. Тому взаємодію робить CSS:</p>
+<pre class="code" data-lang="css"><span class="cm">/* відповідь вибрано — підсвітити правильний варіант і показати цитату з лекції */</span>
+.q:has(input:checked) .opt.ok{border-color:var(--ok);background:var(--ok-bg);color:var(--ok)}
+.opt:not(.ok):has(input:checked){border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.q:has(input:checked) .src{display:block}
+<span class="cm">/* рахунок без скрипта: CSS-лічильники, рядок рахунку стоїть після всіх питань */</span>
+.q:has(input:checked){counter-increment:answered}
+.q:has(.opt.ok input:checked){counter-increment:answered right}
+.score::after{content:counter(right) " з " counter(answered) " · питань: 3"}
+<span class="cm">/* телефон: fieldset типово має min-inline-size:min-content */</span>
+main{…;overflow-wrap:anywhere}
+.q{…;min-width:0}</pre>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Рішення</th><th>Ціна</th></tr></thead>
+<tbody>
+<tr><td>Правильний варіант позначено класом <code>ok</code> у розмітці</td><td>Відповідь видно у вихідному коді: це самоперевірка, не іспит. Для іспиту потрібен сервер.</td></tr>
+<tr><td>Кольори лише токенами, темна тема через <code>prefers-color-scheme</code></td><td>Один пропущений токен (як <code>#1d2133</code> вище) ламає одну тему, а тести токенів його не бачать.</td></tr>
+<tr><td>Жодних <code>vh</code>/<code>dvh</code></td><td>Висота в одиницях екрана недоступна: Android WebView, у якому відкривається цей курс, повертає для <code>vh</code> нуль.</td></tr>
+</tbody></table></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/lectern render samples/quiz-render.json -o out/quiz.html --title "Хеш-таблиці · квіз"</span>
+out/quiz.html: 3 questions
+<span class="ps">$ </span><span class="c">.venv/bin/lectern render out/bad.json -o out/bad.html; echo "exit $?"</span>
+<span class="er">render: item 1: 'answer' must be an index into options, got 2</span>
+exit 1
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q tests/test_render.py</span>
+<span class="ok">23 passed in 0.18s</span></pre>
+<div class="cap">реальний вивід · Python 3.12.11 · 17.10.2026 · сторінка 5,4 КБ, 0 тегів &lt;script&gt;</div></div>
+<p>23 тести <code>test_render.py</code> перевіряють те, що дешево перевірити без браузера: одна радіогрупа на питання й унікальні імена, рівно один <code>ok</code> на позиції <code>answer</code>, екранування, відсутність <code>vh</code> і обидва правила для телефона. Контраст рахує 10 рядків stdlib — ті самі формули WCAG 2.2, 7 пар токенів × 2 теми:</p>
+<pre class="code" data-lang="python"><span class="k">def</span> luminance(hex_color: str) -> float:
+    <span class="s">"""WCAG 2.x relative luminance of an sRGB colour #rrggbb."""</span>
+    <span class="k">def</span> lin(c: float) -> float:
+        <span class="k">return</span> c / <span class="n">12.92</span> <span class="k">if</span> c &lt;= <span class="n">0.04045</span> <span class="k">else</span> ((c + <span class="n">0.055</span>) / <span class="n">1.055</span>) ** <span class="n">2.4</span>
+    r, g, b = (int(hex_color[i:i + <span class="n">2</span>], <span class="n">16</span>) / <span class="n">255</span> <span class="k">for</span> i <span class="k">in</span> (<span class="n">1</span>, <span class="n">3</span>, <span class="n">5</span>))
+    <span class="k">return</span> <span class="n">0.2126</span> * lin(r) + <span class="n">0.7152</span> * lin(g) + <span class="n">0.0722</span> * lin(b)
+
+<span class="k">def</span> contrast(a: str, b: str) -> float:
+    hi, lo = sorted((luminance(a), luminance(b)), reverse=<span class="k">True</span>)
+    <span class="k">return</span> (hi + <span class="n">0.05</span>) / (lo + <span class="n">0.05</span>)   <span class="cm"># ≥ 4.5 для звичайного тексту (SC 1.4.3)</span></pre>
+<p>До травня 2021 року в цьому визначенні W3C стояло 0,03928 замість 0,04045; на 8-бітних кольорах різниці немає. Поріг жорсткий: 4,499:1 вимогу не виконує. Сірий <code>#777777</code> на білому дає 4,48:1, і калібрувальний тест це перевіряє.</p>
+</section>
+
+<section class="sec" id="regression">
+<div class="sec-h"><span class="num">04</span><h2>Візуальний регресійний тест<span class="sub">Playwright для Python і власний pixel diff</span></h2></div>
+<p>У Node є <code>expect(page).toHaveScreenshot()</code> з базовими знімками і допусками. <b>У Python його немає</b>: запит у playwright-python закрито 30.04.2026 з формулюванням «No plans to implement this», запит у pytest-playwright — 08.10.2026, теж «not planned». Python дає <code>page.screenshot()</code>, а порівняння пишете ви. У Lectern це <code>tests/pixeldiff.py</code>: 60 рядків stdlib (zlib декодує PNG, рахує пікселі, у яких R, G або B зсунувся більше за допуск).</p>
+<pre class="code" data-lang="python">ctx = browser.new_context(viewport={<span class="s">"width"</span>: <span class="n">390</span>, <span class="s">"height"</span>: <span class="n">700</span>}, device_scale_factor=<span class="n">1</span>,
+                          color_scheme=theme, reduced_motion=<span class="s">"reduce"</span>, locale=<span class="s">"uk-UA"</span>,
+                          timezone_id=<span class="s">"UTC"</span>)
+page = ctx.new_page()
+page.set_content(render(quiz, <span class="s">"Хеш-таблиці · квіз"</span>))
+page.get_by_text(<span class="s">"Метод ланцюжків"</span>).click()          <span class="cm"># хибна відповідь: червоне + зелене + цитата</span>
+page.locator(<span class="s">"#q2 .opt.ok"</span>).click()                  <span class="cm"># правильна: рахунок «1 з 2»</span>
+<span class="k">assert</span> page.evaluate(<span class="s">"document.documentElement.scrollWidth"</span>) &lt;= <span class="n">390</span>   <span class="cm"># інваріант</span>
+png = page.screenshot(full_page=<span class="k">True</span>, animations=<span class="s">"disabled"</span>, caret=<span class="s">"hide"</span>, scale=<span class="s">"css"</span>)
+changed, total = changed_pixels(png, baseline.read_bytes())    <span class="cm"># допуск каналу 24</span>
+<span class="k">assert</span> changed / total &lt;= <span class="n">0.002</span>                                <span class="cm"># ≤ 0,2% пікселів</span></pre>
+<p>Базові знімки лежать у <code>tests/fixtures/visual/quiz-&lt;тема&gt;-&lt;платформа&gt;.png</code> (два по 120 КБ). Без Playwright тест пропускається, а не падає, бо <code>scripts/check.sh</code> має працювати без мережі й браузера.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/scratch</span></div>
+<pre><span class="ps">$ </span><span class="c">python3.12 -m venv pw-venv &amp;&amp; pw-venv/bin/pip install --quiet playwright pytest</span>
+<span class="ps">$ </span><span class="c">pw-venv/bin/playwright --version</span>
+Version 1.64.0
+<span class="ps">$ </span><span class="c">time PLAYWRIGHT_BROWSERS_PATH=$PWD/pw-browsers pw-venv/bin/playwright install chromium</span>
+Downloading Chrome for Testing 156.0.8078.4 (playwright chromium v1248) from https://cdn.playwright.dev/builds/cft/156.0.8078.4/mac-arm64/chrome-mac-arm64.zip
+<span class="d">  … 185.8 MiB</span>
+Downloading FFmpeg (playwright ffmpeg v1013) …
+<span class="d">  … 1.4 MiB</span>
+Downloading Chrome Headless Shell 156.0.8078.4 (playwright chromium-headless-shell v1248) …
+<span class="d">  … 99 MiB</span>
+pw-venv/bin/playwright install chromium  6.44s user 4.24s system 30% cpu 34.737 total
+<span class="ps">$ </span><span class="c">du -sh pw-browsers/*</span>
+367M	pw-browsers/chromium-1248
+203M	pw-browsers/chromium_headless_shell-1248
+2.9M	pw-browsers/ffmpeg-1013</pre>
+<div class="cap">реальний вивід · рядки прогресу скорочено, змінну середовища записано в одну команду · браузери встановлено в окрему теку, не в систему · 17.10.2026</div></div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q -rs tests/test_visual.py</span>
+SKIPPED [1] tests/test_visual.py:25: pip install playwright
+<span class="ps">$ </span><span class="c">.venv/bin/pip install -q playwright==1.64.0</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q tests/test_visual.py</span>
+<span class="ok">3 passed in 4.25s</span>
+<span class="ps">$ </span><span class="c"># у шаблон додано .q legend{color:#1d2133}</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python -m pytest -q tests/test_visual.py tests/test_render.py</span>
+<span class="er">E           Failed: 11754 of 541710 pixels changed (2.17%); see tests/fixtures/visual/actual/quiz-dark-darwin.png</span>
+<span class="er">1 failed</span>, 25 passed in 4.42s</pre>
+<div class="cap">реальний вивід · скорочено · PLAYWRIGHT_BROWSERS_PATH вказує на теку вище · 17.10.2026</div></div>
+<p><code>playwright install chromium</code> ставить і повний Chrome for Testing, і headless shell, яким Playwright користується в headless-режимі. Для CI досить <code>--only-shell</code> (99 MiB завантаження). Другий тест — інваріант без базового знімка: неподільне слово на 80 символів у заголовку, варіанті й цитаті не розширює сторінку. Перша версія шаблону переносила слова лише у варіантах, і цей тест показав <b>1157 px</b> ширини у вікні на 390: переповнював заголовок.</p>
+<h3>Скільки пікселів «шумить»</h3>
+<p>Той самий шаблон, той самий Mac, два браузери: Playwright headless shell 156 і встановлений Google Chrome 155 (<code>channel="chrome"</code>). Знімок 390 × 1389 px:</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar p"><span class="k">допуск 0 (будь-яка різниця)</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">5,261%</b></span></div>
+  <div class="bar m"><span class="k">допуск 8</span><span class="tr"><i style="--v:4.4%"></i><b style="--v:4.4%">0,232%</b></span></div>
+  <div class="bar t"><span class="k">допуск 24 (Lectern)</span><span class="tr"><i style="--v:1.7%"></i><b style="--v:1.7%">0,087%</b></span></div>
+  <div class="bar t"><span class="k">допуск 64</span><span class="tr"><i style="--v:0.2%"></i><b style="--v:0.2%">0,009%</b></span></div>
+</div>
+<figcaption>Частка змінених пікселів між двома збірками Chromium (згладжування шрифтів). Той самий браузер двічі поспіль — 0 пікселів. Регресія темної теми — 2,17%. Поріг 0,2% при допуску 24 лежить між ними: шум нижчий у 2,3 раза, регресія вища в 11 разів.</figcaption>
+</figure>
+<div class="note warn"><span class="lbl">Типові значення Python — не для тестів</span>
+<p>У <code>page.screenshot()</code> типово <code>animations="allow"</code> і <code>scale="device"</code>, на відміну від Node <code>toHaveScreenshot</code>, де анімації вимкнено, а масштаб — <code>css</code>. На <code>device_scale_factor=3</code> той самий знімок має 1170 × 4167 px і 405 КБ замість 390 × 1389 і 117 КБ. Задавайте обидва параметри явно.</p>
+</div>
+</section>
+
+<section class="sec" id="experiment">
+<div class="sec-h"><span class="num">05</span><h2>Агент з очима і без<span class="sub">Три варіанти, три сторінки</span></h2></div>
+<p>Ми закладали в сторінки дефекти й давали Claude Code одне завдання: «Перевір, що сторінка коректно виглядає на телефоні у світлій і темній темі, і виправ, якщо щось не так». Варіанти відрізнялися лише інструментами:</p>
+<ul>
+<li><b>текст</b>: Read, Glob, Grep, Edit (для шаблону ще дві команди: <code>lectern render</code> і pytest), без MCP;</li>
+<li><b>дерево</b>: те саме + 8 інструментів Playwright MCP (navigate, snapshot, resize, emulate_media, click, wait_for, close, console_messages), скріншот заборонено;</li>
+<li><b>очі</b>: те саме + <code>browser_take_screenshot</code>.</li>
+</ul>
+<p>У всіх варіантах заборонено <code>browser_evaluate</code> і <code>browser_run_code_unsafe</code>: з JavaScript агент виміряв би ширину скриптом, а це вже інваріант, не зір. Конфігурація MCP — запис <code>playwright</code> із <code>dot-mcp.json</code> Lectern: 0.0.83, headless, isolated, iPhone 15, <code>--allowed-origins http://127.0.0.1:8765</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/exp</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$PROMPT" --model haiku --max-budget-usd 0.40 \
+    --setting-sources project --strict-mcp-config --mcp-config ../mcp-playwright.json \
+    --permission-mode acceptEdits --allowedTools "${ALLOW[@]}" --disallowedTools "${DENY[@]}" \
+    --output-format stream-json --verbose &gt; runs/vision-1.jsonl</span></pre>
+<div class="cap">реальна команда зі скрипта прогонів · ALLOW і DENY — списки інструментів вище · Claude Code 2.1.302 · після кожного прогону окремий скрипт перевіряв результат у браузері</div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сторінка й дефекти</th><th>Текст</th><th>Дерево</th><th>Очі</th></tr></thead>
+<tbody>
+<tr><td data-th="Сторінка й дефекти"><b>A.</b> Шаблон квізу, 3 КБ CSS: переповнення через <code>fieldset</code> + колір світлої теми в заголовку · Haiku, n=2</td><td data-th="Текст">2/2 і 2/2 · 15–26 ходів · $0,012–0,020</td><td data-th="Дерево">2/2 і 2/2 · 23–29 · $0,017</td><td data-th="Очі">2/2 і 2/2 · 24–32 · $0,015–0,021</td></tr>
+<tr><td data-th="Сторінка й дефекти"><b>B.</b> Урок 0.1 цього курсу, 88 КБ: колонка 340 px у медіазапиті для телефона + неправильний токен заголовків хронології · Haiku, n=1</td><td data-th="Текст">2/2 · 11 · $0,019</td><td data-th="Дерево">2/2 · 33 · $0,028</td><td data-th="Очі">2/2 · 19 · $0,014</td></tr>
+<tr><td data-th="Сторінка й дефекти"><b>C.</b> Той самий урок, геометрія SVG: підпис наїжджає на блок, підпис за межами viewBox · Haiku, n=1</td><td data-th="Текст">1/2 · 27 · $0,055</td><td data-th="Дерево">0/2 · 27 · $0,028</td><td data-th="Очі">0/2 · 52 · $0,056; <b>Sonnet: 2/2</b> · 19 · $0,308</td></tr>
+</tbody></table></div>
+<p>Усього 15 прогонів, разом із двома відкинутими (про них нижче) — <b>$0,655</b>. Що з цього випливає:</p>
+<ol class="steps">
+<li><b>Читабельний CSS сучасна модель розбирає без очей.</b> На A і B текстовий агент виправив усе. На B він прочитав 66 тис. символів HTML і знайшов колонку на 340 px у медіазапиті, хоча на екрані 390 px контейнер має ~362 px. Очі тут потрібні не для пошуку, а для доказу. Обидва текстові агенти на A чесно написали, що візуально не перевіряли. «Очі» на A після правки знову знімали сторінку й дивилися на неї 2 з 2 рази.</li>
+<li><b>Геометрію SVG код показує погано.</b> На C текстовий агент обчислив, що <code>x="372"</code> більше за ширину viewBox 360, але накладання двох підписів не помітив. Агент із деревом відповів «помилок не знайшов»: SVG з <code>role="img"</code> у дереві доступності — один вузол <code>img</code>, у якому всі підписи склеєно в рядок, без координат кожного.</li>
+<li><b>Очі бачать лише те, куди дивляться.</b> Haiku подивився на 7 картинок: нечитабельний повний знімок і чотири ділянки (шапка, хронологія, практика, терміни) з ~26 екранів сторінки. Діаграми серед них не було, зате агент «виправив» те, чого ми не закладали: сховав декоративну ілюстрацію. Sonnet зняв скріншот одного елемента (<code>target: "figure.fig.narrow"</code>), побачив обидва дефекти, виправив і зняв той самий елемент ще раз. На n=1 внесок моделі й стратегії не розділити, але знімок компонента можна вимагати й від дешевої моделі — це питання інструкції, а не бюджету.</li>
+<li><b>Бонус, якого ми не закладали.</b> Текстовий агент на C і Sonnet помітили справжній дефект у стилях цього курсу: у темній темі білий підпис на бірюзовій смузі діаграми має контраст 1,86:1, білий текст на акцентному кольорі — 2,91:1. Після цього уроку в стилях курсу з'явився токен <code>--on-accent</code> (білий у світлій темі, темний у темній): тепер усі пари мають щонайменше 5:1. Обидва значення нижчі за 4,5:1.</li>
+</ol>
+<div class="note warn"><span class="lbl">Гігієна експерименту</span>
+<p>Перші прогони «дерева» й «очей» ми відкинули. Тека <code>out/</code> у <code>.gitignore</code>, тому <code>git clean -fd</code> її не чистить, і наступний агент прочитав допоміжний скрипт, який лишив попередній. Між прогонами — <code>git clean -fdx</code> або свіжа копія.</p>
+</div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">06</span><h2>У трьох інструментах<span class="sub">Як дати агентові побачити сторінку</span></h2></div>
+<div class="tabs">
+<input type="radio" name="see-t" id="see-t1" checked><input type="radio" name="see-t" id="see-t2"><input type="radio" name="see-t" id="see-t3">
+<div class="tab-l"><label for="see-t1">Claude Code</label><label for="see-t2">Codex</label><label for="see-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>MCP-браузер</b>: Playwright MCP (урок 7.2) або Chrome DevTools MCP 1.11.0. У DevTools MCP <code>take_screenshot</code> прикладає картинку до відповіді, якщо не задано <code>filePath</code>, а <code>emulate</code> задає <code>colorScheme</code> і viewport у форматі <code>390x844x3,mobile</code>.</li>
+<li><b>Ваші скріншоти</b>: перетягнути у вікно, вставити <code>Ctrl+V</code> або дати шлях до файлу. Інструмент Read повертає PNG і JPG як зображення, великі — зменшує.</li>
+<li><b><code>claude --chrome</code></b>: розширення Claude in Chrome (від 1.0.36) керує вашим справжнім Chrome; документація прямо називає перевірку візуальних регресій веб-застосунку. Це ваш браузер з вашими сесіями, тож для CI він не підходить.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Зображення на вході</b>: <code>codex -i screenshot.png "…"</code> (кілька файлів через кому) або вставка в інтерактивний режим.</li>
+<li><b>Браузер</b>: вбудований браузер із Computer Use є в <b>desktop-застосунку</b> Codex (відкрити сторінку, клікнути, зробити скріншот). У CLI — через MCP: той самий Playwright MCP у <code>config.toml</code> з <code>disabled_tools</code> (урок 7.2).</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex -i out/browser/quiz-dark.png "Порівняй скріншот із шаблоном src/lectern/quiz_template.html і знайди причину"</span></pre>
+<div class="cap">команда з офіційної документації Codex · не запускалась у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Browser tool</b> агента: Navigate, Click, Type, Scroll, Screenshot, Console Output, Network Traffic.</li>
+<li>Документація: скріншоти «інтегровано з інструментом читання файлів, тож агент справді бачить стан браузера як зображення»; згадано і скріншоти для візуальних регресійних тестів.</li>
+<li>Принцип той самий: ширину й колір задайте явно, а знімайте компонент, не всю сторінку.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<section class="sec" id="pitfalls">
+<div class="sec-h"><span class="num">07</span><h2>Типові помилки<span class="sub">Чому скріншот бреше</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Пастка</th><th>Що відбувається</th><th>Що робити</th></tr></thead>
+<tbody>
+<tr><td data-th="Пастка">Шрифти й ОС</td><td data-th="Що відбувається">Базовий знімок з macOS на Linux у CI «змінюється» на всю площу тексту: інші шрифти й згладжування. Playwright тому додає до імені знімка браузер і платформу (<code>-chromium-darwin.png</code>)</td><td data-th="Що робити">Знімок на кожну платформу, генерувати в тому самому контейнері, що й CI</td></tr>
+<tr><td data-th="Пастка">Інша збірка браузера</td><td data-th="Що відбувається">Headless shell 156 проти Chrome 155: 5,26% пікселів різні, хоча сторінка та сама</td><td data-th="Що робити">Закріпити версію Playwright; допуск вибрати за виміром шуму, не «на око»</td></tr>
+<tr><td data-th="Пастка">Анімації й каретка</td><td data-th="Що відбувається">Перехід <code>.15s</code> або курсор потрапляють у кадр через раз — нестабільний тест</td><td data-th="Що робити"><code>animations="disabled"</code>, <code>caret="hide"</code>, <code>reduced_motion="reduce"</code></td></tr>
+<tr><td data-th="Пастка">Масштаб пристрою</td><td data-th="Що відбувається"><code>--device "iPhone 15"</code> дає DPR 3: у 9 разів більше пікселів, більші файли, інший рендер</td><td data-th="Що робити"><code>device_scale_factor=1</code> і <code>scale="css"</code> для базових знімків; DPR 3 — окремим тестом, якщо він важливий</td></tr>
+<tr><td data-th="Пастка">Тема</td><td data-th="Що відбувається">Емуляція <code>color_scheme</code> змінює лише <code>prefers-color-scheme</code>. Якщо тему ставить атрибут (у цьому курсі хост проставляє <code>data-theme</code>), сторінка лишиться світлою</td><td data-th="Що робити">Перемикати тему тим самим механізмом, що й продукт. <code>tools/shoot.sh</code> цього курсу переписує атрибут у HTML</td></tr>
+<tr><td data-th="Пастка">Мінімальне вікно</td><td data-th="Що відбувається">Headless Chrome з <code>--screenshot --window-size=390,…</code> віддає картинку на 390 px, але верстає ширше: медіазапит <code>max-width:450px</code> не спрацював (перевірено на Chrome 155)</td><td data-th="Що робити">Емуляція viewport (Playwright, MCP) або iframe 390 px, як у <code>tools/shoot.sh</code></td></tr>
+<tr><td data-th="Пастка">Час, мова, дані</td><td data-th="Що відбувається">Дата «сьогодні», часовий пояс і випадкові дані змінюють текст на кожному прогоні</td><td data-th="Що робити"><code>timezone_id</code>, <code>locale</code>, фіксовані дані або <code>mask</code> на змінних ділянках</td></tr>
+<tr><td data-th="Пастка">Baseline churn</td><td data-th="Що відбувається">Знімки оновлюють при кожній зміні, не дивлячись. Тест зеленіє, але вже нічого не охороняє</td><td data-th="Що робити">Оновлення — окремий коміт з <code>actual/</code> поруч; рецензент дивиться на картинку. Менше знімків: компоненти, не сторінки</td></tr>
+<tr><td data-th="Пастка">Повна довга сторінка для моделі</td><td data-th="Що відбувається">21 867 px стискаються до ширини 28–46 px</td><td data-th="Що робити">Скріншот елемента (<code>target</code>) або одного екрана; список компонентів, які треба обійти</td></tr>
+</tbody></table></div>
+<div class="note tip"><span class="lbl">Правило розподілу</span>
+<p>Інваріант — для того, що можна сформулювати (ширина, контраст, видимість). Базовий знімок — для того, що важко сформулювати, але легко помітити. Модель з очима — для пошуку нового і для доказу після правки. Кожну знахідку моделі переводьте в інваріант (урок 9.4: перевірки, які агент може запустити сам).</p>
+</div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">08</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">accessibility snapshot</span><span class="h">що бачить?</span></span><span class="b"><span class="t">Дерево ролей і текстів</span><span class="d">з boxes — координати; кольору, накладань і геометрії SVG не бачить</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">pixel diff tolerance</span><span class="h">два числа</span></span><span class="b"><span class="t">Допуск каналу + частка пікселів</span><span class="d">у Lectern: зсув &gt; 24 рахується, змінитися може ≤ 0,2%</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">color-scheme emulation</span><span class="h">що перемикає?</span></span><span class="b"><span class="t">Лише медіазапит</span><span class="d">prefers-color-scheme; тему через атрибут треба ставити самому</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">baseline churn</span><span class="h">чим небезпечний?</span></span><span class="b"><span class="t">Сліпе оновлення знімків</span><span class="d">тест зелений, але більше нічого не охороняє</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">⌈w/28⌉ × ⌈h/28⌉</span><span class="h">що це?</span></span><span class="b"><span class="t">Ціна зображення в токенах</span><span class="d">екран 390×844 — 434 токени; довга сторінка стискається до нечитабельної</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">:has()</span><span class="h">навіщо у квізі?</span></span><span class="b"><span class="t">Взаємодія без JavaScript</span><span class="d">вибрана радіокнопка змінює стиль усього питання</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">09</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Тести контрасту токенів зелені, а в темній темі заголовки питань зливаються з фоном. Найімовірніша причина і що це впіймає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Контраст рахують за старою формулою WCAG: треба 0,03928 замість 0,04045, тоді тест упаде</span></label><label class="opt ok"><input type="radio" name="q1"><span>Колір вписано в правило повз токени; впіймає знімок темної теми або перевірка в браузері</span></label><label class="opt"><input type="radio" name="q1"><span>Емуляція темної теми в pytest не працює, тому тест насправді перевіряв лише світлі токени</span></label></div>
+    <div class="why yes">Так. Тест токенів бачить лише токени. Рядок <code>.q legend{color:#1d2133}</code> їх обходить, а візуальний тест показав 2,17% змінених пікселів.</div>
+    <div class="why no">Константа 0,03928 проти 0,04045 на 8-бітних кольорах нічого не змінює, а тест контрасту в pytest браузера не запускає: він читає токени з CSS. Колір, вписаний повз токени, видно лише після рендеру.</div></div>
+  <div class="q"><div class="qt">2. Агент має помітити текст, який у темній темі зливається з фоном. Що дозволити в Playwright MCP?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Увімкнути <code>--caps vision</code>: без нього сервер не віддає моделі жодних зображень</span></label><label class="opt"><input type="radio" name="q2"><span><code>browser_snapshot</code> з <code>boxes: true</code>: координати елементів покажуть проблему</span></label><label class="opt ok"><input type="radio" name="q2"><span><code>browser_take_screenshot</code> і <code>browser_emulate_media</code>; vision тут не потрібен</span></label></div>
+    <div class="why yes">Так. Скріншот є в типовому наборі інструментів, тему перемикає <code>browser_emulate_media</code>. <code>--caps vision</code> додає кліки за координатами.</div>
+    <div class="why no">Дерево доступності з координатами показує розміри, але не колір. <code>--caps vision</code> — це інструменти на кшталт <code>browser_mouse_click_xy</code>, а скріншоти доступні й без нього.</div></div>
+  <div class="q"><div class="qt">3. Агент робить знімок усієї сторінки 390 × 21 867 px і читає його. Що отримає модель?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span>Картинку, стиснуту до ширини в кілька десятків пікселів: дешево, але нічого не прочитати</span></label><label class="opt"><input type="radio" name="q3"><span>Усі пікселі без стиснення, і це коштуватиме близько 11 тис. токенів на один знімок</span></label><label class="opt"><input type="radio" name="q3"><span>Лише перший екран, бо в емуляції мобільного пристрою повний знімок не підтримується</span></label></div>
+    <div class="why yes">Так. Довга сторона обмежена 1568–2576 px, тож ширина 390 стає 28–46 px. Агент у прогоні так і написав: знімок «нечитабельний».</div>
+    <div class="why no">11 тис. токенів (14 × 781 патчів) — ціна без стиснення, але великі зображення зменшують до ліміту довгої сторони. Повний знімок працює і з емуляцією пристрою. Знімайте елемент або один екран.</div></div>
+  <div class="q"><div class="qt">4. Проєкт на Python, потрібні візуальні регресійні тести. Що обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span><code>expect(page).to_have_screenshot()</code> з pytest-playwright, як у Node, з базовими знімками</span></label><label class="opt ok"><input type="radio" name="q4"><span><code>page.screenshot()</code> і власне порівняння, або візуальні тести окремо в Node-раннері</span></label><label class="opt"><input type="radio" name="q4"><span>Порівнювати accessibility snapshot замість пікселів: він стабільніший і бачить те саме</span></label></div>
+    <div class="why yes">Так. У Python такого assert немає: обидва запити закрито як not planned (30.04.2026 і 08.10.2026).</div>
+    <div class="why no">У Python немає <code>to_have_screenshot</code>, а знімок дерева не бачить кольору й накладань. Лишається <code>page.screenshot()</code> плюс власний diff, як у Lectern, або раннер Node.</div></div>
+  <div class="q"><div class="qt">5. Базові знімки зроблено на Mac. У CI на Linux тест падає на кожному PR: 3% змінених пікселів. Що зробити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Генерувати знімки на Linux у тому ж контейнері, що й CI, і зберігати їх окремо за платформою</span></label><label class="opt"><input type="radio" name="q5"><span>Підняти поріг до 5%: різниця між ОС стабільна, тож із таким порогом тест стане надійним</span></label><label class="opt"><input type="radio" name="q5"><span>Запускати тест у CI з оновленням знімків, щоб вони завжди відповідали середовищу</span></label></div>
+    <div class="why yes">Так. Шрифти й згладжування залежать від ОС, тому Playwright додає платформу до імені знімка.</div>
+    <div class="why no">Поріг 5% пропустить регресію темної теми (2,17%). Автооновлення в CI робить тест вічно зеленим — це baseline churn. Потрібні знімки для платформи CI.</div></div>
+  <div class="q"><div class="qt">6. Колега пропонує допуск каналу 0 і поріг 0% «для точності». Що буде?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Тест стане точнішим: упіймає і регресію теми, і зсув на піксель, без хибних тривог</span></label><label class="opt"><input type="radio" name="q6"><span>Нічого не зміниться: той самий браузер двічі поспіль дає рівно 0 змінених пікселів на знімку</span></label><label class="opt ok"><input type="radio" name="q6"><span>Тест падатиме від оновлення браузера (5,26% пікселів), і знімки почнуть оновлювати наосліп</span></label></div>
+    <div class="why yes">Так. Нуль на одному браузері — правда, але оновлення Chromium змінює згладжування. Поріг треба вибирати за виміряним шумом.</div>
+    <div class="why no">0 пікселів дає лише той самий браузер. Між двома збірками Chromium при допуску 0 змінюється 5,26% пікселів, а це вдвічі більше за регресію теми. Такий тест вчить команду не дивитися на падіння.</div></div>
+  <div class="q"><div class="qt">7. Базовий знімок: <code>device_scale_factor=1</code>, <code>scale="css"</code>. Новий тест знімає <code>page.screenshot()</code> без параметрів у контексті з DPR 3. Що станеться?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Нічого: Playwright сам зводить знімок до CSS-пікселів, якщо параметр scale не передано</span></label><label class="opt ok"><input type="radio" name="q7"><span>Розміри не збігаються (1170 px проти 390), тест падає ще до підрахунку пікселів</span></label><label class="opt"><input type="radio" name="q7"><span>Тест пройде, але змінених пікселів буде втричі більше через інше згладжування</span></label></div>
+    <div class="why yes">Так. У Python типовий <code>scale</code> — <code>"device"</code>, тож знімок має 1170 × 4167 px замість 390 × 1389.</div>
+    <div class="why no">CSS-пікселі типові для Node <code>toHaveScreenshot</code>, а не для Python <code>page.screenshot()</code>. Там типово <code>"device"</code>, і на DPR 3 розмір утричі більший, тож порівнювати немає що.</div></div>
+  <div class="q"><div class="qt">8. Тему сторінки ставить хост атрибутом <code>data-theme</code>. Агент емулює темну схему, а знімок світлий. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Емуляція діє лише після перезавантаження сторінки, тому після неї треба ще раз викликати navigate</span></label><label class="opt"><input type="radio" name="q8"><span>Headless-збірка Chromium не підтримує темну тему, потрібен справжній Chrome</span></label><label class="opt ok"><input type="radio" name="q8"><span>Емуляція змінює лише prefers-color-scheme, а тему треба ставити тим атрибутом, що й хост</span></label></div>
+    <div class="why yes">Так. Тестуйте тим механізмом, яким тему вмикає продукт. <code>tools/shoot.sh</code> цього курсу переписує атрибут у HTML.</div>
+    <div class="why no">Емуляція діє одразу і в headless-режимі: темну тему квізу Lectern ми знімали саме так. Але вона перемикає медіазапит, а атрибут <code>data-theme</code> від нього не залежить.</div></div>
+  <div class="q"><div class="qt">9. На довгому уроці Haiku з повним знімком знайшов 0 із 2 дефектів SVG, а Sonnet з одним знімком діаграми — 2 з 2. Що змінити, щоб дешева модель працювала?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Дати список компонентів, вимагати знімок кожного елемента і переводити знахідки в інваріанти</span></label><label class="opt"><input type="radio" name="q9"><span>Перейти на Sonnet: дефекти знайшов він, отже справа в силі моделі, а не в способі огляду</span></label><label class="opt"><input type="radio" name="q9"><span>Знімати всю сторінку з <code>scale: "device"</code>, щоб у моделі було втричі більше пікселів</span></label></div>
+    <div class="why yes">Так. Haiku подивився на чотири ділянки з ~26 екранів і діаграми не бачив. Sonnet зняв саме діаграму. Покриття можна задати інструкцією, а сильнішу модель на кожну перевірку — ні.</div>
+    <div class="why no">Більший знімок однаково стискається до ліміту довгої сторони, і точність не зростає. Сильніша модель коштувала в 5,5 раза більше ($0,308 проти $0,056) і теж знайшла дефекти лише тому, що зняла потрібний елемент. Покриття задають списком компонентів.</div></div>
+  <div class="q"><div class="qt">10. Квіз має працювати в iframe під CSP <code>script-src 'self'</code>, тому зроблений лише на CSS. Яка ціна цього рішення?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Рахунку правильних відповідей не буде: без JavaScript сторінка не знає, що обрав читач</span></label><label class="opt ok"><input type="radio" name="q10"><span>Правильну відповідь видно у вихідному коді, тож це самоперевірка, а не іспит</span></label><label class="opt"><input type="radio" name="q10"><span>Темної теми не буде: без скрипта її не ввімкнути, хоч би що вибрав користувач</span></label></div>
+    <div class="why yes">Так. Клас <code>ok</code> стоїть у розмітці. Для іспиту відповіді треба перевіряти на сервері.</div>
+    <div class="why no">Рахунок дають CSS-лічильники з <code>:has()</code>, а тема йде за <code>prefers-color-scheme</code> без жодного скрипта. Справжня ціна — ключ відповідей у HTML.</div></div>
+  <div class="q"><div class="qt">11. Агент без браузера виправив обидва дефекти шаблону, тести зелені, у звіті написав: «візуально не перевіряв». Що робити перед злиттям?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Зливати: тести зелені, дефекти виправлено, а візуальна перевірка тут лише формальність</span></label><label class="opt"><input type="radio" name="q11"><span>Відкинути правку: агент без браузера не мав права правити CSS, навіть якщо вона правильна</span></label><label class="opt ok"><input type="radio" name="q11"><span>Підтвердити знімком або інваріантом на 390 px у двох темах і додати тест на цей дефект</span></label></div>
+    <div class="why yes">Так. Правка, ймовірно, правильна (на A вона була правильною 2 з 2 рази), але доказу немає. Крок 5 циклу — закріпити її тестом.</div>
+    <div class="why no">Зелені тести не бачили цих дефектів — інакше вони впали б раніше. А відкидати правильну правку через спосіб, яким її знайшли, немає сенсу. Потрібне спостереження і тест.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">10</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>visual feedback loop</td><td>Цикл «зміна → рендер → спостереження → оцінка → тест», у якому агент бачить результат каскаду, а не лише код.</td></tr>
+<tr><td>accessibility snapshot</td><td>Дерево доступності сторінки (ролі, тексти, стан, за бажання — координати), яке Playwright MCP віддає моделі замість картинки.</td></tr>
+<tr><td>screenshot verification</td><td>Перевірка вигляду зображенням, яке бачить модель; доказ після правки і пошук того, що не видно в коді.</td></tr>
+<tr><td>visual regression test</td><td>Тест, що порівнює новий знімок сторінки чи компонента з базовим і падає, коли змінилося більше за поріг.</td></tr>
+<tr><td>pixel diff tolerance</td><td>Два допуски порівняння: на скільки може зсунутися канал кольору і яка частка пікселів може змінитися.</td></tr>
+<tr><td>baseline churn</td><td>Часте, неперевірене оновлення базових знімків, після якого тест уже нічого не охороняє.</td></tr>
+<tr><td>color-scheme emulation</td><td>Підміна медіазапиту <code>prefers-color-scheme</code> у браузері для знімка темної чи світлої теми.</td></tr>
+<tr><td>device scale factor</td><td>DPR: скільки фізичних пікселів на один CSS-піксель; визначає розмір знімка й рендер.</td></tr>
+<tr><td>WCAG contrast ratio</td><td>(L1 + 0,05) / (L2 + 0,05) відносних яскравостей; ≥ 4,5:1 для звичайного тексту, ≥ 3:1 для великого.</td></tr>
+<tr><td>CSS-only interaction</td><td>Інтерактивність без JavaScript: радіокнопки, <code>:has()</code>, CSS-лічильники.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">11</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Візуальний цикл для вашої сторінки</h3>
+<p>Для однієї сторінки чи компонента: інваріанти на 390 px у двох темах, політика базових знімків, виміряний шум і поріг, один закладений дефект і що його впіймало.</p>
+<h3>2. Огляд довгої сторінки агентом</h3>
+<p>Інструкція й конфігурація для дешевої моделі, яка має перевірити сторінку на ~26 екранів: покриття, знімки елементів, бюджет токенів, що стає інваріантом.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">12</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 17.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://github.com/microsoft/playwright-mcp" target="_blank" rel="noopener">Playwright MCP — README</a><span>0.0.83, 28.09.2026 · <code>browser_snapshot</code>, <code>browser_take_screenshot</code>, <code>--caps</code>, <code>--image-responses</code>, <code>--snapshot-boxes</code></span></li>
+<li><a href="https://playwright.dev/docs/test-snapshots" target="_blank" rel="noopener">Playwright — Visual comparisons (Node)</a><span><code>toHaveScreenshot</code>, <code>threshold</code> 0,2, <code>maxDiffPixels</code>, імена знімків з платформою, <code>--update-snapshots</code></span></li>
+<li><a href="https://playwright.dev/python/docs/api/class-page" target="_blank" rel="noopener">Playwright for Python — Page</a><span><code>screenshot()</code>: <code>animations</code>, <code>caret</code>, <code>scale</code>, <code>mask</code>, <code>style</code>; <code>emulate_media()</code></span></li>
+<li><a href="https://playwright.dev/python/docs/api/class-browser" target="_blank" rel="noopener">Playwright for Python — Browser.new_context</a><span><code>viewport</code>, <code>device_scale_factor</code>, <code>color_scheme</code></span></li>
+<li><a href="https://playwright.dev/docs/browsers" target="_blank" rel="noopener">Playwright — Browsers</a><span>канали <code>chrome</code>/<code>msedge</code>, headless shell, <code>--only-shell</code></span></li>
+<li><a href="https://github.com/microsoft/playwright-python/issues/837" target="_blank" rel="noopener">playwright-python #837 — Visual comparisons in python</a><span>закрито 30.04.2026 як not planned</span></li>
+<li><a href="https://github.com/microsoft/playwright-pytest/issues/63" target="_blank" rel="noopener">playwright-pytest #63 — visual regression / snapshot testing</a><span>закрито 08.10.2026 як not planned</span></li>
+<li><a href="https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/tool-reference.md" target="_blank" rel="noopener">Chrome DevTools MCP — tool reference</a><span>1.11.0, 15.10.2026 · <code>take_screenshot</code>, <code>emulate</code> (colorScheme, viewport)</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/vision" target="_blank" rel="noopener">Claude — Vision</a><span>ціна зображення ⌈w/28⌉ × ⌈h/28⌉, ліміти довгої сторони</span></li>
+<li><a href="https://code.claude.com/docs/en/common-workflows" target="_blank" rel="noopener">Claude Code — Work with images</a><span>перетягування, <code>Ctrl+V</code>, шлях до файлу</span></li>
+<li><a href="https://code.claude.com/docs/en/chrome" target="_blank" rel="noopener">Claude Code — Chrome</a><span><code>--chrome</code>, тестування веб-застосунків у вашому браузері</span></li>
+<li><a href="https://developers.openai.com/codex/image-inputs?surface=cli" target="_blank" rel="noopener">Codex — Image inputs</a><span><code>codex -i</code>; браузер desktop-застосунку: <a href="https://developers.openai.com/codex/browser" target="_blank" rel="noopener">Codex browser</a></span></li>
+<li><a href="https://cursor.com/docs/agent/tools/browser" target="_blank" rel="noopener">Cursor — Browser tool</a><span>Navigate, Click, Screenshot, Console, Network</span></li>
+<li><a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener">W3C — WCAG 2.2</a><span>SC 1.4.3 (4,5:1 і 3:1), 1.4.11, визначення relative luminance; <a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html" target="_blank" rel="noopener">Understanding 1.4.3</a></span></li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/CSS/:has" target="_blank" rel="noopener">MDN — :has()</a><span>реляційний псевдоклас; <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_counter_styles/Using_CSS_counters" target="_blank" rel="noopener">CSS counters</a></span></li>
+<li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fieldset" target="_blank" rel="noopener">MDN — &lt;fieldset&gt;</a><span>типовий <code>min-inline-size: min-content</code></span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 11.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 11.4 · Senomi<br><br><a href="lesson-54.html">← Урок 11.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-56.html">Урок 11.5 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>
