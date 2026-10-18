@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 15.1. Надійність: rate limits, ретраї, fallback, версіонування промптів</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 15.1 · Модуль 15</div>
+<h1>Надійність: rate limits, ретраї, fallback, версіонування промптів</h1>
+<p class="lead">Claude Code типово повторює запит до 10 разів: на фейковому API це 11 запитів і 174 секунди до відмови, а spend cap (429 без retry-after) він повторює так само, хоча до кінця місяця відповідь не зміниться. У Lectern повтор тепер робить лише CLI, коротко, а runner керує ним: бюджет повторів, дедлайн, автомат на кожну модель, fallback і закріплені id моделей; новий промпт потрапляє в сервіс тільки через гейт evals.</p>
+<div class="hero-meta"><span class="chip">Продакшн</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<blockquote class="epigraph"><p>Повтори «егоїстичні»: повторюючи запит, клієнт витрачає більше часу сервера, щоб підвищити власний шанс на успіх.</p><cite>Marc Brooker, Amazon Builders' Library, «Timeouts, retries, and backoff with jitter» · переклад</cite></blockquote>
+<details class="toc-box"><summary>Зміст уроку · 13 розділів</summary><nav class="toc"><a href="#taxonomy"><b>01</b>Чотири класи відмов</a><a href="#measured"><b>02</b>Що робить CLI насправді</a><a href="#retries"><b>03</b>Повтори правильно</a><a href="#fallback"><b>04</b>Fallback і автомат</a><a href="#versions"><b>05</b>Версії моделі й промпту</a><a href="#faults"><b>06</b>Fault injection</a><a href="#project"><b>07</b>Наскрізний проєкт</a><a href="#tools"><b>08</b>Повтори й fallback в інструментах</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#quiz"><b>10</b>Квіз</a><a href="#terms"><b>11</b>Терміни уроку</a><a href="#homework"><b>12</b>Домашнє завдання</a><a href="#resources"><b>13</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розкласти відмову LLM-виклику на transient, persistent, partial і semantic та обрати для кожної реакцію;</li>
+    <li>поставити повтори в одне місце: backoff із jitter, retry-after, бюджет повторів, дедлайн;</li>
+    <li>спроєктувати fallback: автомат на кожну модель, інша модель чи провайдер, деградований режим — і порахувати, скільки він коштує;</li>
+    <li>закріпити id моделей і випускати промпт через реєстр, гейт evals і rollback;</li>
+    <li>перевірити політику fault injection-ом: сервіс, фейковий CLI, до і після.</li>
+  </ul>
+</div>
+
+<section class="sec" id="taxonomy">
+<div class="sec-h"><span class="num">01</span><h2>Чотири класи відмов<span class="sub">Що робити, вирішує клас, а не HTTP-код</span></h2></div>
+<p>Реакцію на відмову визначає не статус, а відповідь на питання «чи зміниться результат, якщо спробувати ще раз». Один і той самий 429 буває і тимчасовим, і остаточним, а квіз, що дійшов до гейту, може бути зламаним за відповіді 200.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 470" role="img" aria-label="Чотири класи відмов LLM-виклику і реакція на кожен">
+  <defs>
+    <marker id="l69a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="70" y="6" width="220" height="44" rx="10" class="bx m"/>
+  <text x="180" y="25" text-anchor="middle" class="tx b">Відмова виклику моделі</text>
+  <text x="180" y="42" text-anchor="middle" class="tx s">клас визначає runner, а не модель</text>
+  <rect x="6" y="66" width="146" height="86" rx="10" class="bx a"/>
+  <text x="79" y="88" text-anchor="middle" class="tx b">transient</text>
+  <text x="79" y="107" text-anchor="middle" class="tx s">429 rate limit · 529</text>
+  <text x="79" y="123" text-anchor="middle" class="tx s">5xx · немає відповіді</text>
+  <text x="79" y="139" text-anchor="middle" class="tx s">мине сама</text>
+  <path d="M152 109 H 166" class="ln a" marker-end="url(#l69a)"/>
+  <rect x="170" y="66" width="184" height="86" rx="10" class="bx t"/>
+  <text x="262" y="88" text-anchor="middle" class="tx b">повтор, потім інша модель</text>
+  <text x="262" y="107" text-anchor="middle" class="tx s">CLI повторює ≤ 3 рази</text>
+  <text x="262" y="123" text-anchor="middle" class="tx s">бюджет повторів · дедлайн</text>
+  <text x="262" y="139" text-anchor="middle" class="tx s">автомат моделі → fallback</text>
+  <rect x="6" y="166" width="146" height="86" rx="10" class="bx p"/>
+  <text x="79" y="188" text-anchor="middle" class="tx b">persistent</text>
+  <text x="79" y="207" text-anchor="middle" class="tx s">400 · 401/403 · 413</text>
+  <text x="79" y="223" text-anchor="middle" class="tx s">429 spend cap · 404</text>
+  <text x="79" y="239" text-anchor="middle" class="tx s">повтор не допоможе</text>
+  <path d="M152 209 H 166" class="ln a" marker-end="url(#l69a)"/>
+  <rect x="170" y="166" width="184" height="86" rx="10" class="bx t"/>
+  <text x="262" y="188" text-anchor="middle" class="tx b">fail fast</text>
+  <text x="262" y="207" text-anchor="middle" class="tx s">spend cap, ключ → автомат</text>
+  <text x="262" y="223" text-anchor="middle" class="tx s">акаунта: стоп усім задачам</text>
+  <text x="262" y="239" text-anchor="middle" class="tx s">404 модель знято → інша</text>
+  <rect x="6" y="266" width="146" height="86" rx="10" class="bx m"/>
+  <text x="79" y="288" text-anchor="middle" class="tx b">partial</text>
+  <text x="79" y="307" text-anchor="middle" class="tx s">обрив потоку після 200</text>
+  <text x="79" y="323" text-anchor="middle" class="tx s">тайм-аут · max_tokens</text>
+  <text x="79" y="339" text-anchor="middle" class="tx s">робота вже частково є</text>
+  <path d="M152 309 H 166" class="ln a" marker-end="url(#l69a)"/>
+  <rect x="170" y="266" width="184" height="86" rx="10" class="bx t"/>
+  <text x="262" y="288" text-anchor="middle" class="tx b">продовжити, не з нуля</text>
+  <text x="262" y="307" text-anchor="middle" class="tx s">resume тієї самої сесії</text>
+  <text x="262" y="323" text-anchor="middle" class="tx s">досилання частини відповіді</text>
+  <text x="262" y="339" text-anchor="middle" class="tx s">ліміт → resume з бюджетом</text>
+  <rect x="6" y="366" width="146" height="86" rx="10" class="bx m"/>
+  <text x="79" y="388" text-anchor="middle" class="tx b">semantic</text>
+  <text x="79" y="407" text-anchor="middle" class="tx s">200 OK, зміст хибний</text>
+  <text x="79" y="423" text-anchor="middle" class="tx s">refusal — теж 200</text>
+  <text x="79" y="439" text-anchor="middle" class="tx s">помітить лише перевірка</text>
+  <path d="M152 409 H 166" class="ln a" marker-end="url(#l69a)"/>
+  <rect x="170" y="366" width="184" height="86" rx="10" class="bx t"/>
+  <text x="262" y="388" text-anchor="middle" class="tx b">гейт, каскад, людина</text>
+  <text x="262" y="407" text-anchor="middle" class="tx s">гейт → сильніша модель</text>
+  <text x="262" y="423" text-anchor="middle" class="tx s">refusal → інша модель</text>
+  <text x="262" y="439" text-anchor="middle" class="tx s">сумнів → needs_review</text>
+</svg>
+<figcaption>Таксономія відмов LLM-виклику. Реакцію визначає відповідь на питання «чи зміниться результат від повтору». Класи transient і persistent видно з помилки, partial — з причини зупинки, semantic — лише з перевірки результату.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сигнал</th><th>Клас</th><th>Чому саме так</th></tr></thead>
+<tbody>
+<tr><td data-th="Сигнал">429 з <code>retry-after</code></td><td data-th="Клас">transient</td><td data-th="Чому саме так">Сервер сам каже, коли повторити; раніший повтор, за документацією, не вдасться.</td></tr>
+<tr><td data-th="Сигнал">429 без <code>retry-after</code>, <code>error_code: enforced_spend_limit_reached</code></td><td data-th="Клас">persistent</td><td data-th="Чому саме так">Місячний spend cap тиру: доступ повернеться 1-го числа о 00:00 UTC. Тип помилки той самий <code>rate_limit_error</code>, тож розрізнити можна лише за тілом відповіді.</td></tr>
+<tr><td data-th="Сигнал">529 <code>overloaded_error</code></td><td data-th="Клас">transient</td><td data-th="Чому саме так">Перевантажено API для всіх клієнтів, а не вашу квоту.</td></tr>
+<tr><td data-th="Сигнал">404 «model may not exist»</td><td data-th="Клас">persistent для моделі</td><td data-th="Чому саме так">Модель знято або до неї немає доступу. Повтор не допоможе, інша модель — так.</td></tr>
+<tr><td data-th="Сигнал">Помилка в SSE після 200</td><td data-th="Клас">partial</td><td data-th="Чому саме так">Частину відповіді вже отримано. Для моделей 4.6+ продовжують окремим user-повідомленням з отриманим текстом, а не prefill-ом.</td></tr>
+<tr><td data-th="Сигнал"><code>stop_reason: "refusal"</code></td><td data-th="Клас">semantic</td><td data-th="Чому саме так">Класифікатор безпеки відмовив, але відповідь прийшла звичайним HTTP 200. Документація радить повторити той самий запит на іншій моделі.</td></tr>
+</tbody></table></div>
+<p>Semantic-відмови вже ловлять гейт <code>lectern check</code> з ескалацією каскаду (9.3) і evals (12.3). Цей урок — про решту: відмови, після яких до гейту справа не доходить.</p>
+</section>
+
+<section class="sec" id="measured">
+<div class="sec-h"><span class="num">02</span><h2>Що робить CLI насправді<span class="sub">Фейковий API, справжній Claude Code</span></h2></div>
+<p>Lectern ходить до моделі через Agent SDK, тобто через CLI Claude Code. Щоб побачити його повтори без справжнього збою, ми підняли локальний HTTP-сервер, який на кожен <code>POST /v1/messages</code> віддає задану помилку, і спрямували на нього <code>claude -p</code> через <code>ANTHROPIC_BASE_URL</code>. Окремий <code>CLAUDE_CONFIG_DIR</code> і фейковий ключ через <code>apiKeyHelper</code> не чіпають налаштувань машини. Модель жодного разу не викликалась, тож це коштувало $0.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>runs.txt — api_retry з stream-json</span></div>
+<pre><span class="y">== 529, MAX_RETRIES не задано</span>
+   11 запитів · 174,4 с · exit 1
+   attempt  1  retry_delay_ms    542
+   attempt  2  retry_delay_ms   1085
+   attempt  3  retry_delay_ms   2245
+   attempt  4  retry_delay_ms   4053
+   attempt  5  retry_delay_ms   8820
+   attempt  6  retry_delay_ms  18120
+   attempt  7  retry_delay_ms  34221
+   <span class="d">attempt 8–10: 35499, 36576, 32001</span>
+   <span class="er">result 529 · api_error · 173432 ms</span>
+<span class="y">== 429 + retry-after: 7, MAX_RETRIES=3</span>
+   4 запити · 22,1 с
+   attempt 1–3  retry_delay_ms <span class="ok">7000</span>
+<span class="y">== 429 spend cap, без retry-after</span>
+   11 запитів · 177,6 с
+   attempt 1–10 retry_delay_ms 504…37844
+   <span class="er">result 429 · You have reached</span>
+   <span class="er">       your API usage limits</span>
+<span class="y">== 400 invalid_request_error</span>
+   2 запити · 1,0 с · api_retry немає</pre>
+<div class="cap">реальний вивід Claude Code 2.1.302 проти фейкового API · 18.10.2026 · події згруповано й скорочено · сирі файли в <code>console/cli-retries/</code></div></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що виміряли</th><th>Число</th><th>Що з цього випливає</th></tr></thead>
+<tbody>
+<tr><td data-th="Що виміряли">Повторів за замовчуванням</td><td data-th="Число">10 (11 запитів)</td><td data-th="Що з цього випливає">Збігається з документацією <code>CLAUDE_CODE_MAX_RETRIES</code>, де типове значення 10.</td></tr>
+<tr><td data-th="Що виміряли">До відмови на 529</td><td data-th="Число">174 с</td><td data-th="Що з цього випливає">Майже весь тайм-аут сесії Lectern (180 с) йде на очікування. Задача з'ясовує, що модель недоступна, лише за три хвилини.</td></tr>
+<tr><td data-th="Що виміряли">Розкид затримок</td><td data-th="Число">+0…25% до 500·2<sup>n−1</sup> мс, стеля ≈ 32 с</td><td data-th="Що з цього випливає">Документована база 500 мс і стеля 32000 мс для 529. Jitter малий: клієнти, які впали одночасно, і повторюють майже одночасно.</td></tr>
+<tr><td data-th="Що виміряли">429 з <code>retry-after: 7</code></td><td data-th="Число">рівно 7000 мс</td><td data-th="Що з цього випливає">CLI чекає рівно стільки, скільки сказав сервер.</td></tr>
+<tr><td data-th="Що виміряли">429 spend cap</td><td data-th="Число">10 повторів, 177 с</td><td data-th="Що з цього випливає">Остаточна відмова, але CLI повторює її як тимчасову: подія <code>api_retry</code> несе <code>error: rate_limit</code>, і відрізнити її можна лише за текстом фінальної помилки.</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Python SDK Anthropic типово повторює двічі: помилки з'єднання, 408, 409, 429 і ≥ 500, з урахуванням <code>retry-after</code>. Тайм-аут запиту в ньому 10 хвилин, і запит, що вийшов за тайм-аут, теж повторюється. Claude Code повторює до 10 разів (<code>CLAUDE_CODE_MAX_RETRIES</code>), а перед кожним повтором пише в stream-json подію <code>system/api_retry</code> з полями <code>attempt</code>, <code>retry_delay_ms</code>, <code>error_status</code> і <code>error</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="retries">
+<div class="sec-h"><span class="num">03</span><h2>Повтори правильно<span class="sub">Backoff, jitter, retry-after, бюджет — і лише в одному місці</span></h2></div>
+<p>Чому повтори множаться між рівнями, розібрано в 14.2: 10 × 3 × 2 = 60 спроб на один запит. Тут про те, як влаштувати той єдиний рівень, який повторює.</p>
+<ol class="steps">
+<li><b>Exponential backoff із full jitter.</b> Пауза перед спробою <i>n</i> — випадкова з проміжку [0; min(cap, base·2<sup>n</sup>)]. Без випадковості клієнти, що впали разом, разом і повторюють. Brooker (AWS, 2015) порівняв варіанти: «equal jitter» найгірший, а між full і decorrelated jitter однозначного переможця немає. Full виконує менше роботи, decorrelated завершується трохи швидше.</li>
+<li><b>Retry-after важливіший за формулу.</b> Якщо сервер назвав час, чекайте не менше. Якщо цей час не вкладається в дедлайн задачі, не чекайте взагалі: перемикайтеся на іншу модель або віддавайте відмову одразу.</li>
+<li><b>Межа на запит і бюджет на клієнта.</b> У Google SRE запит має щонайбільше три спроби, а частка повторів у трафіку клієнта не перевищує 10%. Без бюджету найгірший випадок дає ×3 навантаження, з бюджетом — ×1,1. AWS робить те саме відром жетонів у SDK з 2016 року: поки є жетони, повтори дозволено, коли закінчились — лише з фіксованою швидкістю.</li>
+<li><b>Ідемпотентність.</b> Повторювати можна лише одиницю роботи, яка не має побічних ефектів, або яка має ключ ідемпотентності (6.5). Сесія, що вже викликала <code>save_quiz</code>, другий раз не запускається.</li>
+<li><b>Не повторювати 4xx.</b> 400, 401, 403 і 413 після повтору не зміняться. Spend cap — теж 429, але повторювати його марно.</li>
+</ol>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Повтори в Lectern після 15.1</th><th>Хто вирішує</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">CLI (Agent SDK)</td><td data-th="Повтори в Lectern після 15.1"><b>Єдиний цикл повторів</b>: <code>CLAUDE_CODE_MAX_RETRIES=3</code> замість 10, з retry-after і без втрати контексту сесії</td><td data-th="Хто вирішує">CLI — як чекати; runner — чи дозволити</td></tr>
+<tr><td data-th="Рівень">runner</td><td data-th="Повтори в Lectern після 15.1">Той самий запит не повторює. Кожен <code>api_retry</code> бере жетон зі спільного відра; повтор, що не встигає до дедлайну, або категорія на кшталт <code>billing_error</code> зупиняють сесію. Друга сесія буває лише у двох випадках: процес CLI впав (та сама модель, після full jitter) або transient-відмова (інша модель). Обидві оплачуються з того самого відра</td><td data-th="Хто вирішує"><code>RetryPolicy</code>, <code>Breakers</code></td></tr>
+<tr><td data-th="Рівень">сервіс</td><td data-th="Повтори в Lectern після 15.1">Не повторює. Semantic-відмову лікує каскад (9.3), partial — <code>resume</code> на запит клієнта</td><td data-th="Хто вирішує"><code>routing.next_step</code></td></tr>
+<tr><td data-th="Рівень">клієнт</td><td data-th="Повтори в Lectern після 15.1">Повторює <code>POST</code> з тим самим <code>Idempotency-Key</code>; на 429 від черги чекає <code>Retry-After</code> (14.2)</td><td data-th="Хто вирішує">клієнт</td></tr>
+</tbody></table></div>
+<pre class="code" data-lang="python"><span class="cm"># runner._session: CLI просить дозволу на повтор подією api_retry — runner може відмовити</span>
+<span class="k">if</span> isinstance(message, SystemMessage) <span class="k">and</span> message.subtype == <span class="s">"api_retry"</span>:
+    d = message.data
+    delay_s = (d.get(<span class="s">"retry_delay_ms"</span>) <span class="k">or</span> <span class="n">0</span>) / <span class="n">1000</span>          <span class="cm"># = retry-after, якщо сервер його дав</span>
+    <span class="k">if</span> d.get(<span class="s">"error"</span>) <span class="k">in</span> PERSISTENT_RETRY:                  <span class="cm"># billing_error, model_not_found…</span>
+        stop(<span class="s">"api_error"</span>, <span class="s">"retrying will not help"</span>)
+    <span class="k">elif</span> _clock() - started + delay_s &gt; timeout_s:           <span class="cm"># не встигне — не чекаємо</span>
+        stop(<span class="s">"deadline"</span>, <span class="s">f"retry in </span>{delay_s:g}<span class="s"> s would pass the deadline"</span>)
+    <span class="k">elif not</span> budget.withdraw():                              <span class="cm"># спільне відро процесу</span>
+        stop(<span class="s">"retry_budget"</span>, <span class="s">"retry budget exhausted"</span>)</pre>
+<div class="note arch"><span class="lbl">Чому повторює CLI, а не runner</span>
+<p>Runner не бачить заголовків відповіді. Коли повтори в CLI вимкнено (<code>CLAUDE_CODE_MAX_RETRIES=0</code>), на 429 з <code>retry-after: 7</code> ми отримали лише текст «Request rejected (429)», і сам <code>retry-after</code> до runner-а не дійшов. До того ж повтор усередині сесії зберігає її контекст, а нова сесія — це новий процес і ще один хід. Тому CLI робить повтор, а runner через подію <code>api_retry</code> вирішує, чи дозволити його.</p>
+</div>
+</section>
+
+<section class="sec" id="fallback">
+<div class="sec-h"><span class="num">04</span><h2>Fallback і автомат<span class="sub">Інша модель, інший провайдер, деградований режим</span></h2></div>
+<p><b>Fallback-модель CLI</b> (9.3) спрацьовує, коли основна модель перевантажена, недоступна або повертає іншу серверну помилку без повтору. Помилки автентифікації, білінгу, rate limit, розміру запиту й транспорту на запасну модель <b>ніколи</b> не перемикають. Перемикання діє лише до кінця поточного ходу: наступне повідомлення знову йде на основну модель. Отже, коли модель лежить довго, кожен хід спершу платить за невдалу спробу, а від 429 ця fallback-модель не рятує взагалі.</p>
+<p><b>Автомат (circuit breaker) на кожну модель</b> закриває цю прогалину. Він рахує невдалі сесії, а не окремі запити, і після кількох поспіль перестає пускати на модель нові задачі. Цей патерн Фаулер описав 2014 року, а популяризував Майкл Найгард у «Release It!».</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 300" role="img" aria-label="Стани автомата моделі: closed, open, half-open">
+  <defs>
+    <marker id="l69b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="100" y="8" width="160" height="56" rx="10" class="bx t"/>
+  <text x="180" y="31" text-anchor="middle" class="tx b">closed</text>
+  <text x="180" y="50" text-anchor="middle" class="tx s">задачі йдуть на модель</text>
+  <path d="M180 64 V 112" class="ln a" marker-end="url(#l69b)"/>
+  <text x="188" y="86" class="tx s">3 transient-сесії поспіль</text>
+  <text x="188" y="102" class="tx s">(spend cap, 404 — одразу)</text>
+  <rect x="100" y="116" width="160" height="56" rx="10" class="bx p"/>
+  <text x="180" y="139" text-anchor="middle" class="tx b">open</text>
+  <text x="180" y="158" text-anchor="middle" class="tx s">задачі → інша модель</text>
+  <path d="M180 172 V 220" class="ln a" marker-end="url(#l69b)"/>
+  <text x="188" y="200" class="tx s">через 30 с</text>
+  <rect x="100" y="224" width="160" height="56" rx="10" class="bx m"/>
+  <text x="180" y="247" text-anchor="middle" class="tx b">half-open</text>
+  <text x="180" y="266" text-anchor="middle" class="tx s">одна пробна сесія</text>
+  <path d="M100 252 C 30 252, 30 36, 96 36" class="ln a" marker-end="url(#l69b)"/>
+  <text x="14" y="146" class="tx s">успіх</text>
+  <path d="M260 252 C 330 252, 330 144, 264 144" class="ln a" marker-end="url(#l69b)"/>
+  <text x="300" y="206" class="tx s">збій</text>
+</svg>
+<figcaption>Автомат моделі в runner-і Lectern. Окремий автомат на акаунт розмикається першою ж відмовою spend cap, 401, 402 чи 403 і на 300 с зупиняє всі моделі: на тому самому рахунку інша модель теж не відповість.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Варіант</th><th>Що дає</th><th>Обмеження (перевірено 18.10.2026)</th></tr></thead>
+<tbody>
+<tr><td data-th="Варіант">Інша модель каскаду</td><td data-th="Що дає">Задача виконується, поки основна модель лежить</td><td data-th="Обмеження (перевірено 18.10.2026)">Haiku → Sonnet: у справжньому прогоні 14,6× дорожче ($0,0814 проти $0,0056). Якщо лежить увесь провайдер, ціна зростає, а відмов не меншає</td></tr>
+<tr><td data-th="Варіант">Інший провайдер (Bedrock, Google Cloud)</td><td data-th="Що дає">Окремі квоти й окрема інфраструктура</td><td data-th="Обмеження (перевірено 18.10.2026)">Інші id (<code>anthropic.claude-haiku-5-5</code> на Bedrock), власні дати зняття моделей. Аліас <code>haiku</code> у Claude Code означає там Haiku 4.5 (10.2)</td></tr>
+<tr><td data-th="Варіант">Серверний fallback на відмову (refusal)</td><td data-th="Що дає">API сам повторює запит, на який класифікатор відповів refusal, на рекомендованій моделі</td><td data-th="Обмеження (перевірено 18.10.2026)">Бета <code>fallbacks: "default"</code>. Не працює для Haiku 5.5, на Bedrock, Google Cloud і Foundry, а також у Batch API</td></tr>
+<tr><td data-th="Варіант">Деградований режим</td><td data-th="Що дає">Чесна часткова відповідь замість відмови</td><td data-th="Обмеження (перевірено 18.10.2026)">Кеш результату (лише точний збіг), паркування задачі (зайнятий воркер означає 429 для нових клієнтів), оцінка <code>--dry-run</code> замість квізу</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Ціна автомата</span>
+<p>У тій самій статті Amazon Builders' Library circuit breaker-и критикують: вони додають системі окремі режими роботи, які важко тестувати, і можуть суттєво подовжити відновлення. Як альтернативу стаття пропонує обмежувати повтори локально, відром жетонів. Тому в Lectern автомат має лише три стани, детермінований поріг і тести на віртуальному годиннику, а частоту повторів обмежує бюджет.</p>
+</div>
+</section>
+
+<section class="sec" id="versions">
+<div class="sec-h"><span class="num">05</span><h2>Версії моделі й промпту<span class="sub">Pin, реєстр, гейт, deprecation watch</span></h2></div>
+<p>За документацією моделей Anthropic, <b>кожен id моделі на Claude API — закріплений знімок</b>, і з покоління 4.6 це стосується також id без дати (<code>claude-haiku-5-5</code>). Дрейфують аліаси самого Claude Code: <code>haiku</code>, <code>sonnet</code> і <code>opus</code> «вказують на рекомендовану версію для вашого провайдера й оновлюються з часом».</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Провайдер</th><th><code>haiku</code> у Claude Code</th><th><code>sonnet</code></th></tr></thead>
+<tbody>
+<tr><td data-th="Провайдер">Claude API</td><td data-th="haiku у Claude Code">Haiku 5.5</td><td data-th="sonnet">Sonnet 5.5</td></tr>
+<tr><td data-th="Провайдер">Claude Platform on AWS</td><td data-th="haiku у Claude Code">Haiku 4.5</td><td data-th="sonnet">Sonnet 4.6</td></tr>
+<tr><td data-th="Провайдер">Bedrock, Google Cloud</td><td data-th="haiku у Claude Code">Haiku 4.5</td><td data-th="sonnet">Sonnet 4.5</td></tr>
+</tbody></table></div>
+<p>До цього уроку <code>lectern serve</code> і <code>batch_generate.sh</code> передавали аліас (B51). Той самий код на Bedrock генерував би квізи Haiku 4.5, а кеш віддавав би їх як результат того самого ключа. Тепер аліас перетворюється на id в одному місці (<code>routing.resolve</code>), id іншого провайдера задає змінна <code>LECTERN_MODEL_HAIKU</code>, а повний id входить у ключ кешу: нова модель автоматично дає новий ключ.</p>
+<h3>Deprecation watch</h3>
+<p>Стадії моделі: active → legacy → deprecated → retired. Про зняття публічної моделі попереджають щонайменше за 60 днів, а запити до знятої моделі просто падають. Bedrock і Google Cloud призначають власні дати. Що зараз на сторінці зняття моделей: <code>claude-sonnet-4-5-20250929</code> оголошено deprecated 30.09.2026, зняття — 30.11.2026, замінник — <code>claude-sonnet-5-5</code>.</p>
+<ol class="steps">
+<li><b>Інвентар:</b> усі id моделей у коді, конфігах і evals (у Lectern тест <code>test_models_pinned.py</code> не пропускає аліас у batch і evals).</li>
+<li><b>Джерела:</b> сторінка model deprecations і листи; у Console: Usage → Export дає CSV з розбивкою за ключем і моделлю.</li>
+<li><b>Рантайм:</b> 404 на модель розмикає її автомат одразу, задачі переходять на іншу модель, а в потоці задачі з'являються події <code>fallback</code> і <code>attempt</code> зі <code>status: 404</code>, на які й ставлять alert.</li>
+<li><b>Міграція — як новий промпт:</b> заміна моделі змінює поведінку так само, як заміна інструкції, тому проходить той самий гейт evals.</li>
+</ol>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run2.txt — LECTERN_MODEL_HAIKU=claude-haiku-0-0 (модель, якої немає)</span></div>
+<pre>[claude-code:unrecognized_model]
+  {"model":"claude-haiku-0-0"}
+status: done · cost_usd: 0.081387
+attempts:
+  claude-haiku-0-0   api_error  <span class="er">status 404</span>  $0
+  claude-sonnet-5-5  ok                     $0.0814
+events: status, status, <span class="y">fallback</span>, tool_call,
+  tool, …, result, status, attempt, status
+check: ok · items 5 · covered 5</pre>
+<div class="cap">реальний прогін через <code>lectern serve</code> (TestClient) з runner-ом 15.1 · 18.10.2026 · JSON переписано в рядки, значення без змін · <code>console/real/run2.txt</code></div></div>
+<h3>Версія промпту — як реліз</h3>
+<p>Промпт — це код (5.1), і його версія вже є: <code>cache.prompt_version()</code>, хеш SYSTEM, TASK і схем інструментів. Під цю версію пишуться ключ кешу й replay-кеш evals. Новий файл <code>prompts/registry.json</code> зберігає для кожної версії повний sha256, статус (canary, default або retired), дату й результат гейту. Діють три правила, і всі перевіряє тест:</p>
+<ul>
+<li>default рівно одна, і це та версія, яку віддає код. Поміняли одне слово в SYSTEM і не провели його через промоцію — <code>check.sh</code> червоний;</li>
+<li>статус підвищують лише після гейту evals (12.3): <code>scripts/promote_prompt.py</code> запускає replay <code>run_evals.py</code>, а промах кешу теж означає відмову;</li>
+<li>rollback — це той самий шлях: повернути промпт у коді (<code>git revert</code>) і знову провести <code>default</code> через гейт. Replay-кеш старої версії лишається в <code>evals/replay/</code>.</li>
+</ul>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">python scripts/promote_prompt.py status</span>
+p-861a085610  default  since 2026-10-18
+  src/lectern/tools.py SYSTEM
+code serves p-861a085610: default
+<span class="ps">$ </span><span class="c">python scripts/promote_prompt.py canary \
+    evals/variants/quote-first-sentence.txt</span>
+<span class="er">refused: eval gate failed for p-a42cd5c499:</span>
+<span class="er">  stored result: answerability: 0.453 &lt; min 0.9;</span>
+<span class="er">  answerability: 0.453 dropped 0.453 from 0.907;</span>
+<span class="er">  closed_book: 0.687 &gt; max 0.65</span>
+<span class="d"># копія, у SYSTEM додано «Be concise.»</span>
+<span class="ps">$ </span><span class="c">python scripts/promote_prompt.py default</span>
+<span class="er">refused: eval gate failed for p-f9c32ee472:</span>
+<span class="er">  no replay for p-f9c32ee472:</span>
+<span class="er">  run run_evals.py --live first</span>
+<span class="ps">$ </span><span class="c">pytest -q tests/test_prompt_registry.py</span>
+<span class="er">E  assert 'p-861a085610' == 'p-f9c32ee472'</span></pre>
+<div class="cap">реальний вивід · 18.10.2026 · довгі рядки перенесено, хвіст рядка про промах кешу скорочено · <code>console/promote.txt</code></div></div>
+<p>Статус canary означає, що версія пройшла гейт і чекає на перевірку на частині трафіку. Самого розподілу трафіку сервіс ще не робить: ключ кешу рахується від <code>PROMPT_VERSION</code> коду, тож canary-відповідь потрапила б у кеш під чужою версією. Це наступний пункт беклогу (B230).</p>
+</section>
+
+<section class="sec" id="faults">
+<div class="sec-h"><span class="num">06</span><h2>Fault injection<span class="sub">40 задач через сервіс: до і після</span></h2></div>
+<p>Політику перевіряли не на справжньому збої, а на справжньому сервісі. <code>create_app</code> і runner — справжні, CLI — фейковий <code>ClaudeSDKClient</code>. Кожен запит до моделі він пропускає через <code>FaultyTransport</code> і повторює так, як щойно виміряний CLI: до <code>CLAUDE_CODE_MAX_RETRIES</code> разів, із затримкою 500·2<sup>n−1</sup> мс плюс 0–25% (або <code>retry-after</code>), і перед кожним повтором шле <code>api_retry</code>. Квіз — це 4 запити, як у профілі 10.4. Гейт підмінено миттєвим «ok», бо міряли надійність, а не якість. Час стиснуто в 250 разів. «До» — канонічний Lectern, «після» — цей урок; 40 задач, 2 воркери, 3 seed-и на рядок.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сценарій</th><th>Код</th><th>Успіх</th><th>p50, с</th><th>Запитів на задачу</th><th>$ на квіз</th></tr></thead>
+<tbody>
+<tr><td data-th="Сценарій">steady: 5% 529, 5% 429 (retry-after 2–10 с), 1% без відповіді, 2% обрив</td><td data-th="Код">до / після</td><td data-th="Успіх">100% / 100%</td><td data-th="p50, с">149–159 / 149–161</td><td data-th="Запитів на задачу">4,5–4,6 / 4,6–4,7</td><td data-th="$ на квіз">0,0025 / 0,0025</td></tr>
+<tr><td data-th="Сценарій">outage: Haiku 10 хв віддає лише 529, Sonnet здоровий</td><td data-th="Код">до / після</td><td data-th="Успіх">85% / <b>100%</b></td><td data-th="p50, с">708–712 / <b>179–184</b></td><td data-th="Запитів на задачу">5,4 / 5,0</td><td data-th="$ на квіз">0,0025 / <b>0,049</b></td></tr>
+<tr><td data-th="Сценарій">spend cap: кожен запит — 429 без retry-after</td><td data-th="Код">до / після</td><td data-th="Успіх">0% / 0%</td><td data-th="p50, с">1886–1890 / <b>2</b></td><td data-th="Запитів на задачу">11 / <b>0,2</b></td><td data-th="$ на квіз">— / —</td></tr>
+<tr><td data-th="Сценарій">brownout: обидві моделі 10 хв, 50% 529</td><td data-th="Код">до / після</td><td data-th="Успіх"><b>100%</b> / 85–90%</td><td data-th="p50, с">206–222 / 634–655</td><td data-th="Запитів на задачу">7,5–8,0 / <b>5,0–5,1</b></td><td data-th="$ на квіз">0,0025 / 0,0035–0,047</td></tr>
+<tr><td data-th="Сценарій">brownout, бюджет 0,5 і 20 жетонів</td><td data-th="Код">після</td><td data-th="Успіх">90–92,5%</td><td data-th="p50, с">312–539</td><td data-th="Запитів на задачу">6,3–6,9</td><td data-th="$ на квіз">0,009–0,036</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>Рідкі збої.</b> Різниці немає: їх і раніше поглинав CLI, і трьох повторів для цього досить.</li>
+<li><b>Одна модель лежить.</b> Автомат і fallback піднімають успіх з 85% до 100%, а медіану з ~710 до ~180 с. Але кожен квіз тепер робить Sonnet, тому він коштує у 20 разів дорожче. Це рішення продукту, а не налаштування за замовчуванням.</li>
+<li><b>Spend cap.</b> Раніше задача дізнавалась про відмову в середньому за 31 хвилину, після 11 запитів. Тепер — за 2 секунди: після першої відмови розмикається автомат акаунта, а 440 запитів перетворюються на 8.</li>
+<li><b>Brownout — чесний програш.</b> Бюджет на третину зменшує навантаження на перевантаженого провайдера (8 → 5 запитів на задачу), але втрачає 10–15% задач, а медіана зростає втричі через паркування. Запасна модель тут не допомагає, бо лежить увесь провайдер, і лише дорожчає: в одному з seed-ів Sonnet отримав 49 сесій. Симуляція не моделює зворотного зв'язку: провайдер не стає гіршим від наших повторів. Тому вона завищує користь агресивних повторів.</li>
+</ul>
+<div class="note product"><span class="lbl">Рішення, а не налаштування</span>
+<p>Бюджет 10% захищає вашу квоту rate limit і чужу перевантажену систему, але в brownout ціною втрачених задач. Для асинхронних задач, де користувач готовий чекати, розумніше довше паркувати задачу (<code>park_s</code>) і не перемикатися на модель у 20 разів дорожчу, коли автомати розімкнені на обох моделях одразу (B231). Для інтерактивних запитів, навпаки, краще швидка чесна відмова.</p>
+</div>
+<p>Два справжні прогони через сервіс з новим runner-ом, Haiku і та сама <code>samples/lecture.txt</code>, підтвердили, що нормальний шлях не змінився: <code>done</code>, 5/5 цитат, $0,0064 і $0,0056. Третій прогін із неіснуючою моделлю наведено вище ($0,0814 на Sonnet). Разом це $0,093.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Наскрізний проєкт<span class="sub">Lectern: runner 15.1, B51, B52, реєстр промптів</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 15.1 · <code>runner.py</code>, <code>routing.py</code>, <code>estimate.py</code>, <code>prompt_registry.py</code>, B51, B52</div><div class="pb">
+<p><b>Що було.</b> CLI повторював до 10 разів, і цього ніхто не обмежував. Persistent-відмови (spend cap) витрачали три хвилини на задачу, недоступна модель отримувала задачі далі, а аліас <code>haiku</code> міг означати різні моделі в різних провайдерів. Версія промпту була в ключі кешу, але жодне правило не вимагало, щоб вона пройшла evals.</p>
+<ul>
+<li><code>runner.py</code>: <code>RetryPolicy</code> (CLI повторює ≤ 3 рази, відро на 10 жетонів, +0,1 за успішний запит і +0,05/с, автомат 3 сесії/30 с, акаунт 300 с, <code>park_s</code> 120). Ще <code>RetryBudget</code>, <code>Breaker</code>, <code>Breakers</code>, <code>full_jitter</code>, розбір <code>api_retry</code> із зупинкою сесії та проходи моделей із паркуванням. <code>RunOutcome</code> отримав <code>served_model</code>, <code>status</code>, <code>failure</code> і <code>attempts</code>, а вартість тепер — сума всіх сесій.</li>
+<li><code>routing.py</code>: <code>PINNED</code> і <code>resolve()</code> (B51), <code>classify()</code> (таксономія) та <code>fallback_for()</code>. <code>agent_sdk.py</code> і <code>cli.py</code> розв'язують модель тут само, а <code>batch_generate.sh</code> типово бере <code>claude-haiku-5-5</code>.</li>
+<li><code>service.py</code> — один рядок: ключ кешу рахується від повних id (<code>models_for</code>).</li>
+<li><code>estimate.py</code> (B52): ціна кожного запиту понад 100 тис. токенів промпту — за другим рівнем Haiku 5.5 (×5 на все, і кешоване теж), поле <code>largest_request</code> і тривога з 80 тис.</li>
+<li><code>prompts/registry.json</code>, <code>prompt_registry.py</code>, <code>scripts/promote_prompt.py</code>: реєстр, гейт і rollback.</li>
+</ul>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Лекція, символів</th><th>Найбільший запит, токенів</th><th>Оцінка до B52</th><th>Після B52</th></tr></thead>
+<tbody>
+<tr><td data-th="Лекція, символів">200 000 (стеля <code>QuizRequest</code>)</td><td data-th="Найбільший запит, токенів">89 302 · тривога</td><td data-th="Оцінка до B52">$0,0204</td><td data-th="Після B52">$0,0204</td></tr>
+<tr><td data-th="Лекція, символів">240 000 (модуль, RAG-контекст)</td><td data-th="Найбільший запит, токенів">105 766 · 3 запити понад поріг</td><td data-th="Оцінка до B52">$0,0240</td><td data-th="Після B52"><b>$0,1185</b></td></tr>
+</tbody></table></div>
+<p><b>Перевірка:</b> 605 → 634 тестів (<code>test_reliability.py</code> — 16, <code>test_prompt_registry.py</code> — 8, <code>test_models_pinned.py</code> — 3, B52 — 2). Шість старих тестів чекали аліасів, тепер вони чекають повних id. <code>ruff</code> (ANN) і <code>scripts/check.sh</code> зелені, mypy — 28 помилок, як у baseline. Мережа в тестах не потрібна: CLI фейковий, годинник віртуальний.</p>
+<p><b>Ваш крок:</b> запустіть <code>sim.py --scenario outage --no-fallback</code> (з <code>console/fault-sim/</code>) на своїй копії і порівняйте успіх і медіану з таблицею. Так ви побачите, скільки дає саме fallback, а скільки — паркування.</p>
+</div></div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">08</span><h2>Повтори й fallback в інструментах<span class="sub">Claude Code, Codex, Cursor</span></h2></div>
+<div class="tabs">
+<input type="radio" name="rel-t" id="rel-t1" checked><input type="radio" name="rel-t" id="rel-t2"><input type="radio" name="rel-t" id="rel-t3">
+<div class="tab-l"><label for="rel-t1">Claude Code</label><label for="rel-t2">Codex CLI</label><label for="rel-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="ps">$ </span><span class="c">claude --help | grep -A5 -- \
+    --fallback-model</span>
+--fallback-model &lt;model&gt;
+  Enable automatic fallback to
+  specified model(s) when the
+  default model is overloaded or
+  not available. Accepts a comma-
+  separated list to try each in
+  order. Re-tries the primary at
+  the start of each user turn.</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.302 · переноси рядків змінено</div></div>
+<ul>
+<li><code>--fallback-model sonnet,haiku</code> або налаштування <code>fallbackModel</code>: до 3 моделей; перемикання діє лише до кінця ходу; на 429, білінг і автентифікацію не спрацьовує. Список фільтрує <code>availableModels</code>. В Agent SDK те саме задає <code>fallback_model</code>.</li>
+<li><code>CLAUDE_CODE_MAX_RETRIES</code> (типово 10). Для 529 є ще база <code>CLAUDE_CODE_OVERLOADED_RETRY_BASE_DELAY_MS</code> (500–32000) і стеля <code>…_MAX_DELAY_MS</code> (32000–64000).</li>
+<li>Pin: повний id у <code>--model</code> або <code>ANTHROPIC_DEFAULT_HAIKU_MODEL</code>, бо аліас «оновлюється з часом».</li>
+</ul>
+</div>
+<div class="tab-p">
+<pre class="code" data-lang="toml"><span class="cm"># ~/.codex/config.toml — повтори задаються на провайдера моделі</span>
+model = <span class="s">"…"</span>                       <span class="cm"># явна модель замість типової</span>
+[model_providers.<span class="s">&lt;id&gt;</span>]
+request_max_retries = <span class="n">4</span>          <span class="cm"># HTTP-запити до провайдера (типово 4)</span>
+stream_max_retries = <span class="n">5</span>           <span class="cm"># перепідключення після обриву SSE (типово 5)</span>
+stream_idle_timeout_ms = <span class="n">300000</span>  <span class="cm"># тиша в потоці = обрив (типово 5 хв)</span></pre>
+<p>Ключі й типові значення взято з офіційного Configuration Reference Codex, команду в цьому уроці не запускали. Ланцюжка запасних моделей, як <code>fallbackModel</code> у Claude Code, у довіднику немає.</p>
+</div>
+<div class="tab-p">
+<p>Режим <b>Auto</b> — це Cursor Router: класифікатор обирає модель для кожного запиту, і, за документацією, «пул моделей змінюється з часом». Для відтворюваного прогону (CI, evals) модель задають явно:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="ps">$ </span><span class="c">agent -p --model &lt;model&gt; "…"</span></pre>
+<div class="cap">команда з офіційної документації Cursor CLI · не запускалась у цьому уроці</div></div>
+<p>Налаштувань повторів чи запасної моделі в документації Cursor немає. Їх доводиться будувати у вашому власному коді навколо виклику.</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">І картки для самоперевірки</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Що станеться</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">«429 — значить чекаємо і повторюємо»</td><td data-th="Що станеться">Кожна задача 3 хвилини тримає воркера: 40 задач — 440 марних запитів і пів години до відмови</td><td data-th="Як правильно">Класифікувати за <code>retry-after</code> і <code>error_code</code>; persistent — розмикати автомат акаунта</td></tr>
+<tr><td data-th="Помилка">Додати повтори в runner поверх CLI</td><td data-th="Що станеться">10 × 3 спроби, всі в ту саму вичерпану квоту (14.2)</td><td data-th="Як правильно">Повторює один рівень, решта лише дозволяє чи забороняє</td></tr>
+<tr><td data-th="Помилка">Backoff без jitter або з малим jitter</td><td data-th="Що станеться">Клієнти, що впали разом, разом повторюють хвилями</td><td data-th="Як правильно">Full jitter: випадкова пауза з [0; min(cap, base·2<sup>n</sup>)]</td></tr>
+<tr><td data-th="Помилка">Fallback на дорожчу модель без ліміту</td><td data-th="Що станеться">Під час outage квіз коштує в 20 разів більше; у brownout — без жодної користі</td><td data-th="Як правильно">Fallback як рішення продукту: бюджет задачі, ціна, автомати обох моделей</td></tr>
+<tr><td data-th="Помилка">Аліас моделі в сервісі</td><td data-th="Що станеться">На іншому провайдері — інша модель під тим самим ключем кешу</td><td data-th="Як правильно">Повний id і явне розв'язання аліасу в одному місці; id входить у ключ кешу</td></tr>
+<tr><td data-th="Помилка">Промпт змінено «дрібно», без evals</td><td data-th="Що станеться">Регресію помітять користувачі (варіант 12.3: answerability 0,91 → 0,45)</td><td data-th="Як правильно">Реєстр: default = те, що віддає код, і тільки через гейт</td></tr>
+</tbody></table></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">429 без retry-after</span><span class="h">що це може бути?</span></span><span class="b"><span class="t">Spend cap тиру</span><span class="d">enforced_spend_limit_reached: доступ — 1-го числа, повтор марний</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">full jitter</span><span class="h">формула паузи</span></span><span class="b"><span class="t">random(0, min(cap, base·2ⁿ))</span><span class="d">розводить повтори клієнтів, що впали одночасно</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">half-open</span><span class="h">стан автомата</span></span><span class="b"><span class="t">Одна пробна сесія</span><span class="d">успіх — closed, збій — знову open на cooldown</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">--fallback-model</span><span class="h">коли НЕ спрацює?</span></span><span class="b"><span class="t">429, білінг, автентифікація</span><span class="d">і діє лише до кінця поточного ходу</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">claude-haiku-5-5</span><span class="h">аліас чи знімок?</span></span><span class="b"><span class="t">Закріплений знімок</span><span class="d">з покоління 4.6 id без дати теж pinned; дрейфує аліас haiku</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">rollback промпту</span><span class="h">як у Lectern?</span></span><span class="b"><span class="t">git revert + promote default</span><span class="d">гейт знову проганяє replay старої версії</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">10</span><h2>Квіз<span class="sub">11 ситуацій з цих вимірів</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. API повертає 429 без <code>retry-after</code>, у тілі <code>error_code: enforced_spend_limit_reached</code>. Що робить сервіс?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Повторює з exponential backoff: 429 означає перевищення ліміту, а ліміт поповнюється відром жетонів</span></label><label class="opt ok"><input type="radio" name="q1"><span>Відмовляє одразу й розмикає автомат акаунта: це місячний spend cap, і повтор до 1-го числа не допоможе</span></label><label class="opt"><input type="radio" name="q1"><span>Перемикає задачу на Sonnet: rate limit рахується окремо для кожної моделі, тож там квота ще є</span></label></div>
+    <div class="why yes">Так. Тип помилки той самий <code>rate_limit_error</code>, але це persistent-відмова: доступ повернеться в перший день наступного місяця. Інша модель на тому самому рахунку теж упреться в cap.</div>
+    <div class="why no">Spend cap — persistent-відмова. Документація прямо каже, що повтори, включно з автоматичними в SDK, не вдадуться, доки доступ не відновиться. Ліміт рахується на акаунт, тож інша модель його не обійде.</div></div>
+  <div class="q"><div class="qt">2. <code>CLAUDE_CODE_MAX_RETRIES</code> не задано, модель стабільно віддає 529, тайм-аут сесії — 180 с. Що побачить сервіс?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Майже три хвилини очікування, потім api_error: CLI зробить 11 запитів приблизно за 174 с</span></label><label class="opt"><input type="radio" name="q2"><span>Відмову секунди за дві: CLI, як Python SDK, типово повторює двічі й одразу здається</span></label><label class="opt"><input type="radio" name="q2"><span>Тихе перемикання на запасну модель, навіть якщо fallback_model у сесії не задано</span></label></div>
+    <div class="why yes">Так. Саме це ми виміряли на фейковому API: 10 повторів, паузи від 0,5 до ~36 с, 174 с до відмови.</div>
+    <div class="why no">Двічі повторює Python SDK, а Claude Code — до 10 разів. Запасна модель вмикається лише тоді, коли її задано через <code>--fallback-model</code> чи <code>fallbackModel</code>.</div></div>
+  <div class="q"><div class="qt">3. Задачі лишилося 30 с, а CLI повідомляє: наступний повтор через 60 с (<code>retry-after</code>). Як має вчинити runner?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Дочекатися 60 с: retry-after обов'язковий, а дедлайн задачі — лише орієнтир для черги</span></label><label class="opt"><input type="radio" name="q3"><span>Повторити одразу: дедлайн задачі важливіший за підказку, яку прислав сервер</span></label><label class="opt ok"><input type="radio" name="q3"><span>Зупинити сесію зараз і перейти на іншу модель — цей повтор однаково не встигне</span></label></div>
+    <div class="why yes">Так. Чекати на повтор, що не встигне, означає марно тримати воркера. Ранній повтор, за документацією, «не вдасться». Лишається інша модель або чесна відмова.</div>
+    <div class="why no">Повтор раніше, ніж каже <code>retry-after</code>, документація прямо називає марним. А чекати довше за дедлайн — це гарантована відмова, яка ще й займає воркера.</div></div>
+  <div class="q"><div class="qt">4. Чому в Lectern повтор робить CLI, а runner лише дозволяє його або забороняє?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>CLI працює окремим процесом, тож його очікування не блокує цикл подій сервісу</span></label><label class="opt ok"><input type="radio" name="q4"><span>Лише CLI бачить retry-after, а повтор усередині сесії зберігає її контекст</span></label><label class="opt"><input type="radio" name="q4"><span>Agent SDK не дає runner-у запускати другу сесію для тієї самої задачі</span></label></div>
+    <div class="why yes">Так. Коли повтори в CLI вимкнено, <code>retry-after</code> губиться: runner отримує лише текст помилки. Нова сесія коштує новий процес і ще один хід.</div>
+    <div class="why no">Runner запускає другу сесію (fallback, падіння процесу), а <code>asyncio</code> не блокується ні в тому, ні в іншому разі. Вирішальне інше: <code>retry-after</code> бачить лише CLI.</div></div>
+  <div class="q"><div class="qt">5. Haiku 10 хвилин віддає лише 529, Sonnet здоровий. Що змінили автомат і fallback у fault injection?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Успіх 85% → 100%, медіана ~710 → ~180 с, але квіз став у ~20 разів дорожчим</span></label><label class="opt"><input type="radio" name="q5"><span>Нічого: CLI і раніше перемикався на 529 сам, через fallback_model сервісу</span></label><label class="opt"><input type="radio" name="q5"><span>Успіх 100% без нових витрат, бо відхилені запити з 529 ніхто не тарифікує</span></label></div>
+    <div class="why yes">Так. Задачі виконуються, але на Sonnet ($2/$10 проти $0,10/$0,50 за мільйон токенів). Ця ціна — рішення продукту.</div>
+    <div class="why no">У сервісі за замовчуванням <code>fallback_model=None</code>. Запити з 529 справді безкоштовні, але успішні тепер робить модель, у 20 разів дорожча.</div></div>
+  <div class="q"><div class="qt">6. Brownout: обидві моделі 10 хвилин відповідають 529 на кожен другий запит. Що дав бюджет повторів 10% порівняно з каноном?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Нічого: рідкі повтори й без бюджету вкладаються в 10% трафіку клієнта</span></label><label class="opt"><input type="radio" name="q6"><span>Вищий успіх: менше повторів — менше перевантаження, і більше запитів проходить</span></label><label class="opt ok"><input type="radio" name="q6"><span>Менше запитів (8 → 5 на задачу), але мінус 10–15% задач і втричі довша медіана</span></label></div>
+    <div class="why yes">Так. Бюджет зменшує навантаження ціною задач. У симуляції немає зворотного зв'язку, тож користь від повторів вона ще й завищує.</div>
+    <div class="why no">За 50% відмов потрібен приблизно один повтор на запит, а це далеко за 10%. У симуляції провайдер від наших повторів не гіршає, тому успіх бюджет підвищити не міг: він лише зрізав навантаження.</div></div>
+  <div class="q"><div class="qt">7. Lectern розгорнули на Bedrock, у <code>QuizRequest</code> — <code>model: "haiku"</code>, коду до B51. Що піде не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Нічого: Bedrock розв'язує аліаси Claude Code у ті самі знімки, що й Claude API</span></label><label class="opt ok"><input type="radio" name="q7"><span>Claude Code візьме Haiku 4.5, і кеш віддаватиме ці квізи під тим самим ключем</span></label><label class="opt"><input type="radio" name="q7"><span>Кожен запит упаде з 404: аліаси Claude Code на Bedrock не підтримуються</span></label></div>
+    <div class="why yes">Так. Аліас <code>haiku</code> «вказує на рекомендовану версію для провайдера»: на Bedrock і Google Cloud це Haiku 4.5. Ключ кешу до B51 містив аліас, а не id.</div>
+    <div class="why no">Аліаси працюють, але на кожному провайдері означають свою модель: на Bedrock <code>haiku</code> — це Haiku 4.5, а не 5.5. Тому B51 передає повний id і кладе його в ключ кешу.</div></div>
+  <div class="q"><div class="qt">8. Розробник дописав одне речення в SYSTEM і відкрив PR. Що зупинить його в Lectern?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Нічого до деплою: регресію спіймає гейт <code>lectern check</code> на живих задачах</span></label><label class="opt"><input type="radio" name="q8"><span>Кеш результатів: старий ключ не збігається, і сервіс відмовиться генерувати</span></label><label class="opt ok"><input type="radio" name="q8"><span>Тест реєстру: код віддає версію, якої немає в <code>registry.json</code> як default</span></label></div>
+    <div class="why yes">Так. Нова версія <code>p-f9c32ee472</code> ≠ default <code>p-861a085610</code>, тож <code>check.sh</code> червоний. А <code>promote_prompt.py default</code> відмовить, доки для цієї версії немає replay evals.</div>
+    <div class="why no">Гейт перевіряє цитати й структуру, а не якість питань, яку міряють evals. Кеш на нову версію дає промах і генерує заново, а не відмовляє.</div></div>
+  <div class="q"><div class="qt">9. Новий промпт у default погіршив квізи. Як відкотитися?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span><code>git revert</code> промпту, а потім <code>promote default</code>: гейт знову прожене replay старої версії</span></label><label class="opt"><input type="radio" name="q9"><span>Змінити статус старої версії в <code>registry.json</code> вручну, бо код читає промпт саме з реєстру</span></label><label class="opt"><input type="radio" name="q9"><span>Вимкнути кеш, щоб сервіс узяв попередні відповіді моделі з <code>evals/replay/</code></span></label></div>
+    <div class="why yes">Так. Промпт живе в коді, а реєстр лише засвідчує, що версія пройшла гейт. Rollback — та сама промоція, просто для старої версії.</div>
+    <div class="why no">Код промпт з реєстру не читає: реєстр лише засвідчує, яка версія пройшла гейт. А replay-кеш призначений для evals, сервіс ним не користується.</div></div>
+  <div class="q"><div class="qt">10. Агент уже викликав <code>save_quiz</code>, а наступний запит сесії закінчився 529. Що зробить runner?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Запустить сесію на Sonnet: 529 — transient-відмова, і запасна модель доступна</span></label><label class="opt ok"><input type="radio" name="q10"><span>Нічого не повторить: побічний ефект уже стався, далі файл оцінить гейт</span></label><label class="opt"><input type="radio" name="q10"><span>Відновить ту саму сесію через resume, щоб модель підтвердила збереження</span></label></div>
+    <div class="why yes">Так. Квіз на диску, і повтор лише створив би другий файл і зайві витрати. Ліміт після save сервіс і раніше позначав warning-ом, а приймати чи ні, вирішує гейт.</div>
+    <div class="why no">Повторювати можна лише роботу без побічного ефекту (6.5). Файл уже збережено, і його оцінить гейт, а не модель.</div></div>
+  <div class="q"><div class="qt">11. Найбільший запит прогону на Haiku 5.5 — 105 тис. токенів промпту, і з них 90 тис. прочитано з кешу. Як його тарифікують?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q11"><span>Увесь запит — за другим рівнем, ×5, з кешованими токенами, кожен запит окремо</span></label><label class="opt"><input type="radio" name="q11"><span>За другим рівнем увесь прогін, якщо його сумарний вхід перевищив 100 тис.</span></label><label class="opt"><input type="radio" name="q11"><span>Дорожчає лише некешований вхід, а читання з кешу лишається по $0,01</span></label></div>
+    <div class="why yes">Так. Довжина промпту рахує вхід, запис і читання кешу разом, і кожен запит тарифікується окремо: інші запити прогону лишаються за $0,10/$0,50. Звідси B52.</div>
+    <div class="why no">За прайсом поріг застосовують до кожного запиту окремо, а в довжину промпту входить і кеш. Тож запит на 105 тис. платить ×5 за все, включно з читанням із кешу ($0,05 замість $0,01).</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">11</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>таксономія відмов LLM-виклику</td><td>transient, persistent, partial, semantic: клас визначає, чи зміниться результат від повтору, а отже й реакцію.</td></tr>
+<tr><td>exponential backoff із full jitter</td><td>Пауза перед спробою n — випадкова з [0; min(cap, base·2ⁿ)], щоб клієнти не повторювали синхронно.</td></tr>
+<tr><td>retry budget</td><td>Обмеження частки повторів у всьому трафіку клієнта (відро жетонів), а не лише в одному запиті.</td></tr>
+<tr><td>retry-after</td><td>Заголовок відповіді: через скільки секунд повторювати; не кожен 429 його несе, spend cap — ніколи.</td></tr>
+<tr><td>circuit breaker на модель</td><td>Автомат closed → open → half-open: після серії відмов модель не отримує задач, потім одна пробна сесія.</td></tr>
+<tr><td>degraded mode</td><td>Часткова чесна відповідь замість відмови: кеш, паркування задачі, оцінка вартості.</td></tr>
+<tr><td>pinned model id vs аліас</td><td>Повний id — закріплений знімок; аліас Claude Code (<code>haiku</code>) дрейфує і різниться між провайдерами.</td></tr>
+<tr><td>prompt registry</td><td>Реєстр версій промпту: хеш → статус canary / default / retired; default — те, що віддає код.</td></tr>
+<tr><td>promotion gate</td><td>Підвищення версії промпту чи моделі лише після проходження evals; rollback — той самий шлях.</td></tr>
+<tr><td>deprecation watch</td><td>Інвентар id моделей, сторінка зняття, аудит використання і 404 у рантаймі як сигнал.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">12</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Карта відмов і повторів вашого LLM-сервісу</h3>
+<p>Таблиця відмов за чотирма класами з реакцією на кожну, рівні повторів із числами (до і після), бюджет повторів, правило автомата і fallback із ціною.</p>
+<h3>2. Реліз промпту і моделі через гейт</h3>
+<p>Реєстр версій, гейт evals, план canary і rollback, а також deprecation watch для двох моделей, якими ви користуєтесь, з датами з офіційних сторінок.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">13</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/api/errors" target="_blank" rel="noopener">Claude API — Errors</a><span>коди 400–529, повтори SDK з retry-after, помилки після 200 у потоці</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/rate-limits" target="_blank" rel="noopener">Claude API — Rate limits</a><span>token bucket, <code>retry-after</code>, заголовки <code>anthropic-ratelimit-*</code>, acceleration limits, spend cap 429</span></li>
+<li><a href="https://platform.claude.com/docs/en/cli-sdks-libraries/sdks/python" target="_blank" rel="noopener">Python SDK</a><span><code>max_retries</code> (типово 2), що повторюється, тайм-аут 10 хв</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/streaming" target="_blank" rel="noopener">Streaming messages</a><span>error events у потоці й відновлення обірваної відповіді</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback" target="_blank" rel="noopener">Refusals and fallback</a><span><code>stop_reason: "refusal"</code>, серверний fallback (бета), обмеження для Haiku 5.5</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/models/overview" target="_blank" rel="noopener">Models overview</a><span>id як закріплені знімки, id на Bedrock і Google Cloud, дати зняття</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/model-deprecations" target="_blank" rel="noopener">Model deprecations</a><span>стадії моделі, ≥ 60 днів попередження, аудит використання, поточні дати</span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Pricing</a><span>Haiku 5.5: два рівні ціни, поріг 100 000 токенів промпту на запит</span></li>
+<li><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code — Model configuration</a><span>аліаси за провайдерами, pin, ланцюжок <code>fallbackModel</code></span></li>
+<li><a href="https://code.claude.com/docs/en/env-vars" target="_blank" rel="noopener">Claude Code — Environment variables</a><span><code>CLAUDE_CODE_MAX_RETRIES</code>, backoff для 529, <code>ANTHROPIC_DEFAULT_*_MODEL</code></span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run programmatically</a><span>подія <code>system/api_retry</code> і її поля</span></li>
+<li><a href="https://builder.aws.com/content/3EumjoZascWd1oZiEgL8ORlv3qE/timeouts-retries-and-backoff-with-jitter" target="_blank" rel="noopener">Marc Brooker — Timeouts, retries, and backoff with jitter</a><span>Amazon Builders' Library · повтори на одному рівні, відро жетонів, критика circuit breaker-ів</span></li>
+<li><a href="https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/" target="_blank" rel="noopener">Marc Brooker — Exponential Backoff And Jitter</a><span>AWS Architecture Blog, 04.03.2015 · full, equal і decorrelated jitter</span></li>
+<li><a href="https://sre.google/sre-book/handling-overload/" target="_blank" rel="noopener">Google SRE Book — Handling Overload</a><span>3 спроби на запит, бюджет повторів клієнта 10%, ×3 → ×1,1</span></li>
+<li><a href="https://martinfowler.com/bliki/CircuitBreaker.html" target="_blank" rel="noopener">Martin Fowler — CircuitBreaker</a><span>06.03.2014 · стани автомата, half-open, моніторинг змін стану</span></li>
+<li><a href="https://developers.openai.com/codex/config-reference" target="_blank" rel="noopener">Codex — Configuration Reference</a><span><code>request_max_retries</code>, <code>stream_max_retries</code>, <code>stream_idle_timeout_ms</code></span></li>
+<li><a href="https://cursor.com/docs/cursor-router" target="_blank" rel="noopener">Cursor — Cursor Router</a><span>Auto: вибір моделі на кожен запит, пул моделей змінюється</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 15.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 15.1 · Senomi<br><br><a href="lesson-68.html">← Урок 14.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-70.html">Урок 15.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

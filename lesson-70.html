@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 15.2. Вартість у продакшні: моніторинг і бюджети</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 15.2 · Модуль 15</div>
+<h1>Вартість у продакшні: моніторинг і бюджети</h1>
+<p class="lead">Вартість агентної фічі — це розподіл, а не число з прайсу: у 493 записаних прогонах курсу найдорожчий квіз у 5,4 раза дорожчий за медіанний, а перевірка якості коштує більше за генерацію. Урок будує журнал фактичних витрат зі звіркою з Cost API, бюджети на орендаря й сервіс із резервом на прийомі та деградацією і перевіряє guard навантаженням із записаних вартостей.</p>
+<div class="hero-meta"><span class="chip">Продакшн</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#units"><b>01</b>Юніт-економіка</a><a href="#distribution"><b>02</b>Розподіл, а не середнє</a><a href="#ledger"><b>03</b>Журнал витрат</a><a href="#reconcile"><b>04</b>Звірка з провайдером</a><a href="#budgets"><b>05</b>Бюджети й деградація</a><a href="#replay"><b>06</b>Навантаження без моделі</a><a href="#alerts"><b>07</b>Аномалії, SLO кешу, Batch</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>визначити юніт-економіку агентної фічі й порахувати вартість одиниці з реальних прогонів, а не з прайсу;</li>
+    <li>побудувати журнал витрат із фактичних підсумків SDK і звіряти його з Cost API провайдера;</li>
+    <li>поставити бюджети на задачу, орендаря і сервіс із резервом на прийомі та деградацією замість аварії;</li>
+    <li>задати правила алертів: задача дорожча за p99, денний сплеск, hit rate кешу нижче SLO;</li>
+    <li>вирішити, яку роботу відкласти в Batch API, а яку — ні.</li>
+  </ul>
+</div>
+
+<section class="sec" id="units">
+<div class="sec-h"><span class="num">01</span><h2>Юніт-економіка<span class="sub">Ціна за одиницю, яку бачить продукт</span></h2></div>
+<p>Прайс каже «$0,10 за мільйон вхідних токенів Haiku 5.5». Продукт питає інше: скільки коштує <b>квіз</b>, <b>модуль</b>, <b>активний автор за місяць</b>. FinOps Foundation розводить дві родини одиниць: <b>метрики ефективності ресурсу</b> ($ за токен, за запит, hit rate кешу) і <b>бізнесові</b> ($ за клієнта, за транзакцію). Причини шукають у перших, рішення «окупається чи ні» приймають за другими. Ціни з уроку 1.5, бюджети конвеєра — з уроку 9.1.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Одиниця Lectern</th><th>Вартість (Haiku 5.5)</th><th>Звідки</th></tr></thead>
+<tbody>
+<tr><td data-th="Одиниця Lectern">квіз з лекції, задача сервісу</td><td data-th="Вартість (Haiku 5.5)">p50 $0,0035 · p99 $0,0110</td><td data-th="Звідки">107 прогонів 9.1–14.3</td></tr>
+<tr><td data-th="Одиниця Lectern">той самий квіз на Sonnet</td><td data-th="Вартість (Haiku 5.5)">p50 $0,0635 (×18)</td><td data-th="Звідки">5 прогонів 9.3</td></tr>
+<tr><td data-th="Одиниця Lectern">перевірка квізу грейдерами evals</td><td data-th="Вартість (Haiku 5.5)">$0,0093 — у 2,3 раза дорожче за генерацію ($0,0040)</td><td data-th="Звідки">replay 12.3</td></tr>
+<tr><td data-th="Одиниця Lectern">модуль із 3 лекцій, лише квізи</td><td data-th="Вартість (Haiku 5.5)">$0,011–0,033</td><td data-th="Звідки">11.5, 14.3</td></tr>
+<tr><td data-th="Одиниця Lectern">модуль, 4 артефакти, один автор</td><td data-th="Вартість (Haiku 5.5)">$0,050–0,052</td><td data-th="Звідки">14.3</td></tr>
+<tr><td data-th="Одиниця Lectern">модуль, ролі + ретельний режим</td><td data-th="Вартість (Haiku 5.5)">$0,090–0,106; з рецензентом Sonnet — $0,216</td><td data-th="Звідки">14.3</td></tr>
+</tbody></table></div>
+<p>Одиниця — <b>доставлена</b>, а не згенерована: вартість / (задачі + влучання в кеш результатів). Кеш-влучання — це $0 і повноцінна одиниця для користувача, тому з кешем вартість одиниці падає без жодної зміни моделі.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 560" role="img" aria-label="Шлях грошей: запит, перевірка бюджету, резерв, агент, токени, вартість, журнал, бюджети й алерти, звірка з рахунком">
+  <defs>
+    <marker id="c70a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="c70b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="70" y="8" width="220" height="50" rx="10" class="bx m"/>
+  <text x="180" y="29" text-anchor="middle" class="tx b">Запит</text>
+  <text x="180" y="47" text-anchor="middle" class="tx s">орендар · модель · budget_usd</text>
+  <path d="M180 58 V 80" class="ln a" marker-end="url(#c70a)"/>
+  <rect x="70" y="84" width="220" height="58" rx="10" class="bx a"/>
+  <text x="180" y="106" text-anchor="middle" class="tx b">Перевірка на прийомі</text>
+  <text x="180" y="124" text-anchor="middle" class="tx s">витрачено + резерви + новий резерв</text>
+  <text x="180" y="137" text-anchor="middle" class="tx s">проти бюджету орендаря і сервісу</text>
+  <path d="M290 104 H 318 V 160" class="ln d" marker-end="url(#c70b)"/>
+  <rect x="262" y="164" width="92" height="44" rx="8" class="bx p"/>
+  <text x="308" y="182" text-anchor="middle" class="tx b">429</text>
+  <text x="308" y="198" text-anchor="middle" class="tx s">до 00:00 UTC</text>
+  <path d="M70 120 H 40 V 160" class="ln d" marker-end="url(#c70b)"/>
+  <rect x="6" y="164" width="92" height="44" rx="8" class="bx m"/>
+  <text x="52" y="182" text-anchor="middle" class="tx b">→ haiku</text>
+  <text x="52" y="198" text-anchor="middle" class="tx s">м'яка стеля</text>
+  <path d="M180 142 V 168" class="ln a" marker-end="url(#c70a)"/>
+  <rect x="110" y="172" width="140" height="40" rx="8" class="bx a"/>
+  <text x="180" y="190" text-anchor="middle" class="tx b">Резерв = p99</text>
+  <text x="180" y="205" text-anchor="middle" class="tx s">класу моделі</text>
+  <path d="M180 212 V 236" class="ln a" marker-end="url(#c70a)"/>
+  <rect x="40" y="240" width="280" height="76" rx="10" class="bx t"/>
+  <text x="180" y="262" text-anchor="middle" class="tx b">Агент: 4–6 запитів до моделі</text>
+  <text x="180" y="281" text-anchor="middle" class="tx s">вхід · запис у кеш · читання з кешу · вихід</text>
+  <text x="180" y="298" text-anchor="middle" class="tx s">повторні save, ескалація, довгий промпт</text>
+  <text x="180" y="311" text-anchor="middle" class="tx s">— звідси хвіст</text>
+  <path d="M180 316 V 340" class="ln a" marker-end="url(#c70a)"/>
+  <rect x="70" y="344" width="220" height="44" rx="10" class="bx"/>
+  <text x="180" y="363" text-anchor="middle" class="tx b">$ спроби</text>
+  <text x="180" y="379" text-anchor="middle" class="tx s">total_cost_usd — оцінка SDK</text>
+  <path d="M180 388 V 412" class="ln a" marker-end="url(#c70a)"/>
+  <rect x="70" y="416" width="220" height="44" rx="10" class="bx a"/>
+  <text x="180" y="435" text-anchor="middle" class="tx b">Журнал (ledger)</text>
+  <text x="180" y="451" text-anchor="middle" class="tx s">факт за спробою, резерв закрито</text>
+  <path d="M130 460 V 492" class="ln a" marker-end="url(#c70a)"/>
+  <path d="M230 460 V 492" class="ln d" marker-end="url(#c70b)"/>
+  <rect x="10" y="496" width="160" height="56" rx="10" class="bx t"/>
+  <text x="90" y="517" text-anchor="middle" class="tx b">/costs · алерти</text>
+  <text x="90" y="534" text-anchor="middle" class="tx s">p99, ×k до бази, SLO кешу</text>
+  <rect x="190" y="496" width="160" height="56" rx="10" class="bx m"/>
+  <text x="270" y="517" text-anchor="middle" class="tx b">Звірка щодня</text>
+  <text x="270" y="534" text-anchor="middle" class="tx s">Cost API = рахунок</text>
+</svg>
+<figcaption>Гроші однієї задачі: резерв до запуску, факт після, бюджети читають обидва. Оцінка SDK і рахунок провайдера — різні числа, тому звірка окрема.</figcaption>
+</figure>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Автор, що робить 8 модулів на місяць і перегенеровує 30%, коштує близько <b>$0,52</b> (гіпотеза, не вимір); з онлайн-перевіркою кожного квізу грейдерами — $0,74. Перевірка якості дорожча за генерацію: у ціні фічі закладайте <b>обидві</b>.</p>
+</div>
+</section>
+
+<section class="sec" id="distribution">
+<div class="sec-h"><span class="num">02</span><h2>Розподіл, а не середнє<span class="sub">493 записані прогони курсу</span></h2></div>
+<p>Вартість задачі не можна взяти з формули: агент щоразу проходить цикл по-різному. Тому референсний клас (урок 10.4) — це реальні підсумки <code>total_cost_usd</code>, які вже лежать у <code>lessons/*/console</code>: 9.1, 10.4, 9.3, 11.5, replay 12.3, 14.1–14.3. Нових викликів моделі скрипт не робить.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/l70</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 mine_costs.py ../agentic-engineering --brief</span>
+== units (records: 493 )
+<span class="d">… повні таблиці: одиниці, джерела, драйвери …</span>
+== brief: unit, n, p50 $, p99 $, max/p50
+haiku n=5     107 0.0035 0.0110  5.4
+haiku bench   280 0.0021 0.0044  2.5
+sonnet          5 0.0635 0.0797  1.3
+saves=1        55 0.0034 0.0051  1.5
+saves&gt;=2        4 0.0097 0.0192  2.0
+requests&lt;=4   266 0.0021 0.0045  2.5
+requests&gt;=5    61 0.0030 0.0192  6.5
+module single   2 0.0504 0.0525  1.0
+module team     3 0.0970 0.1061  1.1</pre>
+<div class="cap">реальний вивід · широкі таблиці пропущено (вони в <code>console/mine/distribution.txt</code>) · 18.10.2026 · вартість — оцінки SDK із записаних прогонів</div></div>
+<p>Бенчмарк 14.2 (280 прогонів того самого тексту, n = 4) у референс не входить: він зсунув би p50 до $0,0024. Але він корисний окремо: <b>на однаковому вході</b> max/p50 = 2,5 — це розкид самого циклу агента, без різниці лекцій.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar"><span class="k">p50 квізу · haiku</span><span class="tr"><i style="--v:18%"></i><b style="--v:18%">$0,0035</b></span></div>
+  <div class="bar"><span class="k">p95</span><span class="tr"><i style="--v:40%"></i><b style="--v:40%">$0,0076</b></span></div>
+  <div class="bar m"><span class="k">p99 — резерв на прийомі</span><span class="tr"><i style="--v:57%"></i><b style="--v:57%">$0,0110</b></span></div>
+  <div class="bar p"><span class="k">max: 3 повторні save_quiz</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">$0,0192</b></span></div>
+</div>
+<figcaption>Розподіл правобічний: 5% найдорожчих задач дають 15% витрат. Середнє ($0,0041) вище за медіану, і за ним бюджет виглядає щедрішим, ніж є.</figcaption>
+</figure>
+<h3>Що розгойдує вартість</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Драйвер</th><th>Виміряно</th><th>Множник</th></tr></thead>
+<tbody>
+<tr><td data-th="Драйвер">цикл інструментів: гейт відхилив, агент зберігає ще раз</td><td data-th="Виміряно"><code>save_quiz</code> ≥ 2: p50 $0,0097 проти $0,0034</td><td data-th="Множник">×2,9</td></tr>
+<tr><td data-th="Драйвер">довший цикл (≥ 5 запитів)</td><td data-th="Виміряно">p95 $0,0076 проти $0,0034</td><td data-th="Множник">×2,2 на p95</td></tr>
+<tr><td data-th="Драйвер">ескалація каскаду / дорожча модель</td><td data-th="Виміряно">haiku → sonnet $0,0657; sonnet $0,0635</td><td data-th="Множник">×18</td></tr>
+<tr><td data-th="Драйвер">TTL запису в кеш</td><td data-th="Виміряно">ті самі токени: 1 год (2× ціни входу) проти 5 хв (1,25×) — −18%</td><td data-th="Множник">×1,2</td></tr>
+<tr><td data-th="Драйвер">довгий промпт у Haiku 5.5</td><td data-th="Виміряно">понад 100 000 токенів промпту (з кешем включно) — усі ціни запиту ×5</td><td data-th="Множник">×5</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Пастка довгого контексту</span>
+<p>Сервіс Lectern приймає лекцію до 200 000 символів ≈ 80 тис. токенів. Разом із префіксом (~2 тис.) і накопиченою історією (5–8 тис.) останні запити циклу підходять до межі 100 тис., за якою Haiku 5.5 рахує <b>увесь запит</b> за вищими цінами. Межу перетинає один запит — і саме він стає найдорожчим. Резерв треба рахувати за порогом, а лекцію, що його перетне, різати заздалегідь.</p>
+</div>
+<p>Атрибуція (cost attribution) — кому віднести кожен долар: орендар, курс, задача. FinOps тут вимагає ще й <b>правила для спільних витрат</b>: кеш-влучання, грейдери, нічні переміри не належать жодній задачі, і без правила вони тихо «розмазуються» по всіх.</p>
+</section>
+
+<section class="sec" id="ledger">
+<div class="sec-h"><span class="num">03</span><h2>Журнал витрат<span class="sub">Факт кожної спроби, а не оцінка до запуску</span></h2></div>
+<p>Оцінка до запуску (<code>estimate.py</code>, урок 10.4) потрібна, щоб вирішити, чи брати задачу. Після запуску вона більше не має права голосу: у журнал (cost ledger) пишемо <b>фактичний підсумок SDK</b> кожної спроби. У цьому підсумку чотири пастки, і всі вони описані в документації Agent SDK:</p>
+<ul>
+<li><b>resume:</b> <code>total_cost_usd</code> відновленої сесії вже містить її попередні запуски — у журнал іде різниця з останнім значенням тієї ж сесії, інакше спроба рахується двічі;</li>
+<li><b>субагенти:</b> <code>usage</code> бачить лише верхній цикл, <code>total_cost_usd</code> і <code>model_usage</code> — усе дерево;</li>
+<li><b>ліміт бюджету:</b> при <code>error_max_budget_usd</code> поле <code>usage</code> не містить відповіді, що перетнула межу, а <code>total_cost_usd</code> містить. <code>max_budget_usd</code> перевіряється <i>після</i> відповіді, тож перевитрата сягає вартості однієї відповіді плюс роботи субагентів, що ще біжать;</li>
+<li><b>крах процесу:</b> фінальний <code>error_during_execution</code> може прийти з обнуленими підсумками — нуль не повинен «повернути» вже витрачене.</li>
+</ul>
+<blockquote class="q-src">
+<p>Використовуйте ці поля, щоб розуміти розробку й приблизно планувати бюджет. […] Не виставляйте рахунків кінцевим користувачам і не ухвалюйте фінансових рішень на основі цих полів.</p>
+<p class="orig">“Use these fields for development insight and approximate budgeting. […] Do not bill end users or trigger financial decisions from these fields.”</p>
+<cite>Claude Agent SDK — Track cost and usage, перевірено 18.10.2026</cite>
+</blockquote>
+<p><code>total_cost_usd</code> рахується на клієнті з таблиці цін, вбудованої в SDK під час збірки. Він розходиться з рахунком, коли змінились ціни, SDK не знає моделі або діють правила, яких клієнт не моделює. Тому журнал — оперативна правда для бюджетів і алертів, а рахунок — Cost API (наступний розділ).</p>
+<pre class="code" data-lang="python"><span class="k">def</span> run_costs(runs: list[dict]) -&gt; list[float]:
+    <span class="s">"""Приріст вартості кожної спроби: після resume — різниця з накопиченим
+    total_cost_usd тієї ж сесії; обнулений підсумок після краху нічого не віднімає."""</span>
+    last: dict[str, float] = {}
+    out: list[float] = []
+    <span class="k">for</span> i, run <span class="k">in</span> enumerate(runs):
+        key = run.get(<span class="s">"session_id"</span>) <span class="k">or</span> <span class="s">f"run-{i}"</span>
+        cost = float(run.get(<span class="s">"cost_usd"</span>) <span class="k">or</span> <span class="n">0.0</span>)
+        out.append(round(max(<span class="n">0.0</span>, cost - last.get(key, <span class="n">0.0</span>)), <span class="n">6</span>))
+        last[key] = max(cost, last.get(key, <span class="n">0.0</span>))
+    <span class="k">return</span> out</pre>
+<p>Рядок журналу — <code>(job_id, номер спроби)</code> з <code>INSERT OR IGNORE</code>: воркер і відновлення після рестарту можуть записати ту саму задачу двічі, а сума не зміниться.</p>
+<h3>Перевірка на справжніх задачах</h3>
+<p>Три задачі Haiku через <code>lectern serve</code> з бюджетом орендаря <code>acme</code> $0,012 на день:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/l70/real</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 submit.py</span>
+POST /quizzes tenant=acme n=4 -&gt; 202
+{"id": "5393edf755bc",
+ "status": "done",
+ "cost_usd": 0.00335,
+ "runs": [{"model": "haiku",
+  "requests": 4,
+  "usage": {"input_tokens": 8,
+   "cache_creation_input_tokens": 7972,
+   "cache_read_input_tokens": 10534,
+   "output_tokens": 3299}}]}
+POST /quizzes tenant=acme n=5 -&gt; <span class="er">429</span>
+{"detail": {
+ "reason": "tenant_daily_budget",
+ "reserve_usd": 0.011017,
+ "tenant_used_usd": 0.00335,
+ "tenant_limit_usd": 0.012,
+ "resets_at": "2026-10-19T00:00:00Z"}}
+POST /quizzes tenant=beta n=5 -&gt; 202
+<span class="d">… "cost_usd": 0.004065, "requests": 6 …</span>
+POST /quizzes tenant=beta n=3 -&gt; 202
+<span class="d">… "cost_usd": 0.002868, "requests": 4 …</span>
+<span class="ps">$ </span><span class="c">python scripts/cost_report.py --db ../real/data/jobs.db --by model --csv</span>
+day,tenant,model,jobs,runs,cache_hits,cost_usd,cache_hit_rate,flags
+2026-10-18,acme,haiku,1,1,0,0.00335,0.569,0
+2026-10-18,beta,haiku,2,2,0,0.006933,0.66,0</pre>
+<div class="cap">реальний вивід · JSON скорочено й перенесено по рядках · клієнт — <code>console/real/submit.py</code> · claude-agent-sdk 0.2.168, claude-haiku-5-5 · 18.10.2026 · витрати $0,0103</div></div>
+<p>Що підтвердилось: сума журналу ($0,00335 + $0,006933 = $0,010283) дорівнює сумі <code>total_cost_usd</code> трьох спроб до шостого знака; токени × ціни Haiku 5.5 із записом у кеш на 1 годину відтворюють кожен підсумок <b>точно</b>. Ті самі токени з 5-хвилинним записом (як з ключем API) коштували б на 17,5–18,2% менше — одна причина, чому оцінка і рахунок можуть розійтися. Друга задача <code>acme</code> отримала 429 ще до створення: $0,00335 витрачено + резерв $0,011 &gt; $0,012.</p>
+<div class="tabs">
+<input type="radio" name="src-t" id="src-t1" checked><input type="radio" name="src-t" id="src-t2"><input type="radio" name="src-t" id="src-t3">
+<div class="tab-l"><label for="src-t1">Claude Code</label><label for="src-t2">Codex CLI</label><label for="src-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<p>Результат <code>-p --output-format json</code> і Agent SDK несуть <code>total_cost_usd</code> і <code>modelUsage</code> по моделях. Якщо в managed settings задано <code>modelPricing</code> (контрактні ціни), Claude Code застосовує його і до <code>total_cost_usd</code>, і до ліміту <code>--max-budget-usd</code>, і до метрики вартості OpenTelemetry; рахунку це не змінює.</p>
+</div>
+<div class="tab-p">
+<p><code>codex exec --json</code> пише подію <code>turn.completed</code> з <code>usage</code>: <code>input_tokens</code>, <code>cached_input_tokens</code>, <code>output_tokens</code>, <code>reasoning_output_tokens</code>. Доларів немає: журнал множить токени на власну таблицю цін.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec --json "…" | grep turn.completed</span></pre>
+<div class="cap">команда з офіційної документації Codex · не запускалась у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p>Результат <code>agent -p --output-format json</code> містить <code>duration_ms</code>, <code>duration_api_ms</code>, <code>session_id</code>, <code>request_id</code>, але <b>ні токенів, ні вартості</b> — у документації формату їх немає і в <code>stream-json</code>. Задачу з Cursor CLI у журнал по факту не запишеш — лише дашборд і Admin API команди (урок 13.4).</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="reconcile">
+<div class="sec-h"><span class="num">04</span><h2>Звірка з провайдером<span class="sub">Cost API як рахунок</span></h2></div>
+<p>Usage and Cost Admin API потребує Admin-ключа (<code>sk-ant-admin…</code>) і має два ендпоінти з різною деталізацією: <code>/v1/organizations/usage_report/messages</code> і <code>/v1/organizations/cost_report</code>.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th></th><th>usage_report</th><th>cost_report</th></tr></thead>
+<tbody>
+<tr><td>що</td><td data-th="usage_report">токени: некешований вхід, запис і читання кешу, вихід; серверні інструменти</td><td data-th="cost_report">долари: токени, web search, code execution</td></tr>
+<tr><td>бакети</td><td data-th="usage_report"><code>1m</code> (до 1 440), <code>1h</code> (до 168), <code>1d</code> (до 31)</td><td data-th="cost_report">лише <code>1d</code></td></tr>
+<tr><td>розрізи</td><td data-th="usage_report">ключ API, workspace, модель, service tier, context window, inference_geo, speed</td><td data-th="cost_report">лише workspace і description (модель, тип токена)</td></tr>
+<tr><td>формат</td><td data-th="usage_report">цілі кількості</td><td data-th="cost_report"><code>amount</code> — центи десятковим рядком: <code>"123.45"</code> = $1,23</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Дані з'являються протягом ~5 хвилин після запиту; рекомендоване опитування — раз на хвилину. Витрати Priority Tier у <code>cost_report</code> не потрапляють. Розрізу за ключем API в доларах немає: щоб звірити окремого орендаря, дайте йому власний workspace або множте токени з <code>usage_report</code> за ключем на ціни.</p>
+</div>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh</span></div>
+<pre><span class="ps">$ </span><span class="c">curl "https://api.anthropic.com/v1/organizations/cost_report?starting_at=2026-10-17T00:00:00Z&amp;ending_at=2026-10-18T00:00:00Z&amp;group_by[]=workspace_id&amp;group_by[]=description" -H "anthropic-version: 2023-06-01" -H "x-api-key: $ANTHROPIC_ADMIN_KEY" &gt; cost_report.json</span>
+<span class="ps">$ </span><span class="c">python scripts/cost_report.py --since 2026-10-17 --until 2026-10-17 --reconcile cost_report.json</span></pre>
+<div class="cap">команди з офіційної документації і Lectern · не запускались: у курсі немає Admin-ключа; формат відповіді перевіряє тест на прикладі з довідника API</div></div>
+<p>Звірка порівнює день журналу з днем провайдера і падає з кодом 1, якщо розбіжність перевищує допуск (типово 5%). Дні збігаються, бо журнал теж ріже дні за UTC. Розбіжність понад допуск — це не «похибка», а питання: інший процес на тому самому workspace, контрактні ціни, задачі, що не потрапили в журнал, нова модель, якої SDK ще не знає.</p>
+</section>
+
+<section class="sec" id="budgets">
+<div class="sec-h"><span class="num">05</span><h2>Бюджети й деградація<span class="sub">Від задачі до сервісу</span></h2></div>
+<p>Ліміт на задачу (<code>max_budget_usd</code>, урок 6.5) зупиняє зациклену сесію, але не сотню нормальних задач від одного клієнта. Ліміти workspace у Console (урок 13.4) спрацьовують раз на місяць і для всіх одразу. Між ними потрібні рівні, які знає лише ваш сервіс:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Lectern</th><th>Що відбувається</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">задача</td><td data-th="Lectern"><code>budget_usd</code> ≤ <code>LECTERN_MAX_BUDGET_USD</code></td><td data-th="Що відбувається">SDK зупиняє сесію; останню відповідь дораховує</td></tr>
+<tr><td data-th="Рівень">орендар / день</td><td data-th="Lectern"><code>LECTERN_TENANT_DAILY_USD</code>, <code>LECTERN_TENANT_BUDGETS</code></td><td data-th="Що відбувається">429 <code>tenant_daily_budget</code>, <code>Retry-After</code> до 00:00 UTC; інші орендарі працюють</td></tr>
+<tr><td data-th="Рівень">сервіс, м'яка стеля</td><td data-th="Lectern"><code>LECTERN_DAILY_SOFT</code> × стеля (80%)</td><td data-th="Що відбувається">sonnet / opus / auto приймаються як haiku без каскаду, заголовок <code>X-Lectern-Degraded</code></td></tr>
+<tr><td data-th="Рівень">сервіс, жорстка стеля</td><td data-th="Lectern"><code>LECTERN_DAILY_CAP_USD</code></td><td data-th="Що відбувається">429 <code>global_daily_cap</code>; відповіді з кешу ($0) працюють далі</td></tr>
+<tr><td data-th="Рівень">провайдер</td><td data-th="Lectern">Console: власний ліміт організації чи workspace; стеля тиру</td><td data-th="Що відбувається">власний ліміт — 400 <code>invalid_request_error</code>; стеля тиру — 429 <code>rate_limit_error</code> з <code>enforced_spend_limit_reached</code> і <b>без</b> <code>retry-after</code></td></tr>
+</tbody></table></div>
+<p>Остання відповідь провайдера виглядає як rate limit, але ретраї марні до 00:00 UTC першого числа наступного місяця. Стелі тирів — $500 (Start), $1 000 (Build), $200 000 (Scale) на місяць. Сервіс має впізнати цей код і перейти в стан «стеля», а не палити ретраї (це територія уроку 15.1).</p>
+<h3>Резерв на прийомі</h3>
+<p>Перевірка «витрачено &lt; бюджету» пропускає дві задачі, на які вистачає лише одного залишку: обидві бачать той самий стан, а заплатять обидві. Тому на прийомі пишемо <b>резерв</b>, і перевірка враховує «витрачено + відкриті резерви + новий резерв». Перевірка і запис резерву йдуть однією транзакцією SQLite (<code>BEGIN IMMEDIATE</code>), тож навіть два процеси <code>lectern serve</code> на одній базі не проведуть разом дві задачі.</p>
+<p>Розмір резерву — компроміс. <code>budget_usd</code> ($0,25) у 70 разів більший за медіанну задачу: бюджет орендаря на $1 вміщав би чотири задачі в черзі. Медіана занижує половину задач. Lectern резервує <b>p99 класу моделі</b> ($0,011 для haiku), а перевитрату понад резерв помічає прапорцем <code>over_reserve</code>. Резерв задачі, що вже завершилась, не рахується, навіть якщо розрахунок не встиг записатись: стан задачі в тій самій базі.</p>
+<pre class="code" data-lang="python">d = ledger.admit(job.id, tenant, req.model,
+                 body[<span class="s">"budget_usd"</span>], budgets, time.time())
+<span class="k">if</span> d.action == <span class="s">"deny"</span>:  <span class="cm"># залишок з'їв інший процес</span>
+    store.forget(job)
+    <span class="k">raise</span> refused(d)  <span class="cm"># 429 + Retry-After</span>
+<span class="k">if</span> d.action == <span class="s">"downgrade"</span>:  <span class="cm"># м'яка стеля</span>
+    job.request |= {<span class="s">"model"</span>: d.model,
+                    <span class="s">"requested_model"</span>: req.model}
+    job.cache_key = cache_key(req.lecture, req.n,
+                              d.model)</pre>
+<p>Ключ кешу при деградації міняється не випадково: інакше квіз від haiku лягав би в кеш під політикою <code>sonnet</code>, і завтра повноцінний запит отримав би дешевший результат.</p>
+</section>
+
+<section class="sec" id="replay">
+<div class="sec-h"><span class="num">06</span><h2>Навантаження без моделі<span class="sub">240 запитів із записаними вартостями</span></h2></div>
+<p>Як перевірити guard, не спаливши бюджет? Справжній <code>lectern serve</code> (черга, гейт, кеш, журнал, бюджети), а замість агента — <code>ReplayAgent</code>: зберігає валідний квіз і повертає <code>RunOutcome</code> з вартістю й токенами випадкового реального прогону з референсного класу. Три орендарі ділять трафік 50/30/20, четвертий («скрипт у циклі») між запитами 30 і 150 шле кожен другий запит. Бюджети: $0,12 на орендаря (<code>uni-a</code> — $0,30), $0,60 на сервіс, деградація з 70%.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 340" role="img" aria-label="Накопичені витрати дня по запитах: різкий ріст на двох задачах sonnet, деградація з 0,42 доларів, стеля 0,60 долара на запиті 212">
+  <rect x="40" y="20" width="300" height="280" class="bx" style="fill:none"/>
+  <path d="M40 145 H 340" class="ln d"/>
+  <path d="M40 78 H 340" class="ln d"/>
+  <text x="44" y="73" class="tx s">стеля $0,60</text>
+  <text x="44" y="140" class="tx s">м'яка стеля $0,42</text>
+  <polyline points="40,299 50,289 60,282 70,273 80,267 90,232 100,202 110,195 120,189 130,182 140,176 150,169 160,164 170,155 180,148 190,141 200,133 210,130 220,127 230,122 240,114 250,107 260,100 270,95 280,90 290,83 300,83 310,81 320,81 330,81 339,81" class="ln a" style="stroke-width:2.4"/>
+  <circle cx="86" cy="248" r="4" class="ar t"/>
+  <text x="92" y="262" class="tx s">#33, #41: дві задачі sonnet = +$0,14</text>
+  <circle cx="106" cy="198" r="4" class="ar"/>
+  <text x="112" y="216" class="tx s">#53 uni-b: бюджет орендаря</text>
+  <circle cx="194" cy="138" r="4" class="ar a"/>
+  <text x="150" y="124" class="tx s">#123 деградація → haiku</text>
+  <circle cx="203" cy="132" r="4" class="ar"/>
+  <text x="208" y="160" class="tx s">#130 «скрипт»: 429</text>
+  <circle cx="305" cy="81" r="4" class="ar a"/>
+  <text x="252" y="98" class="tx s">#212 стеля</text>
+  <text x="40" y="318" class="tx s">0</text>
+  <text x="190" y="318" text-anchor="middle" class="tx s">номер запиту</text>
+  <text x="340" y="318" text-anchor="end" class="tx s">240</text>
+  <text x="36" y="304" text-anchor="end" class="tx s">$0</text>
+</svg>
+<figcaption>Накопичені витрати дня за журналом (<code>GET /costs</code> після кожного запиту). Реальні записані вартості, жодного виклику моделі.</figcaption>
+</figure>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/l70/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python ../sim/replay.py ../agentic-engineering ../sim/out</span>
+requests 240 · runs 173 · model $0
+accepted         162  from #0
+cache              7  from #40
+downgraded        11  from #123
+<span class="y">refused tenant    33  from #53</span>
+<span class="er">refused global    27  from #212</span>
+uni-a: 73 ok, 2 cache, 6 haiku, 6 tenant, 14 cap
+uni-b: 17 ok, 2 cache, 17 tenant, 9 cap
+school-c: 25 ok, 5 haiku, 4 cap
+runaway: 47 ok, 3 cache, 10 tenant
+spent $0.5935 of $0.60 · capped
+job p50 $0.0024 p99 $0.0635
+per delivered $0.0033 · cache hit 0.68
+anomalies: job_cost_p99 x2</pre>
+<div class="cap">реальний вивід · без рядків витрат за орендарями · seed 70 · 18.10.2026 · <code>console/sim/</code></div></div>
+<ul>
+<li><b>Одна задача sonnet з'їла половину денного бюджету <code>uni-b</code>.</b> Після неї ($0,0635) наступний запит <code>auto</code> з резервом $0,091 не вліз — і далі 17 відмов. Орендарям з дорогими моделями потрібен окремий бюджет або окремий клас ціни.</li>
+<li><b>«Скрипт у циклі» зупинено на 47-й задачі</b> — $0,11 з $0,12, без участі людини й без впливу на інших.</li>
+<li><b>Деградація відклала стелю:</b> з #123 запити sonnet і auto йшли як haiku. Три запити sonnet після цієї точки коштували $0,002–0,004 замість $0,06–0,08 кожен у класі sonnet — інакше стелю досягли б значно раніше за #212.</li>
+<li><b>Поріг аномалії відкалібрувався сам:</b> після 50 задач класу p99 узявся з власного журналу ($0,0052, потім $0,0076) замість референсу ($0,0110), і дві задачі по $0,0097 отримали прапорець.</li>
+</ul>
+</section>
+
+<section class="sec" id="alerts">
+<div class="sec-h"><span class="num">07</span><h2>Аномалії, SLO кешу, Batch<span class="sub">Що будить людину і що відкласти</span></h2></div>
+<p>FinOps Foundation визначає аномалію як витрати, що відрізняються (зазвичай угору) від історичних чи очікуваних. Для агента «очікуване» — розподіл класу, тому правила будуються на квантилях, а не на середньому. Метрики OpenTelemetry з уроку 12.5 дають ті самі сигнали в дашборд; журнал — у звітність і бюджети.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сигнал</th><th>Поріг</th><th>Дія</th></tr></thead>
+<tbody>
+<tr><td data-th="Сигнал"><code>job_cost_p99</code></td><td data-th="Поріг">задача дорожча за p99 свого класу моделей: власний журнал за 7 днів (≥ 50 задач), інакше референс; ескалація — окремий клас</td><td data-th="Дія">події задачі: повторні save, довга лекція, ескалація</td></tr>
+<tr><td data-th="Сигнал"><code>over_reserve</code></td><td data-th="Поріг">факт &gt; резерву</td><td data-th="Дія">перекалібрувати референс</td></tr>
+<tr><td data-th="Сигнал"><code>daily_spend_spike</code></td><td data-th="Поріг">день &gt; 3 × медіана попередніх 7 днів (≥ 3 дні історії)</td><td data-th="Дія">знайти орендаря в <code>/costs</code>, порівняти з трафіком</td></tr>
+<tr><td data-th="Сигнал"><code>cache_hit_below_slo</code></td><td data-th="Поріг">частка прочитаних з кешу вхідних токенів &lt; 0,5 за день (≥ 20 спроб)</td><td data-th="Дія">шукати, що змінює префікс: промпт, набір інструментів, модель</td></tr>
+</tbody></table></div>
+<p><b>SLO кешу</b> рахується за <code>usage</code>: <code>cache_read_input_tokens / (input_tokens + cache_creation_input_tokens + cache_read_input_tokens)</code> — <code>input_tokens</code> містить лише токени після останньої точки кешу. У Lectern норма 0,57–0,68: кожен із 4–6 запитів дописує в кеш свою нову історію, тож запис коштує стільки ж, скільки вихід. Падіння до 0,1 означає, що префікс змінюється між запитами — і вартість задачі зростає вдвічі без жодної зміни трафіку. Чому кеш ламається — урок 5.5.</p>
+<p><b>Batch API</b> — 50% від ціни (знижка складається з кешем), до 100 000 запитів або 256 МБ у пакеті, більшість пакетів завершуються менш ніж за годину, максимум 24 години, результати доступні 29 днів. Але це окремі запити Messages API: агентний цикл туди не переноситься, бо кожен хід чекає результату інструмента. Кандидати в Lectern — те, на що ніхто не чекає: грейдери evals (у 2,3 раза дорожчі за саму генерацію), суддя ін'єкцій, нічні переміри.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: журнал, бюджети, /costs</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 15.2</div><div class="pb">
+<p><b>Що додано</b> (diff проти канонічного <code>lectern/</code>: 13 файлів, +1601 −8; <code>scripts/check.sh</code> зелений, 619 тестів):</p>
+<ul>
+<li><code>src/lectern/costs.py</code> — журнал у тій самій <code>jobs.db</code>: таблиці <code>cost_entries</code>, <code>cost_reservations</code>, <code>cost_flags</code> через <code>CREATE TABLE IF NOT EXISTS</code>, <code>user_version</code> не чіпаємо; на старті <code>backfill()</code> дописує завершені задачі, яких у журналі немає;</li>
+<li><code>service.py</code> — лише шлях прийому і новий ендпоінт: орендар із <code>X-Lectern-Tenant</code> (після злиття з 15.3 — з API-ключа, заголовок лише в dev-режимі без ключів для симуляцій), рання перевірка до створення задачі, атомарний резерв перед чергою, деградація, розрахунок у <code>finally</code> воркера, <code>GET /costs</code>;</li>
+<li><code>scripts/cost_report.py</code> — денний звіт (таблиця, <code>--json</code>, <code>--csv</code>) і <code>--reconcile</code> з відповіддю Cost API;</li>
+<li><code>docs/costs.md</code> (юніт-економіка, бюджети, правила алертів), <code>docs/spec/costs.md</code> (<code>LEC-COST-001…006</code>), вимір <code>2026-10-18-cost-reference.json</code>, 14 тестів без мережі.</li>
+</ul>
+<p><b>Знахідки в беклог:</b> B240 — <code>service.total_cost()</code> губить ранні витрати сесії, якщо відновлений запуск упав з обнуленим підсумком; B242 — ключ кешу результатів без орендаря: B безкоштовно отримує квіз, за який заплатив A; B248 — поріг довгого контексту Haiku 5.5 досяжний з лекцією на 200 000 символів; B249 — стеля тиру провайдера має переводити <code>/costs</code> у <code>capped</code>.</p>
+<p><b>Ваш крок:</b> запустіть <code>python scripts/cost_report.py --by model</code> на своїй базі задач і порахуйте вартість доставленої одиниці за останній тиждень разом із кеш-влучаннями.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Бюджет «вистачало», а рахунок удвічі більший</td><td data-th="Причина">планували за середнім або за прайсом, а не за розподілом</td><td data-th="Що зробити">резерв і план — за p95/p99 референсного класу</td></tr>
+<tr><td data-th="Симптом">Після resume задача «коштує» вдвічі більше</td><td data-th="Причина">сумують <code>total_cost_usd</code> обох запусків, а другий уже містить перший</td><td data-th="Що зробити">різниця з останнім значенням тієї ж сесії</td></tr>
+<tr><td data-th="Симптом">Журнал систематично нижчий за рахунок</td><td data-th="Причина">рахують з <code>usage</code>: без субагентів і без відповіді, що перетнула ліміт</td><td data-th="Що зробити"><code>total_cost_usd</code> або <code>model_usage</code></td></tr>
+<tr><td data-th="Симптом">Два процеси обидва прийняли задачі понад бюджет</td><td data-th="Причина">перевірка «витрачено &lt; бюджету» без резерву і без транзакції</td><td data-th="Що зробити">перевірка + резерв однією транзакцією</td></tr>
+<tr><td data-th="Симптом">Сервіс годину ретраїть 429 провайдера</td><td data-th="Причина">стелю тиру сприйняли як rate limit</td><td data-th="Що зробити">розпізнати <code>enforced_spend_limit_reached</code>, зупинитись, кликати людину</td></tr>
+<tr><td data-th="Симптом">Клієнтам виставили рахунок з <code>total_cost_usd</code></td><td data-th="Причина">оцінку SDK сприйняли як рахунок</td><td data-th="Що зробити">рахунки — з Cost API або власних контрактних цін; журнал — для бюджетів</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">unit economics</span><span class="h">дві родини метрик</span></span><span class="b"><span class="t">Ресурсні й бізнесові</span><span class="d">$ за токен пояснює причину, $ за модуль чи автора — рішення</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">cost ledger</span><span class="h">що в нього пишуть?</span></span><span class="b"><span class="t">Факт кожної спроби</span><span class="d">приріст total_cost_usd, один раз, з орендарем і токенами</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">резерв на прийомі</span><span class="h">скільки?</span></span><span class="b"><span class="t">p99 класу моделі</span><span class="d">не budget_usd (у 70 разів більше за медіану) і не медіана</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">global spend cap</span><span class="h">м'яка і жорстка стеля</span></span><span class="b"><span class="t">Деградація, потім 429</span><span class="d">з 80% — haiku без каскаду; на стелі — лише кеш</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">cost_report</span><span class="h">чим відрізняється від usage_report?</span></span><span class="b"><span class="t">Долари, лише по днях</span><span class="d">розрізи workspace і description; usage_report — токени до хвилини</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Batch offloading</span><span class="h">що не підходить?</span></span><span class="b"><span class="t">Агентний цикл</span><span class="d">кожен хід чекає результату інструмента; у Batch — окремі запити</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 ситуацій з числами</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Задача коштує p50 $0,0035, p99 $0,011, ліміт задачі <code>budget_usd</code> = $0,25, бюджет орендаря — $1 на день. Скільки резервувати на прийомі?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>$0,25: це стеля, яку SDK гарантує, тож перевитрати понад резерв не буде ніколи</span></label><label class="opt"><input type="radio" name="q1"><span>$0,0035: у середньому резерви зійдуться з фактом, а різниця врівноважиться за день</span></label><label class="opt ok"><input type="radio" name="q1"><span>$0,011 і прапорець для задач, фактична вартість яких перевищила цей резерв</span></label></div>
+    <div class="why yes">Так. p99 закриває майже всі задачі і не з'їдає бюджет орендаря резервами; рідкісну перевитрату видно з прапорця <code>over_reserve</code>.</div>
+    <div class="why no">Резерв $0,25 перетворив би $1 на чотири задачі в черзі, а SDK ще й може перейти межу на одну відповідь. Медіану перевищує половина задач, тож дві паралельні задачі пройдуть там, де вистачало на одну.</div></div>
+  <div class="q"><div class="qt">2. За 17.10 журнал показує $41,20, а Cost API — $47,90 (+16%). Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Нічого: total_cost_usd — оцінка клієнта, і розбіжність у 15–20% для неї звична</span></label><label class="opt ok"><input type="radio" name="q2"><span>Шукати причину: хто ще пише в цей workspace, які задачі не потрапили в журнал</span></label><label class="opt"><input type="radio" name="q2"><span>Перевести бюджети на Cost API: він точний, а журнал після цього можна прибрати</span></label></div>
+    <div class="why yes">Так. На справжніх задачах журнал збігся з підсумками SDK до шостого знака; 16% — це інший споживач, пропущені задачі, контрактні ціни чи невідома SDK модель.</div>
+    <div class="why no">Розбіжність понад допуск (5%) — питання, а не норма. Cost API не замінить журналу: лише денні бакети, затримка ~5 хв, немає розрізу за орендарем — бюджетів на прийомі з нього не зробиш.</div></div>
+  <div class="q"><div class="qt">3. На Haiku 5.5 останній запит циклу має промпт 104 тис. токенів, з них 90 тис. — читання з кешу. Як його порахують?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>За вищими цінами — лише 4 тис. токенів понад поріг, решта за звичайними</span></label><label class="opt ok"><input type="radio" name="q3"><span>Увесь запит за вищими цінами, разом із тими 90 тис. токенів, прочитаних з кешу</span></label><label class="opt"><input type="radio" name="q3"><span>За звичайними: прочитані з кешу токени в довжину промпту для порогу не входять</span></label></div>
+    <div class="why yes">Так. Поріг 100 000 токенів рахує весь вхід запиту, кеш включно, і запит за порогом платить вищі ціни в усіх категоріях — у 5 разів.</div>
+    <div class="why no">За документацією цін довжина промпту — усі вхідні токени, включно з читанням і записом кешу; кожен запит оцінюється окремо, і запит за порогом платить вищі ціни повністю.</div></div>
+  <div class="q"><div class="qt">4. Агент запускає двох субагентів. Ви пишете в журнал вартість, обчислену з поля <code>usage</code> результату. Що буде?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span>Журнал занизить витрати: usage не бачить субагентів, потрібні total_cost_usd чи model_usage</span></label><label class="opt"><input type="radio" name="q4"><span>Журнал завищить витрати: usage рахує токени субагентів двічі — у них і в головному циклі</span></label><label class="opt"><input type="radio" name="q4"><span>Нічого не зміниться: usage і total_cost_usd завжди описують те саме дерево запитів</span></label></div>
+    <div class="why yes">Так. <code>usage</code> охоплює лише верхній цикл; <code>total_cost_usd</code> і <code>model_usage</code> — усе дерево. Те саме при <code>error_max_budget_usd</code>: у <code>usage</code> немає відповіді, що перетнула межу.</div>
+    <div class="why no">У документації Agent SDK: <code>usage</code> субагентів не включає, а <code>total_cost_usd</code> і <code>model_usage</code> включають. Подвійного рахунку немає — є недорахунок.</div></div>
+  <div class="q"><div class="qt">5. Перша спроба сесії s1 повернула <code>total_cost_usd</code> $0,004. Після <code>resume</code> тієї ж сесії результат — $0,007. Що записати за другу спробу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>$0,007: кожна спроба повертає власний підсумок SDK, тож у журнал записують саме його</span></label><label class="opt"><input type="radio" name="q5"><span>$0,011: сума двох підсумків — гроші витрачено в обох запусках</span></label><label class="opt ok"><input type="radio" name="q5"><span>$0,003: різниця з попереднім підсумком тієї ж сесії, бо він уже врахований</span></label></div>
+    <div class="why yes">Так. Підсумок відновленої сесії містить і її попередні запуски, тож запис — це приріст.</div>
+    <div class="why no">$0,011 рахує перший запуск двічі, а $0,007 для спроби завищує її на ціну попередньої. Ключ — <code>session_id</code>: нова сходинка каскаду — нова сесія, і там різниці немає.</div></div>
+  <div class="q"><div class="qt">6. Провайдер відповідає 429 <code>rate_limit_error</code> з <code>error_code: enforced_spend_limit_reached</code> і без <code>retry-after</code>. Що має зробити сервіс?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Припинити ретраї, перейти в стан «стеля» і покликати людину: доступ повернеться лише з новим місяцем</span></label><label class="opt"><input type="radio" name="q6"><span>Ретраїти з експоненційною затримкою: це rate limit, і за кілька хвилин вікно запитів звільниться</span></label><label class="opt"><input type="radio" name="q6"><span>Перемкнутись на fallback-модель: стеля витрат встановлюється окремо для кожної моделі</span></label></div>
+    <div class="why yes">Так. Це стеля тиру організації: доступ відновлюється о 00:00 UTC першого числа, і будь-які ретраї, зокрема автоматичні в SDK, марні.</div>
+    <div class="why no">Тип помилки той самий, що в rate limit, тому її й плутають, але <code>retry-after</code> немає, а стеля діє на всю організацію, не на модель. Розрізняють за <code>error_code</code>.</div></div>
+  <div class="q"><div class="qt">7. Після деплою hit rate prompt cache упав з 0,65 до 0,12, трафік той самий. Що найімовірніше?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Користувачів стало більше, і провайдер частіше витісняє записи кешу інших сесій</span></label><label class="opt ok"><input type="radio" name="q7"><span>Префікс змінюється між запитами: час у промпті, інший набір чи порядок інструментів</span></label><label class="opt"><input type="radio" name="q7"><span>Лекції подовшали, тож частка лекції в контексті росте, а частка кешу падає сама собою</span></label></div>
+    <div class="why yes">Так. Кеш — збіг префікса; будь-який змінний байт перед точкою кешу перетворює читання на запис, і задача дорожчає вдвічі без зміни трафіку.</div>
+    <div class="why no">Трафік не змінився, а лекція після першого читання теж стає частиною кешованого префікса. Різке падіння одразу після деплою — майже завжди зміна префікса (урок 5.5).</div></div>
+  <div class="q"><div class="qt">8. Що з роботи Lectern варто перенести в Batch API (−50%, до 24 год)?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Генерацію квізу агентом, поки автор чекає: вона найдорожча, тож заощадить найбільше</span></label><label class="opt"><input type="radio" name="q8"><span>Каскад моделей: haiku — у Batch, а sonnet викликати синхронно лише при ескалації</span></label><label class="opt ok"><input type="radio" name="q8"><span>Нічні прогони грейдерів evals: окремі запити, на які ніхто не чекає, дорожчі за генерацію</span></label></div>
+    <div class="why yes">Так. Грейдери — одиничні запити Messages API і коштують $0,0093 на квіз проти $0,0040 генерації.</div>
+    <div class="why no">Агентний цикл у Batch не переноситься: кожен хід чекає результату інструмента, а пакет повертає відповідь лише раз — через хвилини чи години. Автор, що чекає, теж не той випадок.</div></div>
+  <div class="q"><div class="qt">9. Медіана денних витрат за попередні 7 днів — $2,00, сьогодні $5,50, правило — сплеск понад 3 × базу. Чи спрацює алерт?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Так: витрати зросли в 2,75 раза, а все, що понад базу, і є аномалія за визначенням</span></label><label class="opt ok"><input type="radio" name="q9"><span>Ні: поріг $6,00; але прапорці p99 окремих задач і орендарів дивимося незалежно</span></label><label class="opt"><input type="radio" name="q9"><span>Так: денне правило рахують від середнього за тиждень, а воно нижче за медіану</span></label></div>
+    <div class="why yes">Так. 5,50 &lt; 3 × 2,00. Денний сплеск ловить масштаб, а дорогі задачі — окреме правило <code>job_cost_p99</code>.</div>
+    <div class="why no">Поріг — 3 × медіана = $6,00, і $5,50 його не перетинає. Медіана, не середнє: один дорогий день не зсуває базу.</div></div>
+  <div class="q"><div class="qt">10. Сервіс на м'якій стелі приймає запит <code>sonnet</code> як <code>haiku</code>. Навіщо при цьому міняти ключ кешу результатів?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q10"><span>Щоб квіз haiku не ліг у кеш під політикою sonnet і не дістався завтрашньому повному запиту</span></label><label class="opt"><input type="radio" name="q10"><span>Щоб деградовані квізи не можна було віддати з кешу нікому, навіть запитам на haiku</span></label><label class="opt"><input type="radio" name="q10"><span>Щоб гейт lectern check повторно перевірив квіз, бо для haiku в ньому діють суворіші правила</span></label></div>
+    <div class="why yes">Так. Ключ кешу містить політику моделі; без зміни ключа повний запит отримав би дешевший результат як «sonnet».</div>
+    <div class="why no">Квіз haiku якраз корисно віддавати запитам на haiku — для цього новий ключ. Правила гейта від моделі не залежать.</div></div>
+  <div class="q"><div class="qt">11. Треба звіряти з рахунком витрати кожного з 30 університетів-орендарів. Що реально дає Usage and Cost API?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>cost_report з group_by за ключем API: видати кожному орендарю власний ключ, і долари розкладуться самі</span></label><label class="opt"><input type="radio" name="q11"><span>Нічого: API звітує лише по організації загалом, тож звірка можлива тільки сумарна</span></label><label class="opt ok"><input type="radio" name="q11"><span>Workspace на орендаря в cost_report або токени usage_report за ключем API × ваші ціни</span></label></div>
+    <div class="why yes">Так. Долари <code>cost_report</code> групує лише за workspace і description; розріз за ключем є тільки в токенах <code>usage_report</code>.</div>
+    <div class="why no">Ключ API — розріз <code>usage_report</code> (токени), не <code>cost_report</code>; а загальною сумою API не обмежується: є workspace, модель, service tier та інші виміри.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>unit economics (AI-фіча)</td><td>Вартість бізнесової одиниці (квіз, модуль, автор) поруч із цінністю, яку вона дає; ресурсні метрики пояснюють причини.</td></tr>
+<tr><td>cost per module (одиниця)</td><td>Вартість модуля з 3 лекцій у конкретному режимі: від $0,011 (лише квізи) до $0,216 (ролі + рецензент Sonnet).</td></tr>
+<tr><td>cost attribution (орендар)</td><td>Віднесення кожного долара до орендаря, курсу чи задачі плюс правило для спільних витрат.</td></tr>
+<tr><td>cost ledger (факт)</td><td>Журнал фактичних витрат: приріст <code>total_cost_usd</code> кожної спроби, один раз, з орендарем і токенами.</td></tr>
+<tr><td>reconciliation (provider cost report)</td><td>Щоденна звірка журналу з <code>cost_report</code> провайдера з допуском; розбіжність понад допуск розбирають.</td></tr>
+<tr><td>cost anomaly (p99)</td><td>Задача дорожча за p99 свого класу або день вище за 3 × медіану тижня.</td></tr>
+<tr><td>tenant daily budget</td><td>Денна стеля орендаря: витрачено + відкриті резерви + новий резерв; понад неї — 429 до півночі UTC.</td></tr>
+<tr><td>global spend cap (degradation)</td><td>Денна стеля сервісу: з м'якого порогу — дешевша модель без каскаду, на стелі — лише кеш.</td></tr>
+<tr><td>cache hit rate SLO</td><td>Мінімальна частка вхідних токенів, прочитаних з prompt cache; падіння — ознака зміненого префікса.</td></tr>
+<tr><td>batch offloading</td><td>Перенесення роботи, на яку ніхто не чекає, у Batch API за половину ціни; агентний цикл туди не йде.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Юніт-економіка і бюджети вашої агентної фічі</h3>
+<p>З власних прогонів (або даних уроку) — одиниця, розподіл вартості p50/p95/p99, драйвери хвоста, чотири рівні бюджету з числами, розмір резерву і правила алертів.</p>
+<h3>2. Розбір дня, коли витрати вийшли з-під контролю</h3>
+<p>За витягом журналу і звітом Cost API (дані — у завданні) знайдіть причину, порахуйте її ціну і запропонуйте guard, який зупинив би її автоматично.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude — Pricing</a><span>ціни моделей, множники кешу (1,25× / 2× / 0,1×), Batch −50%, довгий контекст Haiku 5.5 понад 100 тис. токенів, inference_geo 1,1×</span></li>
+<li><a href="https://platform.claude.com/docs/en/manage-claude/usage-cost-api" target="_blank" rel="noopener">Claude — Usage and Cost API</a><span><code>usage_report/messages</code> і <code>cost_report</code>, бакети, розрізи, свіжість даних ~5 хв</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/beta/organization/cost_report/retrieve" target="_blank" rel="noopener">Claude API reference — Cost report</a><span>формат відповіді: <code>amount</code> у центах, <code>group_by</code>, пагінація</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/rate-limits" target="_blank" rel="noopener">Claude — Rate limits і spend limits</a><span>стелі тирів, <code>enforced_spend_limit_reached</code>, власні ліміти організації</span></li>
+<li><a href="https://platform.claude.com/docs/en/manage-claude/workspaces" target="_blank" rel="noopener">Claude — Workspaces</a><span>spend limits workspace з алертами на порогах</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Claude — Prompt caching</a><span>поля <code>cache_creation_input_tokens</code>, <code>cache_read_input_tokens</code>, <code>input_tokens</code></span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing" target="_blank" rel="noopener">Claude — Batch processing</a><span>ліміти пакета, 24 год, результати 29 днів</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/cost-tracking" target="_blank" rel="noopener">Claude Agent SDK — Track cost and usage</a><span><code>total_cost_usd</code> як оцінка, resume, субагенти, обнулені підсумки після краху</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/agent-loop" target="_blank" rel="noopener">Claude Agent SDK — Agent loop</a><span>запас для <code>max_budget_usd</code>: межа перевіряється після відповіді</span></li>
+<li><a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Claude Code — Settings reference</a><span><code>modelPricing</code>: контрактні ціни в <code>total_cost_usd</code> і <code>--max-budget-usd</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/non-interactive-mode" target="_blank" rel="noopener">Codex — non-interactive mode</a><span><code>--json</code>, <code>turn.completed</code> з <code>usage</code></span></li>
+<li><a href="https://cursor.com/docs/cli/reference/output-format" target="_blank" rel="noopener">Cursor CLI — Output format</a><span>поля результату <code>json</code> і <code>stream-json</code></span></li>
+<li><a href="https://www.finops.org/framework/capabilities/unit-economics/" target="_blank" rel="noopener">FinOps Foundation — Unit Economics</a><span>ресурсні й бізнесові юніт-метрики</span></li>
+<li><a href="https://www.finops.org/framework/capabilities/allocation/" target="_blank" rel="noopener">FinOps Foundation — Allocation</a><span>атрибуція витрат і правила для спільних витрат</span></li>
+<li><a href="https://www.finops.org/framework/capabilities/anomaly-management/" target="_blank" rel="noopener">FinOps Foundation — Anomaly Management</a><span>визначення аномалії витрат і процес реагування</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 15.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 15.2 · Senomi<br><br><a href="lesson-69.html">← Урок 15.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-71.html">Урок 15.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

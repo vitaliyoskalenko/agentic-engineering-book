@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 15.5. Деплой Lectern; інциденти й пост-мортем</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 15.5 · Модуль 15</div>
+<h1>Деплой Lectern; інциденти й пост-мортем</h1>
+<p class="lead">Lectern отримує контейнер без root із read-only файловою системою, health і readiness, graceful shutdown, реліз зі smoke-тестом, канаркою й журналом деплоїв. Два game day на справжній моделі — знята з обслуговування модель і стрибок вартості після правки промпту — закінчуються двома безвинними пост-мортемами, дії з яких стали кодом і тестами.</p>
+<div class="hero-meta"><span class="chip">Продакшн</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#arch"><b>01</b>Архітектура розгортання</a><a href="#image"><b>02</b>Образ і compose</a><a href="#drain"><b>03</b>Health, readiness, drain</a><a href="#release"><b>04</b>Реліз</a><a href="#gameday"><b>05</b>Game day</a><a href="#postmortem"><b>06</b>Безвинний пост-мортем</a><a href="#oncall"><b>07</b>Агент на чергуванні</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>спроєктувати розгортання сервісу з агентом: контейнер без root, read-only FS, том, конфіг через змінні оточення, розмір із виміряних чисел;</li>
+    <li>розвести liveness і readiness і зробити graceful shutdown, який не губить ні задачі, ні гроші;</li>
+    <li>зібрати реліз: build → SBOM → smoke → канарка → подія в журналі деплоїв, з відкатом;</li>
+    <li>провести game day і написати безвинний пост-мортем, дії з якого стають тестами;</li>
+    <li>безпечно користуватися агентом під час інциденту.</li>
+  </ul>
+</div>
+
+<section class="sec" id="arch">
+<div class="sec-h"><span class="num">01</span><h2>Архітектура розгортання<span class="sub">Один хост, один контейнер, один том</span></h2></div>
+<p>Перш ніж пакувати <code>lectern serve</code>, ми надіслали канонічному сервісу SIGTERM посеред задачі (fake-агент на 20 с, без моделі):</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ситуація</th><th>Канонічний сервіс</th><th>Після уроку</th></tr></thead>
+<tbody>
+<tr><td data-th="Ситуація">SIGTERM, клієнт тримає SSE-потік</td><td data-th="Канонічний сервіс">через 16,7 с процес ще живий: uvicorn чекає, доки клієнт закриє потік; Docker уб'є його на 10-й секунді</td><td data-th="Після уроку">вихід за 5,3 с (drain 5 с), SSE закрито одразу</td></tr>
+<tr><td data-th="Ситуація">SIGTERM без SSE</td><td data-th="Канонічний сервіс">вихід за 0,26 с, задача лишилась <code>running</code>, <code>runs: []</code> — вартість перерваного ходу зникла з обліку</td><td data-th="Після уроку">задача <code>queued, reason: shutdown</code>, вартість ходу в <code>runs</code>, після рестарту — <code>done</code></td></tr>
+</tbody></table></div>
+<p>Задача, що «повисла» на час деплою, для автора курсу — уже інцидент. Тож розгортання проєктуємо від зупинки, а не від старту.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 506" role="img" aria-label="Розгортання Lectern: клієнт, проксі з автентифікацією, контейнер на хості з томом і tmpfs, вихід до API">
+  <defs>
+    <marker id="d73a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="d73b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="110" y="6" width="140" height="38" rx="10" class="bx"/>
+  <text x="180" y="30" text-anchor="middle" class="tx b">Автор / клієнт</text>
+  <path d="M180 44 V 64" class="ln a" marker-end="url(#d73a)"/>
+  <rect x="24" y="68" width="176" height="46" rx="10" class="bx m"/>
+  <text x="112" y="88" text-anchor="middle" class="tx b">Проксі з auth</text>
+  <text x="112" y="104" text-anchor="middle" class="tx s">TLS; назовні — лише так</text>
+  <rect x="212" y="68" width="124" height="46" rx="10" class="bx p"/>
+  <text x="274" y="88" text-anchor="middle" class="tx b">Секрети</text>
+  <text x="274" y="104" text-anchor="middle" class="tx s">ключ → env</text>
+  <rect x="8" y="128" width="344" height="304" rx="12" class="bx" style="fill:none" stroke-dasharray="5 4"/>
+  <text x="18" y="146" class="tx s">хост · Docker · одна репліка</text>
+  <path d="M112 114 V 156" class="ln a" marker-end="url(#d73a)"/>
+  <path d="M274 114 V 156" class="ln d" marker-end="url(#d73b)"/>
+  <rect x="24" y="158" width="312" height="164" rx="10" class="bx a"/>
+  <text x="180" y="178" text-anchor="middle" class="tx b">контейнер · uid 10001 · tini</text>
+  <text x="180" y="194" text-anchor="middle" class="tx s">read-only rootfs · cap_drop ALL</text>
+  <rect x="40" y="204" width="280" height="46" rx="8" class="bx t"/>
+  <text x="180" y="224" text-anchor="middle" class="tx b">lectern serve :8000</text>
+  <text x="180" y="240" text-anchor="middle" class="tx s">черга → 8 воркерів · drain на SIGTERM</text>
+  <path d="M180 250 V 260" class="ln" marker-end="url(#d73b)"/>
+  <rect x="40" y="262" width="280" height="46" rx="8" class="bx"/>
+  <text x="180" y="282" text-anchor="middle" class="tx b">CLI-підпроцеси ×8</text>
+  <text x="180" y="298" text-anchor="middle" class="tx s">одна сесія агента — один процес</text>
+  <rect x="24" y="338" width="176" height="52" rx="10" class="bx t"/>
+  <text x="112" y="358" text-anchor="middle" class="tx b">том /data</text>
+  <text x="112" y="376" text-anchor="middle" class="tx s">jobs.db · jobs/ · claude/</text>
+  <rect x="212" y="338" width="82" height="52" rx="10" class="bx"/>
+  <text x="253" y="358" text-anchor="middle" class="tx b">/tmp</text>
+  <text x="253" y="376" text-anchor="middle" class="tx s">tmpfs</text>
+  <path d="M112 322 V 336" class="ln d" marker-end="url(#d73b)"/>
+  <text x="18" y="414" class="tx s">HEALTHCHECK → /readyz кожні 10 с</text>
+  <path d="M318 308 V 446" class="ln a" marker-end="url(#d73a)"/>
+  <rect x="196" y="450" width="152" height="48" rx="10" class="bx m"/>
+  <text x="272" y="470" text-anchor="middle" class="tx b">api.anthropic.com</text>
+  <text x="272" y="487" text-anchor="middle" class="tx s">лише вихідний HTTPS</text>
+  <text x="18" y="470" class="tx s">записуване: лише /data і /tmp</text>
+  <text x="18" y="487" class="tx s">порт: 127.0.0.1:8000</text>
+</svg>
+<figcaption>Стан живе лише на томі: образ незмінний, контейнер можна перестворити будь-коли. Агент — підпроцес CLI, що сам ходить до API; на хості порт сервісу відкрито лише на loopback.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рішення</th><th>Як у Lectern</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Рішення">Користувач</td><td data-th="Як у Lectern"><code>USER 10001:10001</code>, <code>no-new-privileges</code>, <code>cap_drop: ALL</code></td><td data-th="Чому">агент читає недовірені PDF (модуль 3.4): втеча з процесу не має давати root</td></tr>
+<tr><td data-th="Рішення">Файлова система</td><td data-th="Як у Lectern"><code>read_only: true</code>; записуване — том <code>/data</code> і tmpfs <code>/tmp</code> (noexec)</td><td data-th="Чому">усе, що сервіс пише, — у відомих місцях; зміна коду в живому контейнері неможлива</td></tr>
+<tr><td data-th="Рішення">Стан CLI</td><td data-th="Як у Lectern"><code>HOME</code> і <code>CLAUDE_CONFIG_DIR</code> на томі</td><td data-th="Чому">транскрипти сесій лежать у <code>$CLAUDE_CONFIG_DIR/projects/</code>; без них <code>resume</code> не працює</td></tr>
+<tr><td data-th="Рішення">Конфіг</td><td data-th="Як у Lectern">кожен прапорець <code>serve</code> має змінну <code>LECTERN_*</code></td><td data-th="Чому">один образ на всі середовища</td></tr>
+<tr><td data-th="Рішення">Секрет</td><td data-th="Як у Lectern"><code>${ANTHROPIC_API_KEY:?…}</code> з оточення оператора</td><td data-th="Чому">у шарах образу й у git ключа немає; без ключа compose не стартує</td></tr>
+<tr><td data-th="Рішення">Мережа</td><td data-th="Як у Lectern"><code>127.0.0.1:8000</code></td><td data-th="Чому">ключі тенантів є (урок 15.3), TLS — ні: назовні лише через проксі</td></tr>
+</tbody></table></div>
+<blockquote class="q-src">
+<p>Конфігурація застосунку — це все, що, імовірно, відрізнятиметься між деплоями. […] Застосунок дванадцяти факторів зберігає конфігурацію в змінних оточення.</p>
+<p class="orig">“An app's config is everything that is likely to vary between deploys … The twelve-factor app stores config in environment variables.”</p>
+<cite>The Twelve-Factor App, III. Config</cite>
+</blockquote>
+<p>Тест з того самого розділу: чи можна відкрити код просто зараз, нічого не скомпрометувавши. Документація Agent SDK для безпечного розгортання йде далі: <b>проксі поза межею агента</b> підставляє облікові дані у вихідні запити, і агент ключа не бачить. На одному хості ми лишили змінну оточення; проксі — в беклозі разом з автентифікацією (B277).</p>
+<h3>Розмір — із виміряних чисел</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Джерело</th><th>Пам'ять на сесію</th><th>Що з цього брати</th></tr></thead>
+<tbody>
+<tr><td data-th="Джерело">Документація Agent SDK (hosting)</td><td data-th="Пам&#x27;ять на сесію">1 GiB RAM, 5 GiB диска, 1 CPU на агента — «розумна стартова точка», «нижня межа, не стеля»</td><td data-th="Що з цього брати">ліміт контейнера на старті</td></tr>
+<tr><td data-th="Джерело">Вимір 14.2 (Haiku, короткі задачі)</td><td data-th="Пам&#x27;ять на сесію">пікова RSS дерева процесів (сервіс + CLI): 0,32 ГБ на 1 сесію, 2,0 ГБ на 8, 2,55 ГБ на 12 — ≈ 0,25 ГБ на сесію</td><td data-th="Що з цього брати">реальне споживання, нижче за документацію в 4 рази</td></tr>
+<tr><td data-th="Джерело">Коліно пропускної здатності 14.2</td><td data-th="Пам&#x27;ять на сесію">лінійний ріст до 8–12 сесій; на 32 — обвал</td><td data-th="Що з цього брати">стеля <code>LECTERN_WORKERS</code></td></tr>
+</tbody></table></div>
+<p>Правило з документації: агентів на хост = (RAM хоста − накладні) / стеля пам'яті сесії. Для хоста 8 vCPU / 16 ГБ: (16 − 2) / 1 = 14, коліно — 8–12. Беремо <code>LECTERN_WORKERS=8</code> і <code>mem_limit: 10g</code> (8 × 1 GiB + сервіс і гейт). Знижувати ліміт до виміряних 0,25 ГБ можна лише після виміру на своєму трафіку, бо довга лекція і довга історія сесії ростуть разом.</p>
+<div class="note arch"><span class="lbl">Межа SQLite</span>
+<p>Сховище задач (ADR 0013) — SQLite у режимі WAL і власник задачі за pid. Звідси <b>одна репліка</b>: у кожного контейнера свій простір PID, тож дві копії на одному томі можуть отримати той самий pid, і <code>recover()</code> кожної вважає задачі іншої своїми — агент запуститься двічі (B276). Переїзд на зовнішнє сховище — коли з'явиться другий хост або балансувальник; ці тригери записані в ADR 0013 ще в 10.2.</p>
+</div>
+</section>
+
+<section class="sec" id="image">
+<div class="sec-h"><span class="num">02</span><h2>Образ і compose<span class="sub">Що потрапляє в контейнер і що ні</span></h2></div>
+<pre class="code" data-lang="dockerfile"><span class="cm"># --- build: залежності лише з хешованого lock і SBOM того venv, що піде в образ ---</span>
+<span class="k">FROM</span> ${PYTHON_IMAGE} <span class="k">AS</span> build
+<span class="k">RUN</span> python -m venv /opt/venv \
+ &amp;&amp; /opt/venv/bin/python -m pip install --require-hashes -r requirements/pip.txt \
+ &amp;&amp; /opt/venv/bin/python -m pip install --require-hashes -r requirements/serve.txt
+<span class="k">RUN</span> python -m venv /opt/sec &amp;&amp; /opt/sec/bin/python -m pip install --require-hashes -r requirements/security.txt \
+ &amp;&amp; /opt/sec/bin/cyclonedx-py environment --pyproject pyproject.toml --mc-type application \
+      --output-reproducible --of JSON -o /opt/sbom.cdx.json /opt/venv
+
+<span class="cm"># --- runtime: без компілятора, pip-кешу й інструментів SBOM ---</span>
+<span class="k">FROM</span> ${PYTHON_IMAGE}
+<span class="k">COPY</span> --from=build /opt/venv /opt/venv
+<span class="k">COPY</span> --from=build /opt/sbom.cdx.json /opt/lectern/sbom.cdx.json
+<span class="k">COPY</span> src /opt/lectern/src
+<span class="k">ENV</span> HOME=/data/home CLAUDE_CONFIG_DIR=/data/claude LECTERN_DATA=/data/service LECTERN_HOST=0.0.0.0
+<span class="k">USER</span> <span class="n">10001</span>:<span class="n">10001</span>
+<span class="k">HEALTHCHECK</span> --interval=10s --timeout=3s --start-period=30s --start-interval=1s --retries=3 \
+  CMD [<span class="s">"python"</span>, <span class="s">"-m"</span>, <span class="s">"lectern.healthcheck"</span>]
+<span class="k">CMD</span> [<span class="s">"python"</span>, <span class="s">"-m"</span>, <span class="s">"lectern.cli"</span>, <span class="s">"serve"</span>]</pre>
+<ul>
+<li><b>Окремий lock для образу.</b> <code>requirements/ci.txt</code> (10.3) містить pytest, mypy, mutmut. <code>scripts/lock.sh</code> тепер генерує <code>requirements/serve.txt</code>: лише extra <code>serve</code>, ті самі версії, 36 пакетів із хешами. Вони займають 306 МБ, і 252 МБ з них — <code>claude-agent-sdk</code> з вбудованим CLI (6.5). База <code>python:3.12-slim</code> важить 43 МБ у стиснутому вигляді. Lectern не встановлюється як пакет: збирання wheel потягнуло б <code>uv_build</code> без хешу.</li>
+<li><b>SBOM у стадії build</b> (12.4): cyclonedx описує саме <code>/opt/venv</code> з образу, а не venv розробника. Інструменти SBOM лишаються в стадії, яку Docker відкидає.</li>
+<li><b>Exec-форма <code>CMD</code>.</b> У shell-формі процесом стає <code>/bin/sh -c</code>, а він, за довідником Dockerfile, сигналів не передає, тож SIGTERM від <code>docker stop</code> до Python не дійде. У compose — <code>init: true</code>: tini передає сигнали й прибирає осиротілі підпроцеси CLI.</li>
+<li><b>HEALTHCHECK без curl.</b> Офіційний <code>python:3.12-slim</code> ставить із пакетів лише <code>ca-certificates</code>, <code>netbase</code>, <code>tzdata</code>. Перевірка <code>CMD curl …</code> там ніколи не пройде, і контейнер вічно буде <code>starting</code>. Тому <code>lectern.healthcheck</code> написано на stdlib.</li>
+</ul>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">LECTERN_VERSION=test docker compose -f deploy/compose.yaml config</span>
+<span class="er">parsing …/deploy/compose.yaml: error while interpolating services.lectern.environment.ANTHROPIC_API_KEY: required variable ANTHROPIC_API_KEY is missing a value: export it from your secret manager, never put it in a file in the repo</span>
+<span class="ps">$ </span><span class="c">LECTERN_VERSION=test ANTHROPIC_API_KEY=dummy docker compose -f deploy/compose.yaml config</span>
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 8000
+        published: "8000"
+        protocol: tcp
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 1m0s
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    user: 10001:10001</pre>
+<div class="cap">реальний вивід · Docker 24.0.6 · 18.10.2026 · шлях скорочено, з другого виводу показано лише частину полів</div></div>
+<div class="note warn"><span class="lbl">Чого ми не робили</span>
+<p>Образ <b>не збирали</b>: на хості було менше 8 ГБ вільного місця (5,5 ГБ на початку, 2,7 ГБ наприкінці), а повний диск переводить віртуальну машину Docker у read-only. 306 МБ — оцінка за встановленими пакетами, а не розмір образу. <code>docker build --check</code> перевіряє Dockerfile без збирання, але потребує Buildx ≥ 0.15, а тут стояла 0.11.2. Контракт контейнера перевіряє текстовий тест <code>tests/test_deploy_policy.py</code>: кілька стадій, хеші, числовий не-root <code>USER</code>, exec-форма, жодного <code>ENV …KEY</code>, порт лише на loopback, <code>stop_grace_period</code> більший за drain. Збирання й виміри на Linux CI — B270.</p>
+</div>
+</section>
+
+<section class="sec" id="drain">
+<div class="sec-h"><span class="num">03</span><h2>Health, readiness, drain<span class="sub">Що відбувається між SIGTERM і SIGKILL</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ендпоінт</th><th>Питання</th><th>Що перевіряє</th><th>Наслідок збою</th></tr></thead>
+<tbody>
+<tr><td data-th="Ендпоінт"><code>/healthz</code> (liveness)</td><td data-th="Питання">чи живий процес</td><td data-th="Що перевіряє">нічого зовнішнього: відповідає цикл подій — і досить</td><td data-th="Наслідок збою">оркестратор перезапускає контейнер</td></tr>
+<tr><td data-th="Ендпоінт"><code>/readyz</code> (readiness)</td><td data-th="Питання">чи слати сюди задачі</td><td data-th="Що перевіряє">база читається, <code>/data</code> записуваний, усі воркери живі, немає зупинки; повертає <code>runner</code> і <code>version</code></td><td data-th="Наслідок збою">трафік іде повз; <code>compose up --wait</code> і release.sh чекають саме його</td></tr>
+</tbody></table></div>
+<p>У Kubernetes це два різні пробники: liveness вирішує, <b>коли перезапустити</b> контейнер, readiness — <b>коли він готовий приймати трафік</b>. Docker має один <code>HEALTHCHECK</code> і сам нездоровий контейнер не перезапускає, тому наш дивиться в <code>/readyz</code>.</p>
+<p>Жоден пробник не викликає модель. Виклик коштує грошей щоразу, а коли API постачальника лежить, liveness з моделлю перезапускав би здоровий контейнер по колу. Задачі він однаково не допоміг би.</p>
+<ol class="steps">
+<li><b>SIGTERM.</b> <code>DrainingServer.handle_exit</code> через цикл подій викликає <code>begin_drain()</code>: воркери більше не беруть задач, SSE-потоки закриваються. Клієнт перепідключиться з <code>Last-Event-ID</code> уже до нового процесу.</li>
+<li><b>HTTP.</b> uvicorn перестає приймати з'єднання й чекає відкриті запити не довше ніж <code>timeout_graceful_shutdown=5</code> с.</li>
+<li><b>Drain.</b> Задачі, що вже біжать, мають до <code>LECTERN_DRAIN_S</code> секунд (у проді 30), щоб завершитись.</li>
+<li><b>Interrupt.</b> Решті приходить подія <code>cancel</code>, як при скасуванні з 14.2. Runner дочитує <code>ResultMessage</code> перерваного ходу, тож вартість потрапляє в <code>runs</code>. Задача стає <code>queued</code> з <code>reason: shutdown</code>, а не <code>cancelled</code>, бо клієнт нічого не скасовував.</li>
+<li><b>Наступний процес.</b> <code>recover()</code> (ADR 0013) бачить мертвого власника й запускає задачу ще раз, рівно один раз.</li>
+</ol>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>drain_demo.sh — fake-агент 30 с, SSE відкритий, LECTERN_DRAIN_S=5</span></div>
+<pre>ready in 1.59 s · pid 64958 · rss 105 MB
+job 6bc91bb0f755 submitted
+SIGTERM sent
+<span class="ok">exited after 5.3 s</span>
+queued|64958
+ready in 1.43 s · pid 65337 · rss 111 MB
+status done · items 3 · check ok True · runs 2
+<span class="d">    0.00  status    {'status': 'running', 'model': 'haiku', 'resume': False, 'budget_usd': 0.25}</span>
+    8.27  result    {'subtype': 'fake', 'terminal_reason': None, 'cost_usd': 0.0, 'requests': 0}
+<span class="y">    8.27  status    {'status': 'queued', 'reason': 'shutdown'}</span>
+    9.82  requeued  {'reason': 'owner_dead', 'previous_owner': 64958}
+   10.93  status    {'status': 'done', 'covered': 3, 'needs_review': False}</pre>
+<div class="cap">реальний вивід на хості (не в контейнері) · lectern serve зі scratch-копії · 18.10.2026 · частину подій пропущено</div></div>
+<p>На справжньому агенті цей шлях спрацював двічі під час game day: дві сесії Haiku перервано зупинкою, у <code>runs</code> лишилося $0,0012 і $0,0015. Обидві задачі завершились після рестарту і коштували $0,0036 і $0,0041. Перерваний хід — 34–38% вартості задачі, і після рестарту ці гроші витрачаються вдруге. Продовжити сесію з транскрипту на томі замість старту з нуля — B271.</p>
+<div class="note warn"><span class="lbl">Пастка: 10 секунд</span>
+<p><code>docker stop</code> надсилає SIGTERM, а після grace period — SIGKILL. Типовий grace period — 10 с для Linux-контейнерів, і в compose <code>stop_grace_period</code> теж за замовчуванням 10 с. Drain на 30 с без <code>stop_grace_period: 60s</code> — це той самий kill -9, тільки з затримкою. Тест політики порівнює ці числа: grace має бути більшим за drain + interrupt + 5 с HTTP.</p>
+</div>
+</section>
+
+<section class="sec" id="release">
+<div class="sec-h"><span class="num">04</span><h2>Реліз<span class="sub">build → SBOM → smoke → канарка → подія</span></h2></div>
+<ol class="steps">
+<li><b>Передумова.</b> Чисте робоче дерево і зелений <code>scripts/check.sh</code>: деплой — це коміт, інакше немає ні lead time, ні точки відкату, ні чесного SBOM.</li>
+<li><b>Build</b> з міткою <code>org.opencontainers.image.revision=&lt;sha&gt;</code> і версією = короткий sha.</li>
+<li><b>SBOM</b> — <code>docker run --rm --entrypoint cat … /opt/lectern/sbom.cdx.json</code> у <code>out/release/</code>. Порожній список компонентів зупиняє реліз.</li>
+<li><b>Smoke кандидата</b>: контейнер з <code>--read-only</code>, tmpfs на <code>/data</code>, <code>LECTERN_RUNNER=fake</code>, <b>без ключа</b>. Чекаємо <code>healthy</code>, проганяємо <code>smoke.py</code> (healthz → readyz → задача через чергу, гейт і сховище → <code>/stats</code>), робимо <code>docker stop -t 30</code>.</li>
+<li><b>Deploy</b>: <code>docker compose up -d --wait</code> чекає readiness. Далі <b>канарка</b> — <code>smoke.py --expect-runner sdk --expect-version V</code> з однією справжньою задачею, ≈ $0,003 на Haiku.</li>
+<li><b>Подія</b> в <code>deploy/deploys.jsonl</code>. Деплой не вдався — подія <code>failed</code> і автоматичний відкат на останню успішну версію з того самого журналу.</li>
+</ol>
+<p>Fake-агент у smoke — свідомий компроміс. Кандидат перевіряє все, крім моделі: образ, права на файли, read-only FS, чергу, гейт, SSE, сигнали. Ключа він не отримує, тож зламаний образ нічого не витратить і нічого не злиє. Модель перевіряє канарка вже після деплою, і саме вона ловить зняту модель (пост-мортем нижче). Щоб fake не потрапив у продакшн, readiness повертає <code>runner</code>, а канарка вимагає <code>sdk</code>:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — lectern serve на хості, LECTERN_RUNNER=fake</span></div>
+<pre><span class="ps">$ </span><span class="c">python3 scripts/smoke.py http://127.0.0.1:8751 --expect-runner fake --expect-version 0.3.0-l73</span>
+<span class="ok">ok  </span> healthz    200  (0.01 s)
+<span class="ok">ok  </span> readyz     {'status': 'ready', 'runner': 'fake', 'version': '0.3.0-l73'}  (0.01 s)
+<span class="ok">ok  </span> submit     202  (0.01 s)
+<span class="ok">ok  </span> job        {'id': 'd303711f5fc7', 'status': 'done', 'cost_usd': 0.0, 'error': None}  (1.04 s)
+<span class="ok">ok  </span> stats      {'workers': 2, 'running': 0, 'max_queue': 16, 'queued': 0, 'retry_after_s': 1}  (1.04 s)
+smoke: passed
+<span class="ps">$ </span><span class="c">python3 scripts/smoke.py http://127.0.0.1:8751 --expect-runner sdk --no-job</span>
+<span class="er">FAIL</span> runner     expected sdk, got fake  (0.01 s)
+<span class="er">smoke: FAILED (runner)</span></pre>
+<div class="cap">реальний вивід · 18.10.2026 · у другому запуску пропущено рядки healthz/readyz/stats</div></div>
+<p>Логіку <code>release.sh</code> перевіряє <code>tests/test_release_script.py</code> без Docker: <code>docker</code> і <code>smoke</code> підмінено скриптами, що записують виклики. Тести стверджують порядок кроків, відсутність ключа в кандидата, автоматичний відкат після невдалого деплою і <code>--rollback</code>.</p>
+<h3>Журнал деплоїв і DORA (B190)</h3>
+<p>У 13.4 lead time рахували лише за проксі: в історії git немає ні злиттів, ні деплоїв. Тепер кожен реліз, відкат і інцидент — рядок JSONL, і <code>team_metrics.py --deploys</code> рахує п'ять метрик DORA. Change lead time — від дати коміту до події деплою, для комітів між двома успішними деплоями. Failed deployment recovery time береться з подій <code>incident</code> (opened → resolved) і з автоматичних відкатів.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>журнал game day і метрики з нього</span></div>
+<pre><span class="d">{"event": "deploy", "sha": "c4ccddf05a2a…", "status": "ok", "target": "host-gameday", "ts": "2026-10-18T15:47:37+00:00", "version": "v2"}
+{"event": "rollback", "replaces": "v2", "sha": "8cd9977c5cb6…", "status": "ok", "target": "host-gameday", "ts": "2026-10-18T15:48:25+00:00", "version": "v1.1"}</span>
+<span class="ps">$ </span><span class="c">python3 scripts/team_metrics.py --dir lectern --deploys deploys.jsonl</span>
+deploys          3/3 ok · per week 2026-W42: 3
+                 lead time n=2 median=0.105 h p90=0.17 h · change fail rate 0.333 · recovery n=2 median=0.02 h · rework rate 0.333
+<span class="y">warning: 3 deploys: DORA rates are anecdotes, not a trend</span></pre>
+<div class="cap">реальний вивід на журналі game day (scratch-git із 3 комітами, не продакшн) · sha скорочено · частину рядків пропущено</div></div>
+<p>Change fail rate 0,333 — це <code>v2</code>, яку відкотили. Інцидент зі знятою моделлю записано без версії: його спричинив постачальник, а не наш деплой, і зараховувати його в change fail rate було б неправдою. Попередження про три деплої — частина звіту, а не прикраса: з такої кількості трендів не буває.</p>
+</section>
+
+<section class="sec" id="gameday">
+<div class="sec-h"><span class="num">05</span><h2>Game day<span class="sub">Два інциденти з секундоміром</span></h2></div>
+<blockquote class="q-src">
+<p>Game day моделює події в середовищі, близькому до продакшну, щоб перевірити системи, процеси й реакцію команди. Мета — зробити ті самі дії, які команда зробила б, якби подія сталася насправді.</p>
+<p class="orig">“Game days simulate events in production-like environments to test systems, processes, and team responses. The purpose is to perform the same actions the team would perform as if the event actually occurred.”</p>
+<cite>AWS Well-Architected, Reliability Pillar, REL12-BP05</cite>
+</blockquote>
+<p>Стенд: <code>lectern serve</code> на хості, 4 воркери, трафік зі скрипта, монітор <code>slo_check.py</code> кожні 5 с. Мітигацію скрипт запускав одразу після першого алерту, тож час реакції людини в цифри не входить. Прогін 1 — канонічний <code>/stats</code> з порогами по всій історії. Прогін 2 — після дій з пост-мортему: вікно <code>?since_s=120</code> і окрема причина <code>api_error_404</code>.</p>
+<h3>A. Закріплену модель знято з обслуговування</h3>
+<p>Спершу ми перевірили на справжньому CLI, як це виглядає: <code>claude -p --model claude-3-5-sonnet-20241022</code> (знята з обслуговування 28.10.2025) повертає <code>subtype: "success"</code>, але <code>is_error: true</code>, <code>terminal_reason: "api_error"</code>, <code>api_error_status: 404</code> і текст «There's an issue with the selected model … It may not exist or you may not have access to it». Той самий запит із <code>--fallback-model haiku</code> відповів <code>pong</code>: fallback CLI покриває не лише перевантаження, а й модель, якої «not available».</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Фаза (від ін'єкції)</th><th>Прогін 1: уся історія</th><th>Прогін 2: вікно + 404</th></tr></thead>
+<tbody>
+<tr><td data-th="Фаза (від ін&#x27;єкції)">Історія до інциденту</td><td data-th="Прогін 1: уся історія">6 задач</td><td data-th="Прогін 2: вікно + 404">40 задач</td></tr>
+<tr><td data-th="Фаза (від ін&#x27;єкції)">Детекція</td><td data-th="Прогін 1: уся історія">17,4 с — <code>failures 2/8 &gt; 20%</code></td><td data-th="Прогін 2: вікно + 404">5,3 с — <code>model 1 job(s) failed with api_error 404</code></td></tr>
+<tr><td data-th="Фаза (від ін&#x27;єкції)">Мітигація (рестарт із <code>LECTERN_FALLBACK_MODEL=haiku</code>)</td><td data-th="Прогін 1: уся історія">20,1 с</td><td data-th="Прогін 2: вікно + 404">7,5 с</td></tr>
+<tr><td data-th="Фаза (від ін&#x27;єкції)">Перша успішна задача</td><td data-th="Прогін 1: уся історія">36,3 с</td><td data-th="Прогін 2: вікно + 404">23,7 с</td></tr>
+<tr><td data-th="Фаза (від ін&#x27;єкції)">Зачеплено задач</td><td data-th="Прогін 1: уся історія">2 з 2</td><td data-th="Прогін 2: вікно + 404">1 з 1</td></tr>
+<tr><td data-th="Фаза (від ін&#x27;єкції)">Правило «частка відмов» по всій історії</td><td data-th="Прогін 1: уся історія">спрацювало, бо історія коротка</td><td data-th="Прогін 2: вікно + 404">не спрацювало зовсім (1 відмова з 41); лічильник 404 світився до кінця прогону</td></tr>
+</tbody></table></div>
+<p>Каскад Haiku → Sonnet тут не допомагає, і це правильно: <code>api_error</code> — не питання якості (<code>routing.ESCALATE</code>). Задача з такою помилкою не відновлюється через <code>resume</code>: клієнт мусить подати її заново.</p>
+<h3>B. Правка промпту зняла межу повторних збережень</h3>
+<p>Правило B18 «Do not save a third time» ми замінили на «зберігай покращений квіз знову, доки не задоволений» — типова правка «заради якості». <b>Наживо збою не сталося.</b> 17 задач на Haiku 5.5 дали медіану в одне збереження і p50 вартості $0,0021 проти $0,0023 до правки: модель зупинялась після першого чистого збереження. Тож прогін 2 відтворює наслідок: fake-агент повертає записані вартості чотирьох справжніх прогонів із 2–3 збереженнями ($0,0069–0,0105, з evals 12.3), а історію до інциденту — 26 прогонів з одним збереженням (p50 $0,0035).</p>
+<p>Результат: деплой <code>v2</code> → алерт <code>cost p50 &gt; 1.3× baseline</code> через 45,6 с → відкат ще за 2,4 с → вікно тихе через 48,5 с. За 48 с <code>v2</code> обробив 46 задач на $0,370 замість ≈ $0,160: ×2,3 на задачу, а на трафіку 1 задача/с — ≈ $16 зайвих на годину. Статуси й гейт цього не бачать узагалі: усі квізи правильні.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar m"><span class="k">p50 · уся історія</span><span class="tr"><i style="--v:95%"></i><b class="in" style="--v:95%">43 с</b></span></div>
+  <div class="bar m"><span class="k">p50 · вікно 120 с</span><span class="tr"><i style="--v:91%"></i><b class="in" style="--v:91%">41 с</b></span></div>
+  <div class="bar t"><span class="k">p50 · вікно 60 с</span><span class="tr"><i style="--v:13%"></i><b style="--v:13%">6 с</b></span></div>
+  <div class="bar t"><span class="k">p50 · вікно 30 с</span><span class="tr"><i style="--v:9%"></i><b style="--v:9%">4 с</b></span></div>
+  <div class="bar p"><span class="k">p95 · будь-яке вікно</span><span class="tr"><i style="--v:2%"></i><b style="--v:2%">1 с · але шум</b></span></div>
+</div>
+<figcaption>Офлайн-replay тих самих записів, перевірка щосекунди: за скільки секунд після деплою v2 спрацювало б правило «вартість &gt; 1,3× baseline». p95 реагує миттєво, але p95 здорової історії — $0,0044 при порозі $0,0045, а максимум — $0,0052: хибні тривоги щодня.</figcaption>
+</figure>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Медіана спрацьовує, коли нові задачі стають більшістю у вікні. У 60-секундному вікні старих задач було кілька, і вистачило 6 с; у 120-секундному ще лежала вся історія з 40 задач — 41 с. На тижні справжнього трафіку правило «по всій історії» чекало б годинами. Практичне правило: коротке вікно для медіани з мінімальною кількістю задач, а p95 — лише з власним порогом.</p>
+</div>
+</section>
+
+<section class="sec" id="postmortem">
+<div class="sec-h"><span class="num">06</span><h2>Безвинний пост-мортем<span class="sub">Від хронології до дії з власником</span></h2></div>
+<blockquote class="q-src">
+<p>Щоб пост-мортем був справді безвинним, він має зосередитися на причинах інциденту, що до нього призвели, і не звинувачувати жодну людину чи команду в поганій або неналежній поведінці.</p>
+<p class="orig">“For a postmortem to be truly blameless, it must focus on identifying the contributing causes of the incident without indicting any individual or team for bad or inappropriate behavior.”</p>
+<cite>Google SRE Book, гл. 15 «Postmortem Culture: Learning from Failure», 2017</cite>
+</blockquote>
+<p>Тригери пост-мортему з того самого розділу: простій чи деградація, помітні користувачам, понад поріг; будь-яка втрата даних; ручне втручання чергового (відкат, перемикання трафіку); час розв'язання понад поріг; збій моніторингу. Обидва наші інциденти підпадають під «ручне втручання», а A у прогоні 2 — ще й під «збій моніторингу»: правило по всій історії мовчало.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Розділ</th><th>Що туди пишуть</th><th>Типова помилка</th></tr></thead>
+<tbody>
+<tr><td data-th="Розділ">Підсумок і вплив</td><td data-th="Що туди пишуть">задачі, автори, гроші з <code>cost_usd</code>, SLO, дані</td><td data-th="Типова помилка">«деякі користувачі» замість числа</td></tr>
+<tr><td data-th="Розділ">Хронологія (UTC)</td><td data-th="Що туди пишуть">перший симптом, детекція, кожне рішення, відновлення; джерело кожного рядка</td><td data-th="Типова помилка">починати з першого алерту, а не з першого симптому</td></tr>
+<tr><td data-th="Розділ">Корені й сприятливі чинники</td><td data-th="Що туди пишуть">механізм; умови, що зробили інцидент довшим; рішення людей і агентів <b>з тодішнім контекстом</b></td><td data-th="Типова помилка">«людський фактор» як корінь</td></tr>
+<tr><td data-th="Розділ">Що спрацювало / де пощастило</td><td data-th="Що туди пишуть">що повторити; що могло піти гірше</td><td data-th="Типова помилка">пропустити «пощастило» — і наступного разу не пощастить</td></tr>
+<tr><td data-th="Розділ">Дії</td><td data-th="Що туди пишуть">тип, власник, backlog-id, перевірка (тест, алерт, вимір)</td><td data-th="Типова помилка">«бути уважнішими» — дія без перевірки</td></tr>
+</tbody></table></div>
+<p>Рішення агента пишуть так само безвинно, як рішення людини. У B модель проігнорувала нове правило, і в пост-мортемі це не «агент молодець»: це сприятливий чинник, через який ін'єкція збою нічого не перевірила. Інша модель або попередження ключа на першому збереженні відкриють той самий цикл.</p>
+<h3>Дії стають кодом</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Дія з PM-2026-10-18-a</th><th>Власник</th><th>Перевірка</th></tr></thead>
+<tbody>
+<tr><td data-th="Дія з PM-2026-10-18-a"><code>/stats</code> рахує причини відмов, 404 окремо</td><td data-th="Власник">інженер бекенду</td><td data-th="Перевірка"><code>test_stats_counts_404_separately_and_windows_out_old_jobs</code>; прогін 2: детекція 17,4 → 5,3 с</td></tr>
+<tr><td data-th="Дія з PM-2026-10-18-a"><code>/stats?since_s=N</code>, <code>slo_check.py --window</code></td><td data-th="Власник">інженер бекенду</td><td data-th="Перевірка">той самий тест; алерт гасне після відновлення</td></tr>
+<tr><td data-th="Дія з PM-2026-10-18-a">Fallback-модель типово в compose</td><td data-th="Власник">DevOps</td><td data-th="Перевірка"><code>test_deploy_policy.py</code></td></tr>
+<tr><td data-th="Дія з PM-2026-10-18-a">Канарка зі справжньою задачею після деплою</td><td data-th="Власник">DevOps</td><td data-th="Перевірка"><code>test_release_builds_smokes_deploys_and_records_the_event</code></td></tr>
+<tr><td data-th="Дія з PM-2026-10-18-a">Щоденна звірка закріплених id з deprecations (≥ 60 днів наперед)</td><td data-th="Власник">тех-лід</td><td data-th="Перевірка">B272 — відкрито</td></tr>
+</tbody></table></div>
+<p>Про строк є що звіряти: за сторінкою model deprecations постачальник повідомляє щонайменше за 60 днів до зняття публічної моделі, а запити до знятої <b>падають</b>. Пост-мортем без дій у беклозі — це звичка «knowledge PR» з 13.3 навпаки: знання лишилося в документі, а не в коді й тестах. Тому інцидент закривають тоді, коли закрито дії, а не коли написано текст.</p>
+<div class="note tip"><span class="lbl">Severity без суперечок</span>
+<p>PagerDuty: якщо не певні, який рівень у інциденту, — <b>беріть вищий</b>; сперечатися про рівень — на пост-мортемі, не під час інциденту. SRE Book так само: краще оголосити інцидент рано й швидко закрити, ніж розгортати процес через години.</p>
+<p class="orig">“If you are unsure which level an incident is (e.g. not sure if SEV-2 or SEV-1), treat it as the higher one.” — PagerDuty Incident Response · “It is better to declare an incident early and then find a simple fix and close out the incident than to have to spin up the incident management framework hours into a burgeoning problem.” — Google SRE Book, гл. 14</p>
+</div>
+</section>
+
+<section class="sec" id="oncall">
+<div class="sec-h"><span class="num">07</span><h2>Агент на чергуванні<span class="sub">Лише читання, рішення — за людиною</span></h2></div>
+<p>Під час інциденту агент добре читає журнали, задачі й журнал деплоїв і швидко формулює гіпотези. Діяти в продакшні він не повинен: у його оточенні немає ключів продакшну, а команди на хості виконує людина. Режим — той, що забороняє запис.</p>
+<div class="tabs">
+<input type="radio" name="oc-t" id="oc-t1" checked><input type="radio" name="oc-t" id="oc-t2"><input type="radio" name="oc-t" id="oc-t3">
+<div class="tab-l"><label for="oc-t1">Claude Code</label><label for="oc-t2">Codex CLI</label><label for="oc-t3">Cursor CLI</label></div>
+<div class="tab-p">
+<p>Plan mode не редагує файлів, але може запускати команди для дослідження. Тому дозволи звужуємо явно: лише читання файлів, без shell.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — копія журналів game day</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "Інцидент на lectern serve: зросла вартість задач. За файлами в цій теці (deploys.jsonl, alerts.jsonl, jobs.txt) визнач: з якого деплою почалось, у скільки разів зросла вартість задачі, коли спрацював алерт і що зробили. Нічого не змінюй і не запускай. Відповідай коротко українською, з числами." --model haiku --permission-mode plan --allowedTools "Read" "Grep" "Glob" --setting-sources project --strict-mcp-config --output-format stream-json --verbose &gt; run.jsonl</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.302 · 18.10.2026 · запущено в окремій теці з копіями файлів</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run.jsonl — кроки й відповідь</span></div>
+<pre><span class="y">● Read</span>  deploys.jsonl · <span class="y">● Read</span>  alerts.jsonl · <span class="y">● Read</span>  jobs.txt
+<span class="c">Початок: деплой v2 (c4ccddf, 15:47:37 UTC, host-gameday). …
+Ріст вартості: p50 вартості задачі зріс з ~$0.0035 (база v1/v1.1) до $0.0069–0.0071, тобто приблизно в 2 рази. …
+Алерт: cost p50 $0.0069 > 1.3× baseline $0.0035 спрацював о 15:48:22, через ~45 с після деплою v2. …
+Що зробили: о 15:48:25 відкат v2 на v1.1 (8cd9977) …
+Не з'ясовано: у файлах немає причини росту ціни за хід у v2, тільки сам факт. Потрібен diff c4ccddf проти 8cd9977.</span>
+<span class="d">result · num_turns 4 · 17,8 с · permission_denials [] · total_cost_usd 0.106</span></pre>
+<div class="cap">реальний вивід · відповідь скорочено</div></div>
+<p>Хронологію агент відновив правильно і чесно назвав, чого не знає. Але одна гіпотеза в ній хибна: «зросла ціна ходу, а не кількість ходів». У replay ходи теж записані (9–10 проти 8), і причина — додаткові збереження. Гіпотезу агента перевіряють на даних, перш ніж на неї спиратися.</p>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Сесія з <code>--model haiku</code> у plan mode коштувала <b>$0,106</b>, і 99,7% цієї суми — <code>claude-sonnet-5-5</code> (за <code>modelUsage</code>). Документація з налаштування моделей прямо згадує сесію Haiku, «що в plan mode зазвичай переходить на Sonnet». Для дешевого читання на чергуванні plan mode не потрібен: <code>--allowedTools "Read" "Grep" "Glob"</code> і так не дають агентові нічого змінити.</p>
+</div>
+</div>
+<div class="tab-p">
+<p><code>codex exec</code> за замовчуванням працює в пісочниці лише для читання. Пишемо її явно, щоб скрипт чергового не залежав від типових значень:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — копія журналів</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec --sandbox read-only "Інцидент: зросла вартість задач lectern serve. За deploys.jsonl, alerts.jsonl і jobs.txt визнач деплой-причину, множник вартості й хронологію. Нічого не змінюй."</span></pre>
+<div class="cap">команда з офіційної документації Codex · не запускалась у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p>У Cursor CLI режим <code>ask</code> — дослідження лише для читання. Без <code>--force</code> зміни тільки пропонуються, але не застосовуються:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — копія журналів</span></div>
+<pre><span class="ps">$ </span><span class="c">agent -p --mode ask "Інцидент: зросла вартість задач lectern serve. За deploys.jsonl, alerts.jsonl і jobs.txt визнач деплой-причину, множник вартості й хронологію."</span></pre>
+<div class="cap">команда з офіційної документації Cursor · не запускалась у цьому уроці</div></div>
+</div>
+</div>
+<p>Дайте агентові <b>копію</b> даних: журнали з продакшну можуть містити текст лекцій (клас даних з <code>DATA_POLICY.md</code>), а агент розробника — не продакшн-процесор даних (3.3). Відповідь агента — гіпотеза для пост-мортему, а не рядок хронології.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern у продакшні</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 15.5 · B190, LEC-SVC-016/017, B270–B279</div><div class="pb">
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Файл</th><th>Що з'явилось</th></tr></thead>
+<tbody>
+<tr><td><code>Dockerfile</code>, <code>.dockerignore</code>, <code>deploy/compose.yaml</code></td><td>образ і запуск, як вище; <code>.dockerignore</code> — список дозволеного: без <code>.git</code>, <code>tests</code>, <code>data/</code></td></tr>
+<tr><td><code>requirements/serve.txt</code>, <code>scripts/lock.sh</code></td><td>lock образу: extra <code>serve</code> з версіями <code>ci.txt</code>, 36 пакетів із хешами</td></tr>
+<tr><td><code>service.py</code>, <code>cli.py</code>, <code>runner.py</code>, <code>telemetry.py</code></td><td><code>/healthz</code>, <code>/readyz</code>, drain (+149 −10 рядків у <code>service.py</code>), <code>--runner</code>, <code>--drain</code>, env для кожного прапорця, HTTP-код відмови в <code>runs[].status</code>, <code>/stats?since_s</code>, <code>failures</code></td></tr>
+<tr><td><code>fake_agent.py</code>, <code>healthcheck.py</code></td><td>агент без моделі (smoke, replay вартостей); HEALTHCHECK на stdlib</td></tr>
+<tr><td><code>scripts/release.sh</code>, <code>smoke.py</code>, <code>deploy_event.py</code>, <code>slo_check.py</code></td><td>реліз, smoke, журнал деплоїв, алерти</td></tr>
+<tr><td><code>scripts/team_metrics.py --deploys</code></td><td>B190: п'ять метрик DORA з журналу</td></tr>
+<tr><td><code>docs/runbook.md</code>, <code>docs/postmortems/</code></td><td>старт, зупинка, відкат, ротація ключа, очищення даних, чекліст інциденту й game day; шаблон і два пост-мортеми</td></tr>
+<tr><td>злиття з 15.1–15.3</td><td><code>/healthz</code> і <code>/readyz</code> — без ключа (HEALTHCHECK його не має), решта — з ним; <code>smoke.py</code> і <code>slo_check.py</code> беруть ключ оператора з <code>LECTERN_API_KEY</code>, реліз створює кандидатові одноразовий ключ; номери вимог — 016/017, бо 009–015 зайняв 15.3</td></tr>
+<tr><td>тести</td><td>+23: <code>test_deploy_service.py</code>, <code>test_deploy_policy.py</code>, <code>test_release_script.py</code>, нові кейси в <code>test_team_metrics.py</code>; <code>scripts/check.sh</code> зелений, 628 passed</td></tr>
+</tbody></table></div>
+<p>Ваш крок: <b>відкрийте <code>deploy/compose.yaml</code> і для кожного рядка запишіть, від якого інциденту він захищає</b>. Рядок, для якого інциденту не знайшлося, або зайвий, або ви ще не уявили збою. Далі спробуйте зібрати образ на машині з диском і заповнити числа B270: розмір, холодний старт до <code>healthy</code>, RSS на сесію в контейнері.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що ламається першим</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Що відбувається</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">Liveness перевіряє модель чи базу</td><td data-th="Що відбувається">збій постачальника перезапускає здорові контейнери по колу, кожна перевірка коштує грошей</td><td data-th="Як правильно">liveness — лише процес; залежності — у readiness, модель — у канарці</td></tr>
+<tr><td data-th="Помилка">Read-only rootfs без тому для CLI</td><td data-th="Що відбувається"><code>~/.claude</code> незаписуваний: сесії й <code>resume</code> ламаються в першу ж задачу</td><td data-th="Як правильно"><code>HOME</code> і <code>CLAUDE_CONFIG_DIR</code> на томі</td></tr>
+<tr><td data-th="Помилка">Ключ в <code>ENV</code> Dockerfile чи в <code>compose.yaml</code></td><td data-th="Що відбувається">ключ у кожному шарі образу, реєстрі й історії git</td><td data-th="Як правильно">лише оточення запуску, <code>${VAR:?}</code>; краще — проксі, що підставляє облікові дані</td></tr>
+<tr><td data-th="Помилка">Алерт по всій історії</td><td data-th="Що відбувається">сплеск розмивається; лічильник відмов не гасне після відновлення</td><td data-th="Як правильно">вікно (<code>since_s</code>) і мінімальна кількість задач</td></tr>
+<tr><td data-th="Помилка">Game day без перевірки ін'єкції</td><td data-th="Що відбувається">«детекція спрацювала б» — про збій, якого не було</td><td data-th="Як правильно">спершу довести, що збій відтворюється, потім вмикати секундомір</td></tr>
+<tr><td data-th="Помилка">Пост-мортем із дією «бути уважнішими»</td><td data-th="Що відбувається">інцидент повториться: дії немає кому виконати і нічим перевірити</td><td data-th="Як правильно">дія = власник + backlog-id + тест, алерт чи вимір</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Перевірте терміни</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">readiness</span><span class="h">чим відрізняється від liveness?</span></span><span class="b"><span class="t">Чи слати сюди трафік</span><span class="d">збій — трафік іде повз; liveness вирішує, чи перезапустити</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">drain</span><span class="h">що робить сервіс на SIGTERM?</span></span><span class="b"><span class="t">Доробляє, а не кидає</span><span class="d">нових задач не бере, чинним дає час, решту перериває й лишає в черзі</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">grace period</span><span class="h">типово в Docker?</span></span><span class="b"><span class="t">10 секунд</span><span class="d">потім SIGKILL; має бути більшим за drain</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">канарка після деплою</span><span class="h">що ловить?</span></span><span class="b"><span class="t">Те, чого не бачить smoke</span><span class="d">справжню модель і ключ: зняту модель, відкликаний ключ</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">game day</span><span class="h">перше правило</span></span><span class="b"><span class="t">Збій має відтворитись</span><span class="d">інакше секундомір міряє ніщо</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">action item</span><span class="h">мінімум полів</span></span><span class="b"><span class="t">Власник і перевірка</span><span class="d">хто робить і яким тестом, алертом чи виміром це видно</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Контейнер з <code>read_only: true</code>, том змонтовано лише в <code>/data/service</code>, <code>HOME</code> лишився типовим. Що станеться з першою задачею агента?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Нічого поганого: CLI тримає конфіг і транскрипти сесії в пам'яті процесу, поки той живий</span></label><label class="opt ok"><input type="radio" name="q1"><span>Сесія впаде або не збереже транскрипт: CLI пише в <code>~/.claude</code>, а він незаписуваний</span></label><label class="opt"><input type="radio" name="q1"><span>Образ не збереться: <code>docker build</code> перевіряє записуваність домашньої теки</span></label></div>
+    <div class="why yes">Так. Конфіг і сесії CLI живуть під <code>CLAUDE_CONFIG_DIR</code> (типово <code>~/.claude</code>). Тому <code>HOME</code> і <code>CLAUDE_CONFIG_DIR</code> винесено на том: там же транскрипти для <code>resume</code>.</div>
+    <div class="why no">Read-only rootfs діє під час запуску, а не збирання. Сесії CLI зберігаються у файлах під <code>CLAUDE_CONFIG_DIR</code>, тож без записуваного тому ламається перша ж задача.</div></div>
+  <div class="q"><div class="qt">2. Хтось додав у <code>/healthz</code> маленький виклик моделі, «щоб точно знати, що все працює». Що буде під час збою API постачальника?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Оркестратор перезапускатиме здорові контейнери по колу, а задачам це не допоможе</span></label><label class="opt"><input type="radio" name="q2"><span>Контейнер лише перестане отримувати трафік, доки API не відновиться</span></label><label class="opt"><input type="radio" name="q2"><span>Нічого: HEALTHCHECK Docker ігнорує код виходу, якщо команда перевірки впала з таймаутом</span></label></div>
+    <div class="why yes">Так. Liveness вирішує, коли перезапускати. Залежність, на яку контейнер не впливає, у liveness робить з чужого збою свій. До того ж кожна перевірка коштує грошей.</div>
+    <div class="why no">«Перестати отримувати трафік» — поведінка readiness, а не liveness. Перевірку, що не встигла за таймаут, Docker убиває й рахує невдалою. Модель перевіряє канарка після деплою, а не пробник.</div></div>
+  <div class="q"><div class="qt">3. <code>LECTERN_DRAIN_S=30</code>, а <code>stop_grace_period</code> у compose не задано. Що станеться із задачею, що біжить, під час <code>docker compose stop</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Drain дочекається задачі: Docker продовжує grace period, поки процес обробляє SIGTERM</span></label><label class="opt"><input type="radio" name="q3"><span>Compose сам візьме grace period з <code>LECTERN_DRAIN_S</code>, бо змінна є в оточенні сервісу</span></label><label class="opt ok"><input type="radio" name="q3"><span>Через 10 с прийде SIGKILL: задача лишиться <code>running</code>, а вартість перерваного ходу не запишеться</span></label></div>
+    <div class="why yes">Так. Типовий grace period — 10 с, потім SIGKILL. Після рестарту задачу підбере <code>recover()</code>, але з нуля, а хід, за який уже заплатили, з обліку зникне.</div>
+    <div class="why no">Docker не знає про drain застосунку й не читає його змінних. Типові 10 с перетворюють 30-секундний drain на kill -9, тому в compose стоїть <code>stop_grace_period: 60s</code>.</div></div>
+  <div class="q"><div class="qt">4. Чому smoke-тест кандидата в release.sh іде на fake-агенті, а не на справжній моделі?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span>Кандидат не отримує ключа: так він перевіряє все, крім моделі, а модель перевіряє канарка після деплою</span></label><label class="opt"><input type="radio" name="q4"><span>Fake-агент перевіряє і модель: він порівнює відповідь із записаною справжньою відповіддю Haiku</span></label><label class="opt"><input type="radio" name="q4"><span>Справжня модель у контейнері недоступна: Agent SDK не працює з read-only файловою системою</span></label></div>
+    <div class="why yes">Так. Образ, права, read-only FS, черга, гейт, SSE і сигнали перевірено без ключа і без грошей, а зламаний кандидат нічого не злиє. Справжню модель перевіряє одна задача-канарка після деплою.</div>
+    <div class="why no">Fake-агент моделі не викликає і з нею не звіряється. SDK у контейнері працює, якщо CLI має записуваний <code>CLAUDE_CONFIG_DIR</code>. Причина — у безпеці: ключ потрапляє лише в розгорнутий сервіс.</div></div>
+  <div class="q"><div class="qt">5. <code>LECTERN_CASCADE</code> = знятий з обслуговування id, потім <code>sonnet</code>; задача з <code>model: auto</code>. Що станеться?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Каскад перейде на Sonnet: друга сходинка для того й існує, щоб підхопити будь-яку відмову першої</span></label><label class="opt ok"><input type="radio" name="q5"><span>Задача впаде з <code>api_error</code>: каскад ескалює лише через якість, тут допоможе fallback-модель</span></label><label class="opt"><input type="radio" name="q5"><span>Задача повторюватиметься до вичерпання бюджету: CLI ретраїть 404 так само, як 429 і 529</span></label></div>
+    <div class="why yes">Так. <code>routing.ESCALATE</code> — це <code>no_quiz</code>, <code>check_failed</code>, <code>key_balance</code>; інфраструктурні помилки лікують fallback, ретрай чи resume. У game day <code>--fallback-model haiku</code> відповідав на знятий id.</div>
+    <div class="why no">Ескалація в каскаді — лише через якість (ADR 0010), а 404 — не тимчасова помилка, і CLI його не ретраїть: задача закінчується за 1–2 с з <code>api_error_status: 404</code>.</div></div>
+  <div class="q"><div class="qt">6. Алерт «частка failed &gt; 20%» рахується по всій історії, де 1 000 здорових задач. Після збою падає кожна нова задача. Скільки відмов до першого алерту?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>3 — правило має мінімум у 3 завершені задачі, тож спрацює на третій відмові</span></label><label class="opt"><input type="radio" name="q6"><span>200 — двадцять відсотків від тисячі задач в історії сервісу</span></label><label class="opt ok"><input type="radio" name="q6"><span>Понад 250 — тобто години на звичайному трафіку</span></label></div>
+    <div class="why yes">Так. Потрібно k / (1000 + k) &gt; 0,2, тобто k &gt; 250. Тому <code>/stats?since_s=N</code> і окреме правило на перший 404: у прогоні 2 вони дали 5,3 с.</div>
+    <div class="why no">Мінімум у 3 задачі — нижня межа, а не поріг. Знаменник росте разом із відмовами: k / (1000 + k) &gt; 0,2 дає k &gt; 250, а не 200.</div></div>
+  <div class="q"><div class="qt">7. На game day ви змінили промпт так, щоб агент зациклювався, а вартість задач не зросла. Який висновок правильний?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Правка безпечна: модель ігнорує такі інструкції, тож у продакшні цикл неможливий</span></label><label class="opt ok"><input type="radio" name="q7"><span>Ін'єкція збою не відтворилась, і детекцію вона не перевірила: потрібен збій, що відтворюється, або replay</span></label><label class="opt"><input type="radio" name="q7"><span>Детекція працює: алерт не спрацював, і це правильно, бо вартість не змінилась</span></label></div>
+    <div class="why yes">Так. Інша модель, лекція чи попередження ключа відкриють той самий цикл. Ми відтворили наслідок replay записаних прогонів із 2–3 збереженнями і тоді отримали 45,6 с до алерту.</div>
+    <div class="why no">«Не відтворилось» не означає «безпечно», а мовчання алерту без збою нічого не каже про алерт. Спершу доводять, що збій справді є, і лише потім міряють детекцію.</div></div>
+  <div class="q"><div class="qt">8. Яка дія з пост-мортему записана правильно?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>«Команді уважніше стежити за сторінкою deprecations постачальника» — власник: команда</span></label><label class="opt"><input type="radio" name="q8"><span>«Покращити моніторинг сервісу, щоб такі інциденти не повторювались» — строк: Q4</span></label><label class="opt ok"><input type="radio" name="q8"><span>«/stats рахує 404 окремо» — інженер бекенду, перевірка: тест <code>…404_separately…</code></span></label></div>
+    <div class="why yes">Так: конкретна зміна, одна роль-власник і перевірка, яку можна запустити. Саме так дія потрапляє в код, а не лишається в документі.</div>
+    <div class="why no">«Уважніше» і «покращити» не мають ні виконавця, ні способу перевірити, що зроблено. Дія без власника і перевірки — побажання.</div></div>
+  <div class="q"><div class="qt">9. Інцидент: постачальник зняв закріплену модель, наш код і конфіг не змінювались. Як це відбивається в DORA з журналу деплоїв?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Подія <code>incident</code> без версії: рахується recovery time, change fail rate — ні</span></label><label class="opt"><input type="radio" name="q9"><span>Як невдалий останній деплій: change fail rate має показувати будь-яку відмову сервісу</span></label><label class="opt"><input type="radio" name="q9"><span>Ніяк: метрики DORA рахують лише інциденти, після яких був відкат коду</span></label></div>
+    <div class="why yes">Так. Change fail rate — частка деплоїв, що спричинили збій, а цей збій спричинив не деплой. Час відновлення при цьому справжній. Позаплановий деплой-виправлення з <code>reason: incident</code> піде в rework rate.</div>
+    <div class="why no">Якщо записати цей інцидент на останній деплой, change fail rate бреше. А failed deployment recovery time рахується від інциденту до відновлення, відкату для цього не треба.</div></div>
+  <div class="q"><div class="qt">10. На SIGTERM сервіс перервав задачу посеред ходу агента. Чому вона стає <code>queued</code>, а не <code>cancelled</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Бо <code>cancelled</code> заборонено ставити без SSE-клієнта, який підтвердить скасування</span></label><label class="opt ok"><input type="radio" name="q10"><span>Клієнт її не скасовував: наступний процес у <code>recover()</code> виконає її рівно один раз</span></label><label class="opt"><input type="radio" name="q10"><span>Щоб SQLite не заблокувався: запис термінального статусу на зупинці вимагає транзакції</span></label></div>
+    <div class="why yes">Так (LEC-SVC-016). <code>cancelled</code> — термінальний статус, і задача пропала б для автора. Вартість перерваного ходу вже в <code>runs</code>, а вдруге агент стартує лише після рестарту.</div>
+    <div class="why no">Статус — це контракт із клієнтом: <code>cancelled</code> означає «ви скасували». Зупинка сервісу — наша справа, тож задача лишається в черзі для наступного процесу (ADR 0013).</div></div>
+  <div class="q"><div class="qt">11. Черговий запустив <code>claude -p --model haiku --permission-mode plan</code>, щоб дешево прочитати журнали, і отримав рахунок $0,106. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Plan mode завжди вмикає extended thinking з бюджетом у десятки тисяч токенів</span></label><label class="opt"><input type="radio" name="q11"><span>Журнали великі: Haiku прочитав сотні тисяч токенів, і кеш у <code>-p</code> не працює</span></label><label class="opt ok"><input type="radio" name="q11"><span>Сесія Haiku в plan mode переходить на Sonnet: 99,7% суми — Sonnet</span></label></div>
+    <div class="why yes">Так, видно з <code>modelUsage</code>, і документація цей перехід згадує. Для читання досить <code>--allowedTools "Read" "Grep" "Glob"</code> без plan mode: агент однаково нічого не змінить.</div>
+    <div class="why no"><code>modelUsage</code> показав 1,3 тис. вхідних токенів на Haiku і 80 тис. на Sonnet, здебільшого з кешу. Причина — у моделі, а не в обсязі журналів чи мисленні.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>non-root<br>container</td><td>Процес у контейнері працює від непривілейованого числового uid, без capabilities і без підвищення прав.</td></tr>
+<tr><td>read-only<br>root<br>filesystem</td><td>Коренева FS контейнера незмінна; записувати можна лише в явно змонтований том і tmpfs.</td></tr>
+<tr><td>liveness і<br>readiness</td><td>Liveness: чи живий процес (збій — перезапуск). Readiness: чи слати сюди трафік (збій — трафік повз).</td></tr>
+<tr><td>graceful<br>shutdown</td><td>Зупинка з drain: не брати нових задач, дати чинним доробити, решту перервати без втрат і лишити в черзі.</td></tr>
+<tr><td>12-factor<br>config</td><td>Усе, що відрізняється між середовищами, — у змінних оточення, а не в коді чи образі.</td></tr>
+<tr><td>smoke test<br>релізу</td><td>Короткий наскрізний прогін кандидата перед деплоєм: health, readiness, одна задача, метрики.</td></tr>
+<tr><td>журнал<br>деплоїв</td><td>Append-only журнал подій деплою, відкату й інциденту; з нього рахують DORA.</td></tr>
+<tr><td>game day</td><td>Заплановане моделювання інциденту в середовищі, близькому до продакшну, з виміром кожної фази реакції.</td></tr>
+<tr><td>blameless<br>post-mortem</td><td>Розбір інциденту, що шукає умови й причини, а не винних; закінчується діями з власниками.</td></tr>
+<tr><td>action item<br>з власником</td><td>Дія пост-мортему з одним відповідальним, backlog-id і перевіркою, що вона виконана.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. План розгортання і зупинки</h3>
+<p>Для свого сервісу з агентом (або для Lectern) опишіть контейнер, конфіг, readiness і drain, порахуйте розмір із чисел і доведіть, що зупинка не губить задач і грошей.</p>
+<h3>2. Пост-мортем за хронологією</h3>
+<p>За наданою хронологією інциденту напишіть безвинний пост-мортем: вплив, корені, сприятливі чинники (зокрема рішення агента), дії з власниками й перевірками.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/agent-sdk/hosting" target="_blank" rel="noopener">Claude Agent SDK — Hosting</a><span>один підпроцес на сесію, 1 GiB / 5 GiB / 1 CPU на агента як стартова точка, формула агентів на хост, вихідний HTTPS, транскрипти під <code>CLAUDE_CONFIG_DIR</code></span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/secure-deployment" target="_blank" rel="noopener">Claude Agent SDK — Secure deployment</a><span>прапорці ізоляції контейнера, проксі, що підставляє облікові дані поза межею агента</span></li>
+<li><a href="https://code.claude.com/docs/en/env-vars" target="_blank" rel="noopener">Claude Code — змінні оточення</a><span><code>CLAUDE_CONFIG_DIR</code>; автентифікація SDK: <a href="https://code.claude.com/docs/en/agent-sdk/quickstart" target="_blank" rel="noopener">quickstart</a> (<code>ANTHROPIC_API_KEY</code>, Bedrock, Vertex, Foundry)</span></li>
+<li><a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">Claude Code — налаштування моделей</a><span>сесія Haiku в plan mode переходить на Sonnet; <a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">режими дозволів</a></span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/model-deprecations" target="_blank" rel="noopener">Anthropic — Model deprecations</a><span>запити до знятих моделей падають; повідомлення щонайменше за 60 днів</span></li>
+<li><a href="https://docs.docker.com/build/building/multi-stage/" target="_blank" rel="noopener">Docker — Multi-stage builds</a><span>і <a href="https://docs.docker.com/reference/dockerfile/" target="_blank" rel="noopener">довідник Dockerfile</a>: <code>USER</code>, <code>HEALTHCHECK</code> (10 с / 3 с у нас; типово 30 с / 30 с / 3 спроби), exec-форма й сигнали</span></li>
+<li><a href="https://docs.docker.com/reference/cli/docker/container/stop/" target="_blank" rel="noopener">docker container stop</a><span>SIGTERM, потім SIGKILL; 10 с для Linux-контейнерів; <a href="https://docs.docker.com/reference/compose-file/services/" target="_blank" rel="noopener">Compose services</a>: <code>stop_grace_period</code>, <code>read_only</code>, <code>healthcheck</code></span></li>
+<li><a href="https://docs.docker.com/build/checks/" target="_blank" rel="noopener">Docker — Build checks</a><span><code>docker build --check</code> без збирання; Buildx ≥ 0.15</span></li>
+<li><a href="https://github.com/docker-library/python/blob/master/3.12/slim-trixie/Dockerfile" target="_blank" rel="noopener">docker-library/python — 3.12 slim-trixie</a><span>runtime-пакети: лише ca-certificates, netbase, tzdata (curl немає)</span></li>
+<li><a href="https://uvicorn.dev/settings/" target="_blank" rel="noopener">Uvicorn — Settings</a><span><code>--timeout-graceful-shutdown</code>; порядок зупинки: <a href="https://uvicorn.dev/concepts/lifespan/" target="_blank" rel="noopener">lifespan</a></span></li>
+<li><a href="https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/" target="_blank" rel="noopener">Kubernetes — Liveness, readiness and startup probes</a><span>коли перезапускати і коли слати трафік</span></li>
+<li><a href="https://12factor.net/config" target="_blank" rel="noopener">The Twelve-Factor App — III. Config</a><span>конфіг у змінних оточення; тест «відкрити код без компромісу»</span></li>
+<li><a href="https://sre.google/sre-book/postmortem-culture/" target="_blank" rel="noopener">Google SRE Book — Postmortem Culture</a><span>гл. 15: безвинність, тригери пост-мортему; <a href="https://sre.google/sre-book/managing-incidents/" target="_blank" rel="noopener">гл. 14 Managing Incidents</a>; <a href="https://sre.google/workbook/postmortem-culture/" target="_blank" rel="noopener">SRE Workbook, гл. 10</a></span></li>
+<li><a href="https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/rel_testing_resiliency_game_days_resiliency.html" target="_blank" rel="noopener">AWS Well-Architected — REL12-BP05 Game days</a><span>визначення game day</span></li>
+<li><a href="https://response.pagerduty.com/before/severity_levels/" target="_blank" rel="noopener">PagerDuty Incident Response — Severity levels</a><span>рівні SEV; «не певні — беріть вищий»</span></li>
+<li><a href="https://dora.dev/guides/dora-metrics/" target="_blank" rel="noopener">DORA — software delivery performance metrics</a><span>п'ять метрик, зокрема failed deployment recovery time і deployment rework rate</span></li>
+<li><a href="https://developers.openai.com/codex/noninteractive" target="_blank" rel="noopener">Codex — non-interactive mode</a><span><code>codex exec</code> типово read-only; <a href="https://cursor.com/docs/cli/overview" target="_blank" rel="noopener">Cursor CLI</a>: <code>--mode ask</code></span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 15.5 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 15.5 · Senomi<br><br><a href="lesson-72.html">← Урок 15.4</a> · <a href="index.html">Зміст курсу</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

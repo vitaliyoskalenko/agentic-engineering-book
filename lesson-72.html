@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 15.4. Автоматизація з агентами: headless у CI, заплановані агенти</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="60" cy="60" r="38"/><path d="M60 22l-8-6M60 22l-8 6M98 60l6-8M98 60l-6-8M60 98l8 6M60 98l8-6M22 60l-6 8M22 60l6 8"/><rect x="46" y="46" width="28" height="28" rx="6"/><path d="M54 56h12M54 64h8"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 15.4 · Модуль 15</div>
+<h1>Автоматизація з агентами: headless у CI, заплановані агенти</h1>
+<p class="lead">Запланований агент працює, коли поруч нікого немає: на запит дозволу ніхто не відповість, бюджет ніхто не зупинить, дублікат PR ніхто не закриє. Ми переносимо нічні живі evals, тижневий аудит дрейфу контексту й місячні метрики Lectern у розклад і бачимо на справжніх прогонах, що в такій схемі агент пропонує, код перевіряє, а людина зливає.</p>
+<div class="hero-meta"><span class="chip">Продакшн</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#patterns"><b>01</b>Чотири патерни</a><a href="#loop"><b>02</b>Цикл запланованого агента</a><a href="#safety"><b>03</b>Безпека прогону без нагляду</a><a href="#nightly"><b>04</b>Нічні живі evals</a><a href="#drift"><b>05</b>Аудит дрейфу як draft PR</a><a href="#workflows"><b>06</b>Три workflow</a><a href="#tools"><b>07</b>Розклад у трьох інструментах</a><a href="#project"><b>08</b>Наскрізний проєкт</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>обрати патерн автоматизації (gate, агент на подіях, розклад, on-call) і описати для нього тригер, права, бюджет, результат і людський gate;</li>
+    <li>налаштувати запланований workflow: cron, <code>workflow_dispatch</code>, concurrency, вимикач, ідемпотентний результат;</li>
+    <li>розділити ключ API і право запису між job і пояснити, чому агент у розкладі пропонує, а застосовує код;</li>
+    <li>побудувати нічний живий прогін evals, який бачить дрейф моделі й не будить людину через шум;</li>
+    <li>порівняти розклад у GitHub Actions із routines Claude Code, scheduled tasks Codex і Automations Cursor.</li>
+  </ul>
+</div>
+
+<section class="sec" id="patterns">
+<div class="sec-h"><span class="num">01</span><h2>Чотири патерни<span class="sub">Хто запускає агента, коли людини поруч немає</span></h2></div>
+<p>У headless-прогоні (уроки 2.2 і 4.4) людина принаймні бачить результат одразу. У CI і в розкладі не бачить ніхто: запит дозволу лишається без відповіді, перевищення бюджету ніхто не зупиняє, третій однаковий PR ніхто не закриває. Тому кожну автоматизацію описуємо п'ятьма відповідями: <b>що її запускає, які в неї права, скільки вона може витратити, що лишає після себе і де стоїть людина</b>.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Патерн</th><th>Тригер</th><th>Права</th><th>Бюджет</th><th>Результат</th><th>Людський gate</th></tr></thead>
+<tbody>
+<tr><td data-th="Патерн"><b>(a) Gate у CI</b></td><td data-th="Тригер">PR, push</td><td data-th="Права"><code>contents: read</code></td><td data-th="Бюджет">без моделі</td><td data-th="Результат">статус перевірки</td><td data-th="Людський gate">required check (урок 10.3)</td></tr>
+<tr><td data-th="Патерн"><b>(b) Агент на подіях</b>: рев'ю, виправлення за міткою, тріаж issue</td><td data-th="Тригер"><code>pull_request</code>, мітка, нове issue</td><td data-th="Права">читання + <code>pull-requests</code>/<code>issues: write</code></td><td data-th="Бюджет"><code>--max-turns</code>, timeout</td><td data-th="Результат">коментар, PR</td><td data-th="Людський gate">людина зливає (урок 12.2)</td></tr>
+<tr><td data-th="Патерн"><b>(c) Запланований агент</b></td><td data-th="Тригер"><code>schedule</code> + <code>workflow_dispatch</code></td><td data-th="Права">ключ API лише в job із читанням; запис — в окремому job</td><td data-th="Бюджет">$-ліміт, ходи, timeout, оцінка до запуску</td><td data-th="Результат">артефакт, issue, draft PR</td><td data-th="Людський gate">рев'ю і злиття</td></tr>
+<tr><td data-th="Патерн"><b>(d) On-call асистент</b>: підсумок збою</td><td data-th="Тригер"><code>workflow_run</code> із <code>conclusion == failure</code></td><td data-th="Права"><code>actions: read</code> для логів; коментар пише окремий крок</td><td data-th="Бюджет">малий, один хід на лог</td><td data-th="Результат">коментар у PR чи issue</td><td data-th="Людський gate">виправляє людина</td></tr>
+</tbody></table></div>
+<p>Що обрати: якщо результат перевіряє код без моделі, беріть (a). Якщо потрібна модель, а результат лише порада, — (b) або (d). Якщо подія — сам час (модель змінилася, контекст застарів, минув місяць), — (c). У (d) лог збою містить текст із PR, тобто недовірений вхід: агент лише читає, а коментар публікує код.</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Ціна автоматизації — це не токени, а <b>увага людини</b>. Нічний job, який щоночі відкриває issue про шум, за тиждень привчить команду ці issue ігнорувати. Справжній збій тоді пройде непоміченим.</p>
+</div>
+</section>
+
+<section class="sec" id="loop">
+<div class="sec-h"><span class="num">02</span><h2>Цикл запланованого агента<span class="sub">Розклад → headless → артефакт чи PR → людина → злиття</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 470" role="img" aria-label="Цикл запланованого агента: розклад, headless-прогін, артефакт або draft PR, рев'ю людини, злиття, наступний прогін">
+  <defs>
+    <marker id="s72a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="s72b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="24" y="8" width="296" height="52" rx="10" class="bx m"/>
+  <text x="172" y="29" text-anchor="middle" class="tx b">1 · Розклад або dispatch</text>
+  <text x="172" y="47" text-anchor="middle" class="tx s">cron у UTC · лише гілка за замовчуванням</text>
+  <path d="M172 60 V 92" class="ln a" marker-end="url(#s72a)"/>
+  <text x="180" y="81" class="tx s">вимикач off → стоп</text>
+  <rect x="24" y="96" width="296" height="60" rx="10" class="bx t"/>
+  <text x="172" y="119" text-anchor="middle" class="tx b">2 · Headless-прогін</text>
+  <text x="172" y="138" text-anchor="middle" class="tx s">ключ API · лише читання · $-ліміт · timeout</text>
+  <path d="M120 156 V 190" class="ln a" marker-end="url(#s72a)"/>
+  <path d="M230 156 V 190" class="ln a" marker-end="url(#s72a)"/>
+  <rect x="8" y="194" width="160" height="62" rx="10" class="bx t"/>
+  <text x="88" y="218" text-anchor="middle" class="tx b">3a · Артефакт, issue</text>
+  <text x="88" y="237" text-anchor="middle" class="tx s">одне issue на мітку</text>
+  <rect x="180" y="194" width="140" height="62" rx="10" class="bx a"/>
+  <text x="250" y="218" text-anchor="middle" class="tx b">3b · Draft PR</text>
+  <text x="250" y="237" text-anchor="middle" class="tx s">фіксована гілка</text>
+  <text x="169" y="282" text-anchor="middle" class="tx s">job без ключа · write</text>
+  <path d="M88 256 V 300" class="ln d" marker-end="url(#s72b)"/>
+  <path d="M250 256 V 300" class="ln a" marker-end="url(#s72a)"/>
+  <rect x="24" y="304" width="296" height="60" rx="10" class="bx m"/>
+  <text x="172" y="327" text-anchor="middle" class="tx b">4 · Людина</text>
+  <text x="172" y="346" text-anchor="middle" class="tx s">читає diff · Approve workflows to run</text>
+  <path d="M172 364 V 396" class="ln a" marker-end="url(#s72a)"/>
+  <rect x="24" y="400" width="296" height="56" rx="10" class="bx a"/>
+  <text x="172" y="423" text-anchor="middle" class="tx b">5 · Злиття в main</text>
+  <text x="172" y="441" text-anchor="middle" class="tx s">наступний прогін бачить зміну</text>
+  <path d="M320 428 H 344 V 34 H 326" class="ln d" marker-end="url(#s72b)"/>
+</svg>
+<figcaption>Агент у кроці 2 має ключ API, але не має права запису. Право запису має крок 3, але в ньому немає моделі. Issue (3a) закриває людина, PR (3b) людина зливає. Повторний прогін оновлює те саме issue чи PR, а не створює нове.</figcaption>
+</figure>
+<h3>Тригер: що гарантує schedule, а що ні</h3>
+<ul>
+<li><b>Cron з п'яти полів, типово в UTC.</b> Тепер можна додати <code>timezone</code> з IANA-назвою. Найчастіше — раз на 5 хвилин.</li>
+<li><b>Лише гілка за замовчуванням, останній коміт.</b> Розклад у feature-гілці не спрацює ніколи.</li>
+<li><b>Затримки.</b> Під навантаженням запуск відкладається, найбільше — на початку кожної години. За дуже високого навантаження частину задач із черги відкидають. Тому <code>17 2 * * *</code>, а не <code>0 2 * * *</code>.</li>
+<li><b>60 днів.</b> У публічному репозиторії розклад вимикається сам, якщо 60 днів не було активності. Сповіщення отримує той, хто останнім змінював cron.</li>
+<li><b><code>workflow_dispatch</code></b> — ручний запуск із входами (до 25). Він потрібен кожному розкладу: щоб перезапустити прогін, протестувати зміну workflow і запустити повну версію замість smoke. Як і schedule, приймає події лише тоді, коли файл лежить у гілці за замовчуванням.</li>
+</ul>
+<p><b>Concurrency group</b> — назва, під якою GitHub тримає <b>не більше одного запущеного і одного очікуваного</b> прогону. Новий очікуваний витісняє попередній очікуваний. <code>cancel-in-progress: true</code> зупиняє ще й запущений: для PR-перевірок це правильно, а для оплаченого живого прогону — ні, бо його вартість уже витрачено. Новий ключ <code>queue: max</code> тримає до 100 очікуваних прогонів.</p>
+</section>
+
+<section class="sec" id="safety">
+<div class="sec-h"><span class="num">03</span><h2>Безпека прогону без нагляду<span class="sub">Дев'ять контролів і де вони в Lectern</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ризик</th><th>Контроль</th><th>У Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Ризик">Prompt injection у job, що може писати в репозиторій</td><td data-th="Контроль">Ключ API і право запису — у різних job. Між ними передається лише перевірений кодом артефакт</td><td data-th="У Lectern"><code>nightly.yml</code>: <code>run</code> → <code>report</code>; <code>weekly-drift.yml</code>: <code>audit</code> → <code>pr</code></td></tr>
+<tr><td data-th="Ризик">Секрет у промпті, лозі чи артефакті</td><td data-th="Контроль">Ключ — лише змінна оточення кроку. <code>persist-credentials: false</code>. В артефакт іде вердикт, а не сирий вивід агента</td><td data-th="У Lectern">артефакти: <code>verdict.json</code>, патч, тіло PR</td></tr>
+<tr><td data-th="Ризик">Запит дозволу, на який ніхто не відповість</td><td data-th="Контроль"><code>--permission-prompts none</code> і allowlist; усе, що поза ним, відхиляється</td><td data-th="У Lectern">агент дрейфу: Read, Glob, Grep, <code>git log/diff</code>, <code>check_context.py</code></td></tr>
+<tr><td data-th="Ризик">Дорогий або нескінченний прогін</td><td data-th="Контроль"><code>--max-budget-usd</code>, <code>--max-turns</code>, <code>timeout-minutes</code>, оцінка до першого виклику, ліміт витрат workspace</td><td data-th="У Lectern">$0,50 і 30 ходів на аудит; оцінка evals ≤ $0,30</td></tr>
+<tr><td data-th="Ризик">Два прогони одночасно</td><td data-th="Контроль">Concurrency group, для оплачених — без <code>cancel-in-progress</code></td><td data-th="У Lectern">групи <code>nightly</code>, <code>weekly-drift</code></td></tr>
+<tr><td data-th="Ризик">Дублікати PR чи issue</td><td data-th="Контроль">Фіксована гілка; одне відкрите issue на мітку</td><td data-th="У Lectern"><code>automation/context-drift</code>, <code>report_issue.sh</code></td></tr>
+<tr><td data-th="Ризик">Треба зупинити негайно</td><td data-th="Контроль">Вимикач без коміту, <code>gh workflow disable</code>, відкликання ключа</td><td data-th="У Lectern">змінна <code>LECTERN_AUTOMATION=off</code></td></tr>
+<tr><td data-th="Ризик">Хто що зробив і за скільки</td><td data-th="Контроль">Артефакт кожного прогону, job summary, вартість у тілі PR, трейлер <code>Assisted-by</code></td><td data-th="У Lectern"><code>docs/automation.md</code></td></tr>
+<tr><td data-th="Ризик">PR бота злито без CI</td><td data-th="Контроль">PR, відкритий через <code>GITHUB_TOKEN</code>, запускає CI лише після схвалення людиною</td><td data-th="У Lectern">тіло PR нагадує натиснути «Approve workflows to run»</td></tr>
+</tbody></table></div>
+<p><code>--max-budget-usd</code> рахує вартість на клієнті й перевіряє її після відповіді. Документація прямо каже, що витрати можуть перейти поріг, тож закладайте запас. Справжня межа — ліміт витрат окремого workspace, якому належить ключ CI.</p>
+<div class="note warn"><span class="lbl">Пастка: protected paths</span>
+<p>Запис у <code>.claude/</code>, <code>.git</code>, <code>.vscode</code>, <code>.husky</code> та ще кілька каталогів не схвалюється автоматично в жодному режимі, крім <code>bypassPermissions</code>. Allow-правило з settings чи прапорця його теж не дозволяє, бо перевірка безпеки йде раніше за allow-правила. У <code>default</code> такий запис чекає на відповідь людини, а з <code>--permission-prompts none</code> його просто відхиляють. Агент, якому доручили оновити <code>.claude/CLAUDE.md</code>, у розкладі не змінить нічого і, якщо скрипт не дивиться на відмови, «звітує», що дрейфу немає.</p>
+</div>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Події, які породив <code>GITHUB_TOKEN</code>, нових прогонів не запускають (крім <code>workflow_dispatch</code> і <code>repository_dispatch</code>). Для PR, створеного або оновленого через <code>GITHUB_TOKEN</code>, GitHub тепер створює прогони <code>pull_request</code> у стані <b>approval-required</b>: CI стартує, коли людина з правом запису натисне «Approve workflows to run». Токен GitHub App або PAT цей крок прибирає. Щоб <code>GITHUB_TOKEN</code> взагалі міг відкрити PR, у налаштуваннях репозиторію треба ввімкнути «Allow GitHub Actions to create and approve pull requests».</p>
+</div>
+</section>
+
+<section class="sec" id="nightly">
+<div class="sec-h"><span class="num">04</span><h2>Нічні живі evals<span class="sub">Свіжий кеш, бюджет до виклику, шум окремо від alert</span></h2></div>
+<p>Replay з уроку 12.3 коштує $0 і відтворюється, але бачить лише записані відповіді. Якщо модель за тим самим id почала відповідати інакше, replay цього не помітить. Перша думка — щоночі запускати <code>run_evals.py --live</code>. Але <code>--live</code> бере з <code>evals/replay/</code> усе, що там уже є, і докликає лише решту. Для поточної версії промпту кеш повний, тож нічний «живий» прогін не зробив би жодного виклику і щоночі був би зеленим за $0.</p>
+<p><code>scripts/scheduled/nightly.py evals</code> пише свіжий replay у теку прогону. Ще до першого виклику він оцінює вартість за збереженими записами тих самих кейсів і, якщо оцінка вища за бюджет, виходить з кодом 2. Smoke-набір — три кейси по одному прогону: PDF, вбудована лекція і лекція з «порадами AI».</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/scheduled/nightly.sh out/nightly</span>
+prompt p-861a085610 · cases ['01-history', '08-library', '10-drones'] · runs 1 · estimate $0.0381
+  quiz_saved               1.0  n=3
+  schema_ok                1.0  n=3
+  citation_accuracy        1.0  n=15
+  answerability         0.8667  n=15
+  closed_book              0.6  n=15
+<span class="y">alert answerability: 0.867 &lt; min 0.9</span>
+pipeline: 2 runs · cost median $0.0031448249999999995 · total median 15786.0 ms · alerts 0
+out/nightly/summary.md: needs a human = True
+nightly: evals=1 pipeline=0 summary=1</pre>
+<div class="cap">реальний вивід, перший прогін · 18.10.2026 · Claude Haiku через Agent SDK · витрачено $0,0387 (оцінка $0,0381) + $0,0063 на pipeline · 1 хв 37 с · <code>console/nightly/</code></div></div>
+<p>Перший прогін відкрив би issue: answerability 13 з 15 при порозі 0,9. Але 95% інтервал Вілсона для 13/15 — [0,621; 0,963], і поріг лежить усередині нього. У повному прогоні з 150 питань ця метрика дорівнювала 0,907 [0,840; 0,960]. Обидва результати сумісні з тією самою моделлю. Звідси правило в коді:</p>
+<ul>
+<li><b>код-грейдери з порогом 1,0</b> (квіз збережено, схема, цитати) — gate на будь-якому n: один провал означає поломку;</li>
+<li><b>метрики, які оцінює модель</b>, дають alert лише тоді, коли поріг поза <b>всім</b> інтервалом. Інакше результат іде в звіт як шум і людину не будить;</li>
+<li>щоб ухвалити рішення, потрібен повний прогін (<code>workflow_dispatch</code> із <code>full</code>, 30 генерацій, близько $0,40).</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/scheduled/nightly.sh out/nightly2; echo "exit=$?"</span>
+<span class="d">Unknown child process pid 88080, will report returncode 255</span>
+prompt p-861a085610 · cases ['01-history', '08-library', '10-drones'] · runs 1 · estimate $0.0381
+  quiz_saved               1.0  n=3
+  schema_ok                1.0  n=3
+  citation_accuracy        1.0  n=15
+  answerability            1.0  n=15
+  closed_book           0.5333  n=15
+  spent $0.0364 · median $0.0034, 8 turns
+pipeline: 2 runs · cost median $0.0040 · total median 19675.5 ms · alerts 0
+out/nightly2/summary.md: needs a human = False
+nightly: evals=0 pipeline=0 summary=0
+<span class="ok">exit=0</span></pre>
+<div class="cap">реальний вивід, другий прогін із правилом інтервалу · 18.10.2026 · $0,0364 + $0,0079 · перший рядок — попередження asyncio з SDK, на результат не впливає</div></div>
+<p>Та сама модель того самого дня дала answerability 0,867 і 1,0. Саме такий розкид бачить нічний job на 15 питаннях. Перший прогін, перерахований новим правилом, дає <code>noise: answerability … (95% CI [0.621, 0.963], n=15)</code> і issue не відкриває.</p>
+<p><b>B38: вартість і час конвеєра.</b> Базова лінія на злитому стані: дві golden-лекції по три прогони. Медіана — $0,0039, 17,0 с, 4 запити; збережено й перевірено 6 з 6 квізів; витрачено $0,0235. Щоночі <code>nightly.py pipeline</code> порівнює з нею один прогін на лекцію. Alert спрацьовує, якщо медіана вартості, часу чи TTFT виросла більш ніж на 30% або з'явився новий клас збою. Обидва нічні прогони пройшли без alert.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">LECTERN_AUTOMATION=off scripts/scheduled/nightly.sh; echo "exit $?"</span>
+LECTERN_AUTOMATION=off: nightly run skipped (docs/automation.md)
+exit 0
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/scheduled/nightly.py evals --budget-usd 0.01; echo "exit $?"</span>
+prompt p-861a085610 · cases ['01-history', '08-library', '10-drones'] · runs 1 · estimate $0.0381
+estimate $0.0381 &gt; budget $0.01: not started
+<span class="er">exit 2</span></pre>
+<div class="cap">реальний вивід · вимикач і відмова за бюджетом — жодного виклику моделі</div></div>
+</section>
+
+<section class="sec" id="drift">
+<div class="sec-h"><span class="num">05</span><h2>Аудит дрейфу як draft PR<span class="sub">Агент пропонує, код застосовує</span></h2></div>
+<p>Промпт <code>prompts/sync-context.txt</code> з уроку 5.4 звіряє файли контексту з двома останніми комітами. Тепер він запускається щопонеділка. Щоб виміряти, наскільки він точний, у scratch-копії Lectern зроблено два коміти, після яких контекст бреше:</p>
+<ol class="steps">
+<li><b>A:</b> <code>scripts/item_analysis.py</code> перейменовано на <code>item_stats.py</code>, а <code>.claude/CLAUDE.md</code> досі кличе старий шлях;</li>
+<li><b>B:</b> промах кешу в <code>run_evals.py</code> тепер дає exit 3, а в CLAUDE.md записано «2 = cache miss»;</li>
+<li><b>приманка:</b> перейменовано приватну функцію <code>cli.py</code>, про яку не згадує жоден документ.</li>
+</ol>
+<p><code>check_context.py</code> після цих комітів повідомляє «0 problem(s)». Шлях усередині інлайн-команди він не перевіряє, а значення коду виходу не бачить узагалі. Обидві розбіжності може знайти лише модель.</p>
+<h3>Прогін 1: агент з Edit</h3>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — drift-repo</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/scheduled/drift_audit.sh out/drift-r1; echo "exit=$?"</span>
+drift: changed nothing · problems 0 · $0.006698450000000001 · 11 turns · denied 4 → exit 0
+exit=0</pre>
+<div class="cap">реальний вивід першої версії скрипта, рядок <code>time</code> прибрано · 18.10.2026 · haiku · allowlist містив <code>Edit(./.claude/CLAUDE.md)</code> · <code>console/drift/drift-r1-edit-denied/</code></div></div>
+<p>У <code>permission_denials</code> записано обидві правки, які агент мав зробити, тобто він знайшов обидві розбіжності. Відповідь агента: «Правки не внесено: два рядки в <code>.claude/CLAUDE.md</code> застарілі, але редагування цього файлу заблоковане дозволами». Скрипт перевіряв лише <code>git diff</code>, тому побачив порожній diff і оголосив «дрейфу немає». Тут дві помилки. Перша — protected path. Друга — відмову не вважали сигналом.</p>
+<h3>Нова схема: агент без Edit</h3>
+<p>Агент лише читає: Read, Glob, Grep, <code>Bash(git log *)</code>, <code>Bash(git diff *)</code> і <code>check_context.py</code>. Правки він повертає у <code>--json-schema</code> → <code>structured_output</code> у форматі <code>{edits: [{file, old, new, why}], adr_conflicts, stale_elsewhere}</code>. Далі працює <code>drift_check.py</code>. Він застосовує лише правки у файлах, які дозволяє промпт, і лише якщо <code>old</code> трапляється у файлі рівно один раз. Потім сам запускає <code>check_context.py</code> і пише патч, тіло PR і вердикт. Якщо були відмови, а правок не застосовано, результат — exit 1, а не «дрейфу немає».</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — drift-repo</span></div>
+<pre><span class="ps">$ </span><span class="c">scripts/scheduled/drift_audit.sh out/drift-r2; echo "exit=$?"</span>
+drift: proposed 2 · applied 2 to ['.claude/CLAUDE.md'] · $0.0067742900000000005 · 9 turns · denied 1 → exit 0
+exit=0
+<span class="ps">$ </span><span class="c">cat out/drift-r2/context-drift.patch</span>
+<span class="d">--- a/.claude/CLAUDE.md
++++ b/.claude/CLAUDE.md</span>
+<span class="er">-- item analysis of learner answers (no model): `.venv/bin/python scripts/item_analysis.py …`;</span>
+<span class="ok">+- item analysis of learner answers (no model): `.venv/bin/python scripts/item_stats.py …`;</span>
+<span class="er">-  model, exit 1 = a threshold in `evals/config.json` broke, 2 = cache miss). Any change of `SYSTEM`,</span>
+<span class="ok">+  model, exit 1 = a threshold in `evals/config.json` broke, 3 = cache miss). Any change of `SYSTEM`,</span></pre>
+<div class="cap">реальний вивід · 18.10.2026 · haiku · 22 с · патч скорочено: прибрано рядки контексту й заголовки ханків, довгі рядки обрізано «…» · <code>console/drift/drift-r2/</code></div></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Прогони r2–r7, haiku</th><th>Результат</th></tr></thead>
+<tbody>
+<tr><td>Засіяні розбіжності A і B виправлено</td><td><b>12 з 12</b>; у 2 прогонах до «3 = cache miss» додано «2 = usage error»</td></tr>
+<tr><td>Зайві правки (приманка, ADR, інші файли)</td><td>0</td></tr>
+<tr><td>Вартість · ходи · час</td><td>$0,0052–0,0073 · 7–14 · 17–31 с на прогін</td></tr>
+<tr><td>Відмови в дозволі</td><td>1–2 на прогін: складені команди на кшталт <code>check_context.py; echo $?</code> поза allowlist</td></tr>
+<tr><td>Хибний exit 1</td><td>1 з 3 до уточнення схеми: агент записав у <code>adr_conflicts</code> «конфліктів немає, але застаріло ось що…»</td></tr>
+<tr><td>Застаріле поза дозволеними файлами</td><td>0 з 2 без поля в схемі; <b>3 з 3</b> з полем <code>stale_elsewhere</code>: <code>docs/evals.md</code>, <code>docs/metrics.md</code>, <code>BACKLOG.md</code>, ім'я <code>prog</code> у самому скрипті</td></tr>
+</tbody></table></div>
+<p>Поле <code>stale_elsewhere</code> змінило поведінку сильніше, ніж будь-яке речення в промпті. Без нього модель мовчки пропускала все, чого їй не дозволили редагувати. З ним вона перелічила застарілі <code>docs/evals.md</code> і <code>docs/metrics.md</code>. Тобто обсяг промпту з уроку 5.4 вужчий за реальний дрейф (B261 у беклозі).</p>
+</section>
+
+<section class="sec" id="workflows">
+<div class="sec-h"><span class="num">06</span><h2>Три workflow<span class="sub">YAML без власної логіки</span></h2></div>
+<p>Як і в уроці 10.3, workflow лише викликає скрипт, який людина запускає на ноутбуці. Ось головне з <code>nightly.yml</code>:</p>
+<pre class="code" data-lang="yaml"><span class="k">on</span>:
+  <span class="k">schedule</span>:
+    - <span class="k">cron</span>: <span class="s">"17 2 * * *"</span> <span class="cm"># не на початку години</span>
+  <span class="k">workflow_dispatch</span>:
+    <span class="k">inputs</span>: { <span class="k">full</span>: { <span class="k">type</span>: boolean, <span class="k">default</span>: <span class="n">false</span> } }
+<span class="k">permissions</span>: {}                      <span class="cm"># кожен job просить своє</span>
+<span class="k">concurrency</span>: { <span class="k">group</span>: nightly, <span class="k">cancel-in-progress</span>: <span class="n">false</span> }
+<span class="k">jobs</span>:
+  <span class="k">run</span>:
+    <span class="k">if</span>: vars.LECTERN_AUTOMATION != <span class="s">'off'</span>  <span class="cm"># вимикач без коміту</span>
+    <span class="k">timeout-minutes</span>: <span class="n">30</span>
+    <span class="k">permissions</span>: { <span class="k">contents</span>: read }
+    <span class="k">steps</span>:  <span class="cm"># checkout і setup-python за SHA, scripts/setup.sh</span>
+      - <span class="k">run</span>: scripts/scheduled/nightly.sh out/nightly   <span class="cm"># rc → output needs_human</span>
+        <span class="k">env</span>: { <span class="k">ANTHROPIC_API_KEY</span>: ${{ secrets.ANTHROPIC_API_KEY }} }
+      - <span class="k">uses</span>: actions/upload-artifact@cf430e0…  <span class="cm"># v7.0.2: json + summary.md</span>
+  <span class="k">report</span>:                                <span class="cm"># без ключа API</span>
+    <span class="k">needs</span>: run
+    <span class="k">if</span>: needs.run.outputs.needs_human == <span class="s">'true'</span> || failure()
+    <span class="k">permissions</span>: { <span class="k">contents</span>: read, <span class="k">issues</span>: write }
+    <span class="k">steps</span>:  <span class="cm"># download-artifact v8.0.2, потім:</span>
+      - <span class="k">run</span>: scripts/scheduled/report_issue.sh automation:nightly <span class="s">"…"</span> out/nightly/summary.md</pre>
+<p><code>report_issue.sh</code> шукає відкрите issue з міткою <code>automation:nightly</code>. Якщо знаходить, додає коментар, а нове відкриває лише тоді, коли такого немає. Тест підставляє фальшивий <code>gh</code> і перевіряє обидві гілки. У <code>weekly-drift.yml</code> три job: <code>audit</code> (ключ API, <code>contents: read</code>; Claude Code ставиться <code>npm install -g @anthropic-ai/claude-code@2.1.302</code> з точною версією), <code>pr</code> (<code>contents</code> і <code>pull-requests: write</code>, без ключа) і <code>report</code>. Ось крок, який робить результат ідемпотентним:</p>
+<pre class="code" data-lang="yaml">- <span class="k">uses</span>: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 <span class="cm"># v8.1.1</span>
+  <span class="k">with</span>:
+    <span class="k">branch</span>: automation/context-drift   <span class="cm"># одна гілка → один PR, повтор його оновлює</span>
+    <span class="k">draft</span>: <span class="n">true</span>
+    <span class="k">body-path</span>: ${{ runner.temp }}/drift/pr-body.md
+    <span class="k">add-paths</span>: |                      <span class="cm"># друга лінія оборони після drift_check.py</span>
+      .claude/CLAUDE.md
+      .claude/rules/*.md
+      .claude/skills/**
+      README.md</pre>
+<p><code>monthly-metrics.yml</code> закриває B194: <code>team_metrics.py --json</code> (урок 13.4) раз на місяць як артефакт на 90 днів, без моделі і без секретів. На історії Lectern у кіті локальний еквівалент дав 14 комітів за 15–18.10, частку AI-трейлера 1,0 і 0 сигналів переробки.</p>
+<h3>Чому не claude-code-action</h3>
+<p>Дія вміє працювати за розкладом. Якщо передати <code>prompt</code>, вона запускається одразу, без згадки <code>@claude</code> і без коментаря-трекера (automation mode). У <code>docs/solutions.md</code> v1.0.252 є офіційний приклад «Scheduled Repository Maintenance» із cron і <code>workflow_dispatch</code>. Але той приклад дає одному job <code>contents</code>, <code>issues</code> і <code>pull-requests: write</code> разом з <code>id-token: write</code>, тобто модель і запис в одному місці, а саме це ми розділили. Межу ходів дія документує (<code>claude_args: --max-turns</code>), а <code>--max-budget-usd</code> у її документації не згадано: за вихідним кодом прапорець має передаватися в CLI, але ми цього не перевіряли. Для рев'ю PR (урок 12.2) дія лишається правильним вибором. Для розкладу з $-лімітом і розділеними правами простіше headless <code>claude -p --bare</code>, де всі прапорці задокументовані.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — тимчасові копії з .github/workflows</span></div>
+<pre><span class="ps">$ </span><span class="c">actionlint -oneline; echo "exit $?"</span>
+<span class="ok">exit 0</span>
+<span class="ps">$ </span><span class="c">actionlint -oneline; echo "exit $?"</span>   <span class="d"># засіяно: cron з 4 полів і «issue: write»</span>
+.github/workflows/nightly.yml:9:13: invalid CRON format "17 2 * *" in schedule event: expected exactly 5 fields, found 4: [17 2 * *] [events]
+.github/workflows/nightly.yml:76:7: unknown permission scope "issue". all available permission scopes are "actions", … [permissions]
+<span class="er">exit 1</span></pre>
+<div class="cap">реальний вивід · actionlint 1.7.12 з <code>actionlint-py</code> у тимчасовому venv · 6 workflow · shellcheck не встановлено, тож блоки <code>run:</code> не перевірені · скорочено список scope · <code>console/actionlint.txt</code></div></div>
+<p>actionlint не перевіряє політику, тому її перевіряє <code>tests/test_scheduled.py</code>. Кожен запланований workflow повинен мати <code>workflow_dispatch</code>, cron не на нульовій хвилині, <code>concurrency</code>, порожні або лише read права на верхньому рівні і дії, закріплені за SHA. Кожен job повинен мати <code>timeout-minutes</code> і вимикач. Job із <code>secrets.ANTHROPIC_API_KEY</code> не має жодного <code>write</code>.</p>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Розклад у трьох інструментах<span class="sub">Routines, scheduled tasks, Automations</span></h2></div>
+<div class="tabs">
+<input type="radio" name="sch-t" id="sch-t1" checked><input type="radio" name="sch-t" id="sch-t2"><input type="radio" name="sch-t" id="sch-t3">
+<div class="tab-l"><label for="sch-t1">Claude Code</label><label for="sch-t2">Codex</label><label for="sch-t3">Cursor</label></div>
+<div class="tab-p">
+<p><b>Routines</b> (research preview) — хмарні сесії Claude Code за тригером: розклад (щогодини, щоночі, щотижня або один раз), HTTP-виклик із bearer-токеном, події GitHub (PR, релізи). Створюються командою <code>/schedule</code> (синонім <code>/routines</code>), на claude.ai/code/routines або в Desktop.</p>
+<ul>
+<li>мінімальний інтервал — година; репозиторій клонується на початку кожного прогону, зміни йдуть у гілки <code>claude/</code>, кожен прогін — окрема сесія, PR з неї створюєте ви;</li>
+<li>вибору режиму дозволів немає: routine працює автономно, коміти й PR мають ваше GitHub-ім'я, прогони витрачають ліміт підписки;</li>
+<li>зелений статус означає лише, що сесія стартувала й завершилася без інфраструктурної помилки. Чи виконано задачу, видно тільки з транскрипту.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>Claude Code</span></div>
+<pre><span class="ps">&gt; </span><span class="c">/schedule daily PR review at 9am</span></pre>
+<div class="cap">приклад з офіційної документації routines · не запускався в цьому уроці</div></div>
+<p>Локальні варіанти: scheduled tasks у Desktop (від хвилини, машина має бути ввімкнена) і <code>/loop</code> у відкритій сесії (повторювані задачі зникають через 7 днів). Для командної автоматизації з ключем команди, артефактами в репозиторії і розділеними правами беріть GitHub Actions. Для особистої рутини від вашого імені — routine.</p>
+</div>
+<div class="tab-p">
+<p><b>Scheduled tasks</b> (раніше Automations) у десктоп-застосунку: у Git-репозиторії задача працює у фоні в локальному проєкті або в новому worktree. Машина й застосунок мають бути ввімкнені. Розклад — пресет або RRULE, задача працює без нагляду з типовими налаштуваннями пісочниці. Результати з'являються у вкладці <b>Scheduled</b>, яка служить вхідною скринькою з позначкою непрочитаного. Team Tasks виконуються в хмарі від сервісного акаунта команди.</p>
+<p>Для CI є <code>openai/codex-action@v1</code> (тег v1.13): він запускає <code>codex exec</code> з <code>openai-api-key</code> і <code>prompt</code> або <code>prompt-file</code>, а перед стартом типово прибирає <code>sudo</code> (<code>safety-strategy: drop-sudo</code>). Офіційний приклад теж розділяє job: <code>codex</code> працює з <code>contents: read</code>, а коментар публікує <code>post_feedback</code> з <code>issues</code> і <code>pull-requests: write</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>workflow</span></div>
+<pre>- uses: openai/codex-action@v1
+  with:
+    openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+    prompt-file: .github/codex/prompts/review.md</pre>
+<div class="cap">фрагмент з офіційної документації Codex GitHub Action · не запускався в цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p><b>Automations</b> запускають хмарних агентів за розкладом (пресет або cron; запуск може запізнитися, але ніколи не стартує раніше) або за подіями: GitHub, GitLab, Bitbucket (PR відкрито, оновлено, злито, push, коментар, завершення CI), Slack, webhook, Linear, Sentry, PagerDuty.</p>
+<ul>
+<li>створення PR типово ввімкнене, PR із форків не підтримуються;</li>
+<li>оплата — як використання хмарних агентів; запуск від вашого імені або від сервісного акаунта;</li>
+<li>мінімального інтервалу документація не називає.</li>
+</ul>
+<p>Тригер «CI completed» — це патерн (d) без власного workflow. Перш ніж його вмикати, з'ясуйте, які права матиме агент на логи і на запис.</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">08</span><h2>Наскрізний проєкт<span class="sub">Lectern: розклад, той самий і локально</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 15.4 · B38, B134, B194</div><div class="pb">
+<ul>
+<li><code>dot-github/workflows/</code>: <code>nightly.yml</code> (щодня, smoke або <code>full</code>), <code>weekly-drift.yml</code> (audit → pr | report), <code>monthly-metrics.yml</code>. Скрізь <code>permissions: {}</code> на верхньому рівні, дії за SHA, вимикач <code>vars.LECTERN_AUTOMATION</code>. actionlint: 0.</li>
+<li><code>scripts/scheduled/</code>: <code>nightly.sh</code> + <code>nightly.py</code> (свіжий replay, оцінка до виклику, правило інтервалу, порівняння pipeline з базовою лінією), <code>drift_audit.sh</code> + <code>drift_check.py</code> + <code>drift_edits.schema.json</code>, <code>metrics.sh</code>, <code>report_issue.sh</code>, <code>common.sh</code>.</li>
+<li><code>docs/automation.md</code> — для кожного job тригер, права, секрет, бюджет, результат, gate і власник, а також вимикач і налаштування репозиторію; рядок у <code>docs/README.md</code>; базова лінія B38 у <code>docs/measurements/</code>.</li>
+<li><code>tests/test_scheduled.py</code>: правило шуму, порівняння pipeline, застосування правок, коди вердикту, вимикач у трьох скриптах, ідемпотентне issue з фальшивим <code>gh</code>, політика workflow. <code>scripts/check.sh</code>: 637 passed (було 605), <code>all checks passed</code>.</li>
+<li>Витрачено на всі прогони уроку $0,16: два нічні — $0,089, базова лінія — $0,024, сім аудитів — $0,045.</li>
+</ul>
+<p><b>Сьогодні:</b> запустіть <code>scripts/scheduled/drift_audit.sh</code> на власному репозиторії з одним засіяним перейменуванням і запишіть, що агент запропонував, що застосував код і що потрапило в <code>stale_elsewhere</code>.</p>
+<p><b>У беклог:</b> B260 — <code>check_context.py</code> не перевіряє шляхи скриптів усередині інлайн-команд; B261 — <code>sync-context.txt</code> не охоплює <code>docs/</code>; B262 — <code>run_evals.py --fresh</code> замість імпорту <code>evaluate()</code> у <code>nightly.py</code>; B263 — повний живий прогін щотижня в датований файл результатів; B264 — shellcheck у CI; B265 — перший справжній запуск на GitHub; B266 — on-call асистент; B267 — щомісячна перевірка, що розклади не вимкнено.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Нічний живий прогін щоночі зелений і коштує $0</td><td data-th="Причина"><code>--live</code> узяв відповіді з replay-кешу</td><td data-th="Що зробити">Свіжий кеш у теці прогону, вартість у звіті</td></tr>
+<tr><td data-th="Симптом">Щоночі issue про answerability, і його закривають не читаючи</td><td data-th="Причина">Поріг перевіряють на 15 питаннях, де інтервал має ширину 0,35</td><td data-th="Що зробити">Alert лише тоді, коли поріг поза інтервалом; повний прогін для рішення</td></tr>
+<tr><td data-th="Симптом">Агент «не знайшов дрейфу»</td><td data-th="Причина">Запис у protected path відхилено мовчки</td><td data-th="Що зробити">Агент пропонує, код застосовує; відмова без правок дає exit 1</td></tr>
+<tr><td data-th="Симптом">Сім PR «docs: sync» за тиждень</td><td data-th="Причина">Кожен прогін створює нову гілку</td><td data-th="Що зробити">Фіксована гілка; одне issue на мітку</td></tr>
+<tr><td data-th="Симптом">CI на PR бота не стартує</td><td data-th="Причина">PR відкрито через <code>GITHUB_TOKEN</code></td><td data-th="Що зробити">Людина натискає «Approve workflows to run»; або токен GitHub App, якщо цей крок свідомо не потрібен</td></tr>
+<tr><td data-th="Симптом">Розклад тихо перестав працювати</td><td data-th="Причина">Публічний репозиторій, 60 днів без активності; розклад лежить не в гілці за замовчуванням</td><td data-th="Що зробити">Щомісячна перевірка стану workflow (B267)</td></tr>
+<tr><td data-th="Симптом">Прогін на <code>0 2 * * *</code> стартує із запізненням або не стартує</td><td data-th="Причина">Під навантаженням GitHub відкладає розклад, найбільше на початку години, і може відкинути задачі з черги</td><td data-th="Що зробити">Хвилина на кшталт 17 чи 41</td></tr>
+<tr><td data-th="Симптом">Ключ API в job з <code>contents: write</code></td><td data-th="Причина">«Так простіше» — один job на все</td><td data-th="Що зробити">Розділити job; тест політики забороняє таке поєднання</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">--permission-prompts none</span><span class="h">що робить?</span></span><span class="b"><span class="t">Ніхто не відповідає</span><span class="d">усе, що потребувало б запиту дозволу, відхиляється; режим дозволів вирішує решту</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">concurrency group</span><span class="h">скільки прогонів?</span></span><span class="b"><span class="t">Один запущений + один очікуваний</span><span class="d">новий очікуваний витісняє старий; <code>cancel-in-progress</code> зупиняє запущений</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">workflow_<wbr>dispatch</span><span class="h">навіщо розкладу?</span></span><span class="b"><span class="t">Ручний запуск із входами</span><span class="d">перезапуск, тест workflow, повний прогін замість smoke</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">idempotent automation output</span><span class="h">як досягти?</span></span><span class="b"><span class="t">Повтор не плодить копій</span><span class="d">фіксована гілка для PR, одне відкрите issue на мітку</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">kill switch автоматизації</span><span class="h">три рівні</span></span><span class="b"><span class="t">Змінна, workflow, ключ</span><span class="d"><code>LECTERN_AUTOMATION=off</code>, <code>gh workflow disable</code>, відкликати ключ</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">nightly live evals</span><span class="h">чим не replay?</span></span><span class="b"><span class="t">Свіжі виклики</span><span class="d">бачать дрейф моделі за тим самим id; кеш порожній, бюджет перевіряється до виклику</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 рішень</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Нічний job запускає <code>run_evals.py --live</code> і вже тиждень зелений, а вартість у звіті — $0. Що не так?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Ключ API не дійшов до кроку, тож SDK без жодної помилки перейшов у локальний офлайн-режим</span></label><label class="opt ok"><input type="radio" name="q1"><span><code>--live</code> бере відповіді з replay-кешу, тож для поточного промпту моделі не кличе</span></label><label class="opt"><input type="radio" name="q1"><span>Без прапорця <code>--full</code> gate вимкнено, тому статус і вартість не рахуються</span></label></div>
+    <div class="why yes">Так. <code>--live</code> докликає лише відсутні записи. Для промпту, кеш якого повний, викликів нуль, і дрейф моделі за тим самим id не видно. Потрібен свіжий кеш у теці прогону.</div>
+    <div class="why no">Без ключа виклик упав би з помилкою, а не пройшов би мовчки. Gate застосовується й без <code>--full</code>. Причина в кеші: <code>--live</code> бере з <code>evals/replay/</code> усе, що там є.</div></div>
+  <div class="q"><div class="qt">2. Smoke на 15 питаннях: answerability 13/15 = 0,867 при порозі 0,9, інтервал Вілсона [0,621; 0,963]. Що має зробити нічний job?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Відкрити issue: поріг порушено, а поріг — це домовленість команди</span></label><label class="opt"><input type="radio" name="q2"><span>Позначити перевірку червоною, щоб злиття в main зупинилось до з'ясування</span></label><label class="opt ok"><input type="radio" name="q2"><span>Записати як шум: поріг усередині інтервалу; для рішення — повний прогін</span></label></div>
+    <div class="why yes">Так. Результат сумісний з тією самою моделлю (повний прогін давав 0,907). Alert має сенс, коли поріг поза всім інтервалом. Інакше issue про шум привчать команду їх ігнорувати.</div>
+    <div class="why no">На 15 питаннях інтервал має ширину ~0,35, і 0,9 лежить усередині. Issue чи червоний статус тут — хибна тривога. Gate на будь-якому n лише для код-грейдерів з порогом 1,0.</div></div>
+  <div class="q"><div class="qt">3. Агентові в розкладі дали <code>--permission-prompts none</code> і <code>Edit(./.claude/CLAUDE.md)</code> в allowlist. Що станеться, коли він спробує редагувати цей файл?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span>Правку відхилять: <code>.claude/</code> — protected path, allow-правило запис туди не дозволяє</span></label><label class="opt"><input type="radio" name="q3"><span>Правка пройде: явне allow-правило важить більше, ніж типова поведінка режиму</span></label><label class="opt"><input type="radio" name="q3"><span>Прогін чекатиме на відповідь, доки job не зупинить <code>timeout-minutes</code></span></label></div>
+    <div class="why yes">Так. Перевірка protected paths іде раніше за allow-правила, а з <code>none</code> відповісти нікому, тож запис відхиляється. Lectern через це перейшов на схему, де агент пропонує правки, а код їх застосовує.</div>
+    <div class="why no">Allow-правила не схвалюють запис у protected path, а <code>none</code> означає саме «відхилити замість чекати». У першому прогоні — 4 відмови і звіт «змін немає».</div></div>
+  <div class="q"><div class="qt">4. Як розкласти по job ключ API і <code>contents: write</code> в аудиті дрейфу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Один job: <code>persist-credentials: false</code> досить, щоб агент не зміг зробити push</span></label><label class="opt ok"><input type="radio" name="q4"><span>Модель — у job лише з читанням; запис — у job без ключа, між ними перевірений патч</span></label><label class="opt"><input type="radio" name="q4"><span>Один job, але в allowlist агента немає <code>git push</code>, тож записати в репозиторій він не зможе</span></label></div>
+    <div class="why yes">Так. Тоді prompt injection в job з моделлю не має чим писати, а job, що пише, не викликає моделі і застосовує лише те, що пройшло <code>drift_check.py</code>.</div>
+    <div class="why no">Обидва варіанти з одним job тримають токен із записом поруч із моделлю: <code>GITHUB_TOKEN</code> лежить в оточенні runner, а allowlist — лише одна лінія оборони. Права розділяють job.</div></div>
+  <div class="q"><div class="qt">5. Draft PR аудиту відкрито через <code>GITHUB_TOKEN</code>. Що буде з CI на ньому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>CI стартує одразу, як на будь-якому PR від людини</span></label><label class="opt"><input type="radio" name="q5"><span>CI не запуститься ніколи: для цього потрібен лише PAT</span></label><label class="opt ok"><input type="radio" name="q5"><span>Прогони чекають, доки людина схвалить їх запуск</span></label></div>
+    <div class="why yes">Так. PR, створений через <code>GITHUB_TOKEN</code>, дає прогони <code>pull_request</code> у стані approval-required. Для автоматизації з людським gate це зручно: людина вперше дивиться на diff саме тоді, коли натискає «Approve workflows to run».</div>
+    <div class="why no">Загальне правило — події від <code>GITHUB_TOKEN</code> нових прогонів не створюють. Але для <code>pull_request</code> (opened, synchronize, reopened) GitHub створює прогони і чекає на «Approve workflows to run». PAT чи токен GitHub App прибирає цей крок.</div></div>
+  <div class="q"><div class="qt">6. Аудит щотижня відкриває новий PR, і за місяць їх стало чотири. Як це виправити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Фіксована гілка: <code>create-pull-request</code> оновлює вже відкритий PR</span></label><label class="opt"><input type="radio" name="q6"><span>Дата в назві гілки, щоб PR не конфліктували між собою</span></label><label class="opt"><input type="radio" name="q6"><span>Крок, що закриває попередній PR перед створенням нового</span></label></div>
+    <div class="why yes">Так. Одна гілка — один PR. Якщо змін немає, дія виходить мовчки. Те саме з issue: одне відкрите на мітку, повтор — коментар.</div>
+    <div class="why no">Дата в гілці якраз і плодить PR. Закривати й відкривати заново означає губити коментарі рев'ю і засмічувати історію. Результат ідемпотентний, коли повторний прогін оновлює той самий об'єкт.</div></div>
+  <div class="q"><div class="qt">7. Group <code>nightly</code>, <code>cancel-in-progress: false</code>. Нічний прогін триває, і хтось двічі поспіль запускає <code>workflow_dispatch</code>. Що станеться?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Усі три підуть паралельно: ручний запуск не входить у concurrency group</span></label><label class="opt"><input type="radio" name="q7"><span>Перший ручний запуск скасує нічний, а другий стане за ним у черзу</span></label><label class="opt ok"><input type="radio" name="q7"><span>Нічний дійде до кінця; другий ручний витіснить перший з очікування</span></label></div>
+    <div class="why yes">Так. У групі може бути один запущений прогін і один очікуваний, новий очікуваний замінює попередній. <code>false</code> захищає вже оплачений прогін.</div>
+    <div class="why no">Група діє на будь-який тригер. Запущений прогін скасовує лише <code>cancel-in-progress: true</code>. Без <code>queue: max</code> чекає тільки один, останній.</div></div>
+  <div class="q"><div class="qt">8. Розклад у публічному репозиторії мовчить уже три тижні, а issue «прогін упав» немає. Яка найімовірніша причина?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Cron рахується в часовому поясі власника репозиторію і зсунувся після переходу на зимовий час</span></label><label class="opt ok"><input type="radio" name="q8"><span>GitHub вимкнув розклад після 60 днів без активності, тож job <code>report</code> не мав із чого стартувати</span></label><label class="opt"><input type="radio" name="q8"><span><code>concurrency</code> тримає попередній прогін у стані очікування, доки його не скасують вручну</span></label></div>
+    <div class="why yes">Так. Вимкнений розклад не створює прогонів, тож issue про збій відкрити нікому. Потрібна окрема перевірка стану workflow.</div>
+    <div class="why no">Cron типово в UTC, а часовий пояс задається явно ключем <code>timezone</code>. Очікування в групі триває, лише поки йде запущений прогін. Мовчання без збою — ознака вимкненого розкладу.</div></div>
+  <div class="q"><div class="qt">9. Аудит запущено з <code>--max-budget-usd 0.50</code>. Чи гарантує це витрату не більше $0,50?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Ні: це оцінка на клієнті після відповіді; треба запас і ліміт workspace</span></label><label class="opt"><input type="radio" name="q9"><span>Так: CLI обриває запит до API саме в момент, коли витрати сягають межі</span></label><label class="opt"><input type="radio" name="q9"><span>Так, але лише разом із <code>--max-turns</code>, бо межа рахується на хід</span></label></div>
+    <div class="why yes">Так. Документація прямо попереджає, що витрати можуть перейти межу. Справжня стеля — ліміт workspace, якому належить ключ CI. Плюс <code>timeout-minutes</code> і оцінка до запуску.</div>
+    <div class="why no">Межу перевіряють після відповіді за клієнтською оцінкою, тож останній хід може її перейти. <code>--max-turns</code> обмежує кількість ходів, а не долари.</div></div>
+  <div class="q"><div class="qt">10. Команді потрібні нічні живі evals Lectern. Що обрати: GitHub Actions чи routine Claude Code?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Routine: вона запускається частіше, ніж дозволяє мінімальний інтервал schedule в Actions</span></label><label class="opt"><input type="radio" name="q10"><span>Actions: routine не клонує репозиторій і не бачить коду, тож evals там не запустити</span></label><label class="opt ok"><input type="radio" name="q10"><span>Actions: ключ і права команди в репо; routine — від вашого імені й з вашої підписки</span></label></div>
+    <div class="why yes">Так. Routine — особиста автоматизація: коміти від вашого GitHub-імені, витрати з ліміту підписки, мінімум година. Командному процесу з аудитом потрібні ключ команди і розділені права.</div>
+    <div class="why no">У routine мінімум — година, а в Actions — 5 хвилин. Репозиторій routine клонує на початку кожного прогону. Різниця не в можливостях, а в тому, від чийого імені і з чиїх грошей вона працює.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>scheduled agent (cron)</td><td>Агент, якого запускає час: cron у UTC, лише гілка за замовчуванням; результат — артефакт, issue чи draft PR для людини.</td></tr>
+<tr><td>workflow_dispatch</td><td>Ручний запуск workflow з типізованими входами; потрібен кожному розкладу для перезапуску, тесту і повної версії.</td></tr>
+<tr><td>unattended run safety</td><td>Контролі для прогону без людини: розділені права, секрети поза промптом, allowlist, межі, concurrency, ідемпотентність, вимикач, аудит.</td></tr>
+<tr><td>--permission-prompts none</td><td>Прапорець <code>claude -p</code>: запити дозволу не чекають відповіді, а відхиляються; решту вирішує режим дозволів.</td></tr>
+<tr><td>budget cap для CI-агента</td><td>Стеля витрат автоматизації: оцінка до запуску, <code>--max-budget-usd</code> із запасом, <code>--max-turns</code>, timeout, ліміт workspace.</td></tr>
+<tr><td>idempotent automation output</td><td>Повторний прогін оновлює той самий PR чи issue, а не створює копію: фіксована гілка, одне issue на мітку.</td></tr>
+<tr><td>kill switch автоматизації</td><td>Зупинка без коміту: змінна репозиторію в <code>if:</code> кожного job, <code>gh workflow disable</code>, відкликання ключа.</td></tr>
+<tr><td>concurrency group</td><td>Назва в GitHub Actions: один запущений і один очікуваний прогін; <code>cancel-in-progress</code> зупиняє запущений.</td></tr>
+<tr><td>nightly live evals</td><td>Нічний прогін evals зі свіжими викликами моделі: ловить дрейф за тим самим id, бюджет перевіряється до виклику, шум відділено від alert.</td></tr>
+<tr><td>drift audit PR</td><td>Draft PR, у якому агент пропонує правки контексту, а код застосовує лише дозволені й перевіряє <code>check_context.py</code>.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Агент оновлення залежностей за розкладом</h3>
+<p>Спроєктуйте щотижневий агент, який оновлює залежності й відкриває draft PR: тригер, права кожного job, бюджет, ідемпотентність, вимикач, людський gate, скелет workflow і таблиця збоїв.</p>
+<h3>2. Розбір нічної автоматизації, що вийшла з-під контролю</h3>
+<p>За журналом інциденту (14 однакових issue, $11 за ніч, PR злито без CI) знайдіть причини, запропонуйте контролі і порахуйте, які з нічних alert були шумом.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run Claude Code programmatically</a><span><code>--bare</code> як рекомендований режим для скриптів, <code>--permission-prompts none</code> для запланованих job, <code>--json-schema</code> → <code>structured_output</code></span></li>
+<li><a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">Claude Code — CLI reference</a><span><code>--max-budget-usd</code> (клієнтська оцінка, може перейти межу), <code>--max-turns</code>, <code>--permission-prompts</code> (v2.1.259+)</span></li>
+<li><a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">Claude Code — Permission modes</a><span>protected paths: які каталоги і чому allow-правила не схвалюють запис</span></li>
+<li><a href="https://code.claude.com/docs/en/github-actions" target="_blank" rel="noopener">Claude Code — GitHub Actions</a><span>розділ «Run on a schedule», атрибуція запланованих прогонів</span></li>
+<li><a href="https://code.claude.com/docs/en/routines" target="_blank" rel="noopener">Claude Code — Routines</a><span>research preview: тригери, мінімум година, ліміти, гілки <code>claude/</code>; також <a href="https://code.claude.com/docs/en/scheduled-tasks" target="_blank" rel="noopener">scheduled tasks і /loop</a></span></li>
+<li><a href="https://github.com/anthropics/claude-code-action/blob/v1.0.252/docs/solutions.md" target="_blank" rel="noopener">claude-code-action v1.0.252 — solutions</a><span>офіційний приклад «Scheduled Repository Maintenance»; automation mode — у <a href="https://github.com/anthropics/claude-code-action/blob/v1.0.252/docs/custom-automations.md" target="_blank" rel="noopener">custom-automations.md</a></span></li>
+<li><a href="https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows" target="_blank" rel="noopener">GitHub — Events that trigger workflows</a><span><code>schedule</code>: UTC і <code>timezone</code>, 5 хвилин, гілка за замовчуванням, затримки, 60 днів; <code>workflow_dispatch</code></span></li>
+<li><a href="https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency" target="_blank" rel="noopener">GitHub — Control the concurrency of workflows and jobs</a><span>один запущений + один очікуваний, <code>cancel-in-progress</code>, <code>queue</code></span></li>
+<li><a href="https://docs.github.com/en/actions/concepts/security/github_token" target="_blank" rel="noopener">GitHub — GITHUB_TOKEN</a><span>які події не створюють прогонів; PR від <code>GITHUB_TOKEN</code> → прогони approval-required</span></li>
+<li><a href="https://github.com/peter-evans/create-pull-request" target="_blank" rel="noopener">peter-evans/create-pull-request</a><span>v8.1.1 · оновлює наявний PR з тієї самої гілки, <code>draft</code>, <code>add-paths</code>, потрібні права</span></li>
+<li><a href="https://learn.chatgpt.com/docs/automations?surface=app" target="_blank" rel="noopener">Codex — Scheduled tasks</a><span>локально чи в worktree, вкладка Scheduled, RRULE; CI — <a href="https://learn.chatgpt.com/docs/github-action" target="_blank" rel="noopener">Codex GitHub Action</a> (<a href="https://github.com/openai/codex-action" target="_blank" rel="noopener">openai/codex-action</a>, тег v1.13)</span></li>
+<li><a href="https://cursor.com/docs/cloud-agent/automations" target="_blank" rel="noopener">Cursor — Automations</a><span>хмарні агенти за розкладом і подіями GitHub, Slack, Linear, webhook, PagerDuty</span></li>
+<li><a href="https://github.com/rhysd/actionlint" target="_blank" rel="noopener">actionlint</a><span>1.7.12 · статична перевірка workflow: cron, scope прав, вирази</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 15.4 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 15.4 · Senomi<br><br><a href="lesson-71.html">← Урок 15.3</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-73.html">Урок 15.5 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>
