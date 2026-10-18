@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 14.2. Orchestrator-workers, паралельні й фонові агенти</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 14.2 · Модуль 14</div>
+<h1>Orchestrator-workers, паралельні й фонові агенти</h1>
+<p class="lead">Запустити дванадцять агентів паралельно — найпростіша частина роботи; складність у тому, щоб система лишалася передбачуваною під навантаженням і при збоях. Урок розбирає механіку: схеми оркестрації, контракт воркера, стелю паралельності з rate limits, скасування, часткові збої й злиття — і перевіряє їх живим прогоном від 1 до 32 сесій.</p>
+<div class="hero-meta"><span class="chip">Команди агентів (multi-agent)</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 13 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Від одного агента до дванадцяти</a><a href="#designs"><b>02</b>П&#x27;ять схем оркестрації</a><a href="#contract"><b>03</b>Контракт воркера</a><a href="#limits"><b>04</b>Стеля паралельності</a><a href="#bench"><b>05</b>Справжній прогін: де коліно</a><a href="#reliability"><b>06</b>Механіка надійності</a><a href="#project"><b>07</b>Наскрізний проєкт</a><a href="#tools"><b>08</b>Паралельні агенти в інструментах</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#quiz"><b>10</b>Квіз</a><a href="#terms"><b>11</b>Терміни уроку</a><a href="#homework"><b>12</b>Домашнє завдання</a><a href="#resources"><b>13</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>обрати схему оркестрації (процес, субагенти, fan-out процесів, фонові агенти, черга з воркерами) під вимоги до ізоляції, збоїв і вартості;</li>
+    <li>описати контракт воркера і зробити воркер ідемпотентним;</li>
+    <li>порахувати стелю паралельності з rate limits і знайти коліно пропускної здатності вимірюванням;</li>
+    <li>спроєктувати таймаути, скасування, політику часткових збоїв і злиття результатів;</li>
+    <li>додати в сервіс зворотний тиск (429 + <code>Retry-After</code>) і скасування сесії агента.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Від одного агента до дванадцяти<span class="sub">Що ламається, коли їх багато</span></h2></div>
+<p>Модуль Lectern — чотири лекції, і для кожної потрібні квіз, картки, уроки й домашні завдання. Послідовно квізи займають від 56 до 152 секунд, а всі чотири артефакти — до 10,1 хвилини (вимір уроку 11.5, BACKLOG B109). Задачі незалежні, тож ідея очевидна: запустити агентів паралельно. Тоді виявляється, що «запустити паралельно» — найпростіша частина роботи.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Коли агентів N</th><th>Що з'являється</th><th>Механізм у цьому уроці</th></tr></thead>
+<tbody>
+<tr><td data-th="Коли агентів N">спільна квота моделі</td><td data-th="Що з&#x27;являється">429 і 529, повтори всередині CLI, хвіст затримки</td><td data-th="Механізм у цьому уроці">стеля паралельності з бюджету токенів</td></tr>
+<tr><td data-th="Коли агентів N">вхідний потік задач</td><td data-th="Що з&#x27;являється">черга росте без меж, пам'ять і час очікування теж</td><td data-th="Механізм у цьому уроці">обмежена черга, 429 + <code>Retry-After</code></td></tr>
+<tr><td data-th="Коли агентів N">довгі сесії</td><td data-th="Що з&#x27;являється">користувач передумав, а агент витрачає гроші</td><td data-th="Механізм у цьому уроці">скасування через <code>interrupt()</code></td></tr>
+<tr><td data-th="Коли агентів N">N результатів</td><td data-th="Що з&#x27;являється">частина впала, частина суперечить одна одній</td><td data-th="Механізм у цьому уроці">політика часткових збоїв, злиття, порядок</td></tr>
+<tr><td data-th="Коли агентів N">N трас</td><td data-th="Що з&#x27;являється">незрозуміло, який воркер з'їв бюджет</td><td data-th="Механізм у цьому уроці">одна траса на задачу (урок 12.5)</td></tr>
+</tbody></table></div>
+<p>Коли кілька агентів узагалі виправдані, розбирає урок 14.1. Патерн orchestrator-workers визначено в уроці 2.4: модель сама ділить задачу на підзадачі й синтезує відповідь. Тут мова про механіку: як запустити багато агентів так, щоб система поводилася передбачувано під навантаженням і при збоях.</p>
+</section>
+
+<section class="sec" id="designs">
+<div class="sec-h"><span class="num">02</span><h2>П'ять схем оркестрації<span class="sub">Де живе оркестратор і що ізольоване</span></h2></div>
+<p>Схеми відрізняються не кількістю агентів, а тим, <b>хто тримає стан</b> і <b>що переживає збій</b>.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Схема</th><th>Ізоляція і спільний стан</th><th>Збої</th><th>Спостережуваність</th><th>Вартість</th></tr></thead>
+<tbody>
+<tr><td data-th="Схема"><b>Оркестратор у процесі</b>: модель викликає інструмент <code>dispatch</code>, код запускає воркерів через <code>asyncio.gather</code> із семафором</td><td data-th="Ізоляція і спільний стан">окремі списки повідомлень, один процес; стан — у пам'яті</td><td data-th="Збої">ваш <code>try/except</code> на кожного воркера; падіння процесу губить усе</td><td data-th="Спостережуваність">повна: кожен виклик пишете ви</td><td data-th="Вартість">лише токени</td></tr>
+<tr><td data-th="Схема"><b>Субагенти в одній сесії</b> Claude Code (інструмент <code>Agent</code>)</td><td data-th="Ізоляція і спільний стан">своє вікно контексту, спільні файли; нагору повертається лише підсумок</td><td data-th="Збої">помилка субагента — результат інструмента, рішення ухвалює головний агент</td><td data-th="Спостережуваність"><code>parent_tool_use_id</code> у stream-json, <code>/tasks</code></td><td data-th="Вартість">кожен субагент заново платить за системний промпт і контекст</td></tr>
+<tr><td data-th="Схема"><b>Незалежні процеси</b>: <code>claude -p</code> + <code>xargs -P</code>, <code>batch_generate.sh</code> (урок 4.4)</td><td data-th="Ізоляція і спільний стан">процес, сесія, за потреби worktree; спільна лише файлова система</td><td data-th="Збої">код виходу і JSON кожного процесу, повтор процесу</td><td data-th="Спостережуваність">JSON на процес, збирати самим</td><td data-th="Вартість">старт CLI і системний промпт на кожен запуск</td></tr>
+<tr><td data-th="Схема"><b>Фонові й хмарні агенти</b>: <code>claude --bg</code>, <code>--cloud</code>, Codex cloud, Cursor Cloud Agents</td><td data-th="Ізоляція і спільний стан">окрема сесія чи VM, своя гілка; спільний — git remote</td><td data-th="Збої">статус бачить людина; результат — diff або PR</td><td data-th="Спостережуваність">UI сесій, журнал</td><td data-th="Вартість">квота підписки: 10 агентів витрачають її ≈ вдесятеро швидше</td></tr>
+<tr><td data-th="Схема"><b>Черга і воркери</b> (сервіс, <code>lectern serve</code>)</td><td data-th="Ізоляція і спільний стан">підпроцес на сесію, тека задачі; стан — у сховищі (SQLite)</td><td data-th="Збої">стани задачі, resume, recover після рестарту, 429</td><td data-th="Спостережуваність">події SSE, траси, <code>/stats</code></td><td data-th="Вартість">інфраструктура + токени</td></tr>
+</tbody></table></div>
+<p>Правило вибору: <b>чим довше живе задача і чим дорожче її втратити, тим нижче рядок</b>. Інтерактивне дослідження — субагенти. Нічна генерація для 40 лекцій — процеси або черга. Запит від користувача продукту, який чекає на результат і може передумати, — лише черга: тільки там є місце для 429, скасування і відновлення.</p>
+<div class="note arch"><span class="lbl">Шоста схема — без агентів</span>
+<p>Message Batches API приймає до 100 000 запитів (або 256 МБ) в одному пакеті, обробляє до 24 годин за 50% ціни і сам керує паралельністю. Але кожен запит — один хід моделі, без циклу інструментів, а результати повертаються в довільному порядку: зіставляйте їх за <code>custom_id</code>. Добре підходить для LLM-судді над 500 готовими квізами вночі, не підходить для агента, якому треба тричі викликати <code>check_quote</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="contract">
+<div class="sec-h"><span class="num">03</span><h2>Контракт воркера<span class="sub">Схема на вході, схема на виході</span></h2></div>
+<p>Воркер, який повертає «текст, що вийшов», змушує оркестратор розбирати прозу. Тому між ними має бути контракт, як між сервісами. На вході — одиниця роботи з власним <code>unit_id</code>. На виході — статус, дані за схемою, вартість і посилання на трасу. Перевіряє контракт код, а не модель.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 560" role="img" aria-label="Потік даних orchestrator-workers: план з одиницями роботи, черга зі стелею паралельності, воркери, результати за схемою, злиття і гейт">
+  <defs>
+    <marker id="m67a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="m67d" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="40" y="8" width="280" height="56" rx="10" class="bx a"/>
+  <text x="180" y="30" text-anchor="middle" class="tx b">Оркестратор</text>
+  <text x="180" y="49" text-anchor="middle" class="tx s">план: N одиниць роботи, дедлайн, бюджет</text>
+  <path d="M180 64 V 96" class="ln a" marker-end="url(#m67a)"/>
+  <text x="188" y="85" class="tx s">вхід: {unit_id, input, budget}</text>
+  <rect x="40" y="100" width="280" height="52" rx="10" class="bx m"/>
+  <text x="180" y="121" text-anchor="middle" class="tx b">Черга · стеля = W</text>
+  <text x="180" y="140" text-anchor="middle" class="tx s">повна → 429 + Retry-After</text>
+  <path d="M85 152 V 186" class="ln a" marker-end="url(#m67a)"/>
+  <path d="M180 152 V 186" class="ln a" marker-end="url(#m67a)"/>
+  <path d="M275 152 V 186" class="ln a" marker-end="url(#m67a)"/>
+  <rect x="40" y="190" width="90" height="62" rx="10" class="bx t"/>
+  <text x="85" y="214" text-anchor="middle" class="tx b">воркер 1</text>
+  <text x="85" y="233" text-anchor="middle" class="tx s">свій контекст</text>
+  <rect x="135" y="190" width="90" height="62" rx="10" class="bx t"/>
+  <text x="180" y="214" text-anchor="middle" class="tx b">воркер 2</text>
+  <text x="180" y="233" text-anchor="middle" class="tx s">таймаут</text>
+  <rect x="230" y="190" width="90" height="62" rx="10" class="bx t"/>
+  <text x="275" y="214" text-anchor="middle" class="tx b">воркер W</text>
+  <text x="275" y="233" text-anchor="middle" class="tx s">interrupt()</text>
+  <path d="M85 252 V 290" class="ln a" marker-end="url(#m67a)"/>
+  <path d="M180 252 V 290" class="ln a" marker-end="url(#m67a)"/>
+  <path d="M275 252 V 290" class="ln a" marker-end="url(#m67a)"/>
+  <rect x="40" y="294" width="280" height="74" rx="10" class="bx p"/>
+  <text x="180" y="316" text-anchor="middle" class="tx b">Результати за схемою</text>
+  <text x="180" y="335" text-anchor="middle" class="tx s">{unit_id, status, output,</text>
+  <text x="180" y="352" text-anchor="middle" class="tx s">cost_usd, trace_id}</text>
+  <path d="M320 330 C 340 300, 340 150, 320 128" class="ln d" marker-end="url(#m67d)"/>
+  <text x="353" y="234" text-anchor="middle" class="tx s" transform="rotate(-90 353 234)">failed: повтор з бекофом</text>
+  <path d="M180 368 V 400" class="ln a" marker-end="url(#m67a)"/>
+  <rect x="40" y="404" width="280" height="74" rx="10" class="bx a"/>
+  <text x="180" y="426" text-anchor="middle" class="tx b">Злиття</text>
+  <text x="180" y="445" text-anchor="middle" class="tx s">порядок за unit_id · конфлікти</text>
+  <text x="180" y="462" text-anchor="middle" class="tx s">політика часткових збоїв</text>
+  <path d="M180 478 V 508" class="ln a" marker-end="url(#m67a)"/>
+  <rect x="40" y="512" width="280" height="42" rx="10" class="bx m"/>
+  <text x="180" y="538" text-anchor="middle" class="tx b">Гейт у коді → артефакт</text>
+  <path d="M40 36 C 8 60, 8 200, 38 222" class="ln d" marker-end="url(#m67d)"/>
+  <text x="14" y="130" text-anchor="middle" class="tx s" transform="rotate(-90 14 130)">скасування</text>
+</svg>
+<figcaption>Orchestrator-workers як потік даних. Контракт стоїть на двох межах: що отримує воркер і що він повертає. Злиття не довіряє порядку завершення, а гейт — словам воркерів.</figcaption>
+</figure>
+<pre class="code" data-lang="python"><span class="cm"># ескіз контракту для модуля Lectern (схеми — pydantic, перевірка — у коді оркестратора)</span>
+<span class="k">class</span> WorkUnit(BaseModel):
+    unit_id: str                      <span class="cm"># "04-hash-tables:quiz" — стабільний, з даних, не uuid4()</span>
+    kind: Literal[<span class="s">"quiz"</span>, <span class="s">"cards"</span>, <span class="s">"lesson"</span>]
+    lecture_id: str
+    budget_usd: float = Field(gt=<span class="n">0</span>, le=<span class="n">0.5</span>)
+
+<span class="k">class</span> WorkResult(BaseModel):
+    unit_id: str
+    status: Literal[<span class="s">"done"</span>, <span class="s">"failed"</span>, <span class="s">"cancelled"</span>]
+    output_path: str | <span class="k">None</span>          <span class="cm"># файл, який воркер записав сам; оркестратор читає його, а не відповідь</span>
+    reason: str | <span class="k">None</span> = <span class="k">None</span>        <span class="cm"># timeout | budget | check_failed | api_error | cancelled</span>
+    cost_usd: float
+    trace_id: str | <span class="k">None</span></pre>
+<h3>Ідемпотентний воркер</h3>
+<p>Повтор, рестарт сервера і подвійна доставка з черги рано чи пізно запустять ту саму одиницю двічі. Воркер ідемпотентний, якщо другий запуск не створює другого результату. Правила такі:</p>
+<ul>
+<li><b>ключ — з даних</b>: <code>unit_id</code> виводиться з входу, а не генерується; той самий вхід дає той самий ключ (у Lectern це <code>Idempotency-Key</code> і ключ кешу, урок 6.5);</li>
+<li><b>вихід — лише свій</b>: воркер пише <code>out/&lt;unit_id&gt;.json</code> через тимчасовий файл і <code>rename</code>, ніколи не дописує в спільний файл;</li>
+<li><b>побічні ефекти — за ключем</b>: PR, повідомлення в Slack чи списання грошей перевіряють, чи такий ключ уже оброблено, бо файл можна перезаписати, а відправлене повідомлення — ні;</li>
+<li><b>гроші не ідемпотентні</b>: повторний запуск агента знову коштує токенів, тому перед повтором треба перевірити, чи результат уже є (кеш, <code>done</code> у сховищі).</li>
+</ul>
+</section>
+
+<section class="sec" id="limits">
+<div class="sec-h"><span class="num">04</span><h2>Стеля паралельності<span class="sub">Concurrency cap рахують з rate limit</span></h2></div>
+<p><b>Concurrency cap</b> — ваше налаштування: скільки сесій агента працює одночасно (<code>--workers</code>, <code>xargs -P</code>, ліміт субагентів). <b>Rate limit</b> — ліміт провайдера за хвилину. API рахує його окремо для запитів (RPM), некешованих вхідних токенів (ITPM) і вихідних токенів (OTPM) на кожен клас моделей і поповнює безперервно, за алгоритмом token bucket. Стелю виводять із ліміту, а не навпаки:</p>
+<pre class="code" data-lang="text">W_max = min( RPM / r,  ITPM / i,  OTPM / o ) × запас
+r, i, o — запити, вхідні токени (input + cache_creation) і вихідні токени
+          ОДНІЄЇ активної сесії за хвилину, виміряні на вашій задачі</pre>
+<p>Для квізу Lectern на Haiku виміряно 4 запити, близько 5 400 токенів, що рахуються в ITPM, і 2 000 вихідних за ~11,5 с роботи агента (вимір нижче). Ще ~10 500 токенів читаються з кешу, і для більшості моделей вони в ITPM не входять. Отже, одна сесія за хвилину — це ≈ 21 запит, 28 тис. ITPM і 10,4 тис. OTPM.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Tier · Haiku 5.5</th><th>RPM / ITPM / OTPM</th><th>Стеля за кожним</th><th>Зв'язує</th></tr></thead>
+<tbody>
+<tr><td data-th="Tier · Haiku 5.5">Start</td><td data-th="RPM / ITPM / OTPM">1 000 / 2 млн / 400 тис.</td><td data-th="Стеля за кожним">47 / 71 / 38</td><td data-th="Зв&#x27;язує">OTPM: ≈ 38 сесій</td></tr>
+<tr><td data-th="Tier · Haiku 5.5">Build</td><td data-th="RPM / ITPM / OTPM">5 000 / 5 млн / 1 млн</td><td data-th="Стеля за кожним">238 / 178 / 96</td><td data-th="Зв&#x27;язує">OTPM: ≈ 96</td></tr>
+<tr><td data-th="Tier · Haiku 5.5">Scale</td><td data-th="RPM / ITPM / OTPM">10 000 / 10 млн / 2 млн</td><td data-th="Стеля за кожним">476 / 357 / 192</td><td data-th="Зв&#x27;язує">OTPM: ≈ 192</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Сторінка rate limits Claude API: рівні Start, Build, Scale і Custom (нові організації можуть стартувати з нижчого Evaluation). Числа для Haiku 5.5, Sonnet 5.5 і Opus 5.5 у кожному рівні однакові, а рахуються ліміти окремо для кожного класу моделей. «Only uncached input tokens count toward your ITPM rate limits» — для більшості моделей. На 429 зазвичай приходить <code>retry-after</code>, але 429 через вичерпаний місячний spend cap приходить без нього, і повтори не допоможуть.</p>
+</div>
+<p>Три поправки до формули. Перша: <b>ліміт — на організацію</b>, а <code>--workers</code> — на процес. Дві репліки по 20 воркерів — це 40 сесій проти одного ліміту. Друга: <b>одночасний старт — сплеск</b>, бо bucket поповнюється безперервно. Про різке зростання навантаження документація окремо попереджає acceleration limits, тож потрібен запас, наприклад × 0,7, і поступовий розгін. Третя: Claude Code має власний ліміт на 20 одночасних субагентів, а dynamic workflows — на 16 агентів. Це теж стелі паралельності, просто чужі.</p>
+</section>
+
+<section class="sec" id="bench">
+<div class="sec-h"><span class="num">05</span><h2>Справжній прогін: де коліно<span class="sub">lectern serve, від 1 до 32 сесій Agent SDK</span></h2></div>
+<p>Для кожного N окремо стартує <code>lectern serve --workers N</code> (B10 додав <code>--max-queue</code>; тут черга більша за кількість задач). Усі задачі подаються в момент 0: Haiku, 4 питання, кеш вимкнено, 5 лекцій по колу. Скрипт <code>scripts/bench_concurrency.py</code> опитує задачі до кінця, а розклад кожної задачі бере з її подій у <code>jobs.db</code> і з транскриптів CLI.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar"><span class="k">1 сесія · 12 задач</span><span class="tr"><i style="--v:6%"></i><b style="--v:6%">4,1</b></span></div>
+  <div class="bar"><span class="k">2 · 12</span><span class="tr"><i style="--v:12.7%"></i><b style="--v:12.7%">8,6</b></span></div>
+  <div class="bar"><span class="k">4 · 12</span><span class="tr"><i style="--v:20.3%"></i><b style="--v:20.3%">13,7</b></span></div>
+  <div class="bar"><span class="k">6 · 12</span><span class="tr"><i style="--v:29.3%"></i><b style="--v:29.3%">19,8</b></span></div>
+  <div class="bar"><span class="k">8 · 12</span><span class="tr"><i style="--v:38.9%"></i><b style="--v:38.9%">26,2</b></span></div>
+  <div class="bar"><span class="k">12 · 12</span><span class="tr"><i style="--v:64.5%"></i><b style="--v:64.5%">43,4</b></span></div>
+  <div class="bar"><span class="k">16 · 32</span><span class="tr"><i style="--v:58.9%"></i><b style="--v:58.9%">39,7</b></span></div>
+  <div class="bar t"><span class="k">24 · 48</span><span class="tr"><i style="--v:100%"></i><b class="in" style="--v:100%">67,3</b></span></div>
+  <div class="bar p"><span class="k">32 · 64</span><span class="tr"><i style="--v:25.3%"></i><b style="--v:25.3%">17,1</b></span></div>
+</div>
+<figcaption>Пропускна здатність, задач за хвилину = задачі / час від подачі до останньої завершеної. Один прогін на рівень, Mac M2 Pro (10 ядер, 16 ГБ), 18.10.2026. До 12 сесій по 12 задач, далі по 2 × N задач.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Сесій</th><th>Задача без черги, p50 / p95, с</th><th>Старт до 1-го інструмента, p50, с</th><th>Модель, p50 · інструмент, p50, с</th><th>RSS, ГБ</th></tr></thead>
+<tbody>
+<tr><td data-th="Сесій">1</td><td data-th="Задача без черги, p50 / p95, с">12,6 / 23,7</td><td data-th="Старт до 1-го інструмента, p50, с">2,1</td><td data-th="Модель, p50 · інструмент, p50, с">1,65 · 0,02</td><td data-th="RSS, ГБ">0,3</td></tr>
+<tr><td data-th="Сесій">8</td><td data-th="Задача без черги, p50 / p95, с">13,0 / 16,8</td><td data-th="Старт до 1-го інструмента, p50, с">2,6</td><td data-th="Модель, p50 · інструмент, p50, с">2,1 · 0,01</td><td data-th="RSS, ГБ">2,0</td></tr>
+<tr><td data-th="Сесій">12</td><td data-th="Задача без черги, p50 / p95, с">12,9 / 16,0</td><td data-th="Старт до 1-го інструмента, p50, с">3,3</td><td data-th="Модель, p50 · інструмент, p50, с">1,6 · 0,01</td><td data-th="RSS, ГБ">2,6</td></tr>
+<tr><td data-th="Сесій">24</td><td data-th="Задача без черги, p50 / p95, с">16,3 / 23,3</td><td data-th="Старт до 1-го інструмента, p50, с">4,7</td><td data-th="Модель, p50 · інструмент, p50, с">1,7 · 0,04</td><td data-th="RSS, ГБ">4,5</td></tr>
+<tr><td data-th="Сесій">32</td><td data-th="Задача без черги, p50 / p95, с">103,3 / 131,4</td><td data-th="Старт до 1-го інструмента, p50, с">38,4</td><td data-th="Модель, p50 · інструмент, p50, с">3,2 · <b>10,4</b></td><td data-th="RSS, ГБ">5,0</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>До 8–12 сесій масштабування майже лінійне.</b> Час задачі не росте, лише старт CLI повільнішає з 2,1 до 3,3 с.</li>
+<li><b>Від 16 до 24 — плато з шумом.</b> Пропускна здатність ще росте, але задача на 30% довша, а p95 старту — 8 с. На 16 сесіях вийшло менше, ніж на 12, бо пропускну здатність задають кілька повільних задач у хвості, а прогін був один.</li>
+<li><b>32 сесії — обвал.</b> 17 задач за хвилину замість 67. Модель відповідає лише вдвічі повільніше, а виклик інструмента, який зазвичай займає 20 мс, триває 10 с. Повторний прогін 32 задач дав 30,2 задачі за хвилину на 32 сесіях і 30,7 на 8. Чотирикратна паралельність не дала нічого.</li>
+<li><b>Коліно — на нашому хості, а не в API.</b> На жодному рівні не було ні <code>api_retry</code>, ні збою. У повторному прогоні процес сервера займав ≤ 8% CPU, тобто його цикл подій не був зайнятий. Одразу після прогону на 32 сесіях load average становив 22–26 на 10 ядрах, а swap — 20 ГБ. 32 підпроцеси CLI по ~160 МБ разом з іншими процесами Mac витіснили один одного.</li>
+<li><b>Вартість від N не залежить:</b> $0,0020–0,0024 за задачу на кожному рівні, $0,63 за всі 282 задачі вимірювання. Паралельність купує wall time, а не економію.</li>
+</ul>
+<div class="note product"><span class="lbl">Що з цього взяти</span>
+<p>Для цього хоста стеля — <b>8–12</b>: майже повна віддача без хвоста затримки. Далі хост треба масштабувати горизонтально, а не додавати воркерів. На сервері з ключем API до формули rate limit додається ще одна стеля — RAM: документація хостингу Agent SDK радить для початку 1 GiB RAM, 5 GiB диска й 1 CPU на агента. Обидві стелі міряють на власній задачі: квіз за 11 с і агент, що годину рефакторить модуль, мають різні <code>r</code>, <code>i</code>, <code>o</code> і різну пам'ять.</p>
+</div>
+</section>
+
+<section class="sec" id="reliability">
+<div class="sec-h"><span class="num">06</span><h2>Механіка надійності<span class="sub">Таймаути, повтори, скасування, часткові збої, злиття</span></h2></div>
+<h3>Таймаути — на трьох рівнях</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Хто відповідає</th><th>У Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">запит до моделі</td><td data-th="Хто відповідає">CLI: до 10 повторів з експоненційним бекофом (<code>CLAUDE_CODE_MAX_RETRIES</code>)</td><td data-th="У Lectern">не чіпаємо; повтори видно з <code>api_retries</code> (новий рядок у runner)</td></tr>
+<tr><td data-th="Рівень">сесія воркера</td><td data-th="Хто відповідає">ви: «A session does not time out on its own» — у SDK немає загального тайм-ауту сесії</td><td data-th="У Lectern"><code>asyncio.timeout(180)</code> + <code>interrupt()</code>, стан <code>failed/timeout</code>, можна resume</td></tr>
+<tr><td data-th="Рівень">уся задача оркестратора</td><td data-th="Хто відповідає">ви: дедлайн, а не сума тайм-аутів</td><td data-th="У Lectern">кожен воркер отримує <code>min(timeout, deadline − now)</code>; хто не встиг — скасовується</td></tr>
+</tbody></table></div>
+<h3>Повтори: хто, що і скільки разів</h3>
+<p>Повтор має сенс лише для ідемпотентної одиниці роботи і лише з причин, які він може вилікувати. Для Lectern це <code>api_error</code> (повторити з бекофом) і <code>timeout</code> чи <code>budget</code> (resume тієї самої сесії). Причина <code>check_failed</code> лікується ескалацією на іншу модель, а не повтором (урок 9.3). Бекоф — експоненційний, із випадковим зсувом (jitter), щоб N воркерів не повторювали синхронно. Якщо 429 приніс <code>retry-after</code>, треба чекати саме стільки: документація API попереджає, що раніші повтори не вдадуться.</p>
+<div class="note warn"><span class="lbl">Множення повторів</span>
+<p>Повтори на кожному рівні множаться. CLI повторює запит до 10 разів, ваш воркер повторює сесію тричі, клієнт сервісу — двічі. У найгіршому разі це 60 спроб на один запит, і всі вони б'ють у ту саму квоту, яка вже вичерпана. Тому повторювати має один рівень, найближчий до причини, а решта лише передає помилку далі. Для скриптів документація радить зменшити <code>CLAUDE_CODE_MAX_RETRIES</code>, щоб збої з'являлися швидше.</p>
+</div>
+<h3>Скасування — це протокол, а не <code>kill</code></h3>
+<p><code>SIGKILL</code> підпроцесу <code>claude</code> зупиняє сесію, але разом із нею губить вартість, <code>session_id</code> і можливість resume. Agent SDK натомість надає <code>ClaudeSDKClient.interrupt()</code>: він надсилає сигнал зупинки, після чого перерваний хід ще повертає свій <code>ResultMessage</code>.</p>
+<blockquote class="q-src">
+<p><code>interrupt()</code> надсилає сигнал зупинки, але не очищає буфер повідомлень. Повідомлення, які вже створила перервана задача, зокрема її <code>ResultMessage</code>, лишаються в потоці. Їх треба дочитати через <code>receive_response()</code>.</p>
+<p class="orig">“interrupt() sends a stop signal but does not clear the message buffer. Messages already produced by the interrupted task, including its ResultMessage, remain in the stream. You must drain them with receive_response()…”</p>
+<cite>Claude Agent SDK, Python reference, перевірено 18.10.2026</cite>
+</blockquote>
+<p>Задача в черзі скасовується без агента: досить позначки, яку воркер побачить, коли дійде до неї. Задача, що виконується, отримує подію, і runner викликає <code>interrupt()</code>. Скасування оркестратора має поширюватися на всіх його воркерів. Інакше «скасована» задача ще хвилину витрачає токени у фоні.</p>
+<h3>Політика часткових збоїв</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Політика</th><th>Що робить</th><th>Коли</th></tr></thead>
+<tbody>
+<tr><td data-th="Політика"><b>fail-fast</b></td><td data-th="Що робить">перший збій скасовує решту воркерів, задача — <code>failed</code></td><td data-th="Коли">результат без усіх частин марний: міграція схеми, реліз, транзакція</td></tr>
+<tr><td data-th="Політика"><b>best-effort</b></td><td data-th="Що робить">збирає все, що вдалося; відсутнє — у звіті з причиною</td><td data-th="Коли">частини незалежні: квізи для 10 лекцій, аудит 40 файлів</td></tr>
+<tr><td data-th="Політика"><b>кворум</b></td><td data-th="Що робить">досить k з N успішних (голосування, урок 2.4); решту скасувати</td><td data-th="Коли">паралельні спроби тієї самої задачі, best-of-N</td></tr>
+<tr><td data-th="Політика"><b>повтор, потім деградація</b></td><td data-th="Що робить">повторити збій раз; далі дешевший шлях або позначка «потребує людини»</td><td data-th="Коли">користувач чекає на відповідь, а повна якість не обов'язкова</td></tr>
+</tbody></table></div>
+<p>Політику вибирають заздалегідь і записують у контракт. Найгірший варіант — неявна політика: <code>asyncio.gather</code> без <code>return_exceptions=True</code> кидає перший виняток, а решта воркерів і далі працює і витрачає гроші, хоча результату вже ніхто не чекає.</p>
+<h3>Злиття результатів і конфлікти</h3>
+<ul>
+<li><b>Порядок — детермінований.</b> Злиття сортує за <code>unit_id</code> чи позицією в плані, а не за часом завершення. Інакше два однакові прогони дають різні файли, diff показує шум, а кеш за хешем результату не спрацьовує.</li>
+<li><b>Синтезатор отримує результати, а не транскрипти.</b> N транскриптів по 20 тис. токенів переповнять його контекст. N об'єктів за схемою вкладуться в кілька тисяч.</li>
+<li><b>Конфлікти розв'язує спочатку код, потім модель, потім людина.</b> Дублікати (та сама цитата в двох квізах) прибирає код за хешем цитати. Суперечності (один аудитор каже «дослівно», інший — ні) розв'язує детермінований гейт, якщо він є. Без гейта обидва висновки йдуть рецензентові разом, а в разі незгоди — людині. Правило «перемагає останній запис» тут не годиться: воно мовчки викидає роботу.</li>
+</ul>
+<h3>Одна траса на задачу</h3>
+<p>Оркестратор відкриває кореневий спан, і кожен воркер стає його дитиною. У підпроцес контекст передається змінною <code>TRACEPARENT</code>: Lectern уже робить це через SDK, тож спани Claude Code потрапляють у ту саму трасу (урок 12.5). Через чергу контекст переносять явно, бо спан не переживає <code>await</code> між запитом і воркером. Тоді питання «який воркер з'їв бюджет» — це один запит до бекенда трас, а не grep по N журналах.</p>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Наскрізний проєкт<span class="sub">Lectern: B10 — скасування, зворотний тиск, стеля</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 14.2 · <code>service.py</code>, <code>runner.py</code>, B10, LEC-SVC-007/008</div><div class="pb">
+<p><b>Що було.</b> <code>--workers</code> обмежував кількість сесій, але черга не мала меж, скасувати задачу було нічим, а повтори CLI ніде не відображалися. Пункт B10 у BACKLOG чекав на це з уроку 6.5.</p>
+<p><b>Вимоги кроку:</b> <code>POST /quizzes/{id}/cancel</code> для задачі в черзі і під час роботи; обмежена черга з 429 і <code>Retry-After</code>; стеля паралельності як явне й перевірене налаштування; тести без моделі; живий прогін.</p>
+<pre class="code" data-lang="python"><span class="cm"># src/lectern/runner.py — скасування через interrupt(), а не kill (уривок)</span>
+<span class="k">async with</span> ClaudeSDKClient(options=options) <span class="k">as</span> client:
+    <span class="k">await</span> client.query(prompt)
+    watch = asyncio.create_task(_interrupt_on(cancel, client)) <span class="k">if</span> cancel <span class="k">else None</span>
+    <span class="k">try</span>:
+        <span class="k">async with</span> asyncio.timeout(timeout_s):
+            <span class="k">async for</span> message <span class="k">in</span> client.receive_response():   <span class="cm"># дочитує й ResultMessage перерваного ходу</span>
+                take(message)
+    …
+<span class="k">if</span> cancel <span class="k">is not None and</span> cancel.is_set() <span class="k">and</span> out.reason <span class="k">is not None</span>:
+    out.reason, out.detail = <span class="s">"cancelled"</span>, <span class="s">"interrupted on request"</span>   <span class="cm"># хід, що встиг завершитись, — не скасований</span>
+
+<span class="cm"># src/lectern/service.py — 429 до створення задачі</span>
+<span class="k">if</span> len(waiting) &gt;= max_queue <span class="k">and not</span> (req.cache <span class="k">and</span> cache.get(key)):
+    <span class="k">raise</span> full()   <span class="cm"># HTTPException(429, headers={"Retry-After": ⌈p50 часу воркера / workers⌉})</span></pre>
+<ul>
+<li><b>Відмова не лишає слідів.</b> 429 повертається до запису в <code>jobs.db</code>, тож ключ ідемпотентності не «запам'ятовує» відмову. Якщо черга заповнилася, поки гейт перевіряв запис кешу, задачу прибирає <code>Store.forget()</code>.</li>
+<li><b>Місце в черзі рахує сервіс</b> (множина <code>waiting</code>), а не <code>queue.qsize()</code>. Скасована задача звільняє місце одразу, хоча фізично лишається в <code>asyncio.Queue</code>, доки воркер її не пропустить.</li>
+<li><b>Після скасування не запускаються ні гейт, ні наступна сходинка каскаду.</b> Без цього <code>model: auto</code> після скасування пішов би на Sonnet.</li>
+<li><b>Повтори CLI тепер видно:</b> подія <code>api_retry</code> і <code>runs[].api_retries</code>. Саме за ними видно, що паралельність підійшла до rate limit.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern-demo</span></div>
+<pre><span class="ps">$ </span><span class="c">lectern serve --data data --port 8801 --workers 1 --max-queue 2 &amp;</span>
+<span class="ps">$ </span><span class="c">post() { curl -s -X POST localhost:8801/quizzes -H 'Content-Type: application/json' -d @job.json; }</span>
+<span class="ps">$ </span><span class="c">A=$(post | jq -r .id); B=$(post | jq -r .id); C=$(post | jq -r .id)</span>
+<span class="ps">$ </span><span class="c">for j in $A $B $C; do curl -s localhost:8801/quizzes/$j | jq -c '{id,status}'; done</span>
+{"id":"a7481db85d86","status":"running"}
+{"id":"3287d62952b4","status":"queued"}
+{"id":"63ce46777bce","status":"queued"}
+<span class="ps">$ </span><span class="c">curl -s -i -X POST localhost:8801/quizzes -H 'Content-Type: application/json' -d @job.json | grep -iE '^HTTP|^retry-after|detail'</span>
+<span class="er">HTTP/1.1 429 Too Many Requests</span>
+<span class="y">retry-after: 30</span>
+{"detail":"queue is full (2 jobs waiting)"}
+<span class="ps">$ </span><span class="c">curl -s localhost:8801/stats | jq -c .capacity</span>
+{"workers":1,"running":1,"max_queue":2,"queued":2,"retry_after_s":30}
+<span class="ps">$ </span><span class="c">curl -s -X POST localhost:8801/quizzes/63ce46777bce/cancel | jq -c '{id,status,error}'</span>
+{"id":"63ce46777bce","status":"cancelled","error":{"reason":"cancelled","detail":"cancelled while queued"}}
+<span class="ps">$ </span><span class="c">curl -sN localhost:8801/quizzes/$A/events &gt; events-A.txt &amp;   # чекаємо першого tool_call</span>
+<span class="ps">$ </span><span class="c">curl -s -X POST localhost:8801/quizzes/a7481db85d86/cancel | jq -c '{id,status}'</span>
+{"id":"a7481db85d86","status":"running"}
+<span class="ps">$ </span><span class="c">grep -E '^data' events-A.txt | cut -c7- | jq -c 'del(.id)' | tail -5</span>
+{"type":"tool_call","t":3.15,"tool":"read_lecture"}
+{"type":"tool","t":3.18,"status":"ok","line":"✓ read_lecture(sample) → 2139 chars"}
+<span class="y">{"type":"cancel_requested","t":5.26,"status":"running"}</span>
+{"type":"result","t":6.01,"subtype":"error_during_execution","terminal_reason":"aborted_streaming","cost_usd":0.00018281,"requests":1}
+<span class="ok">{"type":"status","t":6.01,"status":"cancelled","reason":"cancelled","detail":"agent session interrupted"}</span>
+<span class="ps">$ </span><span class="c">for j in $A $B $C; do curl -s localhost:8801/quizzes/$j | jq -c '{id,status,cost_usd}'; done</span>
+{"id":"a7481db85d86","status":"cancelled","cost_usd":0.000183}
+{"id":"3287d62952b4","status":"done","cost_usd":0.002871}
+{"id":"63ce46777bce","status":"cancelled","cost_usd":0.0}
+<span class="ps">$ </span><span class="c">curl -s localhost:8801/stats | jq -c '{jobs, capacity}'</span>
+{"jobs":{"cancelled":2,"done":1},"capacity":{"workers":1,"running":0,"max_queue":2,"queued":0,"retry_after_s":11}}</pre>
+<div class="cap">реальний вивід · lectern serve на claude-agent-sdk 0.2.168, haiku · 18.10.2026 · запуск сервера скорочено, задача A — справжня сесія агента</div></div>
+<p>Від запиту на скасування до кінцевого стану минуло 0,75 с. <code>interrupt()</code> перервав хід після першого запиту до моделі, SDK повернув <code>error_during_execution</code> / <code>aborted_streaming</code>, а вартість першого запиту ($0,00018) лишилася в задачі. Скасована в черзі задача не коштувала нічого. Після першої завершеної задачі <code>Retry-After</code> перерахувався з 30 с на 11 с — медіана часу воркера, поділена на одного воркера.</p>
+<p><b>Тести</b> (<code>tests/test_service_capacity.py</code>, 7 штук, без моделі): 429 з <code>Retry-After</code> без створення задачі; повтор із тим самим ключем після звільнення місця; скасування в черзі без запуску агента; скасування під час роботи без гейта і без ескалації, з вартістю; валідація <code>workers</code> і <code>max_queue</code>; runner викликає <code>interrupt()</code> на фейковому клієнті; повтори CLI потрапляють в <code>api_retries</code>. <code>scripts/check.sh</code> зелений: ruff з ANN, mypy-гейт без нових помилок, 552 тести, трасування вимог.</p>
+<p><b>Ваш крок:</b> перенесіть B10 у свою копію Lectern. Запустіть <code>scripts/bench_concurrency.py --levels 1,2,4,8</code> на своїй машині чи сервері і запишіть, де коліно у вас. Потім виставте <code>--workers</code> як менше з двох значень: коліна і стелі з вашого rate limit.</p>
+</div></div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">08</span><h2>Паралельні агенти в інструментах<span class="sub">Субагенти в одній сесії, команди, хмара</span></h2></div>
+<p>Та сама механіка всередині Claude Code. Задача: перевірити цитати чотирьох квізів, згенерованих під час вимірювання, по одному субагенту на квіз. В один квіз ми вручну підставили перефразовану цитату. Промпт вимагає запустити чотирьох субагентів одним повідомленням і повернути JSON за схемою.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/fanout</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat prompt.txt)" --model haiku --setting-sources project --strict-mcp-config --tools "Agent,Read,Glob" --allowedTools "Agent" "Read" "Glob" --permission-mode dontAsk --max-budget-usd 0.50 --output-format stream-json --verbose | python3 ts.py &gt; run.jsonl</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.302 · claude-haiku-5-5 · 18.10.2026 · <code>ts.py</code> додає до кожної події час від старту</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run.jsonl — хронологія, с</span></div>
+<pre><span class="d"> 3,0</span> <span class="y">● Glob</span> quizzes/*.json, lectures/*.txt
+<span class="d"> 6,7</span> <span class="y">● Agent</span> 08_library
+<span class="d"> 8,3</span> <span class="y">● Agent</span> 09_cheese
+<span class="d"> 9,9</span> <span class="y">● Agent</span> 10_drones
+<span class="d">11,5</span> <span class="y">● Agent</span> 11_tram
+<span class="d">     ⎿ Async agent launched ×4</span>
+<span class="d"> 8,5</span>   08_library: Glob, Read ×2
+<span class="d">10,6</span>   09_cheese: <span class="er">Read ~/Documents/… →
+       File does not exist</span>
+<span class="ok">12,5</span>   08_library: 4 × verbatim
+<span class="d">13,0</span> головний: «чекаю» → result #1
+<span class="ok">16,3</span>   11_tram: 4 × verbatim
+<span class="ok">16,4</span>   10_drones: <span class="er">item 1 verbatim
+       false, "paraphrased"</span>
+<span class="ok">23,9</span>   09_cheese: 4 × verbatim
+<span class="d">26,7</span> таблиця · <span class="c">Items with a problem: 1</span>
+
+<span class="d">result ×5 · останній: success
+$0,0129 · spawned 4
+started_in_background 4
+max_depth 1 · failed 0</span></pre>
+<div class="cap">реальний вивід · події з <code>stream-json</code>, згруповано й скорочено; системні події прибрано, шляхи скорочено</div></div>
+<ul>
+<li><b>Паралельність справжня, але старт розтягнутий.</b> Чотири виклики <code>Agent</code> прийшли в одному повідомленні, тільки модель пише довгий промпт кожного блоку по черзі, тож запуски розтягнулися на 4,8 с. Субагенти разом працювали 32,7 с, а від першого запуску до останнього результату минуло 17,2 с.</li>
+<li><b>Субагенти пішли у фон самі</b>, тож головний агент завершив хід і прокидався на кожне сповіщення. У потоці п'ять подій <code>result</code>, і брати треба останню (урок 4.4).</li>
+<li><b>Субагент знає лише свій промпт.</b> Один із чотирьох вигадав абсолютний шлях, пошукав у батьківській теці й лише потім прочитав відносний. У контракт воркера входять явні шляхи чи самі дані, а не «знайди сам».</li>
+<li><b>Злиття зробив головний агент.</b> Таблицю він посортував за назвою квізу, як просили, і перефразовану цитату знайдено. Але вирішує тут модель: для CI той самий аудит робить детермінований <code>lectern check --json</code>.</li>
+</ul>
+<h3>Паралельні й фонові агенти в трьох інструментах</h3>
+<div class="tabs">
+<input type="radio" name="par-t" id="par-t1" checked><input type="radio" name="par-t" id="par-t2"><input type="radio" name="par-t" id="par-t3">
+<div class="tab-l"><label for="par-t1">Claude Code</label><label for="par-t2">Codex</label><label for="par-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Субагенти</b> (інструмент <code>Agent</code>, до версії 2.1.63 — <code>Task</code>): типово до 20 одночасних, далі спроба запустити ще одного завершується помилкою <code>Concurrent subagent limit reached</code> (<code>CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS</code>). Вкладеність — до трьох рівнів нижче головної розмови (<code>CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH</code>). Загальної кількості за сесію ліміт не обмежує.</li>
+<li><b>Agent teams</b> — експериментальна функція, типово вимкнена (<code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code>). Тімлід і teammates, у кожного своє вікно. Вони пишуть одне одному напряму через поштові скриньки й мають спільний список задач, а захоплення задачі захищене блокуванням файлу. Обмеження: одна команда на сесію, без вкладених команд, у <code>-p</code> і Agent SDK teammates не запускаються. Токени ростуть лінійно з кількістю teammates; документація радить починати з 3–5.</li>
+<li><b><code>/batch</code></b> — вбудований skill: ділить велику зміну на 5–30 незалежних одиниць, після схвалення плану запускає по фоновому субагенту на одиницю в окремому worktree; кожен запускає тести і публікує свою зміну.</li>
+<li><b>Фонові й хмарні сесії</b>: <code>claude --bg</code> і agent view (research preview) — локально; <code>claude --cloud "…"</code> — кожна команда стає окремою хмарною сесією. Хмарні сесії ділять rate limits з усім іншим використанням акаунта.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Codex cloud</b>: кожна задача отримує власний робочий простір і працює, навіть коли комп'ютер спить. Результат — змінені файли, з яких можна зробити коміт або PR.</li>
+<li><b>Best-of-N</b>: <code>codex cloud exec --env &lt;id&gt; --attempts 4 "…"</code>. <code>--attempts</code> приймає 1–4 (типово 1), <code>--env</code> обов'язковий.</li>
+<li><b>Субагенти</b> в поточних версіях увімкнені типово (<code>agents.enabled</code>). Стелю задає <code>agents.max_concurrent_threads_per_session</code>, перемикання між потоками — <code>/subagents</code>.</li>
+<li><b>Fan-out процесів</b>: <code>codex exec --json</code> — аналог <code>claude -p --output-format stream-json</code>.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">codex cloud exec --env lectern-env --attempts 3 "Fix B10: add a cancel endpoint to src/lectern/service.py with tests"</span></pre>
+<div class="cap">команда за довідником Codex CLI (<code>codex cloud exec</code>, <code>--env</code>, <code>--attempts</code>) · ідентифікатор середовища умовний · не запускалась у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Cloud Agents</b> (колишні Background Agents) працюють в ізольованих VM з повним середовищем розробки. Кожен агент працює у своїй гілці, а запустити його можна з вебу, IDE, Slack, Linear, GitHub або через API (<code>POST /v1/agents</code>, <code>autoCreatePR</code>).</li>
+<li><b><code>/best-of-n</code></b> (Cursor 3, 02.04.2026) запускає ту саму задачу паралельно на кількох моделях, кожну у своєму worktree. Зміни переносять вручну через <code>/apply-worktree</code>, автоматичного злиття немає.</li>
+<li><b>Субагенти</b>: у кожного своє вікно контексту, кілька можна запустити одночасно. Визначення читаються з <code>.cursor/agents/</code>, а також з <code>.claude/agents/</code> і <code>.codex/agents/</code>.</li>
+</ul>
+</div>
+</div>
+<p>Механізми ті самі, що в таблиці схем. Субагенти — оркестратор у сесії. Хмарні задачі — фонові агенти. Best-of-N — паралельні спроби з кворумом, де кворум — це ви. Скасування, стеля паралельності і злиття в кожному інструменті виглядають по-своєму, але питання, на які вони відповідають, однакові.</p>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">І картки для самоперевірки</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Що стається</th><th>Як правильно</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">Необмежена черга</td><td data-th="Що стається">під сплеском черга росте, клієнти чекають хвилинами, рестарт губить або перезапускає сотні задач</td><td data-th="Як правильно">обмежена черга і 429 з <code>Retry-After</code>: клієнт знає, коли повторити</td></tr>
+<tr><td data-th="Помилка">Стеля паралельності «на око»</td><td data-th="Що стається">N воркерів × M реплік перевищують rate limit, CLI тихо повторює, хвіст затримки росте</td><td data-th="Як правильно">стеля з бюджету токенів за хвилину і з виміряного коліна, з запасом; повтори — у метриці</td></tr>
+<tr><td data-th="Помилка"><code>kill</code> замість скасування</td><td data-th="Що стається">вартість перерваного ходу і <code>session_id</code> втрачено, resume неможливий</td><td data-th="Як правильно">подія скасування → <code>interrupt()</code> → дочитати <code>ResultMessage</code></td></tr>
+<tr><td data-th="Помилка">Злиття в порядку завершення</td><td data-th="Що стається">два однакові прогони дають різні файли, кеш за хешем не спрацьовує</td><td data-th="Як правильно">сортувати за <code>unit_id</code> або позицією в плані</td></tr>
+<tr><td data-th="Помилка">Повтори на кожному рівні</td><td data-th="Що стається">CLI × воркер × клієнт = десятки спроб на один запит під уже вичерпаною квотою</td><td data-th="Як правильно">повторює один рівень, найближчий до причини; решта передає помилку</td></tr>
+<tr><td data-th="Помилка">Синтезатор читає транскрипти</td><td data-th="Що стається">контекст переповнений, синтез губить деталі з середини</td><td data-th="Як правильно">воркер повертає об'єкт за схемою; транскрипт лишається в трасі</td></tr>
+<tr><td data-th="Помилка">Спільний вихідний файл</td><td data-th="Що стається">два воркери дописують один JSON, повтор дублює записи</td><td data-th="Як правильно">кожен пише лише свій файл за ключем, атомарно через <code>rename</code></td></tr>
+</tbody></table></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">429 + Retry-After</span><span class="h">навіщо сервісу?</span></span><span class="b"><span class="t">Зворотний тиск</span><span class="d">черга повна — відмовити одразу й сказати, коли повторити, замість чекати без меж</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">interrupt()</span><span class="h">чим кращий за kill?</span></span><span class="b"><span class="t">Хід завершується коректно</span><span class="d">ResultMessage з вартістю і session_id ще приходить, сесію можна продовжити</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">best-effort</span><span class="h">коли доречний?</span></span><span class="b"><span class="t">Частини незалежні</span><span class="d">зібрати все, що вдалося, а відсутнє позначити з причиною</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">unit_id</span><span class="h">звідки береться?</span></span><span class="b"><span class="t">З даних, не з uuid4()</span><span class="d">той самий вхід — той самий ключ: повтор перезаписує, а не дублює</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">коліно</span><span class="h">як знайти?</span></span><span class="b"><span class="t">Виміряти, а не вгадати</span><span class="d">підняти паралельність, доки пропускна здатність перестане рости, а p95 почне</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">agent teams</span><span class="h">чим відрізняються від субагентів?</span></span><span class="b"><span class="t">Teammates говорять напряму</span><span class="d">спільний список задач і повідомлення; субагенти лише звітують головному</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">10</span><h2>Квіз<span class="sub">11 питань</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>11 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Користувачі запускають генерацію квізу з інтерфейсу, хочуть мати змогу її скасувати, а сервер перезапускається при кожному деплої. Яку схему оркестрації обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Субагенти в одній сесії Claude Code: кожен має своє вікно контексту, тож задачі не заважають одна одній</span></label><label class="opt ok"><input type="radio" name="q1"><span>Чергу з воркерами і сховищем задач: стани, скасування, 429 і відновлення після рестарту</span></label><label class="opt"><input type="radio" name="q1"><span>Fan-out процесів через xargs -P: процес на задачу ізолює збої, а код виходу каже, що сталося</span></label></div>
+    <div class="why yes">Так. Задача живе довше за HTTP-запит і переживає рестарт, тому їй потрібен стан поза пам'яттю, і лише черга дає місце для скасування й зворотного тиску.</div>
+    <div class="why no">Субагенти й fan-out живуть, доки живе сесія чи скрипт. Рестарт сервера вбиває їх разом зі станом, а скасувати конкретну задачу користувача нема через що. Тут потрібна черга з durable-сховищем.</div></div>
+  <div class="q"><div class="qt">2. Ліміти Start tier для Haiku 5.5: 1 000 RPM, 2 млн ITPM, 400 тис. OTPM. Одна сесія за хвилину робить 22 запити й витрачає 30 тис. некешованих вхідних і 11 тис. вихідних токенів. Що обмежить паралельність першим?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>RPM: 1 000 / 22 ≈ 45 сесій, бо агент робить багато дрібних запитів, і кожен рахується окремо</span></label><label class="opt"><input type="radio" name="q2"><span>ITPM: 2 млн / 30 тис. ≈ 66 сесій, бо вхідних токенів в агента найбільше, а кеш теж рахується</span></label><label class="opt ok"><input type="radio" name="q2"><span>OTPM: 400 тис. / 11 тис. ≈ 36 сесій; на практиці ставимо стелю нижче, з запасом на сплески</span></label></div>
+    <div class="why yes">Так. Мінімум із трьох відношень — 36, і він дає вихідний потік. Token bucket поповнюється безперервно, тож одночасний старт усіх сесій — сплеск, і запас обов'язковий.</div>
+    <div class="why no">Стеля — мінімум із RPM/r, ITPM/i, OTPM/o: 45, 66 і 36. Кешовані вхідні токени для більшості моделей у ITPM не рахуються, тому вхідний обсяг тут не головний. Першим зв'язує OTPM.</div></div>
+  <div class="q"><div class="qt">3. CLI повторює запит до 10 разів, воркер повторює невдалу сесію тричі, а клієнт сервісу повторює POST двічі. Квота вичерпана. Що відбувається?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span>Один запит перетворюється на десятки спроб проти тієї самої квоти; повторювати має один рівень</span></label><label class="opt"><input type="radio" name="q3"><span>Ймовірність успіху росте з кожним рівнем, бо повтори незалежні, тож три рівні надійніші за один</span></label><label class="opt"><input type="radio" name="q3"><span>Нічого поганого: повтори CLI враховують retry-after, тож вищі рівні просто чекають довше</span></label></div>
+    <div class="why yes">Так. Повтори множаться: 10 × 3 × 2 = 60 спроб, і всі вони б'ють у вже вичерпаний ліміт. Повторює рівень, найближчий до причини, решта передає помилку.</div>
+    <div class="why no">Під вичерпаною квотою повтори не незалежні: вони конкурують за той самий bucket і подовжують перевантаження. А retry-after на рівні CLI не зупиняє воркер і клієнта від нових сесій. Кожен рівень множить кількість спроб.</div></div>
+  <div class="q"><div class="qt">4. Чому сервіс скасовує сесію агента через <code>interrupt()</code> і дочитує потік, а не вбиває підпроцес <code>claude</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Бо interrupt() відкочує зміни, які агент встиг зробити у файлах, а kill лишає їх напівзаписаними</span></label><label class="opt ok"><input type="radio" name="q4"><span>Бо перерваний хід ще повертає ResultMessage з вартістю і session_id: гроші враховано, resume можливий</span></label><label class="opt"><input type="radio" name="q4"><span>Бо Agent SDK блокує сигнали підпроцесу, і kill не спрацює, доки не завершиться поточний запит</span></label></div>
+    <div class="why yes">Так. Документація SDK: повідомлення перерваної задачі, зокрема її ResultMessage, лишаються в потоці, і їх треба дочитати. У живому прогоні уроку вартість перерваного ходу потрапила в задачу.</div>
+    <div class="why no">interrupt() нічого не відкочує: він лише зупиняє хід. А kill спрацює, але разом із процесом зникнуть вартість перерваного ходу і можливість продовжити сесію.</div></div>
+  <div class="q"><div class="qt">5. У виміряному прогоні <code>lectern serve</code> з 24 до 32 сесій пропускна здатність упала з 67 до 17 задач за хвилину, а API не повернуло жодного 429 і жодного повтору. Що робити зі стелею?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Підняти tier API: обвал без 429 означає приховане обмеження з боку провайдера, яке знімає вищий рівень</span></label><label class="opt"><input type="radio" name="q5"><span>Лишити 32 і додати повтори з бекофом у воркері: повільні задачі все одно завершилися без збоїв</span></label><label class="opt ok"><input type="radio" name="q5"><span>Поставити стелю на рівні коліна (тут 8–12) і масштабувати хост, бо обмежує хост, а не модель</span></label></div>
+    <div class="why yes">Так. Час моделі майже не змінився, а виклик інструмента виріс з 20 мс до 10 с, і хост пішов у swap. Стеля — менше з двох: коліна хоста і ліміту API.</div>
+    <div class="why no">Ознаки обмеження API — 429 і події api_retry — були нульові, а модель відповідала лише вдвічі повільніше. Повтори нічого не дадуть, бо збоїв не було, а вищий tier не лікує перевантажений хост.</div></div>
+  <div class="q"><div class="qt">6. Два однакові прогони оркестратора дали <code>module.json</code> з тими самими квізами, але diff показує переставлені блоки, а кеш за хешем результату не спрацьовує. Причина?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Злиття йде в порядку завершення воркерів; треба сортувати за unit_id чи позицією в плані</span></label><label class="opt"><input type="radio" name="q6"><span>Семплінг моделі недетермінований, тож порядок блоків завжди різний, і з цим нічого не вдієш</span></label><label class="opt"><input type="radio" name="q6"><span>SQLite у режимі WAL переставляє записи, тож треба перейти на журнал DELETE</span></label></div>
+    <div class="why yes">Так. Порядок завершення залежить від мережі й навантаження. Детермінований порядок задає злиття, а не воркери.</div>
+    <div class="why no">Квізи ті самі, отже модель тут ні до чого, а WAL не змінює порядку рядків у вашому JSON. Порядок блоків визначає код злиття, і він має сортувати за ключем.</div></div>
+  <div class="q"><div class="qt">7. Квізи для модуля з 10 незалежних лекцій: 9 пройшли гейт, один — <code>check_failed</code> навіть після ескалації. Яка політика доречна?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Fail-fast: скасувати модуль і перезапустити всі 10 лекцій, щоб результат був цілісним</span></label><label class="opt ok"><input type="radio" name="q7"><span>Best-effort: віддати 9 квізів, а десяту лекцію позначити з причиною для людини</span></label><label class="opt"><input type="radio" name="q7"><span>Кворум: прийняти модуль, бо успішних більше за половину, і про десяту лекцію не звітувати</span></label></div>
+    <div class="why yes">Так. Частини незалежні, і повтор дев'яти вдалих лише витратить гроші. Відсутня частина видима, з причиною.</div>
+    <div class="why no">Fail-fast доречний, коли без однієї частини результат марний, а тут це не так. Кворум — для паралельних спроб тієї самої задачі, і він ніколи не означає «мовчки викинути частину».</div></div>
+  <div class="q"><div class="qt">8. Воркер одиниці <code>04-hash:quiz</code> записав файл і впав, не встигнувши відзвітувати. Одиницю повернули в чергу. Що робить повтор безпечним?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Новий uuid4() на кожну спробу, щоб вихідні файли двох спроб не перетиналися</span></label><label class="opt"><input type="radio" name="q8"><span>Дописування результату в спільний results.jsonl з часом, а при злитті береться останній запис</span></label><label class="opt ok"><input type="radio" name="q8"><span>Ключ з даних, свій файл через rename і перевірка готового результату перед викликом моделі</span></label></div>
+    <div class="why yes">Так. Той самий ключ перезаписує, а не дублює. Атомарний rename не лишає половинчастого файла, а перевірка готовності економить другий виклик моделі.</div>
+    <div class="why no">uuid4() на спробу якраз і створює дублікати, а спільний файл з «останнім записом» мовчки губить і плутає результати. Ідемпотентність дає стабільний ключ, власний вихід і перевірка перед повтором.</div></div>
+  <div class="q"><div class="qt">9. В інтерактивній сесії треба, щоб три рецензенти перевіряли гіпотези одне одного й сперечалися, а не лише звітували головному агентові. Що обрати в Claude Code?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Agent teams: експериментальна функція, teammates пишуть одне одному й ділять список задач</span></label><label class="opt"><input type="radio" name="q9"><span>Три іменовані субагенти в claude -p: у headless-режимі вони обмінюються повідомленнями через скриньки</span></label><label class="opt"><input type="radio" name="q9"><span>/batch із трьома одиницями: кожна в окремому worktree, а результати порівнює skill</span></label></div>
+    <div class="why yes">Так. Agent teams вмикають змінною CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1. Teammates спілкуються напряму, і це коштує суттєво більше токенів, ніж одна сесія.</div>
+    <div class="why no">У -p і Agent SDK teammates не запускаються взагалі, тож іменований субагент там лишається звичайним. /batch призначений для незалежних змін коду, а не для дискусії.</div></div>
+  <div class="q"><div class="qt">10. Чому <code>lectern serve</code> при повній черзі відповідає 429 і не створює задачу, а не приймає її в кінець черги?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Бо кожна задача в черзі вже витрачає RPM моделі, і довга черга вичерпує rate limit ще до старту</span></label><label class="opt ok"><input type="radio" name="q10"><span>Бо так затримка й пам'ять обмежені, клієнт знає, коли повторити, а повтор із тим самим ключем пройде</span></label><label class="opt"><input type="radio" name="q10"><span>Бо 429 змушує клієнта перейти на дешевшу модель, і навантаження розподіляється між моделями</span></label></div>
+    <div class="why yes">Так. Відмова без створення задачі не «запам'ятовує» ключ ідемпотентності, тож після Retry-After той самий запит буде прийнято.</div>
+    <div class="why no">Задачі в черзі моделі не викликають і квоти не витрачають. Вибір моделі — справа каскаду, а не коду відповіді. 429 — це зворотний тиск: черга не росте без меж, а клієнт отримує точний час повтору.</div></div>
+  <div class="q"><div class="qt">11. Вночі треба прогнати LLM-суддю по 500 готових квізах: один запит на квіз, без інструментів. Що обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>500 сесій Agent SDK через чергу з 36 воркерами: так видно кожну сесію в трасах</span></label><label class="opt"><input type="radio" name="q11"><span>Субагентів в одній сесії: 500 викликів Agent з лімітом 20 одночасних і спільним підсумком</span></label><label class="opt ok"><input type="radio" name="q11"><span>Message Batches API: 50% ціни, паралельністю керує API, результати зіставити за custom_id</span></label></div>
+    <div class="why yes">Так. Задача однокрокова й не термінова. Batches обробляє до 24 годин і повертає результати в довільному порядку, тому ключ — custom_id.</div>
+    <div class="why no">Агентний цикл тут не потрібен, а черга чи субагенти платять повну ціну, старт CLI і власну стелю паралельності. Batch підходить саме для однокрокових незалежних запитів без поспіху.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">11</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>схема<br>оркестрації</td><td>Де живе оркестратор і стан: процес, субагенти, незалежні процеси, фонові агенти, черга з воркерами.</td></tr>
+<tr><td>контракт<br>воркера</td><td>Схема входу (<code>unit_id</code>, вхід, бюджет) і виходу (статус, дані, причина, вартість, траса), яку перевіряє код.</td></tr>
+<tr><td>ідемпотентний<br>воркер</td><td>Повторний запуск тієї самої одиниці не створює другого результату чи побічного ефекту.</td></tr>
+<tr><td>concurrency cap<br>vs rate limit</td><td>Стеля одночасних сесій — ваше налаштування; rate limit — ліміт провайдера за хвилину. Стелю виводять з ліміту: <code>min(RPM/r, ITPM/i, OTPM/o)</code> із запасом.</td></tr>
+<tr><td>backpressure</td><td>Зворотний тиск: перевантажений сервіс відмовляє одразу (429) і каже, коли повторити (<code>Retry-After</code>).</td></tr>
+<tr><td>скасування<br>через interrupt()</td><td>Зупинка ходу агента сигналом SDK з дочитуванням <code>ResultMessage</code>: вартість і <code>session_id</code> зберігаються.</td></tr>
+<tr><td>політика<br>часткових збоїв</td><td>Заздалегідь обране правило: fail-fast, best-effort, кворум або повтор з деградацією.</td></tr>
+<tr><td>злиття<br>результатів<br>воркерів</td><td>Збір N результатів у детермінованому порядку з розв'язанням конфліктів: код → рецензент → людина.</td></tr>
+<tr><td>коліно<br>пропускної<br>здатності</td><td>Рівень паралельності, за яким пропускна здатність майже не росте, а затримка помітно зростає. Його знаходять вимірюванням.</td></tr>
+<tr><td>agent teams<br>(команда<br>агентів)</td><td>Експериментальна функція: тімлід і teammates зі спільним списком задач і прямими повідомленнями.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">12</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Оркестрація для вашої задачі</h3>
+<p>Схема, контракт воркера, стеля паралельності з вашого rate limit, таймаути, повтори, політика часткових збоїв, скасування і правило злиття для задачі на 5–50 агентів.</p>
+<h3>2. Стеля і черга з реального виміру</h3>
+<p>За таблицею прогону <code>lectern serve</code> від 1 до 32 сесій знайдіть коліно, порахуйте <code>--workers</code> для двох реплік на Build tier і <code>--max-queue</code> під вимогу «квіз за 60 с у 95% випадків».</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">13</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Subagents</a><span>інструмент Agent, ліміт 20 одночасних, вкладеність до 3 рівнів, фонові субагенти</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-teams" target="_blank" rel="noopener">Claude Code — Agent teams</a><span>експериментально: teammates, спільний список задач, повідомлення, обмеження й вартість</span></li>
+<li><a href="https://code.claude.com/docs/en/commands" target="_blank" rel="noopener">Claude Code — Commands</a><span><code>/batch</code>: 5–30 одиниць, фоновий субагент у worktree на кожну</span></li>
+<li><a href="https://code.claude.com/docs/en/workflows" target="_blank" rel="noopener">Claude Code — Workflows</a><span>dynamic workflows: до 16 одночасних агентів, 1 000 за прогін</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-view" target="_blank" rel="noopener">Claude Code — Agent view</a><span>фонові сесії <code>claude --bg</code>, research preview, квота × N</span></li>
+<li><a href="https://code.claude.com/docs/en/claude-code-on-the-web" target="_blank" rel="noopener">Claude Code on the web</a><span><code>--cloud</code>: кожна команда — окрема хмарна сесія, спільні rate limits</span></li>
+<li><a href="https://code.claude.com/docs/en/errors" target="_blank" rel="noopener">Claude Code — Errors</a><span>до 10 повторів з бекофом, <code>CLAUDE_CODE_MAX_RETRIES</code></span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/subagents" target="_blank" rel="noopener">Agent SDK — Subagents</a><span>опція <code>agents</code>, паралельні субагенти в SDK</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/python" target="_blank" rel="noopener">Agent SDK — Python reference</a><span><code>ClaudeSDKClient.interrupt()</code> і буфер після переривання, <code>terminal_reason</code></span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/hosting" target="_blank" rel="noopener">Agent SDK — Hosting</a><span>сесія = підпроцес, від 1 GiB RAM на агента, немає загального тайм-ауту сесії</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/rate-limits" target="_blank" rel="noopener">Claude API — Rate limits</a><span>RPM/ITPM/OTPM за рівнями, token bucket, кеш поза ITPM, <code>retry-after</code>, acceleration limits</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/errors" target="_blank" rel="noopener">Claude API — Errors</a><span>429 <code>rate_limit_error</code>, 529 <code>overloaded_error</code>, автоповтори SDK</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing" target="_blank" rel="noopener">Claude API — Batch processing</a><span>100 000 запитів, до 24 год, 50% ціни, результати в довільному порядку → <code>custom_id</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/developer-commands?surface=cli" target="_blank" rel="noopener">Codex CLI — команди</a><span><code>codex cloud exec --env --attempts 1–4</code>, <code>codex exec --json</code></span></li>
+<li><a href="https://learn.chatgpt.com/codex/agent-configuration/subagents" target="_blank" rel="noopener">Codex — Subagents</a><span><code>agents.enabled</code>, <code>max_concurrent_threads_per_session</code>, <code>/subagents</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/cloud" target="_blank" rel="noopener">Codex — Cloud</a><span>задачі в хмарі, кожна у своєму робочому просторі</span></li>
+<li><a href="https://cursor.com/docs/cloud-agent" target="_blank" rel="noopener">Cursor — Cloud Agents</a><span>колишні Background Agents, ізольовані VM, запуск з вебу, IDE, Slack, API</span></li>
+<li><a href="https://cursor.com/docs/configuration/worktrees" target="_blank" rel="noopener">Cursor — Worktrees</a><span><code>/best-of-n</code>, <code>/apply-worktree</code>; анонс у <a href="https://cursor.com/changelog/04-02-26" target="_blank" rel="noopener">Cursor 3</a>, 02.04.2026</span></li>
+<li><a href="https://cursor.com/docs/subagents" target="_blank" rel="noopener">Cursor — Subagents</a><span>власні вікна контексту, паралельний запуск, визначення в <code>.cursor/agents/</code></span></li>
+<li><a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank" rel="noopener">Anthropic — How we built our multi-agent research system</a><span>13.06.2025 · оркестратор і паралельні субагенти в продакшні</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 14.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 14.2 · Senomi<br><br><a href="lesson-66.html">← Урок 14.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-68.html">Урок 14.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

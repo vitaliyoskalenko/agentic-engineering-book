@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 14.1. Коли кілька агентів кращі за одного — і коли ні</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 14.1 · Модуль 14</div>
+<h1>Коли кілька агентів кращі за одного — і коли ні</h1>
+<p class="lead">Команда агентів виграє там, де підзадачі незалежні, а ширина важить більше за узгодженість: дослідження вшир, незалежні частини, оцінка свіжим контекстом. Там, де рішення зв'язані, вона множить токени, дробить контекст і підсилює помилки — і контрольований дослід на Lectern показує, скільки коштує кожна додаткова роль і що вона дає.</p>
+<div class="hero-meta"><span class="chip">Команди агентів (multi-agent)</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Питання не «скільки агентів»</a><a href="#wins"><b>02</b>Коли команда виграє</a><a href="#single"><b>03</b>Коли один агент сильніший</a><a href="#failures"><b>04</b>Як ламаються команди</a><a href="#decide"><b>05</b>Рамка рішення</a><a href="#experiment"><b>06</b>Дослід на Lectern</a><a href="#project"><b>07</b>Наскрізний проєкт</a><a href="#tools"><b>08</b>Claude Code, Codex, Cursor</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>оцінити задачу за зв'язаністю рішень і вибрати: один агент, воркери чи критик;</li>
+    <li>назвати п'ять механізмів, якими команда агентів ламається, і категорії MAST;</li>
+    <li>порахувати множник токенів і часу команди на власному конвеєрі;</li>
+    <li>поставити контрольований дослід «один агент проти команди» і чесно прочитати шум;</li>
+    <li>записати рішення в ADR: де кілька агентів, де один, де лише код.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Питання не «скільки агентів»<span class="sub">А як зв'язані рішення</span></h2></div>
+<p>Команда агентів — це спосіб витратити більше токенів паралельно. У дослідницькій системі Anthropic <b>лише кількість використаних токенів пояснювала 80% розкиду якості</b> на BrowseComp, а разом із кількістю викликів інструментів і вибором моделі — 95%. Отже, команда виграє тоді, коли задача вміє поглинути додаткові токени: має багато незалежних напрямків, які не влазять в одне вікно. Інакше ви платите за координацію.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Джерело</th><th>Множник токенів</th><th>Проти чого</th></tr></thead>
+<tbody>
+<tr><td data-th="Джерело">Anthropic, дослідницька система (червень 2025)</td><td data-th="Множник токенів">≈ 4× агент, ≈ 15× команда</td><td data-th="Проти чого">звичайний чат</td></tr>
+<tr><td data-th="Джерело">Anthropic, «When and how to use them» (січень 2026)</td><td data-th="Множник токенів">3–10×</td><td data-th="Проти чого">один агент на тій самій задачі</td></tr>
+<tr><td data-th="Джерело">Claude Code, agent teams (документація)</td><td data-th="Множник токенів">≈ 7×, коли учасники в plan mode</td><td data-th="Проти чого">звичайна сесія</td></tr>
+<tr><td data-th="Джерело">Cursor, subagents (документація)</td><td data-th="Множник токенів">5 паралельних ≈ 5×</td><td data-th="Проти чого">один агент</td></tr>
+<tr><td data-th="Джерело">Lectern, дослід цього уроку</td><td data-th="Множник токенів">2,3–2,9× токенів, 3,0–3,5× грошей</td><td data-th="Проти чого">один агент на лекцію</td></tr>
+</tbody></table></div>
+<p>Множник — не константа: він залежить від того, скільки контексту кожна роль перечитує заново. У нашому досліді найдорожчою виявилася не нова роль, а повернення її зауважень автору.</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Перш ніж будувати команду, сформулюйте, <b>що саме купуєте</b>: повноту (більше напрямків), час (паралельність), незалежну оцінку чи ізоляцію контексту. Якщо відповідь — «якість загалом», почніть з одного агента й evals; шаблони патернів — урок 2.4, дисципліна оркестратора — 3.5.</p>
+</div>
+</section>
+
+<section class="sec" id="wins">
+<div class="sec-h"><span class="num">02</span><h2>Коли команда виграє<span class="sub">Чотири механізми з умовами</span></h2></div>
+<blockquote class="q-src">
+<p>Є три ситуації, де кілька агентів стабільно перевершують одного: коли засмічення контексту погіршує результат, коли задачі можна виконувати паралельно і коли спеціалізація покращує вибір інструментів чи фокус. Поза ними витрати на координацію зазвичай перевищують користь.</p>
+<p class="orig">“three situations where multiple agents consistently outperform a single agent: when context pollution degrades performance, when tasks can run in parallel, and when specialization improves tool selection or task focus. Outside these situations, the coordination costs typically exceed the benefits.”</p>
+<cite>Anthropic, «Building multi-agent systems: When and how to use them», 23.01.2026</cite>
+</blockquote>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Механізм</th><th>Умова, без якої не працює</th><th>Як перевірити до побудови</th></tr></thead>
+<tbody>
+<tr><td data-th="Механізм"><b>Дослідження вшир</b> (breadth-first): кожен воркер копає свій напрям</td><td data-th="Умова, без якої не працює">напрямки незалежні; синтез — злиття знахідок, а не узгодження рішень</td><td data-th="Як перевірити до побудови">чи можна написати брифи воркерам, не знаючи відповідей інших</td></tr>
+<tr><td data-th="Механізм"><b>Незалежні частини</b> (shards): та сама робота над різними входами</td><td data-th="Умова, без якої не працює">частини не ділять стан; результат кожної перевіряє код</td><td data-th="Як перевірити до побудови">чи зміниться результат частини, якщо інші ще не готові</td></tr>
+<tr><td data-th="Механізм"><b>Спеціалізація й ізоляція контексту</b>: роль має свої інструменти й вузьке вікно</td><td data-th="Умова, без якої не працює">роль повертає стислий результат; головному агентові не потрібні її проміжні кроки</td><td data-th="Як перевірити до побудови">скільки токенів сміття не потрапить у головне вікно</td></tr>
+<tr><td data-th="Механізм"><b>Оцінка свіжим контекстом</b>: критик не бачить міркувань автора</td><td data-th="Умова, без якої не працює">помилки — сліпа пляма автора, а не брак знань; критик лише читає</td><td data-th="Як перевірити до побудови">чи знаходить другий читач те, чого не знаходить автор (урок 10.1)</td></tr>
+</tbody></table></div>
+<p>Що нового дала дослідницька система Anthropic поверх відомих чисел (+90,2%, ≈ 15× — урок 2.4):</p>
+<ul>
+<li><b>Зусилля задають правилами в промпті.</b> Ранні версії запускали <b>50 субагентів на простий запит</b>; виправили явними рамками: простий факт — 1 агент і 3–10 викликів, порівняння — 2–4 субагенти по 10–15 викликів, складне дослідження — понад 10 з чітким поділом обов'язків.</li>
+<li><b>Час виграли паралельні виклики, а не кількість агентів</b>: 3–5 субагентів паралельно, кожен з 3+ паралельними інструментами, — до 90% менше часу на складних запитах.</li>
+<li><b>Результати воркерів — у файли</b>, щоб не грати в «зіпсований телефон» через переказ лідера.</li>
+<li><b>Синхронне виконання — вузьке місце</b>: лідер чекає найповільнішого, не може скерувати субагентів, а вони не координуються між собою.</li>
+</ul>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Той самий допис Anthropic прямо називає погано придатні домени: задачі, де всім агентам потрібен спільний контекст або багато залежностей між ними, і додає, що в більшості задач з кодом <b>справді паралельних частин менше, ніж у дослідженні</b>. А січневий допис уточнює: головна користь паралельності — <b>повнота, а не швидкість</b>.</p>
+</div>
+</section>
+
+<section class="sec" id="single">
+<div class="sec-h"><span class="num">03</span><h2>Коли один агент сильніший<span class="sub">Рішення, що залежать одне від одного</span></h2></div>
+<blockquote class="q-src">
+<p>Діліться контекстом — повними трасами агента, а не окремими повідомленнями. Дії несуть неявні рішення, а суперечливі рішення дають поганий результат.</p>
+<p class="orig">“Share context, and share full agent traces, not just individual messages” · “Actions carry implicit decisions, and conflicting decisions carry bad results”</p>
+<cite>Walden Yan, Cognition, «Don't Build Multi-Agents», 12.06.2025</cite>
+</blockquote>
+<p>Приклад Cognition: задачу «зроби Flappy Bird» ділять на фон із трубами і пташку. Один субагент малює фон у стилі Super Mario, другий робить пташку, яка рухається зовсім не як у Flappy Bird, і агент-збирач мусить склеїти два непорозуміння. Жоден воркер не помилився відносно свого брифу: помилка — у рішеннях, які кожен прийняв неявно (стиль, фізика) і яких не бачив інший.</p>
+<p>Звідси ознаки, за якими один агент виграє:</p>
+<ul>
+<li><b>Рішення зв'язані</b>: вибір у кроці 1 обмежує крок 3 (архітектура, API і його виклики, питання квізу й баланс ключа).</li>
+<li><b>Стан спільний і змінюється по ходу</b>: той самий файл, та сама схема, той самий документ. Документація Claude Code: для послідовних задач, правок одного файла чи роботи з багатьма залежностями ефективніші одна сесія або субагенти, а не команда.</li>
+<li><b>Задача мала</b>: старт ролі, переказ брифу й зведення коштують більше, ніж сама робота (у 6.4 роль додавала 18–22 с; у 5.5 «розвідник» дав +29% вартості).</li>
+<li><b>Ліміт вартості чи латентності</b> жорсткий: команда майже завжди дорожча, а швидша лише тоді, коли гілки справді паралельні.</li>
+</ul>
+<p>Масштабне порівняння Google Research і DeepMind (arXiv 2512.08296, версія 3 від 08.04.2026; 260 конфігурацій, шість бенчмарків) дає той самий знак у числах: ефект координації — від <b>+80,8%</b> на фінансовому аналізі, що розкладається на частини, до <b>−70,0%</b> на послідовному плануванні. У першій версії (грудень 2025) автори фіксували, що віддача від координації спадає або стає від'ємною, <b>коли один агент уже має понад ~45%</b> на задачі.</p>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Cognition у квітні 2026 переглянула позицію, але звузила, а не скасувала її: працюють схеми, де <b>кілька агентів додають інтелект до задачі, а запис іде в один потік</b> («writes stay single-threaded»). Критик, рецензент, дослідник — читають; автор один.</p>
+</div>
+</section>
+
+<section class="sec" id="failures">
+<div class="sec-h"><span class="num">04</span><h2>Як ламаються команди<span class="sub">П'ять механізмів і таксономія MAST</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Механізм</th><th>Що відбувається</th><th>Симптом</th><th>Що робити</th></tr></thead>
+<tbody>
+<tr><td data-th="Механізм"><b>Фрагментація контексту</b></td><td data-th="Що відбувається">кожен агент бачить свій шматок; бриф — стиснений переказ, у якому губляться неявні вимоги</td><td data-th="Симптом">частини правильні окремо, разом не стикуються (Flappy Bird)</td><td data-th="Що робити">ділити за контекстом, а не за типом роботи; повні траси або файли замість переказу</td></tr>
+<tr><td data-th="Механізм"><b>Суперечливі виходи</b></td><td data-th="Що відбувається">два агенти приймають несумісні рішення про спільне</td><td data-th="Симптом">злиття переписує одне з рішень або дає гібрид</td><td data-th="Що робити">писати в один потік; спільне — до розподілу</td></tr>
+<tr><td data-th="Механізм"><b>Накладні витрати координації</b></td><td data-th="Що відбувається">брифи, переказ результатів, очікування найповільнішого, повторне читання контексту</td><td data-th="Симптом">час і токени ростуть, якість — ні</td><td data-th="Що робити">міряти частку ролей у вартості; прибрати ролі, що не змінюють результат</td></tr>
+<tr><td data-th="Механізм"><b>Підсилення помилок</b></td><td data-th="Що відбувається">помилка одного агента стає входом іншого без перевірки</td><td data-th="Симптом">впевнений підсумок на хибній передумові</td><td data-th="Що робити">перевірка кодом на межах; центральний координатор, а не ланцюг</td></tr>
+<tr><td data-th="Механізм"><b>Множення токенів</b></td><td data-th="Що відбувається">кожне вікно заново читає системний промпт, задачу і матеріал</td><td data-th="Симптом">рахунок ×3–15 при тій самій якості</td><td data-th="Що робити">свіжі виклики лише з потрібним; кеш префікса; дешевша модель для ролей</td></tr>
+</tbody></table></div>
+<p>Підсилення помилок має число: у дослідженні Google незалежні агенти без перевірки між собою підсилювали помилки в <b>17,2 раза</b>, централізована координація стримувала це до <b>4,4 раза</b>.</p>
+<h3>MAST: де саме ламаються мультиагентні системи</h3>
+<p>Cemri та ін. (UC Berkeley; NeurIPS 2025, Datasets and Benchmarks) розмітили понад 1600 трас семи відкритих фреймворків; таксономію побудували на 150 трасах, згода анотаторів κ = 0,88. Результат — <b>14 режимів відмов у трьох категоріях</b>: проблеми дизайну системи, розузгодження між агентами, перевірка задачі.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar"><span class="k">Повтор кроків · дизайн</span><span class="tr"><i style="--v:78.5%"></i><b style="--v:78.5%">15,7%</b></span></div>
+  <div class="bar m"><span class="k">Міркування ≠ дія · розузгодження</span><span class="tr"><i style="--v:66%"></i><b style="--v:66%">13,2%</b></span></div>
+  <div class="bar"><span class="k">Не знає умов зупинки · дизайн</span><span class="tr"><i style="--v:62%"></i><b style="--v:62%">12,4%</b></span></div>
+  <div class="bar"><span class="k">Порушує специфікацію задачі · дизайн</span><span class="tr"><i style="--v:59%"></i><b style="--v:59%">11,8%</b></span></div>
+  <div class="bar p"><span class="k">Хибна перевірка · перевірка</span><span class="tr"><i style="--v:45.5%"></i><b style="--v:45.5%">9,1%</b></span></div>
+  <div class="bar p"><span class="k">Немає або неповна перевірка · перевірка</span><span class="tr"><i style="--v:41%"></i><b style="--v:41%">8,2%</b></span></div>
+  <div class="bar m"><span class="k">Відхилення від задачі · розузгодження</span><span class="tr"><i style="--v:37%"></i><b style="--v:37%">7,4%</b></span></div>
+  <div class="bar m"><span class="k">Не перепитує, коли неясно · розузгодження</span><span class="tr"><i style="--v:34%"></i><b style="--v:34%">6,8%</b></span></div>
+</div>
+<figcaption>Вісім найчастіших з 14 режимів MAST, частка серед розмічених відмов (arXiv 2503.13657, v3, 26.10.2025). Шкала — до 20%. Сума категорій за нашим підрахунком: дизайн ≈ 44%, розузгодження ≈ 32%, перевірка ≈ 24%.</figcaption>
+</figure>
+<div class="note warn"><span class="lbl">Що з цього випливає</span>
+<p>Найчастіші відмови — не «агенти не домовились», а <b>дизайн і перевірка</b>: зайві повтори, незнання, коли зупинитись, слабкий перевіряльник. Автори пробували кращі промпти ролей і топологію — максимальне покращення <b>15,6%</b>, і висновок, що надійність потребує більшого, ніж точкові виправлення. Перш ніж додавати агента, перевірте, чи ваш гейт — код, а не ще одна модель.</p>
+</div>
+</section>
+
+<section class="sec" id="decide">
+<div class="sec-h"><span class="num">05</span><h2>Рамка рішення<span class="sub">Таблиця і дерево</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Ситуація</th><th>Вибір</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Ситуація">Огляд ринку, пошук по 20 джерелах, аудит 300 файлів на одну ознаку</td><td data-th="Вибір">воркери вшир + синтез</td><td data-th="Чому">напрямки незалежні, не влазять в одне вікно; синтез — злиття</td></tr>
+<tr><td data-th="Ситуація">Ті самі квізи для 10 незалежних лекцій</td><td data-th="Вибір">паралельні одиночні агенти, без зв'язку між собою</td><td data-th="Чому">частини не ділять стан, кожну перевіряє гейт; купуємо час</td></tr>
+<tr><td data-th="Ситуація">Нова фіча: схема БД, API, міграція, тести</td><td data-th="Вибір">один агент (можна з субагентом-розвідником для читання)</td><td data-th="Чому">рішення зв'язані; розподіл дасть несумісні припущення</td></tr>
+<tr><td data-th="Ситуація">Рефакторинг одного модуля</td><td data-th="Вибір">один агент</td><td data-th="Чому">спільний стан, правки одних файлів</td></tr>
+<tr><td data-th="Ситуація">Чернетка, яку автор не бачить критично (PRD, квіз, рев'ю коду)</td><td data-th="Вибір">автор + критик у свіжому контексті, лише читає</td><td data-th="Чому">свіжий погляд бачить сліпу пляму; запис лишається в автора</td></tr>
+<tr><td data-th="Ситуація">Дрібна правка, жорсткий ліміт часу чи грошей</td><td data-th="Вибір">один агент</td><td data-th="Чому">старт ролі й зведення дорожчі за роботу</td></tr>
+<tr><td data-th="Ситуація">Якість не проходить, причина невідома</td><td data-th="Вибір">один агент + evals, потім каскад моделей чи правило</td><td data-th="Чому">нова роль не лікує те, чого ви не виміряли</td></tr>
+</tbody></table></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 472" role="img" aria-label="Дерево рішень: спільні рішення — один агент; якщо один агент проходить гейт — лишити; незалежні підзадачі з виграшем понад множник токенів — воркери; сліпа пляма автора — свіжий критик; інакше посилити одного агента">
+  <defs>
+    <marker id="m66a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="m66b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="36" rx="10" class="bx a"/>
+  <text x="180" y="31" text-anchor="middle" class="tx b">Задача + evals + бюджет</text>
+  <path d="M108 44 V 58" class="ln" marker-end="url(#m66b)"/>
+  <rect x="8" y="62" width="200" height="52" rx="10" class="bx m"/>
+  <text x="108" y="83" text-anchor="middle" class="tx">Рішення спільні й</text>
+  <text x="108" y="101" text-anchor="middle" class="tx">змінюються по ходу?</text>
+  <path d="M208 88 H 236" class="ln a" marker-end="url(#m66a)"/>
+  <text x="222" y="82" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="62" width="112" height="52" rx="10" class="bx t"/>
+  <text x="296" y="83" text-anchor="middle" class="tx b">Один агент</text>
+  <text x="296" y="101" text-anchor="middle" class="tx s">контекст цілий</text>
+  <path d="M108 114 V 128" class="ln" marker-end="url(#m66b)"/>
+  <text x="122" y="126" class="tx s">ні</text>
+  <rect x="8" y="132" width="200" height="52" rx="10" class="bx m"/>
+  <text x="108" y="153" text-anchor="middle" class="tx">Один агент проходить</text>
+  <text x="108" y="171" text-anchor="middle" class="tx">гейт і бюджет?</text>
+  <path d="M208 158 H 236" class="ln a" marker-end="url(#m66a)"/>
+  <text x="222" y="152" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="132" width="112" height="52" rx="10" class="bx t"/>
+  <text x="296" y="153" text-anchor="middle" class="tx b">Лишити</text>
+  <text x="296" y="171" text-anchor="middle" class="tx s">одного агента</text>
+  <path d="M108 184 V 198" class="ln" marker-end="url(#m66b)"/>
+  <text x="122" y="196" class="tx s">ні</text>
+  <rect x="8" y="202" width="200" height="70" rx="10" class="bx m"/>
+  <text x="108" y="223" text-anchor="middle" class="tx">Підзадачі незалежні,</text>
+  <text x="108" y="241" text-anchor="middle" class="tx">а ширина важить</text>
+  <text x="108" y="259" text-anchor="middle" class="tx">більше за ×N токенів?</text>
+  <path d="M208 237 H 236" class="ln a" marker-end="url(#m66a)"/>
+  <text x="222" y="231" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="202" width="112" height="70" rx="10" class="bx p"/>
+  <text x="296" y="223" text-anchor="middle" class="tx b">Воркери</text>
+  <text x="296" y="241" text-anchor="middle" class="tx s">fan-out; підсумок</text>
+  <text x="296" y="259" text-anchor="middle" class="tx s">перевіряє код</text>
+  <path d="M108 272 V 286" class="ln" marker-end="url(#m66b)"/>
+  <text x="122" y="284" class="tx s">ні</text>
+  <rect x="8" y="290" width="200" height="70" rx="10" class="bx m"/>
+  <text x="108" y="311" text-anchor="middle" class="tx">Помилки — сліпа пляма</text>
+  <text x="108" y="329" text-anchor="middle" class="tx">автора, видима без</text>
+  <text x="108" y="347" text-anchor="middle" class="tx">його міркувань?</text>
+  <path d="M208 325 H 236" class="ln a" marker-end="url(#m66a)"/>
+  <text x="222" y="319" text-anchor="middle" class="tx s">так</text>
+  <rect x="240" y="290" width="112" height="70" rx="10" class="bx t"/>
+  <text x="296" y="311" text-anchor="middle" class="tx b">Свіжий критик</text>
+  <text x="296" y="329" text-anchor="middle" class="tx s">лише читає;</text>
+  <text x="296" y="347" text-anchor="middle" class="tx s">дельта на evals</text>
+  <path d="M108 360 V 374" class="ln" marker-end="url(#m66b)"/>
+  <text x="122" y="372" class="tx s">ні</text>
+  <rect x="8" y="378" width="344" height="86" rx="10" class="bx a"/>
+  <text x="180" y="402" text-anchor="middle" class="tx b">Посилити одного агента</text>
+  <text x="180" y="420" text-anchor="middle" class="tx s">правило в промпті, перевірка кодом,</text>
+  <text x="180" y="438" text-anchor="middle" class="tx s">сильніша модель за гейтом (каскад),</text>
+  <text x="180" y="456" text-anchor="middle" class="tx s">кращий контекст — а не нова роль</text>
+</svg>
+<figcaption>×N — множник токенів команди на вашому конвеєрі: у досліді нижче 2,3–2,9× токенів і 3,0–3,5× грошей для двох-трьох ролей, у дослідницькій системі Anthropic ≈ 15× проти чату. Беріть свій вимір, а не чужий.</figcaption>
+</figure>
+
+</section>
+
+<section class="sec" id="experiment">
+<div class="sec-h"><span class="num">06</span><h2>Дослід на Lectern<span class="sub">Один агент, критик, три ролі</span></h2></div>
+<p>Модуль 14 збирається генерувати модуль командою агентів. Перш ніж будувати, ми поставили контрольований дослід на квізах — етапі, де evals уже є (урок 12.3).</p>
+<ol class="steps">
+<li><b>Дані.</b> 6 кейсів датасету 12.3: 3 PDF і 3 вбудовані лекції з найбільшою кількістю провалів answerability у базовому прогоні. Правило відбору зафіксоване до запуску. По 2 прогони, 5 питань у квізі, тобто 60 питань на умову.</li>
+<li><b>Умови.</b> <b>A</b> — один агент на лекцію (поточний шлях: три інструменти, позицію ключа ставить код). <b>B</b> — A + критик у свіжому контексті (бачить лише лекцію і квіз, без інструментів, один хід) + один раунд виправлення: відновлена сесія генератора отримує зауваження і зберігає квіз заново. <b>C</b> — B + аудитор цитат, що працює паралельно з критиком (три ролі). <b>R</b> — контроль «посилити одного агента»: A + одне правило в SYSTEM «цитуй ціле речення, що містить факт ключа».</li>
+<li><b>Ізоляція.</b> Усі ролі й грейдери — Haiku 5.5 через Agent SDK з <code>setting_sources=[]</code>, без вбудованих інструментів; умови перемішані в часі, щоб дрейф API не став «ефектом команди».</li>
+<li><b>Оцінка.</b> Кодові грейдери 12.3 (схема, дослівність цитат, баланс ключа, мінімум сторінок) + answerability (свіжа модель бачить лише цитату й питання) + closed_book (те саме без цитати; що менше, то краще). Суддя дистракторів не рахується: він не відкалібрований (κ 0,52).</li>
+</ol>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/multiagent_experiment.py run --out ../exp --runs 2</span>
+A 02-sensors r1: saved=True $0.0033
+A 01-history r1: saved=True $0.0037
+B 02-sensors r1: saved=True $0.0117
+C 01-history r1: saved=True $0.0121
+<span class="d">…  36 прогонів, конкурентність 6</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/multiagent_experiment.py grade --out ../exp</span>
+graders: spent now $0.1351
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/multiagent_experiment.py report --out ../exp</span>
+A: answerability 0.8833 [0.778, 0.942] · closed_book 0.6833 · citations 1.0 · key_balance 1.0 · saved 1.0 · $0.0033/run · 24989 tok · 8.92 turns · 16.9 s · {'cost_x': 1.0, 'tokens_x': 1.0, 'wall_x': 1.0}
+B: answerability 0.95 [0.863, 0.983] · closed_book 0.5667 · citations 1.0 · key_balance 1.0 · saved 1.0 · $0.00973/run · 57907 tok · 11.25 turns · 35.0 s · {'cost_x': 2.95, 'tokens_x': 2.32, 'wall_x': 2.07}
+C: answerability 0.9 [0.799, 0.953] · closed_book 0.7 · citations 1.0 · key_balance 1.0 · saved 1.0 · $0.01163/run · 71387 tok · 12.67 turns · 39.4 s · {'cost_x': 3.52, 'tokens_x': 2.86, 'wall_x': 2.33}
+R: answerability 0.8167 [0.701, 0.894] · closed_book 0.6667 · citations 1.0 · key_balance 1.0 · saved 1.0 · $0.00333/run · 25039 tok · 8.25 turns · 15.8 s · {'cost_x': 1.01, 'tokens_x': 1.0, 'wall_x': 0.93}</pre>
+<div class="cap">реальний вивід · 18.10.2026 · Haiku 5.5 · умову R дозапущено окремим <code>run --conds R</code> · лог прогонів скорочено · у дужках — 95% інтервал Вілсона</div></div>
+<h3>Що показали числа</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Умова</th><th>answerability</th><th>closed_book ↓</th><th>Ціна і час проти A</th></tr></thead>
+<tbody>
+<tr><td data-th="Умова">A один агент</td><td data-th="answerability">53/60</td><td data-th="closed_book ↓">41/60</td><td data-th="Ціна і час проти A">$0,0033 · 25 тис. токенів · 16,9 с</td></tr>
+<tr><td data-th="Умова">B + критик + виправлення</td><td data-th="answerability">57/60</td><td data-th="closed_book ↓">34/60</td><td data-th="Ціна і час проти A">×2,95 грошей · ×2,32 токенів · ×2,07 часу</td></tr>
+<tr><td data-th="Умова">C + аудитор цитат</td><td data-th="answerability">54/60</td><td data-th="closed_book ↓">42/60</td><td data-th="Ціна і час проти A">×3,52 · ×2,86 · ×2,33</td></tr>
+<tr><td data-th="Умова">R один агент + правило</td><td data-th="answerability">49/60</td><td data-th="closed_book ↓">40/60</td><td data-th="Ціна і час проти A">×1,01 · ×1,00 · ×0,93</td></tr>
+</tbody></table></div>
+<p>Цитати, схема, баланс ключа й мінімум сторінок — <b>100% в усіх чотирьох умовах</b>: їх гарантує код (<code>check_quote</code>, <code>place_answers</code>), і кількість агентів тут нічого не додає. Різниця між умовами за answerability на перший погляд є (B 95% проти A 88%), але інтервали перекриваються, а головне — <b>шум одного агента такого самого розміру</b>: перші чернетки умов B і C — це той самий крок, що й A, і три однакові партії дали 53, 56 і 50 з 60.</p>
+<p>Чутливіше порівняння — <b>попарне</b>: та сама чернетка до і після рев'ю. Критик позначив проблеми у 22 зі 24 прогонів (у середньому 1,6–1,8 зауваження), автор переписав 46 зі 120 питань:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>На тих самих чернетках</th><th>B (критик)</th><th>C (критик + аудитор)</th></tr></thead>
+<tbody>
+<tr><td data-th="На тих самих чернетках">answerability: виграно / втрачено</td><td data-th="B (критик)">+1 / −0</td><td data-th="C (критик + аудитор)">+4 / −0</td></tr>
+<tr><td data-th="На тих самих чернетках">closed_book: виправлено / зламано</td><td data-th="B (критик)">5 / 1</td><td data-th="C (критик + аудитор)">0 / 3</td></tr>
+</tbody></table></div>
+<p>П'ять виграних питань ми розібрали вручну. У <b>двох</b> автор продовжив обрізану цитату до факту, який стверджує ключ («Позначка «сумнівне» не означає, що дані помилкові» → «…а лише вказує, що значення викликає сумнів і потребує уваги»). У <b>трьох</b> цитата не змінилась — змінились варіанти, і грейдер відповів інакше. Тобто механізм, який можна захистити, стоїть за 2 питаннями зі 120.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar"><span class="k">B · генератор</span><span class="tr"><i style="--v:54%"></i><b style="--v:54%">$0,0032 · 33%</b></span></div>
+  <div class="bar t"><span class="k">B · критик</span><span class="tr"><i style="--v:27.5%"></i><b style="--v:27.5%">$0,0017 · 17%</b></span></div>
+  <div class="bar p"><span class="k">B · раунд виправлення</span><span class="tr"><i style="--v:81%"></i><b class="in" style="--v:81%">$0,0048 · 50%</b></span></div>
+  <div class="bar m"><span class="k">C · аудитор цитат</span><span class="tr"><i style="--v:15%"></i><b style="--v:15%">$0,0009 · 8%</b></span></div>
+</div>
+<figcaption>Вартість ролі на прогін (середнє з 12) і частка у вартості умови. Шкала — до $0,006.</figcaption>
+</figure>
+<ul>
+<li><b>Дорога не роль, а координація.</b> Критик коштує 17% умови B; раунд виправлення — половину: відновлена сесія генератора перечитує ~30 тис. токенів, щоб змінити 2 питання. Це і є «накладні витрати координації» в грошах.</li>
+<li><b>Третя роль нічого не додала.</b> Аудитор позначив 3 прогони з 12; єдиний виграш у позначеному ним питанні знайшов і критик. Дослівність цитати вже перевіряє код у циклі агента — аудитор дублював і код, і перше правило критика.</li>
+<li><b>Правило в промпті (R) виграшу критика не відтворило</b>: 49/60, у межах того самого шуму. Посилити одного агента — перша гіпотеза, але й вона потребує виміру.</li>
+<li><b>Витрачено $0,52</b>: генерація $0,34, грейдери $0,17, смоук $0,01.</li>
+</ul>
+<div class="key"><b>Висновок досліду:</b> на 6 лекціях × 2 прогони команда з двох-трьох ролей коштує ×3–3,5 і вдвічі довша, а її виграш у якості не відрізнити від шуму одного агента. Попарно критик нічого не зламав і виправив два обрізані цитування. Тому критик — опція «ретельного режиму», а не типовий шлях, і переміряти на більшому датасеті.</div>
+<div class="note warn"><span class="lbl">Межі досліду</span>
+<p>n = 60 питань на умову: одна лекція зсуває частку на 10 пунктів. Одна модель (Haiku) в усіх ролях; Sonnet-критик може поводитися інакше. Грейдер answerability має відомі хибні негативи (B130) — частина «провалів» A може бути помилкою грейдера, і рев'ю тоді «виправляє» грейдер, а не квіз. Усе це записано в ADR як умова перегляду.</p>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Наскрізний проєкт<span class="sub">Lectern: зв'язаність конвеєра і ADR 0016</span></h2></div>
+<p>Зв'язаність оцінюємо на двох рівнях: <b>між</b> одиницями (лекціями) і <b>всередині</b> одиниці (питаннями одного квізу). Команда агентів доречна лише там, де зв'язаність між частинами низька.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Етап</th><th>Зв'язаність</th><th>Хто робить</th></tr></thead>
+<tbody>
+<tr><td data-th="Етап">Ingest PDF, перевірка цитат, сторінки, позиція ключа, збирання модуля</td><td data-th="Зв&#x27;язаність">— (детерміновано)</td><td data-th="Хто робить">код: агент тут лише додав би помилок</td></tr>
+<tr><td data-th="Етап">Квіз однієї лекції</td><td data-th="Зв&#x27;язаність">сильна всередині: баланс ключа, дублікати, покриття сторінок</td><td data-th="Хто робить">один агент</td></tr>
+<tr><td data-th="Етап">Різні лекції модуля</td><td data-th="Зв&#x27;язаність">немає: кожна лекція — своя <code>Session</code> (D10)</td><td data-th="Хто робить">паралельні одиночні агенти без зв'язку; зараз <code>module.py</code> іде послідовно</td></tr>
+<tr><td data-th="Етап">Рев'ю чернетки</td><td data-th="Зв&#x27;язаність">читає, не пише</td><td data-th="Хто робить">критик у свіжому контексті — опція</td></tr>
+<tr><td data-th="Етап">План модуля: порядок тем, терміни, дублікати між лекціями</td><td data-th="Зв&#x27;язаність">сильна між лекціями</td><td data-th="Хто робить">один агент над стислими підсумками всіх лекцій</td></tr>
+</tbody></table></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 14.1</div><div class="pb">
+<p><b>Скрипт</b> <code>scripts/multiagent_experiment.py</code> (<code>run</code> / <code>grade</code> / <code>report</code>): умови A, B, C, R; грейдери 12.3 через replay-кеш; вартість, токени, ходи й час кожної ролі; записи дописуються одразу, тож перерваний прогін не губить оплачене. Код <code>src/</code> не змінено — механіку оркестрації будують уроки 14.2 і 14.3.</p>
+<p><b>Вимір</b> <code>docs/measurements/2026-10-18-multiagent-quiz.json</code>: метрики з інтервалами, частки ролей, попарний аналіз, витрати.</p>
+<p><b>ADR 0016</b> «Де Lectern використовує кількох агентів, а де ні»: один агент на лекцію; незалежні лекції — паралельно; критик — опція «ретельного режиму» з оцінкою ×3 у <code>--dry-run</code>; аудитор цитат відхилено; план модуля — один агент. Умова перегляду — датасет evals ≥ 30 кейсів або зміна <code>SYSTEM</code>.</p>
+<p><b>Backlog:</b> B200 «ретельний режим»; B201 переміряти на ≥ 30 кейсах за попарною метрикою; B202 раунд виправлення без <code>resume</code> — свіжий короткий виклик лише з позначеними питаннями; B203 чому closed_book рухався в різні боки в B і C; B204 узгодженість між лекціями — спершу кодова метрика; B205 паралельні лекції в <code>module.py</code> з атомарним резервуванням бюджету.</p>
+<p><b>Ваш крок:</b> запустіть <code>report</code> на збережених результатах (без моделі, $0) і допишіть в ADR рядок для етапу «картки» (LEC-GEN-002): яка там зв'язаність між картками однієї лекції і чи змінює це рішення.</p>
+</div></div>
+<pre class="code" data-lang="python"><span class="cm"># scripts/multiagent_experiment.py — умова визначає лише набір ролей-рецензентів</span>
+CONDITIONS = {<span class="s">"A"</span>: (), <span class="s">"B"</span>: (<span class="s">"critic"</span>,), <span class="s">"C"</span>: (<span class="s">"critic"</span>, <span class="s">"auditor"</span>), <span class="s">"R"</span>: ()}
+
+<span class="cm"># рецензенти — паралельно і в свіжому контексті: бачать лекцію і квіз, не міркування автора</span>
+reviews = <span class="k">await</span> asyncio.gather(
+    *(_review(systems[r], case, first) <span class="k">for</span> r <span class="k">in</span> CONDITIONS[cond])
+)
+merged = [i | {<span class="s">"from"</span>: r[<span class="s">"role"</span>]} <span class="k">for</span> r, issues <span class="k">in</span> reviews <span class="k">for</span> i <span class="k">in</span> issues]
+<span class="k">if</span> merged:  <span class="cm"># пише лише автор: відновлена сесія генератора, той самий save_quiz і гейт</span>
+    res2, err2, wall2 = <span class="k">await</span> _agent(session, prompt, resume=res.session_id)</pre>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">08</span><h2>Claude Code, Codex, Cursor<span class="sub">Що є для команд агентів</span></h2></div>
+<p>Механіку запуску, фонові й хмарні агенти розбирає урок 14.2; тут — що кожен інструмент пропонує і що сам каже про ціну.</p>
+<div class="tabs">
+<input type="radio" name="ma-t" id="ma-t1" checked><input type="radio" name="ma-t" id="ma-t2"><input type="radio" name="ma-t" id="ma-t3">
+<div class="tab-l"><label for="ma-t1">Claude Code</label><label for="ma-t2">Codex</label><label for="ma-t3">Cursor</label></div>
+<div class="tab-p">
+<p><b>Субагенти</b> — воркери, що звітують головній сесії (урок 6.4). <b>Agent teams</b> — експериментальні, типово вимкнені; учасники мають свої вікна й можуть спілкуватися між собою:</p>
+<pre class="code" data-lang="json">{ <span class="s">"env"</span>: { <span class="s">"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"</span>: <span class="s">"1"</span> } }</pre>
+<p>Документація: субагенти — для швидких воркерів, що звітують назад; команди — коли учасникам треба ділитися знахідками й сперечатися. Команда в plan mode — <b>≈ 7× токенів</b> звичайної сесії; послідовні задачі, правки одного файла й багато залежностей — краще одна сесія чи субагенти.</p>
+</div>
+<div class="tab-p">
+<p><b>Subagents</b> у поточних релізах Codex увімкнені типово; у CLI <code>/subagents</code> показує потоки агентів і перемикає між ними. Прапорець <code>features.multi_agent</code> (stable, on by default) дає моделі інструменти <code>spawn_agent</code>, <code>send_input</code>, <code>wait_agent</code>, <code>close_agent</code>.</p>
+<p>Документація попереджає про дві речі з цього уроку: такі сценарії <b>споживають більше токенів</b>, ніж один агент, а паралельні агенти, що одночасно редагують код, створюють конфлікти.</p>
+</div>
+<div class="tab-p">
+<p>Cursor 2.0 (29.10.2025): <b>до восьми агентів паралельно</b> на одному промпті, кожен у своєму git worktree або на віддаленій машині; <code>/best-of-n</code> — та сама задача кількома моделями. Cursor 2.4 (22.01.2026): <b>subagents</b> зі своїм контекстом; 3.2 (24.04.2026): <code>/multitask</code> — асинхронні субагенти.</p>
+<p>Документація субагентів: п'ять паралельних — <b>приблизно вп'ятеро більше токенів</b>, а користь — ізоляція контексту, а не швидкість.</p>
+</div>
+</div>
+<div class="note tip"><span class="lbl">Спільне в трьох</span>
+<p>Усі троє позиціонують паралельних агентів для <b>незалежних</b> гілок (worktree, окреме вікно) і самі пишуть про множник токенів. Жоден не обіцяє, що команда дасть кращий результат на зв'язаній задачі.</p>
+</div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Що ламається на практиці</span></h2></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Помилка</th><th>Як насправді</th></tr></thead>
+<tbody>
+<tr><td>Ділити за ролями людської команди (аналітик, розробник, тестувальник)</td><td>Ділять за контекстом: кому потрібні які дані. Ролі «за професіями» передають один одному той самий контекст переказами — «зіпсований телефон».</td></tr>
+<tr><td>Порівнювати команду з одним прогоном одного агента</td><td>Шум одного агента на 60 питаннях — 50–56 з 60. Порівнюйте попарно на тих самих чернетках або на n, де інтервали не перекриваються.</td></tr>
+<tr><td>Рахувати лише токени нової ролі</td><td>У нашому досліді критик — 17%, а повернення зауважень автору — 50% вартості. Міряйте всю схему.</td></tr>
+<tr><td>Додати перевіряльника-модель туди, де можна перевірити кодом</td><td>Аудитор цитат дублював <code>check_quote</code>. Перевіряльник-модель — лише для суджень, яких код не робить.</td></tr>
+<tr><td>Дати двом агентам писати в спільний стан</td><td>Суперечливі неявні рішення виринуть при злитті. Пише один; інші читають і радять.</td></tr>
+<tr><td>Не ставити рамок зусиль</td><td>Ранні версії системи Anthropic запускали 50 субагентів на простий запит. Кількість агентів і викликів задають правила в промпті та ліміти в коді.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Один чи команда?</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Огляд 40 конкурентів</span><span class="h">один чи команда?</span></span><span class="b"><span class="t">Воркери вшир</span><span class="d">напрямки незалежні, не влазять в одне вікно; синтез — злиття</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Міграція схеми + API + клієнт</span><span class="h">один чи команда?</span></span><span class="b"><span class="t">Один агент</span><span class="d">рішення зв'язані: тип поля в схемі визначає API і клієнта</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Рев'ю власного PRD</span><span class="h">хто читає?</span></span><span class="b"><span class="t">Свіжий критик</span><span class="d">не бачить міркувань автора; пише лише автор</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Квізи для 12 лекцій</span><span class="h">як розпаралелити?</span></span><span class="b"><span class="t">Незалежні одиночні агенти</span><span class="d">без зв'язку між собою; кожен квіз перевіряє гейт</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Аудитор дослівності цитат</span><span class="h">роль чи код?</span></span><span class="b"><span class="t">Код</span><span class="d">перевірюваний факт; модель-аудитор дублює гейт і коштує +20%</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">B: 57/60 проти A: 53/60</span><span class="h">команда краща?</span></span><span class="b"><span class="t">Не доведено</span><span class="d">однакові партії одного агента — 50–56 з 60; потрібне попарне порівняння</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Задачу «нове поле: схема БД, API, клієнт, тести» ділять між чотирма агентами в окремих worktree. Що найімовірніше?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Майже вчетверо швидше: частини малі, а файли в кожного агента свої</span></label><label class="opt"><input type="radio" name="q1"><span>Вища якість: кожен агент має вузький фокус і чисте вікно, без чужого контексту й зайвих кроків</span></label><label class="opt ok"><input type="radio" name="q1"><span>Частини правильні окремо, але не стикуються: неявні рішення кожного інші не бачать</span></label></div>
+    <div class="why yes">Так. Тип поля, назви, формат помилок — неявні рішення, які кожен агент приймає сам. Це випадок Flappy Bird: рішення зв'язані, тож потрібен один агент.</div>
+    <div class="why no">Окремі файли не роблять рішення незалежними: тип поля в схемі визначає API, клієнта і тести. Кожен агент прийме свої неявні рішення, і розбіжність вирине при злитті — «дії несуть неявні рішення».</div></div>
+  <div class="q"><div class="qt">2. Порівняти 30 постачальників за 6 критеріями; один агент вичерпує вікно на дванадцятому. Що обрати?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Воркерів на групи постачальників з наперед заданими критеріями, результати — у файли, лідер зводить</span></label><label class="opt"><input type="radio" name="q2"><span>Одного агента на сильнішій моделі з compaction, бо синтезу потрібен увесь контекст від початку</span></label><label class="opt"><input type="radio" name="q2"><span>Команду, де воркери по ходу домовляються між собою про критерії, щоб таблиця була узгоджена</span></label></div>
+    <div class="why yes">Так. Напрямки незалежні, критерії зафіксовані до розподілу, синтез — злиття. Це дослідження вшир; файли замість переказу знімають «зіпсований телефон».</div>
+    <div class="why no">Синтез тут — злиття однакових рядків, а не узгодження рішень, тож цілий контекст не потрібен. А домовленості по ходу повертають координацію, яку прибрали, зафіксувавши критерії наперед.</div></div>
+  <div class="q"><div class="qt">3. Один агент — 53/60 answerability, агент + критик — 57/60; три однакові партії одного агента дали 50, 53 і 56. Висновок?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Критик дає +7 пунктів, тож його варто вмикати типово, бо ×3 ціни окупається якістю</span></label><label class="opt ok"><input type="radio" name="q3"><span>Різниця в межах шуму; порівнювати попарно на тих самих чернетках або збільшити n</span></label><label class="opt"><input type="radio" name="q3"><span>Критик гірший, бо чотири питання за потрійну ціну — завжди від'ємна віддача</span></label></div>
+    <div class="why yes">Так. Розкид однакових партій (6 пунктів із 60) такий самий, як різниця між умовами. Попарне порівняння прибирає шум генерації: та сама чернетка до і після рев'ю.</div>
+    <div class="why no">Ні «окупається», ні «від'ємна віддача» не випливають з даних: однакові партії одного агента розходяться на 6 питань із 60, як і умови між собою. Спершу — попарна метрика або більше n, потім рішення про ціну.</div></div>
+  <div class="q"><div class="qt">4. Яка роль у схемі «автор + критик + раунд виправлення» виявилася найдорожчою в досліді Lectern і чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Критик: щоразу читає в новому вікні всю лекцію й квіз і пише довгі зауваження</span></label><label class="opt ok"><input type="radio" name="q4"><span>Раунд виправлення: відновлена сесія автора перечитує ~30 тис. токенів контексту</span></label><label class="opt"><input type="radio" name="q4"><span>Генератор: робить 8–9 ходів із трьома інструментами і перевіряє кожну цитату окремо</span></label></div>
+    <div class="why yes">Так. Раунд виправлення — половина вартості умови B, критик — 17%. Дорога не нова роль, а повернення її результату туди, де живе контекст.</div>
+    <div class="why no">Критик — один хід без інструментів, 17% вартості; генератор — третина. Половину забирає раунд виправлення: <code>resume</code> перечитує історію сесії, щоб змінити два питання (B202 пропонує свіжий короткий виклик).</div></div>
+  <div class="q"><div class="qt">5. Дослівність цитат уже перевіряє код у циклі агента. Пропонують роль «аудитор цитат» на моделі. Рішення?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Відхилити: роль дублює детерміновану перевірку; модель — лише для суджень, яких код не робить</span></label><label class="opt"><input type="radio" name="q5"><span>Прийняти: друга незалежна перевірка зменшує помилки цитат, а вони найдорожчий клас для курсу</span></label><label class="opt"><input type="radio" name="q5"><span>Прийняти на Sonnet: сильніша модель-аудитор знайде те, що пропустив генератор на Haiku</span></label></div>
+    <div class="why yes">Так. У досліді аудитор позначив 3 прогони з 12, не дав власного виграшу і додав 20% вартості: його роботу вже робить <code>check_quote</code>.</div>
+    <div class="why no">Цитата або є в лекції, або ні — це перевіряє код без помилок і без грошей (ADR 0004). Модель-аудитор, хоч і сильніша, лише дублює гейт; у досліді вона не дала жодного власного виграшу.</div></div>
+  <div class="q"><div class="qt">6. Конвеєр із трьох агентів повторює ті самі кроки і не зупиняється. До якої категорії MAST це належить і що робити спершу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Розузгодження між агентами: додати агента-посередника, що розв'язує їхні суперечки</span></label><label class="opt"><input type="radio" name="q6"><span>Перевірка задачі: поставити наприкінці ще одного LLM-суддю, що відкидає зациклені виходи</span></label><label class="opt ok"><input type="radio" name="q6"><span>Дизайн системи: явні умови зупинки й ліміти кроків у коді</span></label></div>
+    <div class="why yes">Так. Повтор кроків (15,7%) і незнання умов зупинки (12,4%) — режими категорії «дизайн системи», найбільшої в MAST. Лікуються лімітами й умовами в коді.</div>
+    <div class="why no">Посередник і суддя — нові агенти поверх проблеми дизайну. Повтор кроків і незнання умов зупинки в MAST — категорія «дизайн системи»; перший крок — ліміти ходів і явні умови завершення в коді.</div></div>
+  <div class="q"><div class="qt">7. П'ять паралельних воркерів, їхні результати йдуть у синтез. Як зменшити підсилення помилок?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Хай воркери перевіряють результати один одного напряму, до синтезу</span></label><label class="opt ok"><input type="radio" name="q7"><span>Перевіряти вихід кожного воркера на межі — кодом чи координатором — до синтезу</span></label><label class="opt"><input type="radio" name="q7"><span>Збільшити кількість воркерів до десяти, щоб більшість голосів гасила помилки</span></label></div>
+    <div class="why yes">Так. У дослідженні Google незалежні агенти підсилювали помилки в 17,2 раза, централізована координація — у 4,4. Перевірка на межі не дає помилці стати входом наступного кроку.</div>
+    <div class="why no">Перехресні перевірки воркерів — ще більше зв'язків без центру, а голосування допомагає лише з незалежними помилками на тій самій задачі. Помилку зупиняє перевірка на межі: централізована схема в дослідженні Google тримала підсилення на 4,4× проти 17,2× у незалежних агентів.</div></div>
+  <div class="q"><div class="qt">8. Коли критик у свіжому контексті дає найбільше?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Коли помилки — сліпа пляма автора, видима без його міркувань, а критик лише читає</span></label><label class="opt"><input type="radio" name="q8"><span>Коли критик отримує повну трасу автора, щоб розуміти, чому прийнято кожне рішення</span></label><label class="opt"><input type="radio" name="q8"><span>Коли критик сам править чернетку, щоб заощадити на окремому раунді виправлення</span></label></div>
+    <div class="why yes">Так. Цінність — у незалежності погляду; запис лишається в автора, тож рішення не розходяться.</div>
+    <div class="why no">Повна траса автора повертає його упередження, і погляд перестає бути свіжим. А критик, що пише сам, — другий автор зі своїми неявними рішеннями: запис має йти в один потік.</div></div>
+  <div class="q"><div class="qt">9. Послідовний рефакторинг одного великого файла в Claude Code. Що обрати?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Agent team: учасники оскаржують правки один одного, і складний рефакторинг стає якіснішим</span></label><label class="opt"><input type="radio" name="q9"><span>Двох субагентів, що паралельно правлять половини файла, а головна сесія зливає diff</span></label><label class="opt ok"><input type="radio" name="q9"><span>Одну сесію: для послідовних задач і правок одного файла вона ефективніша, ніж команда</span></label></div>
+    <div class="why yes">Так. Це пряма рекомендація документації Claude Code; команда коштує ≈ 7× токенів і нічого не дасть на спільному стані.</div>
+    <div class="why no">Документація Claude Code прямо каже: для послідовних задач, правок одного файла чи багатьох залежностей ефективніші одна сесія або субагенти. Дві паралельні правки одного файла — гарантований конфлікт.</div></div>
+  <div class="q"><div class="qt">10. За рахунок чого дослідницька система Anthropic скоротила час на складних запитах до 90%?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Збільшили кількість субагентів до 50 на запит, щоб кожен мав крихітний шматок</span></label><label class="opt ok"><input type="radio" name="q10"><span>Паралельність на двох рівнях: 3–5 субагентів разом, кожен із 3+ інструментами разом</span></label><label class="opt"><input type="radio" name="q10"><span>Перевели лідера на асинхронне виконання, щоб він скеровував субагентів прямо по ходу</span></label></div>
+    <div class="why yes">Так. Час виграла паралельність викликів; кількість агентів обмежили правилами зусиль у промпті.</div>
+    <div class="why no">50 субагентів на простий запит — ранній баг, який виправляли рамками зусиль. А виконання лишається синхронним — Anthropic сама називає це вузьким місцем. Час дала паралельність: 3–5 субагентів разом, кожен із кількома паралельними інструментами.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>multi-agent<br>decision<br>criteria</td><td>Незалежність підзадач, ширина понад одне вікно, ізоляція контексту, потреба в незалежній оцінці — проти зв'язаних рішень, спільного стану, малих задач і лімітів.</td></tr>
+<tr><td>task<br>coupling</td><td>Зв'язаність задачі: наскільки рішення в одній частині обмежують інші. Висока — один агент, низька — паралельні частини.</td></tr>
+<tr><td>context<br>fragmentation</td><td>Фрагментація контексту: кожен агент бачить свій шматок, а неявні вимоги губляться в брифах і переказах.</td></tr>
+<tr><td>coordination<br>overhead</td><td>Накладні витрати координації: брифи, переказ, очікування, повторне читання контексту — час і токени без приросту якості.</td></tr>
+<tr><td>error<br>amplification<br>(multi-agent)</td><td>Підсилення помилок: помилка одного агента стає входом іншого без перевірки (Google: 17,2× у незалежних, 4,4× з центральною координацією).</td></tr>
+<tr><td>token<br>multiplication</td><td>Множення токенів: кожне вікно заново читає промпт і матеріал; 3–15× за першоджерелами, 2,3–2,9× у досліді Lectern.</td></tr>
+<tr><td>fresh-context<br>critic</td><td>Критик у свіжому контексті: бачить лише результат і джерело, не міркування автора; лише читає, пише автор.</td></tr>
+<tr><td>breadth-first<br>parallel<br>research</td><td>Дослідження вшир: воркери паралельно копають незалежні напрямки, лідер зводить знахідки.</td></tr>
+<tr><td>MAST failure<br>taxonomy</td><td>Таксономія відмов мультиагентних систем: 14 режимів у трьох категоріях — дизайн системи, розузгодження між агентами, перевірка задачі.</td></tr>
+<tr><td>single-agent<br>default</td><td>Правило: починати з одного агента й evals; команду додавати, лише коли вимір показав виграш понад її ціну.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Один агент чи команда: рішення для вашої системи</h3>
+<p>Таблиця зв'язаності етапів, вибір для кожного з механізмом і ціною, план досліду з попарною метрикою — у форматі ADR.</p>
+<h3>2. Розбір чужого досліду</h3>
+<p>Команда заявляє, що три агенти-рецензенти кращі за одного. Перевірте, чи дані це підтримують, і спроєктуйте дослід, який відповість напевно.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them" target="_blank" rel="noopener">Anthropic — Building multi-agent systems: When and how to use them</a><span>23.01.2026 · три ситуації, 3–10× токенів, поділ за контекстом, а не за типом задачі</span></li>
+<li><a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank" rel="noopener">Anthropic — How we built our multi-agent research system</a><span>13.06.2025 · 80% розкиду від токенів, правила зусиль, погано придатні домени</span></li>
+<li><a href="https://cognition.ai/blog/dont-build-multi-agents" target="_blank" rel="noopener">Cognition — Don't Build Multi-Agents</a><span>12.06.2025 · спільний контекст і неявні рішення</span></li>
+<li><a href="https://cognition.ai/blog/multi-agents-working" target="_blank" rel="noopener">Cognition — Multi-Agents: What's Actually Working</a><span>22.04.2026 · кілька агентів додають інтелект, запис в один потік</span></li>
+<li><a href="https://arxiv.org/abs/2503.13657" target="_blank" rel="noopener">Cemri et al. — Why Do Multi-Agent LLM Systems Fail?</a><span>arXiv 2503.13657, v3 26.10.2025 · NeurIPS 2025 Datasets and Benchmarks · таксономія MAST</span></li>
+<li><a href="https://arxiv.org/abs/2512.08296" target="_blank" rel="noopener">Kim et al. — Towards a Science of Scaling Agent Systems</a><span>Google Research, Google DeepMind, MIT · v3 08.04.2026 · від +80,8% до −70,0%, підсилення помилок 17,2× / 4,4×</span></li>
+<li><a href="https://code.claude.com/docs/en/costs" target="_blank" rel="noopener">Claude Code — Manage costs</a><span>agent teams ≈ 7× токенів у plan mode</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-teams" target="_blank" rel="noopener">Claude Code — Agent teams</a><span>експериментально, <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS</code>; коли команда, а коли субагенти</span></li>
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Subagents</a><span>коли лишатися в головній розмові</span></li>
+<li><a href="https://developers.openai.com/codex/subagents" target="_blank" rel="noopener">Codex — Subagents</a><span>типово увімкнені, <code>/subagents</code>, попередження про токени й паралельні правки</span></li>
+<li><a href="https://cursor.com/docs/context/subagents" target="_blank" rel="noopener">Cursor — Subagents</a><span>п'ять субагентів ≈ п'ять разів токенів; ізоляція контексту, а не швидкість</span></li>
+<li><a href="https://cursor.com/changelog/2-0" target="_blank" rel="noopener">Cursor 2.0 — паралельні агенти</a><span>29.10.2025 · до восьми агентів у worktree або на віддалених машинах</span></li>
+<li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a><span>19.12.2024 · найпростіше рішення, складність — лише за потреби</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 14.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 14.1 · Senomi<br><br><a href="lesson-65.html">← Урок 13.4</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-67.html">Урок 14.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

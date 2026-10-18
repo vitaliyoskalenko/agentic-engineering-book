@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 14.3. Практика: Lectern генерує модуль командою агентів</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 14.3 · Модуль 14</div>
+<h1>Практика: Lectern генерує модуль командою агентів</h1>
+<p class="lead">Lectern отримує план уроку, картки й ДЗ до кожної лекції і команду, де оркестратор — код: автори, рецензент у свіжій сесії, аудитор цитат і один раунд виправлень. Десять справжніх прогонів показали: команда коштує ×1,8–2,3 і додала 2 відповідні питання з 60, раунд виправлень без меж у коді ламає те, про що не просили, тож типовим лишається один агент на лекцію, а команда вмикається прапорцем.</p>
+<div class="hero-meta"><span class="chip">Команди агентів (multi-agent)</span><span class="chip t">≈ 60 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#goal"><b>01</b>Що будуємо</a><a href="#topology"><b>02</b>Топологія</a><a href="#contracts"><b>03</b>Контракти ролей</a><a href="#revision"><b>04</b>Раунд виправлень</a><a href="#runs"><b>05</b>Справжні прогони</a><a href="#findings"><b>06</b>Знахідки і якість</a><a href="#decision"><b>07</b>Рішення</a><a href="#tools"><b>08</b>Та сама роль в інструментах</a><a href="#project"><b>09</b>Наскрізний проєкт</a><a href="#mistakes"><b>10</b>Типові помилки</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>побудувати команду агентів, де план і порядок ролей задає код, а моделі лише виконують вузькі ролі;</li>
+    <li>оформити вихід кожної ролі як інструмент зі схемою і правилами в коді, а знахідки рецензента — як дані;</li>
+    <li>обмежити раунд виправлень: один раунд, бюджет, ходи і зміни лише названих елементів;</li>
+    <li>виміряти команду проти одного агента за вартістю ролей і якістю та прийняти рішення в ADR;</li>
+    <li>запустити ту саму роль у Claude Code, Codex і Cursor і знати, чого там не перевіряє код.</li>
+  </ul>
+</div>
+
+<section class="sec" id="goal">
+<div class="sec-h"><span class="num">01</span><h2>Що будуємо<span class="sub">Чотири артефакти на лекцію — і хто їх пише</span></h2></div>
+<p>Після ітерації I-01 (урок 11.5) <code>lectern module</code> дає на кожну лекцію лише квіз. Специфікація обіцяє автору ще план уроку, 10–15 карток і два домашні завдання (LEC-GEN-002…004), а гіпотеза H1 — що модуль із трьох коротких PDF з усіма чотирма артефактами коштує не більше $0,25. Задачі I-02: <b>T6</b> (інструменти збереження), <b>T7b/T8b</b> (генерація й асемблер) і <b>T15</b> — команда агентів.</p>
+<p>Паралельний урок 14.1 виміряв на квізі: критик у свіжому контексті плюс раунд виправлень коштують ×2,95 без виграшу, який можна відрізнити від шуму, і записав це в ADR 0016 — «одна лекція — один агент, критик — опція». Тут те саме питання для чотирьох артефактів, де є що ділити між ролями. Тому <code>team.py</code> вміє три плани, а рішення ухвалює вимір:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>План</th><th>Хто пише</th><th>Що додається</th></tr></thead>
+<tbody>
+<tr><td data-th="План"><code>--authors single</code></td><td data-th="Хто пише">один агент на лекцію з чотирма <code>save_*</code></td><td data-th="Що додається">аудит цитат кодом</td></tr>
+<tr><td data-th="План"><code>--authors roles</code></td><td data-th="Хто пише">автор плану, потім автори квізу, карток і ДЗ паралельно</td><td data-th="Що додається">аудит цитат кодом</td></tr>
+<tr><td data-th="План"><code>--thorough</code> (до будь-якого)</td><td data-th="Хто пише">ті самі автори</td><td data-th="Що додається">суддя переказу, рецензент у свіжій сесії, ≤ 1 раунд виправлень</td></tr>
+</tbody></table></div>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>Автор рев'юїть чернетку, а не пише з нуля (U1). Тож мірило не «скільки агентів», а скільки елементів він прийме без правок і скільки це коштує. Прапорець <code>ok</code> у <code>report.json</code> — якісний гейт модуля: він має бути <code>false</code> щоразу, коли автору треба втрутитися.</p>
+</div>
+</section>
+
+<section class="sec" id="topology">
+<div class="sec-h"><span class="num">02</span><h2>Топологія<span class="sub">Оркестратор — код, ролі — моделі</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 560" role="img" aria-label="План лекції: оркестратор у коді, автори, аудит цитат, ретельний режим, закриття">
+  <defs>
+    <marker id="t68a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="t68b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="50" rx="10" class="bx m"/>
+  <text x="180" y="29" text-anchor="middle" class="tx b">Оркестратор — код</text>
+  <text x="180" y="47" text-anchor="middle" class="tx s">plan_lecture → waves · семафор --max-workers</text>
+  <text x="90" y="80" text-anchor="middle" class="tx s">типово: single</text>
+  <text x="270" y="80" text-anchor="middle" class="tx s">--authors roles</text>
+  <path d="M90 58 V 92" class="ln a" marker-end="url(#t68a)"/>
+  <path d="M270 58 V 88" class="ln a" marker-end="url(#t68a)"/>
+  <rect x="8" y="96" width="164" height="62" rx="10" class="bx t"/>
+  <text x="90" y="121" text-anchor="middle" class="tx b">lecture-author</text>
+  <text x="90" y="140" text-anchor="middle" class="tx s">одна сесія · 4 × save_*</text>
+  <rect x="188" y="92" width="164" height="34" rx="9" class="bx t"/>
+  <text x="270" y="114" text-anchor="middle" class="tx b">outline-author</text>
+  <path d="M215 126 V 140" class="ln a" marker-end="url(#t68a)"/>
+  <path d="M270 126 V 140" class="ln a" marker-end="url(#t68a)"/>
+  <path d="M325 126 V 140" class="ln a" marker-end="url(#t68a)"/>
+  <rect x="188" y="144" width="52" height="30" rx="8" class="bx t"/>
+  <text x="214" y="164" text-anchor="middle" class="tx s">квіз</text>
+  <rect x="244" y="144" width="52" height="30" rx="8" class="bx t"/>
+  <text x="270" y="164" text-anchor="middle" class="tx s">картки</text>
+  <rect x="300" y="144" width="52" height="30" rx="8" class="bx t"/>
+  <text x="326" y="164" text-anchor="middle" class="tx s">ДЗ</text>
+  <path d="M90 158 V 198" class="ln a" marker-end="url(#t68a)"/>
+  <path d="M270 174 V 198" class="ln a" marker-end="url(#t68a)"/>
+  <rect x="8" y="202" width="344" height="50" rx="10" class="bx a"/>
+  <text x="180" y="223" text-anchor="middle" class="tx b">Аудит цитат — код</text>
+  <text x="180" y="241" text-anchor="middle" class="tx s">check_quote по файлах · сторінки з коду (D9)</text>
+  <rect x="4" y="268" width="352" height="196" rx="12" class="bx" style="fill:none" stroke-dasharray="5 4"/>
+  <text x="16" y="286" class="tx s">--thorough</text>
+  <path d="M90 252 V 294" class="ln d" marker-end="url(#t68b)"/>
+  <path d="M270 252 V 294" class="ln d" marker-end="url(#t68b)"/>
+  <rect x="16" y="298" width="150" height="52" rx="10" class="bx t"/>
+  <text x="91" y="320" text-anchor="middle" class="tx b">суддя переказу</text>
+  <text x="91" y="338" text-anchor="middle" class="tx s">лише суперечки</text>
+  <rect x="194" y="298" width="150" height="52" rx="10" class="bx t"/>
+  <text x="269" y="320" text-anchor="middle" class="tx b">рецензент</text>
+  <text x="269" y="338" text-anchor="middle" class="tx s">свіжа сесія</text>
+  <path d="M91 350 V 378" class="ln a" marker-end="url(#t68a)"/>
+  <path d="M269 350 V 378" class="ln a" marker-end="url(#t68a)"/>
+  <rect x="16" y="382" width="328" height="64" rx="10" class="bx p"/>
+  <text x="180" y="405" text-anchor="middle" class="tx b">≤ 1 раунд виправлень</text>
+  <text x="180" y="423" text-anchor="middle" class="tx s">resume автора · бюджет лекції · ходи</text>
+  <text x="180" y="439" text-anchor="middle" class="tx s">зміни лише названих елементів</text>
+  <path d="M180 464 V 492" class="ln a" marker-end="url(#t68a)"/>
+  <rect x="8" y="496" width="344" height="52" rx="10" class="bx m"/>
+  <text x="180" y="518" text-anchor="middle" class="tx b">close: аудит кодом → open_findings</text>
+  <text x="180" y="536" text-anchor="middle" class="tx s">хоч одна відкрита → модуль ok: false</text>
+</svg>
+<figcaption>План лекції. Хто працює далі, вирішує код; модель не бачить плану і не може його змінити. Пунктир — кроки ретельного режиму.</figcaption>
+</figure>
+<p>План — дані: <code>plan_lecture()</code> повертає кроки з залежностями, <code>waves()</code> групує їх у хвилі топологічним сортуванням, а та сама лекція з тими самими прапорцями завжди дає той самий план. Він же йде в <code>report.json</code>, тож видно, що саме виконувалось:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python -c "from lectern.team import plan_lecture, waves; …"</span>
+single  [['lecture'], ['audit'], ['close']]
+roles thorough [['outline'], ['quiz', 'cards', 'homework'], ['audit', 'review'], ['judge'], ['revise'], ['close']]</pre>
+<div class="cap">реальний вивід · команду скорочено · 18.10.2026</div></div>
+<p>Що дає оркестратор у коді, а не в моделі:</p>
+<ul>
+<li><b>відтворюваність</b> — розбіжність двох прогонів шукаєте у відповідях ролей, а не в тому, що головний агент цього разу вирішив пропустити рецензію;</li>
+<li><b>тести без мережі</b> — виконавець ролі є параметром <code>Worker</code>; 24 тести <code>test_team.py</code> підставляють фейк, що викликає ті самі <code>session.call("save_cards", …)</code>, і перевіряють хвилі, раунд виправлень, бюджет і стелю паралельності;</li>
+<li><b>стеля паралельності</b> — один <code>asyncio.Semaphore(max_workers)</code> на весь модуль: три лекції × три автори не відкривають дев'ять CLI-процесів одночасно (урок 14.2 виміряв на цьому Mac коліно на 8–12 сесіях, і впиралось воно в хост, а не в API).</li>
+</ul>
+<div class="note arch"><span class="lbl">Архітектура</span>
+<p>Одна <code>ArtifactSession</code> на лекцію (D10): у ній лише текст цієї лекції, тож цитата з чужої відхиляється за побудовою. Кожен прогін ролі отримує власний in-process MCP-сервер лише з її інструментами: автор карток фізично не має <code>save_quiz</code>. Це обмеження в коді, а не речення в промпті.</p>
+</div>
+</section>
+
+<section class="sec" id="contracts">
+<div class="sec-h"><span class="num">03</span><h2>Контракти ролей<span class="sub">Вихід — інструмент зі схемою, правила — у коді</span></h2></div>
+<p>Кожен автор віддає результат лише через свій <code>save_*</code>. Схему моделі генерує сигнатура методу (як <code>save_quiz</code>, B21), а правила перевіряє код до запису файла; відмова повертається моделі як помилка інструмента зі списком порушень.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Інструмент</th><th>Схема</th><th>Правила в коді</th></tr></thead>
+<tbody>
+<tr><td data-th="Інструмент"><code>save_outline</code></td><td data-th="Схема"><code>{title, objectives[], sections[{title, anchor_quote}]}</code></td><td data-th="Правила в коді">3–5 цілей, 2–8 розділів, якорі різні й дослівні</td></tr>
+<tr><td data-th="Інструмент"><code>save_cards</code></td><td data-th="Схема"><code>[{front, back, quote}]</code></td><td data-th="Правила в коді">10–15 карток, front ≤ 80, back ≤ 240 символів, лицьові боки не повторюються, back ≠ front</td></tr>
+<tr><td data-th="Інструмент"><code>save_homework</code></td><td data-th="Схема"><code>[{title, text, criteria[], quote}]</code></td><td data-th="Правила в коді">рівно 2 завдання, 2–4 критерії, text ≤ 1200</td></tr>
+<tr><td data-th="Інструмент">усі три</td><td colspan="2" data-th="Схема">цитата ≥ 5 слів і є в лекції сесії (правило <code>_locate</code>, ADR 0004); сторінки рахує код і повертає адреси <code>01-bloom-filter#p1-2</code>; текст без посилань, розмітки, U+FFFD і слів зі змішаними писемностями (D11)</td></tr>
+</tbody></table></div>
+<p>Нові методи живуть у підкласі <code>ArtifactSession</code>, а не в <code>Session</code>: <code>SCHEMAS</code> квізу не змінився, тож <code>PROMPT_VERSION</code>, кеш результатів і replay evals 12.3 лишаються дійсними. Промпти ролей короткі, бо все перевірюване — в коді:</p>
+<pre class="code" data-lang="text"><span class="cm"># CARDS_SYSTEM (team.py), скорочено</span>
+- 10-15 cards, each about a different term, fact or rule; cover every section of the
+  outline you are given. front: a term or a short question (max 80 characters), never a
+  copied sentence. back: the answer in short words (max 240 characters).
+- quote: the full sentence of the lecture that states the back, copied character for character.
+- Save all cards with one save_cards call. If it returns errors, fix only the listed cards.</pre>
+<p>Рецензент отримує лекцію й усі артефакти з номерами елементів (ключ квізу позначено <code>*</code>) і нічого з історії авторів. Його відповідь — теж інструмент: <code>save_findings</code> приймає лише <code>{artifact, item, rule, severity, problem, fix}</code>, де правило з фіксованого списку (<code>Q-ANSWER</code>, <code>C-BACK</code>, <code>H-CRITERIA</code>…), а елемент існує. У прогоні 3 перше збереження рецензента код відхилив, друге пройшло: знахідка про неіснуючу картку не дійде до автора.</p>
+<p><b>Аудитор цитат — спершу код.</b> Після авторів <code>audit_citations()</code> читає збережені файли з диска (не пам'ять сесії) і проганяє кожну цитату через <code>check_quote</code>. Дослівність і сторінки код гарантує сам; він не знає лише, чи цитата <i>стверджує</i> ключ квізу чи зворот картки. Для цього груба мірка: частка основ слів твердження, що є в цитаті. Нижче 0,5 — суперечка; у ретельному режимі її, і тільки її, бачить модель-суддя:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>team-2/report.json — суперечка, яку суддя визнав непідтриманою</span></div>
+<pre>{"artifact": "quiz", "item": 2,
+ "claim": "Скинутий біт може належати іншим елементам",
+ "quote": "Зі звичайного фільтра Блума не можна видалити елемент",
+ "supported": false}</pre>
+<div class="cap">реальний вивід · прогін team-2, лекція 01 · 18.10.2026</div></div>
+<p>Цитата правильна й дослівна, але це сусіднє речення: учень, що побачить її біля питання, відповіді в ній не знайде. Цей клас помилок не ловить жодна перевірка форми.</p>
+</section>
+
+<section class="sec" id="revision">
+<div class="sec-h"><span class="num">04</span><h2>Раунд виправлень<span class="sub">Один, з бюджетом і межами в коді</span></h2></div>
+<p>Знахідки <code>blocker</code> і <code>major</code> групуються за сесією автора, і оркестратор один раз продовжує її (<code>resume=session_id</code> в Agent SDK): автор уже має лекцію і свою чернетку в контексті. Стоп-правила — у коді: немає сесії автора; витрачене на лекцію плюс вартість першого прогону автора перевищує <code>--lecture-budget-usd</code> (0,08 ≈ H1 / 3); стеля ходів раунду — 6. Знахідки <code>minor</code> раунду не запускають.</p>
+<h3>Що пішло не так: правка, якої не просили</h3>
+<p>Прогін 1: суддя позначив одну картку (№ 7). Автор зберіг набір наново і змінив 8 з 15 карток:</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>team-1 · 01-bloom-filter.cards.r0.json → cards.json</span></div>
+<pre><span class="d">7</span>  <span class="er">− Приблизно (1 − e^(−kn/m))^k, де n — кількість елементів, m — довжина масиву, k — …</span>
+   <span class="ok">+ Приблизно (1 − e^(−kn/m))^k для n доданих елементів.</span>          <span class="d">← названо у знахідці</span>
+<span class="d">10</span> <span class="er">− Ще приблизно 4,8 біта на елемент.</span>
+   <span class="ok">+ Що приблизно 4,8 біта на елемент.</span>                             <span class="d">← нова помилка</span>
+<span class="d">14</span> <span class="er">− Що буде, якщо елементів більше за розрахунок?</span>
+   <span class="ok">+ Що буде, якщо елементів більше за розрахункових?</span>               <span class="d">← нова помилка</span>
+<span class="d">   …ще 5 карток з дрібними перефразуваннями (2, 3, 5, 6, 11)</span></pre>
+<div class="cap">реальний вивід · порівняння двох файлів, скорочено · 18.10.2026</div></div>
+<p>Промпт казав «fix only the items below, keep the rest unchanged». Тепер це правило коду: <code>_keep_scope()</code> бере з нового збереження лише названі елементи, решту повертає з версії до раунду (вона лежить поруч як <code>*.r0.json</code>), а злиття проходить ті самі правила артефакту. У наступних чотирьох ретельних прогонах код відкинув 23 зміни поза знахідками.</p>
+<p>Знахідка, чий елемент після раунду не змінився, лишається в <code>open_findings</code>, і модуль отримує <code>ok: false</code> (LEC-MOD-005). У прогоні з рецензентом на Sonnet автор виправив питання 2 і не чіпав питання 1 із тією самою позначкою судді — <code>lectern module</code> завершився з кодом 1.</p>
+<div class="note warn"><span class="lbl">Пастка</span>
+<p>«Змінено» не означає «виправлено»: код бачить, що елемент інший, але не те, що він кращий. Чи раунд щось дав, показує лише вимір якості на версіях до і після — його нижче.</p>
+</div>
+</section>
+
+<section class="sec" id="runs">
+<div class="sec-h"><span class="num">05</span><h2>Справжні прогони<span class="sub">10 модулів, три PDF, $0,82</span></h2></div>
+<p>Три синтетичні українські лекції по дві сторінки (фільтр Блума, обмеження частоти запитів, узгоджене хешування; reportlab, як у 8.5), <code>-n 5</code>, Haiku 5.5 в усіх ролях, якщо не сказано інше. У лекцію 2 вписано речення-ін'єкцію для генератора: <code>flag_instructions()</code> позначив його в усіх прогонах, а позицію ключа однаково ставить код (ADR 0011).</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/lectern module ../run/lectures --out ../run/team-3 -n 5 --authors roles --thorough</span>
+<span class="ps">$ </span><span class="c">python3 summarize.py ../run/team-3/report.json</span>
+ok True total 0.096987
+02-rate-limiting ok None 0.034134 {'outline': 8, 'quiz': 5, 'cards': 14, 'homework': 2}
+    outline-author   first  haiku  $0.00839 turns 5 33.8s
+    quiz-author      first  haiku  $0.00648 turns 9 30.4s
+    homework-author  first  haiku  $0.00321 turns 6 14.2s
+    cards-author     first  haiku  $0.00661 turns 4 75.5s
+    reviewer         first  haiku  $0.00255 turns 2 10.4s
+    homework-author  revise haiku  $0.00689 turns 2 13.5s
+  tool_calls {'save_findings': {'ok': 1}, 'read_lecture': {'ok': 4}, 'save_outline': {'error': 2, 'ok': 1}, …}
+  F homework#1 H-TASK major: The task asks for token counts before and after each second …
+  rev [{'artifact': 'homework', 'findings': 1, 'status': 'saved', 'changed': [1]}]</pre>
+<div class="cap">реальний вивід · одна лекція з трьох, скорочено · прогони йшли послідовно 18.10.2026 · запуск: 3 хв 5 с</div></div>
+<p>План уроку автор зберіг з третьої спроби: дві відмови <code>save_outline</code> — правила коду, спіймані до запису. Усі прогони:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>План</th><th>Прогонів</th><th>$ модуля</th><th>Час</th></tr></thead>
+<tbody>
+<tr><td data-th="План">лише квіз (<code>--quiz-only</code>)</td><td data-th="Прогонів">2</td><td data-th="$ модуля">0,011–0,013</td><td data-th="Час">58–67 с</td></tr>
+<tr><td data-th="План">один автор, 4 артефакти (типово)</td><td data-th="Прогонів">2</td><td data-th="$ модуля">0,050–0,052</td><td data-th="Час">105–115 с</td></tr>
+<tr><td data-th="План">автори на артефакт</td><td data-th="Прогонів">1</td><td data-th="$ модуля">0,067</td><td data-th="Час">100 с</td></tr>
+<tr><td data-th="План">+ ретельний режим, Haiku</td><td data-th="Прогонів">4</td><td data-th="$ модуля">0,090–0,117</td><td data-th="Час">97–303 с</td></tr>
+<tr><td data-th="План">+ ретельний режим, рецензент Sonnet</td><td data-th="Прогонів">1</td><td data-th="$ модуля">0,216</td><td data-th="Час">133 с</td></tr>
+</tbody></table></div>
+<figure class="fig">
+<div class="bars">
+  <div class="bar"><span class="k">раунд виправлень</span><span class="tr"><i style="--v:93.6%"></i><b class="in" style="--v:93.6%">$0,0234 · 24%</b></span></div>
+  <div class="bar t"><span class="k">автор карток</span><span class="tr"><i style="--v:74.4%"></i><b class="in" style="--v:74.4%">$0,0186 · 19%</b></span></div>
+  <div class="bar t"><span class="k">автор квізу</span><span class="tr"><i style="--v:70.8%"></i><b class="in" style="--v:70.8%">$0,0177 · 18%</b></span></div>
+  <div class="bar t"><span class="k">автор плану уроку</span><span class="tr"><i style="--v:52.4%"></i><b style="--v:52.4%">$0,0131 · 14%</b></span></div>
+  <div class="bar m"><span class="k">рецензент</span><span class="tr"><i style="--v:48%"></i><b style="--v:48%">$0,0120 · 12%</b></span></div>
+  <div class="bar t"><span class="k">автор ДЗ</span><span class="tr"><i style="--v:44%"></i><b style="--v:44%">$0,0110 · 11%</b></span></div>
+  <div class="bar p"><span class="k">суддя переказу</span><span class="tr"><i style="--v:4.4%"></i><b style="--v:4.4%">$0,0011 · 1%</b></span></div>
+</div>
+<figcaption>Вартість за ролями, прогін team-3 (автори на артефакт + ретельний режим, Haiku 5.5), модуль $0,097. Раунд виправлень — найдорожча «роль»: продовжена сесія перечитує всю історію автора. В одноагентному плані з ретельним режимом він забрав 49%.</figcaption>
+</figure>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Haiku 5.5 — $0,10 / $0,50 за 1 млн токенів входу / виходу (запит до 100 тис.), запис у годинний кеш $0,20; Sonnet 5.5 — $2 / $10, годинний запис $4. Рецензент бачить лекцію й артефакти один раз, тож близько половини його входу (~7 тис. токенів) — запис у годинний кеш, який ніхто не перечитає. На Sonnet цей запис дає ~¾ ціни: $0,035–0,042 на лекцію проти $0,003–0,005 на Haiku, 53% вартості модуля.</p>
+</div>
+</section>
+
+<section class="sec" id="findings">
+<div class="sec-h"><span class="num">06</span><h2>Знахідки і якість<span class="sub">Що знайшли, що виправили, що це дало</span></h2></div>
+<p>За п'ять ретельних прогонів рецензент записав 8 знахідок <code>major</code> і 8 <code>minor</code>, суддя — 15 непідтриманих тверджень із 19 суперечок. Вибірка, як вона лежить у звітах:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Де</th><th>Хто · правило</th><th>Знахідка</th><th>Що сталося</th></tr></thead>
+<tbody>
+<tr><td data-th="Де">team-2 · 01 · квіз 4</td><td data-th="Хто · правило">рецензент · Q-DISTRACTOR major</td><td data-th="Знахідка">три з чотирьох варіантів абсурдні — ключ видно без лекції</td><td data-th="Що сталося">переписано в раунді</td></tr>
+<tr><td data-th="Де">team-2 · 01 · квіз 2</td><td data-th="Хто · правило">суддя · CIT-SUPPORT major</td><td data-th="Знахідка">цитата — сусіднє речення, твердження в ній немає</td><td data-th="Що сталося">переписано; answerability лекції 3 → 4 з 5</td></tr>
+<tr><td data-th="Де">team-1 · 02 · план, розділ 5</td><td data-th="Хто · правило">рецензент · O-SECTION major</td><td data-th="Знахідка">абзац про лічильник ковзного вікна не покрито жодним розділом</td><td data-th="Що сталося">план переписано</td></tr>
+<tr><td data-th="Де">team-3 · 02 · ДЗ 1</td><td data-th="Хто · правило">рецензент · H-TASK major</td><td data-th="Знахідка">таблиця токенів по секундах, але лекція не каже, скільки токенів у відрі на старті</td><td data-th="Що сталося">завдання переписано</td></tr>
+<tr><td data-th="Де">team-2 · 02 · план, картка 6</td><td data-th="Хто · правило">рецензент · ALL-LANG minor</td><td data-th="Знахідка">«Дірявe» з латинською e</td><td data-th="Що сталося">minor — раунду немає; правило переїхало в код</td></tr>
+<tr><td data-th="Де">team-3 · 01 · ДЗ 1</td><td data-th="Хто · правило">рецензент · H-CRITERIA minor</td><td data-th="Знахідка">«інші值» — ієрогліф у критерії</td><td data-th="Що сталося">пройшов перше правило; правило розширено на всі писемності</td></tr>
+<tr><td data-th="Де">Sonnet · 01 · квіз 1</td><td data-th="Хто · правило">суддя · CIT-SUPPORT major</td><td data-th="Знахідка">цитата не стверджує ключа</td><td data-th="Що сталося">автор не змінив → <code>open_findings</code>, код виходу 1</td></tr>
+</tbody></table></div>
+<p>Два рядки з minor — найкорисніший результат рецензента: він знайшов клас помилок, який можна перевірити кодом, але через «minor» до виправлення той не дійшов. Перше правило знало лише латиницю й кирилицю, тож ієрогліф прослизнув наступним прогоном; тепер <code>save_*</code> відхиляє слово з літерами двох писемностей Unicode — і для будь-якого наступного прогону ця перевірка безкоштовна.</p>
+<h3>Якість квізу: команда проти одного агента</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>План</th><th>answerability</th><th>$ квізу на лекцію</th></tr></thead>
+<tbody>
+<tr><td data-th="План">лише квіз, один агент (T7a)</td><td data-th="answerability">27/30</td><td data-th="$ квізу на лекцію">0,0040</td></tr>
+<tr><td data-th="План">один автор, 4 артефакти</td><td data-th="answerability">29/30</td><td data-th="$ квізу на лекцію">не відокремлюється</td></tr>
+<tr><td data-th="План">автор квізу в команді</td><td data-th="answerability">12/15</td><td data-th="$ квізу на лекцію">0,0046</td></tr>
+<tr><td data-th="План">+ рецензент і раунд (team-2, team-3)</td><td data-th="answerability">26/30 → 28/30</td><td data-th="$ квізу на лекцію">≈ 0,0093</td></tr>
+</tbody></table></div>
+<p><b>answerability</b> — чи свіжа модель, бачачи лише цитату, обирає ключ (грейдер 12.3). Раунд виправлень додав 2 питання з 30 за ×2,3 ціни квізу — та сама картина, що в ADR 0016 (+5 зі 120 за ×2,95), і так само в межах шуму між двома прогонами одного плану. <b>closed_book</b> тут нічого не розрізняє: 149 зі 150 питань модель вгадала без лекції, бо фільтр Блума й узгоджене хешування вона знає й так. На таких лекціях закрита книга міряє пам'ять моделі, а не якість дистракторів — для неї потрібні лекції з вигаданими сутностями, як у датасеті 12.3.</p>
+<p>Картки й ДЗ поки перевіряє лише код. Після раунду картки зі слабкою підтримкою цитатою зникли (за побудовою — суддя їх і позначав). Але є різниця, якої код не карає: один автор пише останні артефакти коротше — 39–40 карток на модуль проти 43–45, медіана тексту завдання 243 символи проти 468. Краще це чи гірше для учня, без грейдера карток і ДЗ сказати не можна.</p>
+</section>
+
+<section class="sec" id="decision">
+<div class="sec-h"><span class="num">07</span><h2>Рішення<span class="sub">ADR 0017, H1 і облік I-02</span></h2></div>
+<div class="key"><h4>ADR 0017 · чотири артефакти лекції</h4>
+<ol class="steps">
+<li><b>Типово — один агент на лекцію</b> з чотирма <code>save_*</code>, лекції паралельно під <code>--max-workers</code>. Автори на артефакт — +30% без виміряного виграшу; лишаються прапорцем для довгих лекцій.</li>
+<li><b>Ретельний режим — опція</b>: +2 питання з 60 за ×1,8–2,3 вартості модуля.</li>
+<li><b>Аудит цитат — кодом завжди</b>; суддя переказу — лише в ретельному режимі й лише для суперечок.</li>
+<li><b>Межі раунду гарантує код</b> (<code>_keep_scope</code>), а не промпт.</li>
+<li><b>Рецензент — Haiku</b>: Sonnet ×9 на лекцію і менше знахідок (1 major на 3 лекції проти 1–3).</li>
+<li><b>Що рецензент бачить, а код може перевірити, переходить у код.</b></li>
+</ol></div>
+<blockquote class="q-src">
+<p>Поділ за типом роботи (один агент пише фічі, інший — тести, третій рев'юїть код) створює постійні накладні витрати на координацію.</p>
+<p class="orig">“Dividing by type of work (one agent writes features, another writes tests, a third reviews code) creates constant coordination overhead.”</p>
+<cite>Anthropic, «Building multi-agent systems: When and how to use them», 23.01.2026</cite>
+</blockquote>
+<p>Наші автори на артефакт не домовляються між собою (план уроку йде в один бік), і все одно заплатили +30%: кожен окремо читає лекцію й платить свій префікс.</p>
+<p>З ADR 0016 розходимося в одному: там «аудитор цитат» дублював <code>check_quote</code> і нічого не додав. Наш суддя перевіряє інше — чи цитата <i>стверджує</i> ключ, — і 5 його позначок, прочитаних вручну, справжні. Але виграшу на квізі він теж не показав, тож лишається в ретельному режимі. Що виміряли, а що оцінили до запуску (I-02):</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Величина</th><th>Оцінка до прогонів</th><th>Факт</th></tr></thead>
+<tbody>
+<tr><td data-th="Величина">модуль, 4 артефакти</td><td data-th="Оцінка до прогонів">$0,12–0,24 (<code>plan.md</code>), ≤ $0,132 (R1 × 4)</td><td data-th="Факт">$0,050–0,052 типово, до $0,216 з Sonnet</td></tr>
+<tr><td data-th="Величина"><code>--dry-run</code> × 4</td><td data-th="Оцінка до прогонів">p90 $0,038 (профіль квізу)</td><td data-th="Факт">типовий план на 32–37% вищий: картки й ДЗ — не «ще один квіз»</td></tr>
+<tr><td data-th="Величина">H1 ≤ $0,25</td><td data-th="Оцінка до прогонів">тримається</td><td data-th="Факт">10 з 10; з Sonnet — 87% ліміту</td></tr>
+<tr><td data-th="Величина">H2 ≤ 10 хв</td><td data-th="Оцінка до прогонів">під загрозою при послідовних лекціях</td><td data-th="Факт">58–303 с</td></tr>
+<tr><td data-th="Величина">раунд виправлень</td><td data-th="Оцінка до прогонів">≈ ціна першого прогону автора</td><td data-th="Факт">21–49% вартості ретельного прогону</td></tr>
+</tbody></table></div>
+<div class="note warn"><span class="lbl">Межі виміру</span>
+<p>Три лекції по дві сторінки, 1–4 прогони на план. Цього досить, щоб відкинути «команда суттєво краща» і зловити дві поломки раунду, але не щоб розрізнити 27 і 29 з 30. Переглянути рішення — на ≥ 10 лекціях з невідомим моделі змістом і з грейдером карток (B137, B224, B225).</p>
+</div>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">08</span><h2>Та сама роль в інструментах<span class="sub">Claude Code, Codex, Cursor</span></h2></div>
+<p>Рецензента можна запустити й як субагента coding-асистента. Тоді план — промпт головної сесії, а не код: оркестратор стає моделлю.</p>
+<div class="tabs">
+<input type="radio" name="tt68" id="tt68-1" checked><input type="radio" name="tt68" id="tt68-2"><input type="radio" name="tt68" id="tt68-3">
+<div class="tab-l"><label for="tt68-1">Claude Code</label><label for="tt68-2">Codex</label><label for="tt68-3">Cursor</label></div>
+<div class="tab-p">
+<pre class="code" data-lang="markdown"><span class="cm"># .claude/agents/artifact-reviewer.md (скорочено)</span>
+---
+name: artifact-reviewer
+description: Reviews the outline, quiz, flashcards and homework generated from one lecture against the course rules. Read-only; returns findings as JSON lines.
+tools: Read
+model: haiku
+maxTurns: 6
+---
+You review course materials generated from one lecture. You did not write them. …
+Reply with JSON lines only, one finding per line:
+{"artifact": "...", "item": N, "rule": "...", "severity": "...", "problem": "...", "fix": "..."}</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/cc-team</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat prompt.txt)" --model haiku --setting-sources project --strict-mcp-config --tools "Agent,Read" --allowedTools "Agent" "Read" --permission-mode dontAsk --max-budget-usd 0.30 --output-format stream-json --verbose &gt; run.jsonl</span></pre>
+<div class="cap">реальна сесія · Claude Code 2.1.302 · claude-haiku-5-5 · 18.10.2026</div></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>run.jsonl — кроки головної сесії і субагента</span></div>
+<pre><span class="y">● Agent</span>  artifact-reviewer · Review lecture 02 artifacts   <span class="d">(субагент пішов у фон)</span>
+<span class="y">● Read</span> ×5  лекція і чотири артефакти                          <span class="d">(у контексті субагента)</span>
+{"artifact": "out/02-rate-limiting.cards.json", "item": 9, "rule": "C-BACK", "severity": "minor", …}
+{"artifact": "out/02-rate-limiting.cards.json", "item": 10, "rule": "C-BACK", "severity": "minor", …}
+{"artifact": "out/02-rate-limiting.quiz.json", "item": 4, "rule": "Q-DISTRACTOR", "severity": "minor", …}
+TOTAL 3 findings, 0 blocker or major
+<span class="d">result · success · $0,0061 · subagent_stats: spawned 1, started_in_background 1</span></pre>
+<div class="cap">реальний вивід · кроки з stream-json, скорочено; системні події прибрано</div></div>
+<p>Рецензент спрацював, але в полі <code>artifact</code> записав шлях до файла замість <code>cards</code>: JSON-рядки ніхто не перевіряє. У Lectern <code>save_findings</code> відхилив би таку знахідку. Щоб команда в coding-асистенті мала ту саму гарантію, знахідки мають проходити через код — MCP-інструмент або хук (B227).</p>
+</div>
+<div class="tab-p">
+<p>Кастомний агент Codex — окремий TOML-файл у <code>.codex/agents/</code>; обов'язкові поля <code>name</code>, <code>description</code>, <code>developer_instructions</code>, необов'язкові <code>model</code>, <code>model_reasoning_effort</code>. Пісочницю й дозволи агент бере від батьківської сесії.</p>
+<pre class="code" data-lang="toml"><span class="cm"># .codex/agents/artifact-reviewer.toml</span>
+name = <span class="s">"artifact_reviewer"</span>
+description = <span class="s">"Reviews the four artifacts of one lecture; read-only; JSON lines."</span>
+developer_instructions = <span class="s">"""
+You review course materials generated from one lecture. You did not write them. …
+"""</span></pre>
+<p>Запуск — промптом («have artifact_reviewer review lecture 02»), стеля одночасних потоків — <code>agents.max_concurrent_threads_per_session</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/cc-team</span></div>
+<pre><span class="ps">$ </span><span class="c">codex exec "Have artifact_reviewer review lecture/02-rate-limiting.txt and the four files in out/; print its JSON lines unchanged."</span></pre>
+<div class="cap">формат з офіційної документації Codex · не запускалось у цьому уроці</div></div>
+</div>
+<div class="tab-p">
+<p>Субагент Cursor — Markdown з YAML-фронтматером у <code>.cursor/agents/</code>: <code>name</code>, <code>description</code>, <code>model</code> (типово <code>inherit</code>), <code>readonly</code>, <code>is_background</code>. Cursor читає й <code>.claude/agents/</code> та <code>.codex/agents/</code>, тож файл з вкладки Claude Code підхопиться без змін; при збігу імен перемагає <code>.cursor/</code>.</p>
+<p>Явний виклик — через <code>/name</code> у промпті агента (формат з офіційної документації Cursor · не запускалось у цьому уроці):</p>
+<pre class="code" data-lang="text">/artifact-reviewer review lecture/02-rate-limiting.txt and the four files in out/</pre>
+<p>Кілька субагентів Cursor запускає одним повідомленням, і вони працюють паралельно в тому самому checkout — для read-only рецензента це безпечно, для авторів, що пишуть файли, — ні.</p>
+</div>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">09</span><h2>Наскрізний проєкт<span class="sub">Lectern: T6, T7b/T8b і team.py</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 14.3 · I-02: T6 → T7b/T8b → T15 → R2</div><div class="pb">
+<ul>
+<li><code>tools.py</code>: <code>ArtifactSession</code> із <code>save_outline</code> / <code>save_cards</code> / <code>save_homework</code>, правила й D11 у коді; <code>outline/cards/homework.schema.json</code> — знімки схем із сигнатур.</li>
+<li><code>team.py</code> (новий): <code>plan_lecture</code>, <code>waves</code>, ролі, <code>Worker</code> і <code>sdk_worker</code>, <code>ReviewSession.save_findings</code>, <code>audit_citations</code>, раунд з <code>_keep_scope</code>.</li>
+<li><code>module.py</code>: <code>build_module(team=…)</code> — усі артефакти в <code>module.json</code> із <code>source</code>, <code>cost_by_role</code>, <code>open_findings</code> → <code>ok</code>; CLI <code>--authors</code>, <code>--thorough</code>, <code>--reviewer-model</code>, <code>--max-workers</code>, <code>--lecture-budget-usd</code>, <code>--quiz-only</code>.</li>
+<li>Специфікація v3.6 (LEC-GEN-002…008, LEC-MOD-005, OQ3 закрито), задачі T6/T7b/T8b/T15 ✓, ADR 0017, I-02, вимір R2, CHANGELOG, BACKLOG (B30, B200 і B205 частково, B220–B229). <code>runner.py</code> не змінено — там паралельні зміни 14.2; що <code>sdk_worker</code> дублює з нього, записано як B228.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">LECTERN_BASE=HEAD~1 scripts/check.sh</span>
+<span class="d">== tests</span>
+605 passed, 1 skipped, 1 xfailed in 23.35s
+<span class="d">== trace</span>
+50 requirements, 144 tests: 0 error(s), 0 warning(s)
+<span class="d">== evals</span>
+gate: passed
+<span class="ok">all checks passed</span></pre>
+<div class="cap">реальний вивід · 25 файлів, +2989 / −53 проти канонічного стану після 14.1 і 14.2 · решту кроків скорочено</div></div>
+<p>Ваш крок: запустіть <code>lectern module</code> на двох своїх PDF спершу типово, потім з <code>--thorough</code>, і порівняйте <code>cost_by_role</code> та <code>revisions</code> двох звітів. Знайдіть у <code>findings</code> знахідку <code>minor</code>, яку можна перевірити кодом, і напишіть для неї правило в <code>ArtifactSession</code> з тестом.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">10</span><h2>Типові помилки<span class="sub">І картки для самоперевірки</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Помилка</th><th>Що стається</th><th>Як у Lectern</th></tr></thead>
+<tbody>
+<tr><td data-th="Помилка">Оркестратор — модель («головний агент вирішить»)</td><td data-th="Що стається">план різний від прогону до прогону, без мережі не протестуєш</td><td data-th="Як у Lectern">план — дані в коді, виконавець — параметр</td></tr>
+<tr><td data-th="Помилка">Знахідки рецензента — вільний текст</td><td data-th="Що стається">шлях до файла замість артефакту, неіснуючий елемент — і раунд виправляє не те</td><td data-th="Як у Lectern"><code>save_findings</code> з перевіркою в коді</td></tr>
+<tr><td data-th="Помилка">«Виправ лише названі» — лише в промпті</td><td data-th="Що стається">8 з 15 карток переписано, дві нові помилки</td><td data-th="Як у Lectern"><code>_keep_scope</code> повертає неназвані</td></tr>
+<tr><td data-th="Помилка">Модель перевіряє кожну цитату</td><td data-th="Що стається">платите за те, що <code>check_quote</code> робить безкоштовно й точно</td><td data-th="Як у Lectern">модель — лише для суперечок про переказ</td></tr>
+<tr><td data-th="Помилка">Сильніша модель рецензентом «для якості»</td><td data-th="Що стається">×9 ціни, а знахідок не більше</td><td data-th="Як у Lectern">Haiku; Sonnet — лише з виміром</td></tr>
+<tr><td data-th="Помилка">Знахідка «minor», яку перевіряє код, лишається на моделі</td><td data-th="Що стається">щоразу платите, а вона щоразу «не варта раунду»</td><td data-th="Як у Lectern">правило в <code>save_*</code> (D11)</td></tr>
+<tr><td data-th="Помилка">closed_book на загальновідомих лекціях</td><td data-th="Що стається">149/150 — міряєте пам'ять моделі</td><td data-th="Як у Lectern">лекції з вигаданими сутностями (B224)</td></tr>
+</tbody></table></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">plan_lecture</span><span class="h">хто вирішує наступний крок?</span></span><span class="b"><span class="t">Код</span><span class="d">та сама лекція й прапорці — той самий план; він же в report.json</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">save_findings</span><span class="h">чому інструмент, а не текст?</span></span><span class="b"><span class="t">Схема + перевірка</span><span class="d">правило зі списку, елемент існує; інакше — помилка моделі</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">support &lt; 0,5</span><span class="h">що далі?</span></span><span class="b"><span class="t">Суперечка</span><span class="d">суддя-модель лише в ретельному режимі; інакше — попередження</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">_keep_scope</span><span class="h">що робить?</span></span><span class="b"><span class="t">Межі раунду</span><span class="d">з нового збереження — лише названі елементи, решта з r0</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">open_findings</span><span class="h">наслідок?</span></span><span class="b"><span class="t">ok: false</span><span class="d">major/blocker, чий елемент раунд не змінив</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">cost_by_role</span><span class="h">хто найдорожчий?</span></span><span class="b"><span class="t">Раунд виправлень</span><span class="d">21–49% ретельного прогону: resume перечитує історію</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій з цих прогонів</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Рецензія має йти лише після того, як автори зберегли всі артефакти, і це треба тестувати без мережі. Як побудувати оркестрацію?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Головна модель з інструментом Agent і правилом у промпті: «рецензента кличеш лише після чотирьох збережень»</span></label><label class="opt ok"><input type="radio" name="q1"><span>План кроків у коді з хвилями за залежностями, а виконавця ролі передавати параметром, щоб тести підставляли фейк</span></label><label class="opt"><input type="radio" name="q1"><span>Рецензент сам викликає авторів, коли бачить, що якогось артефакту бракує, і чекає на їхні збереження</span></label></div>
+    <div class="why yes">Так. Порядок, який можна вивести детерміновано, задає код: той самий план щоразу, а тест перевіряє хвилі з фейковим виконавцем.</div>
+    <div class="why no">У промпті порядок — побажання, яке модель може пропустити, а рецензент, що кличе авторів, — ще один оркестратор-модель. Детермінований план у коді відтворюваний і тестується без мережі.</div></div>
+  <div class="q"><div class="qt">2. Суддя позначив одну картку, а автор у раунді виправлень переписав вісім і вніс дві нові помилки. Що змінити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Посилити речення в промпті раунду: «не чіпай жодного елемента, якого немає в списку знахідок»</span></label><label class="opt"><input type="radio" name="q2"><span>Після раунду ще раз запустити рецензента, щоб він знайшов нові помилки, і дати автору другий раунд</span></label><label class="opt ok"><input type="radio" name="q2"><span>Брати з нового збереження лише названі елементи, решту відновлювати кодом з версії до раунду</span></label></div>
+    <div class="why yes">Так. Межа раунду — інваріант, тож її гарантує код (<code>_keep_scope</code>); після цього у чотирьох прогонах відкинуто 23 зміни поза знахідками.</div>
+    <div class="why no">«Keep the rest unchanged» уже був у промпті. Другий раунд подвоює найдорожчу роль і може зламати ще щось. Інваріант, який можна перевірити, перевіряє код.</div></div>
+  <div class="q"><div class="qt">3. Рецензент-субагент Claude Code записав у поле <code>artifact</code> шлях до файла. Що в Lectern не дало б такій знахідці дійти до автора?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span><code>save_findings</code> перевіряє в коді, що артефакт зі списку, а елемент існує, і повертає помилку</span></label><label class="opt"><input type="radio" name="q3"><span>Перелік дозволених назв артефактів, винесений у системний промпт рецензента окремим розділом</span></label><label class="opt"><input type="radio" name="q3"><span>Заміна рецензента на сильнішу модель, яка точніше дотримується заданого формату відповіді</span></label></div>
+    <div class="why yes">Так. Знахідки — дані для коду, тож їхню форму перевіряє код; модель отримує помилку інструмента і виправляє.</div>
+    <div class="why no">Перелік у промпті — ще одне побажання, яке модель може порушити, а сильніша модель знижує ймовірність помилки, але не гарантує формату. Гарантію дає лише перевірка під час збереження.</div></div>
+  <div class="q"><div class="qt">4. Коли в Lectern модель перевіряє цитату?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Для кожної цитати, бо <code>check_quote</code> бачить лише дослівність і не знає, що цитата стверджує</span></label><label class="opt ok"><input type="radio" name="q4"><span>Лише в ретельному режимі й лише для ключа чи звороту, що ділять із цитатою менше половини основ</span></label><label class="opt"><input type="radio" name="q4"><span>Лише коли <code>check_quote</code> повертає <code>missing</code>, щоб модель вирішила, чи це переказ</span></label></div>
+    <div class="why yes">Так. Дослівність і сторінки код гарантує сам; модель — лише для суперечок про зміст, і лише коли ретельний режим увімкнено.</div>
+    <div class="why no">Модель на кожній цитаті платить за те, що код робить точно. А <code>missing</code> — це відмова, а не суперечка: така цитата не пройшла б <code>save_*</code>.</div></div>
+  <div class="q"><div class="qt">5. Рецензент на Sonnet коштував $0,037 на лекцію проти $0,004 на Haiku і знайшов 1 major на три лекції. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Лишити Sonnet: сильніша модель з часом знаходитиме серйозніші проблеми, яких Haiku не бачить</span></label><label class="opt"><input type="radio" name="q5"><span>Поставити двох рецензентів, Haiku і Sonnet, і брати лише ті знахідки, які збіглися в обох</span></label><label class="opt ok"><input type="radio" name="q5"><span>Рецензент на Haiku; Sonnet — лише після виміру, що він дає більше справжніх знахідок на долар</span></label></div>
+    <div class="why yes">Так. Роль, де «судження важить», не виправдовує ×9 автоматично: виправдовує вимір.</div>
+    <div class="why no">«З часом знаходитиме» — гіпотеза без даних, а два рецензенти множать найменш корисну частину ціни. Модель для ролі обирають за виміром на справжніх прогонах.</div></div>
+  <div class="q"><div class="qt">6. Чому раунд виправлень — найдорожча «роль», хоча він лише править кілька елементів?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Продовжена сесія автора знову надсилає всю історію: лекцію, чернетки й відповіді інструментів</span></label><label class="opt"><input type="radio" name="q6"><span>Раунд виправлень за замовчуванням запускається на дорожчій моделі, ніж перший прогін того ж автора</span></label><label class="opt"><input type="radio" name="q6"><span>Автор у раунді щоразу переписує всі чотири артефакти лекції, а не лише той, що має знахідки</span></label></div>
+    <div class="why yes">Так. <code>resume</code> відновлює контекст, і кожен запит раунду несе його весь; у ретельному плані з одним автором раунд забрав 49%.</div>
+    <div class="why no">Модель у раунді та сама, а зберігає він лише артефакти зі знахідками. Ціна — у контексті, який продовжена сесія несе в кожному запиті (B202: спробувати свіжий короткий виклик).</div></div>
+  <div class="q"><div class="qt">7. closed_book — 149 зі 150 в усіх планах. Що з цього випливає?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Дистрактори слабкі в усіх планах однаково, тож треба міняти промпт авторів квізу, а не топологію команди</span></label><label class="opt ok"><input type="radio" name="q7"><span>Модель знає теми лекцій, тож метрика тут не розрізняє плани; потрібні лекції з вигаданими фактами</span></label><label class="opt"><input type="radio" name="q7"><span>Грейдер закритої книги зламався, бо в усіх прогонах дає майже однаковий результат</span></label></div>
+    <div class="why yes">Так. Фільтр Блума й узгоджене хешування модель знає без лекції, тож вгадування міряє її пам'ять, а не якість питань.</div>
+    <div class="why no">Однаковий результат на загальновідомих темах — очікувана поведінка, а не поломка, і висновків про дистрактори з нього не зробиш. Метрика працює на лекціях з невідомим моделі змістом (як датасет 12.3).</div></div>
+  <div class="q"><div class="qt">8. Рецензент двічі позначив «minor» слово зі змішаною писемністю, і раунд його не виправив. Що найкраще?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Підняти серйозність правила ALL-LANG до major у промпті рецензента, щоб воно запускало раунд</span></label><label class="opt"><input type="radio" name="q8"><span>Додати другого рецензента, що перевіряє лише мову й орфографію всіх артефактів лекції</span></label><label class="opt ok"><input type="radio" name="q8"><span>Перенести перевірку в <code>save_*</code>: код відхиляє слово з літерами двох писемностей</span></label></div>
+    <div class="why yes">Так. Перевірне кодом не має коштувати прогону моделі: тепер такий текст не збережеться взагалі, без рецензента й раунду.</div>
+    <div class="why no">Підняти серйозність — заплатити ще й за раунд; другий рецензент — ще одна роль. Обидва варіанти лишають на моделі те, що код перевіряє безкоштовно й щоразу.</div></div>
+  <div class="q"><div class="qt">9. Один автор: $0,051, 29/30. Автори на артефакт: $0,067, 12/15. Ретельний режим: ×2, +2 з 60. Що типово?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Один автор; ролі й ретельний режим — прапорці, і переміряти з грейдером карток та ДЗ</span></label><label class="opt"><input type="radio" name="q9"><span>Автори на артефакт: вузькі промпти кращі, а різниця в ціні — менше двох центів на модуль</span></label><label class="opt"><input type="radio" name="q9"><span>Ретельний режим: якість важливіша за п'ять центів, а H1 тримається навіть з подвоєною ціною</span></label></div>
+    <div class="why yes">Так. Без виміряного виграшу дорожча топологія не стає типовою, але лишається доступною — і рішення має умову перегляду.</div>
+    <div class="why no">«Вузькі промпти кращі» прогони не підтвердили, а виграш ретельного режиму в межах шуму. Що H1 тримається — умова, а не причина платити вдвічі.</div></div>
+  <div class="q"><div class="qt">10. Після раунду знахідка major лишилась на незміненому питанні 1. Що повідомить <code>lectern module</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span><code>ok: true</code>: раунд для цього артефакту відбувся, тож його знахідки вважаються закритими</span></label><label class="opt"><input type="radio" name="q10"><span>Нічого: оркестратор автоматично запустить другий раунд саме для цього одного питання</span></label><label class="opt ok"><input type="radio" name="q10"><span><code>ok: false</code>, знахідка в <code>open_findings</code> лекції, код виходу 1</span></label></div>
+    <div class="why yes">Так. LEC-MOD-005: модуль не ok, поки blocking-знахідка жива; автору видно, яке питання дивитися.</div>
+    <div class="why no">Раунд один (LEC-GEN-008), і «раунд був» не означає «виправлено». Незмінений елемент — відкрита знахідка, а модуль з нею не проходить гейт.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>детермінований оркестратор</td><td>План і порядок ролей обчислює код; моделі лише виконують ролі.</td></tr>
+<tr><td>виконавець ролі (role worker)</td><td>Один прогін моделі з вузьким промптом, своїми інструментами й стелями ходів і бюджету.</td></tr>
+<tr><td>автор плану уроку</td><td>Роль, що першою пише план; його розділи — вхід для інших авторів.</td></tr>
+<tr><td>схема артефакту (save_*)</td><td>Інструмент збереження: схема з сигнатури, правила в коді до запису файла.</td></tr>
+<tr><td>структуровані знахідки рецензента</td><td><code>{artifact, item, rule, severity, problem, fix}</code>, перевірені кодом.</td></tr>
+<tr><td>аудитор цитат (code-first)</td><td>Код перевіряє кожну цитату з файлів; модель — лише для суперечок про переказ.</td></tr>
+<tr><td>ліміт раунду виправлень</td><td>≤ 1 раунд, стоп за бюджетом і ходами, зміни лише названих елементів.</td></tr>
+<tr><td>вартість команди за ролями</td><td><code>cost_by_role</code>: гроші, токени й час кожної ролі в модулі.</td></tr>
+<tr><td>якісний гейт модуля</td><td><code>ok: false</code>, якщо лекція не ok, цитата без сторінок або жива blocking-знахідка.</td></tr>
+<tr><td>H1 з чотирма артефактами</td><td>Модуль з 3 коротких PDF ≤ $0,25 на Haiku 5.5; виміряно $0,05–0,22.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. ADR: команда чи один агент — за вимірами</h3>
+<p>Для конвеєра з кількома артефактами (кейс із цифрами — у завданні) спроєктуйте план у коді, оберіть метрики з парним виміром «до/після» і запишіть рішення з умовою перегляду.</p>
+<h3>2. Знахідка, що переїжджає в код</h3>
+<p>Розберіть шість знахідок рецензента: що перевіряє код, що лишається моделі; напишіть перевірку з тестами і правило меж раунду для об'єктного артефакту.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a><span>19.12.2024 · orchestrator-workers, evaluator-optimizer, коли workflow досить</span></li>
+<li><a href="https://claude.com/blog/building-multi-agent-systems-when-and-how-to-use-them" target="_blank" rel="noopener">Anthropic — Building multi-agent systems: When and how to use them</a><span>23.01.2026 · поділ за контекстом, а не за типом роботи; 3–10× токенів</span></li>
+<li><a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank" rel="noopener">Anthropic — How we built our multi-agent research system</a><span>13.06.2025 · оркестратор і паралельні субагенти в продакшні</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/sessions" target="_blank" rel="noopener">Agent SDK — Work with sessions</a><span><code>resume</code>, <code>fork_session</code>, де лежать сесії</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/custom-tools" target="_blank" rel="noopener">Agent SDK — custom tools</a><span>in-process MCP-сервер з власними інструментами — так кожна роль отримує лише свої</span></li>
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — subagents</a><span>поля фронтматера (<code>tools</code>, <code>model</code>, <code>maxTurns</code>…), ізоляція контексту, паралельні субагенти</span></li>
+<li><a href="https://learn.chatgpt.com/docs/agent-configuration/subagents" target="_blank" rel="noopener">Codex — subagents</a><span>кастомні агенти в <code>.codex/agents/*.toml</code>, <code>agents.max_concurrent_threads_per_session</code></span></li>
+<li><a href="https://cursor.com/docs/subagents" target="_blank" rel="noopener">Cursor — subagents</a><span><code>.cursor/agents/</code>, <code>readonly</code>, <code>is_background</code>; читає й <code>.claude/agents/</code></span></li>
+<li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Claude — Pricing</a><span>Haiku 5.5 і Sonnet 5.5: вхід, вихід, запис і читання кешу</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 14.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 14.3 · Senomi<br><br><a href="lesson-67.html">← Урок 14.2</a> · <a href="index.html">Зміст курсу</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>
