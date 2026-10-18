@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 13.2. Процес: рев&#x27;ю специфікацій і PR, відповідальність за код агента</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h44l18 18v78H30z"/><path d="M74 12v18h18"/><path d="M42 50h36M42 64h36M42 78h24"/><path d="M44 94l6 6 12-12"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 13.2 · Модуль 13</div>
+<h1>Процес: рев&#x27;ю специфікацій і PR, відповідальність за код агента</h1>
+<p class="lead">Коли більшу частину diff пише агент, відповідальність лишається за людиною, яка зливає зміну, і процес має це закріпити: розкриття AI-допомоги, draft PR, правило двох людей, межа розміру, чекліст рецензента. Ми виміряли рецензента з командним чеклістом і без нього на шести агентних PR Lectern і перенесли правила процесу в commit-msg-хук, trace.py, CODEOWNERS і ruleset.</p>
+<div class="hero-meta"><span class="chip">Командна робота</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 14 розділів</summary><nav class="toc"><a href="#owner"><b>01</b>Хто відповідає</a><a href="#disclosure"><b>02</b>Розкриття AI-допомоги</a><a href="#pipeline"><b>03</b>Конвеєр змін</a><a href="#checklist"><b>04</b>Рев&#x27;ю агентного PR</a><a href="#experiment"><b>05</b>Експеримент</a><a href="#tooling"><b>06</b>Процес в інструментах</a><a href="#tools"><b>07</b>Атрибуція за замовчуванням</a><a href="#lectern"><b>08</b>Lectern</a><a href="#mistakes"><b>09</b>Типові помилки</a><a href="#practice"><b>10</b>Практика</a><a href="#quiz"><b>11</b>Квіз</a><a href="#terms"><b>12</b>Терміни уроку</a><a href="#homework"><b>13</b>Домашнє завдання</a><a href="#resources"><b>14</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розподілити відповідальність за агентний PR між автором, рецензентом і тим, хто зливає, і назвати власника інциденту;</li>
+    <li>ввести розкриття AI-допомоги, яке читає і людина, і git: трейлер, розділ шаблону PR, мітку;</li>
+    <li>побудувати конвеєр spec-PR → draft → ready → злиття з gate на кожному кроці та правилом двох людей для P2–P3;</li>
+    <li>рев'юїти агентний PR за чеклістом, який ловить типові помилки агента, і перевірити чекліст вимірюванням;</li>
+    <li>перенести правила процесу в інструменти: <code>commit-msg</code>-хук, <code>trace.py</code>, CODEOWNERS, ruleset гілки.</li>
+  </ul>
+</div>
+
+<section class="sec" id="owner">
+<div class="sec-h"><span class="num">01</span><h2>Хто відповідає<span class="sub">Коли більшу частину diff написав агент</span></h2></div>
+<p>Автор коду більше не збігається з тим, хто за нього відповідає. Агент не може відповідати ні юридично, ні операційно. Тому відкриті проєкти, які дозволяють AI-інструменти, сходяться на одному правилі: відповідає людина, яка подала зміну. Ті, хто не готовий так ризикувати, AI-код забороняють.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Проєкт</th><th>Правило</th><th>Розкриття</th></tr></thead>
+<tbody>
+<tr><td data-th="Проєкт">Linux kernel, <code>coding-assistants</code> (2026)</td><td data-th="Правило">агент не ставить <code>Signed-off-by</code>: засвідчити DCO може лише людина; подавач переглядає весь AI-код і бере «повну відповідальність»</td><td data-th="Розкриття"><code>Assisted-by: LLM [TOOL1] [TOOL2]</code></td></tr>
+<tr><td data-th="Проєкт">LLVM AI Tool Policy (16.01.2026)</td><td data-th="Правило">людина в циклі; автор — завжди людина; агенти, що діють без схвалення людини (приклад у тексті — <code>@claude</code> на GitHub), заборонені</td><td data-th="Розкриття">трейлер на зразок <code>Assisted-by:</code></td></tr>
+<tr><td data-th="Проєкт">QEMU (24.06.2025)</td><td data-th="Правило">відхиляє будь-який внесок, який містить AI-контент або походить від нього</td><td data-th="Розкриття">—</td></tr>
+<tr><td data-th="Проєкт">Gentoo (14.04.2024)</td><td data-th="Правило">заборонено будь-який контент, створений за допомогою NLP-інструментів AI</td><td data-th="Розкриття">—</td></tr>
+</tbody></table></div>
+<blockquote class="q-src">
+<p>Контриб'ютори мусять прочитати й перевірити весь код чи текст, згенерований LLM, перш ніж просити інших учасників проєкту його рецензувати. Контриб'ютор завжди є автором і повністю відповідає за свій внесок.</p>
+<p class="orig">“Contributors must read and review all LLM-generated code or text before they ask other project members to review it. The contributor is always the author and is fully accountable for their contributions.”</p>
+<cite>LLVM AI Tool Use Policy, 16.01.2026</cite>
+</blockquote>
+<p>Усередині команди одного «автора» мало: є ще рецензент і той, хто натискає Merge. Модель відповідальності ділить їх так:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Роль</th><th>Відповідає за</th><th>Не може</th></tr></thead>
+<tbody>
+<tr><td data-th="Роль">Агент</td><td data-th="Відповідає за">diff, тести, заповнений шаблон PR</td><td data-th="Не може">схвалити, позначити ready, злити, обійти хук</td></tr>
+<tr><td data-th="Роль">Автор — людина, яка запустила агента</td><td data-th="Відповідає за">відповідність плану; прочитаний diff; зелений CI до ready</td><td data-th="Не може">схвалити власний PR на P2–P3</td></tr>
+<tr><td data-th="Роль">Рецензент</td><td data-th="Відповідає за">пункти чекліста, які він підписав</td><td data-th="Не може">схвалити PR, який сам запускав</td></tr>
+<tr><td data-th="Роль">Той, хто зливає</td><td data-th="Відповідає за">зміну в <code>main</code> і інцидент, якщо вона щось зламає</td><td data-th="Не може">злити без обов'язкових перевірок</td></tr>
+</tbody></table></div>
+<div class="note product"><span class="lbl">Власник інциденту</span>
+<p>Розбір — без пошуку винних, але з одним обов'язковим питанням: який gate мав це зупинити і чому не зупинив. Відповідь стає тестом, правилом CI або рядком чекліста. Фраза «це написав агент» у розборі нічого не пояснює: агент — інструмент, як компілятор чи лінтер, а не учасник, на якого можна перекласти відповідальність.</p>
+</div>
+<p>Рівень ризику, від якого залежать схвалення, береться з 8.4 (P0–P3); роль оркестратора, який відповідає за роботу агентів, — з 3.5.</p>
+</section>
+
+<section class="sec" id="disclosure">
+<div class="sec-h"><span class="num">02</span><h2>Розкриття AI-допомоги<span class="sub">Трейлер, розділ PR, мітка</span></h2></div>
+<p>Розкриття існує не для того, щоб когось покарати. Воно показує рецензентові, де шукати типові помилки агента: послаблений тест, зайвий файл, <code>Refs</code> навмання. Тому воно має бути на трьох рівнях, і кожен має свого читача:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень</th><th>Що пишемо</th><th>Хто читає</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень">Коміт</td><td data-th="Що пишемо">трейлер інструмента (<code>Co-Authored-By:</code> від Claude Code) або <code>Assisted-by: &lt;інструмент&gt;</code></td><td data-th="Хто читає"><code>git log</code>, <code>git blame</code>, скрипти</td></tr>
+<tr><td data-th="Рівень">PR</td><td data-th="Що пишемо">розділ шаблону «AI-асистування»: що згенеровано, що написано вручну, що автор перевірив сам</td><td data-th="Хто читає">рецензент</td></tr>
+<tr><td data-th="Рівень">Мітка</td><td data-th="Що пишемо"><code>ai-assisted</code></td><td data-th="Хто читає">фільтри, метрики (13.4)</td></tr>
+</tbody></table></div>
+<p>Трейлер — механізм git, а не довільний рядок. За документацією <code>git interpret-trailers</code>, блок трейлерів стоїть <b>наприкінці повідомлення</b>, після порожнього рядка. Отже, порожній рядок <b>між</b> <code>Refs:</code> і <code>Co-Authored-By:</code> відрізає <code>Refs</code> від блоку. Людина цей <code>Refs</code> бачить, а <code>trace.py</code> — ні. Саме так були оформлені всі п'ять агентних комітів B50 в уроці 11.1.</p>
+<div class="cols">
+<div class="cmp bad"><h4>git бачить лише Co-Authored-By</h4>
+<pre class="code" data-lang="text">store: re-queue jobs of a dead owner
+
+Refs: none
+
+Co-Authored-By: Claude Opus 5.5 &lt;…&gt;</pre></div>
+<div class="cmp good"><h4>git бачить обидва</h4>
+<pre class="code" data-lang="text">store: re-queue jobs of a dead owner
+
+Refs: LEC-SVC-001
+Co-Authored-By: Claude Opus 5.5 &lt;…&gt;</pre></div>
+</div>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>У Claude Code інструкції про атрибуцію з CLAUDE.md мають пріоритет над налаштуванням <code>attribution</code>. Виняток — рядок, заданий у managed settings: його проєктне правило не перебиває. Тож правило «<code>Refs:</code> одразу над <code>Co-Authored-By:</code>» у CLAUDE.md працює, а організація, якій потрібен однаковий трейлер на всіх машинах, задає його в managed settings.</p>
+</div>
+</section>
+
+<section class="sec" id="pipeline">
+<div class="sec-h"><span class="num">03</span><h2>Конвеєр змін<span class="sub">Шість кроків, на кожному свій gate</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 520" role="img" aria-label="Конвеєр: spec-PR, draft PR агента, ready, CI і AI-рев'ю, рев'ю людини, злиття; праворуч gate кожного кроку">
+  <defs>
+    <marker id="p63a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="p63b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <text x="90" y="18" text-anchor="middle" class="tx s">крок · хто</text>
+  <text x="272" y="18" text-anchor="middle" class="tx s">gate</text>
+  <rect x="8" y="28" width="164" height="56" rx="10" class="bx m"/>
+  <text x="90" y="51" text-anchor="middle" class="tx b">1 · Spec-PR</text>
+  <text x="90" y="70" text-anchor="middle" class="tx s">людина, без коду</text>
+  <rect x="190" y="28" width="162" height="56" rx="10" class="bx p"/>
+  <text x="271" y="51" text-anchor="middle" class="tx s">власник специфікації</text>
+  <text x="271" y="70" text-anchor="middle" class="tx s">(CODEOWNERS)</text>
+  <path d="M90 84 V 106" class="ln a" marker-end="url(#p63a)"/>
+  <rect x="8" y="110" width="164" height="56" rx="10" class="bx t"/>
+  <text x="90" y="133" text-anchor="middle" class="tx b">2 · Draft PR</text>
+  <text x="90" y="152" text-anchor="middle" class="tx s">агент</text>
+  <rect x="190" y="110" width="162" height="56" rx="10" class="bx p"/>
+  <text x="271" y="133" text-anchor="middle" class="tx s">pre-commit + commit-msg</text>
+  <text x="271" y="152" text-anchor="middle" class="tx s">draft не зливається</text>
+  <path d="M90 166 V 188" class="ln a" marker-end="url(#p63a)"/>
+  <rect x="8" y="192" width="164" height="56" rx="10" class="bx t"/>
+  <text x="90" y="215" text-anchor="middle" class="tx b">3 · Ready</text>
+  <text x="90" y="234" text-anchor="middle" class="tx s">автор</text>
+  <rect x="190" y="192" width="162" height="56" rx="10" class="bx p"/>
+  <text x="271" y="215" text-anchor="middle" class="tx s">diff прочитано,</text>
+  <text x="271" y="234" text-anchor="middle" class="tx s">шаблон заповнено</text>
+  <path d="M90 248 V 270" class="ln a" marker-end="url(#p63a)"/>
+  <rect x="8" y="274" width="164" height="56" rx="10" class="bx t"/>
+  <text x="90" y="297" text-anchor="middle" class="tx b">4 · CI + AI-рев'ю</text>
+  <text x="90" y="316" text-anchor="middle" class="tx s">машини</text>
+  <rect x="190" y="274" width="162" height="56" rx="10" class="bx p"/>
+  <text x="271" y="297" text-anchor="middle" class="tx s">check.sh обов'язковий;</text>
+  <text x="271" y="316" text-anchor="middle" class="tx s">AI — лише порада</text>
+  <path d="M90 330 V 352" class="ln a" marker-end="url(#p63a)"/>
+  <rect x="8" y="356" width="164" height="56" rx="10" class="bx t"/>
+  <text x="90" y="379" text-anchor="middle" class="tx b">5 · Рев'ю людини</text>
+  <text x="90" y="398" text-anchor="middle" class="tx s">не автор (P2–P3)</text>
+  <rect x="190" y="356" width="162" height="56" rx="10" class="bx p"/>
+  <text x="271" y="379" text-anchor="middle" class="tx s">чекліст; ruleset:</text>
+  <text x="271" y="398" text-anchor="middle" class="tx s">схвалення, власники</text>
+  <path d="M90 412 V 434" class="ln a" marker-end="url(#p63a)"/>
+  <rect x="8" y="438" width="164" height="56" rx="10" class="bx a"/>
+  <text x="90" y="461" text-anchor="middle" class="tx b">6 · Merge</text>
+  <text x="90" y="480" text-anchor="middle" class="tx s">власник зміни</text>
+  <rect x="190" y="438" width="162" height="56" rx="10" class="bx p"/>
+  <text x="271" y="461" text-anchor="middle" class="tx s">інцидент → новий тест,</text>
+  <text x="271" y="480" text-anchor="middle" class="tx s">правило або пункт</text>
+  <path d="M354 466 C 359 360, 359 230, 354 170" class="ln d" marker-end="url(#p63b)"/>
+  <text x="180" y="512" text-anchor="middle" class="tx s">пунктир: розбір інциденту посилює ранній gate</text>
+</svg>
+<figcaption>Spec-PR перед code-PR — з 8.3; тут конвеєр доповнено ролями й gate. Кожен gate або детермінований (хук, CI, ruleset), або підписаний конкретною людиною.</figcaption>
+</figure>
+<h3>Draft PR — стан за замовчуванням для агента</h3>
+<p>За документацією GitHub, draft PR не можна злити, а власникам коду запит на рев'ю не надходить, доки PR не позначено ready. AI-рев'ю Lectern (<code>claude-review.yml</code>) теж пропускає draft. Агент відкриває PR як draft (<code>gh pr create --draft</code>), а «ready» — перший підпис людини: автор прочитав diff і заповнив шаблон. Тому CODEOWNERS не отримують сповіщень про PR, які ще ніхто не читав.</p>
+<h3>Хто схвалює</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Рівень (8.4)</th><th>Схвалень</th><th>Хто</th></tr></thead>
+<tbody>
+<tr><td data-th="Рівень (8.4)">P0</td><td data-th="Схвалень">—</td><td data-th="Хто">у <code>main</code> не зливається</td></tr>
+<tr><td data-th="Рівень (8.4)">P1</td><td data-th="Схвалень">0–1</td><td data-th="Хто">автор після CI; AI-рев'ю як порада</td></tr>
+<tr><td data-th="Рівень (8.4)">P2</td><td data-th="Схвалень">1</td><td data-th="Хто">не автор і не той, хто запускав агента; власник із CODEOWNERS; рішення на кожну blocker/major</td></tr>
+<tr><td data-th="Рівень (8.4)">P3</td><td data-th="Схвалень">1 + власник</td><td data-th="Хто">зміну пише людина, агент лише пропонує</td></tr>
+</tbody></table></div>
+<p><b>Правило двох людей</b> для агентного PR: «автор» — це людина, яка запускала агента, а не бот, що відкрив PR. Інакше той, хто поставив задачу, сам схвалить результат під іменем бота, і друга пара очей зникне непомітно. У ruleset це «Require approval of the most recent reviewable push»: схвалити може лише той, хто не пушив останнім.</p>
+<h3>Розмір PR</h3>
+<blockquote class="q-src">
+<p>Жорстких правил, що таке «занадто великий», немає. 100 рядків — зазвичай розумний розмір для CL, 1000 рядків — зазвичай забагато, але вирішує рецензент.</p>
+<p class="orig">“There are no hard and fast rules about how large is 'too large.' 100 lines is usually a reasonable size for a CL, and 1000 lines is usually too large, but it's up to the judgment of your reviewer.”</p>
+<cite>Google Engineering Practices, «Small CLs»</cite>
+</blockquote>
+<p>Медіана зміни в Google — 24 рядки (9 млн рев'ю за два роки, ICSE-SEIP 2018). Агентові написати 600 рядків нічого не коштує, а рецензентові прочитати їх — дорого. У Lectern межа — <b>400 змінених рядків без згенерованих файлів</b>, і окреме правило: рефакторинг і зміна поведінки ніколи не йдуть одним PR. Що ця межа ловить і чого не ловить, показує експеримент нижче.</p>
+<div class="note fact"><span class="lbl">Що відомо про агентні PR</span>
+<p>AIDev (arXiv 2507.15003, липень 2025): понад 456 тис. PR п'яти агентів. Злито 76,8% PR людей, 65,3% — Codex, 52,5% — Claude Code, 51,4% — Cursor, 48,9% — Devin, 38,2% — Copilot. Інше дослідження 567 PR Claude Code (arXiv 2509.14745): злито 83,8% проти 91,0% людських, 54,9% злитих — без жодних правок. Серед причин відхилення автори називають контекст проєкту та розмір PR.</p>
+</div>
+</section>
+
+<section class="sec" id="checklist">
+<div class="sec-h"><span class="num">04</span><h2>Рев'ю агентного PR<span class="sub">Сім пунктів, кожен — під відому помилку агента</span></h2></div>
+<p>Чекліст diff перед комітом з 11.1 стосується коду. Чекліст рецензента агентного PR перевіряє інше: чи PR — саме те, що просили, і чи не підігнали під нього перевірки. Кожен пункт відповідає помилці, яку агенти в цьому курсі вже робили.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Пункт</th><th>Що перевірити</th><th>Помилка агента, яку він ловить</th></tr></thead>
+<tbody>
+<tr><td data-th="Пункт">1 · Вимоги</td><td data-th="Що перевірити"><code>Refs:</code> — справжні id зміненої області; статус <code>approved → implemented</code> у цьому ж PR; тести з <code>@pytest.mark.req</code></td><td data-th="Помилка агента, яку він ловить"><code>Refs: LEC-Q-004</code> у <code>service.py</code>: перший id, що трапився в CLAUDE.md</td></tr>
+<tr><td data-th="Пункт">2 · Специфікація</td><td data-th="Що перевірити">PR з кодом не редагує рядки <code>docs/spec/</code> під код</td><td data-th="Помилка агента, яку він ловить">вимогу переписано на місці, щоб код «відповідав» (p06 з 12.2)</td></tr>
+<tr><td data-th="Пункт">3 · Тести не послаблено</td><td data-th="Що перевірити">нових <code>skip</code>/<code>xfail</code> немає; очікування не змінено; приклади, пороги, baseline на місці</td><td data-th="Помилка агента, яку він ловить">тест гонки позначено <code>xfail</code> «через нестабільність»</td></tr>
+<tr><td data-th="Пункт">4 · Обсяг як у плані</td><td data-th="Що перевірити">кожен файл названо в плані; шляхи P3 — відмова; P2 — лише з власником</td><td data-th="Помилка агента, яку він ловить">агент прибрав правило <code>ask</code>, яке його зупиняло</td></tr>
+<tr><td data-th="Пункт">5 · Згенероване</td><td data-th="Що перевірити">lock, контракт MCP, baseline змінено своєю командою, і PR її називає</td><td data-th="Помилка агента, яку він ловить">нові помилки mypy дописано в baseline руками</td></tr>
+<tr><td data-th="Пункт">6 · Розмір і змішування</td><td data-th="Що перевірити">≤ 400 рядків; рефакторинг окремо від зміни поведінки</td><td data-th="Помилка агента, яку він ловить">«чисте переміщення» зі зміненою умовою всередині</td></tr>
+<tr><td data-th="Пункт">7 · Розкриття</td><td data-th="Що перевірити">розділ «AI-асистування» заповнено</td><td data-th="Помилка агента, яку він ловить">PR без відомостей про те, що згенеровано і що перевірено</td></tr>
+</tbody></table></div>
+<p>Чого в чеклісті немає: формату трейлерів, ruff, тестів, контексту — це перевіряють хук і CI. Рецензент має дивитися туди, куди не дивиться жоден інструмент. Перша версія чекліста порушувала це правило, і вимірювання це показало.</p>
+</section>
+
+<section class="sec" id="experiment">
+<div class="sec-h"><span class="num">05</span><h2>Експеримент<span class="sub">Два рецензенти, шість агентних PR</span></h2></div>
+<p>Шість PR на канонічному Lectern. Три — засіяні PR з бенчмарку 12.2 (p06, p03, p07); до них додано план і повні повідомлення комітів. Три нові гілки (r4–r6) повторюють помилки агентів із попередніх уроків. Кожна гілка проходить <code>scripts/check.sh</code>, тобто CI жодної не зупиняє. До першого прогону записано 16 міток — проблем, які рецензент мав би знайти.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>PR</th><th>Рядків</th><th>Мітки</th></tr></thead>
+<tbody>
+<tr><td data-th="PR">r1 · регістр у цитатах</td><td data-th="Рядків">15</td><td data-th="Мітки">вимогу переписано на місці; характеризаційний тест перевернуто; правило P2 без власника</td></tr>
+<tr><td data-th="PR">r2 · пропуск готових лекцій</td><td data-th="Рядків">30</td><td data-th="Мітки">немає тесту з <code>req</code>; статус лишився <code>approved</code></td></tr>
+<tr><td data-th="PR">r3 · 50 кандидатів реранкера</td><td data-th="Рядків">2</td><td data-th="Мітки">суперечить LEC-RAG-003 «top-20»; <code>Refs: none</code> на зміні поведінки; немає recall@5/MRR до і після</td></tr>
+<tr><td data-th="PR">r4 · B61</td><td data-th="Рядків">28</td><td data-th="Мітки"><code>settings.json</code> поза планом (P3); baseline mypy +2 рядки</td></tr>
+<tr><td data-th="PR">r5 · «один запис у базу»</td><td data-th="Рядків">6</td><td data-th="Мітки"><code>Refs: LEC-Q-004</code> на <code>service.py</code>; тест гонки в <code>xfail</code>; повернулася гонка ключа ідемпотентності</td></tr>
+<tr><td data-th="PR">r6 · «чисте переміщення»</td><td data-th="Рядків">270</td><td data-th="Мітки"><code>--json</code> тепер виходить з 1 на попередженнях; тест перейменовано, очікування перевернуто; змішано рефакторинг і поведінку</td></tr>
+</tbody></table></div>
+<p>Рецензент — <code>claude -p --model sonnet</code> у порожній теці, без інструментів, з JSON-схемою знахідок (<code>review_bench.review()</code> з 12.2). Обидва варіанти отримують однаковий PR: назву, опис, план, коміти, diff. Різняться лише правила: <b>(a)</b> чекліст із <code>CONTRIBUTING.md</code>, <b>(b)</b> загальний промпт «якість, баги, безпека, продуктивність». Кожну знахідку я прочитав і зіставив з мітками вручну.</p>
+<figure class="fig">
+<div class="bars">
+  <div class="bar m"><span class="k">Без чекліста, прогін 1</span><span class="tr"><i style="--v:75%"></i><b style="--v:75%">12 / 16</b></span></div>
+  <div class="bar m"><span class="k">Без чекліста, прогін 2</span><span class="tr"><i style="--v:75%"></i><b style="--v:75%">12 / 16</b></span></div>
+  <div class="bar p"><span class="k">Чекліст v1</span><span class="tr"><i style="--v:94%"></i><b style="--v:94%">15 / 16 · 5 хибних тривог</b></span></div>
+  <div class="bar t"><span class="k">Чекліст v2, прогін 1</span><span class="tr"><i style="--v:88%"></i><b style="--v:88%">14 / 16</b></span></div>
+  <div class="bar t"><span class="k">Чекліст v2, прогін 2</span><span class="tr"><i style="--v:81%"></i><b style="--v:81%">13 / 16</b></span></div>
+</div>
+<figcaption>Знайдені мітки з 16, sonnet, 18.10.2026. Ціна одного прогону всіх шести PR — $0,21–0,24 в обох варіантах, 11–14 с на PR.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що прослизнуло</th><th>Пропущено без чекліста</th><th>Пропущено з чеклістом</th><th>Чому</th></tr></thead>
+<tbody>
+<tr><td data-th="Що прослизнуло"><code>Refs: none</code> на зміні поведінки (r3)</td><td data-th="Пропущено без чекліста">2 з 2</td><td data-th="Пропущено з чеклістом">0 з 3</td><td data-th="Чому">загальний промпт не знає, що <code>Refs</code> — контракт</td></tr>
+<tr><td data-th="Що прослизнуло"><code>Refs</code> з чужої області (r5)</td><td data-th="Пропущено без чекліста">2 з 2</td><td data-th="Пропущено з чеклістом">0 з 3</td><td data-th="Чому">те саме; тепер ще й ловить <code>trace.py</code></td></tr>
+<tr><td data-th="Що прослизнуло">прохання розділити PR (r6)</td><td data-th="Пропущено без чекліста">2 з 2</td><td data-th="Пропущено з чеклістом">1 з 3</td><td data-th="Чому">змінену умову знаходять усі, а що «так не можна» — лише з правилом</td></tr>
+<tr><td data-th="Що прослизнуло">суперечність LEC-RAG-003 (r3)</td><td data-th="Пропущено без чекліста">2 з 2</td><td data-th="Пропущено з чеклістом">3 з 3</td><td data-th="Чому">тексту вимоги немає в diff; потрібен контекст специфікації (12.2)</td></tr>
+<tr><td data-th="Що прослизнуло">немає recall@5/MRR (r3)</td><td data-th="Пропущено без чекліста">0 з 2</td><td data-th="Пропущено з чеклістом">2 з 3</td><td data-th="Чому">у v2 фокус на процесі витіснив цей пункт з дворядкового PR</td></tr>
+</tbody></table></div>
+<p>Код-дефекти — гонку в r5, перевернутий тест і змінений код виходу в r6, правило <code>ask</code> і baseline у r4 — знайшли всі п'ять прогонів, з чеклістом і без. Різницю дає лише процес: <code>Refs</code>, статус вимоги, «розділіть PR». Без правила модель цих проблем не бачить, бо в diff вони виглядають коректно.</p>
+<div class="note warn"><span class="lbl">Пункт чекліста, який шкодив</span>
+<p>У v1 пункт 7 закінчувався словами «трейлери — в останньому абзаці». У 5 з 6 PR рецензент назвав правильні трейлери (<code>Refs:</code> одразу над <code>Co-Authored-By:</code>) порушенням, в одному — навіть major. У v2 цей пункт віддано хуку, а рецензентові написано «не перевіряйте очима», і хибних тривог про трейлери стало 0. Правило: пункт чекліста, який дублює інструмент, не підвищує покриття, а додає шум.</p>
+</div>
+<h3>Розмір PR проти знахідок</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>PR</th><th>Рядків</th><th>Знахідок у середньому</th><th>$ / с на рев'ю</th><th>Мітки знайдено, усі прогони</th></tr></thead>
+<tbody>
+<tr><td data-th="PR">r3</td><td data-th="Рядків">2</td><td data-th="Знахідок у середньому">2,2</td><td data-th="$ / с на рев&#x27;ю">0,027 / 9,4</td><td data-th="Мітки знайдено, усі прогони">6 / 15</td></tr>
+<tr><td data-th="PR">r5</td><td data-th="Рядків">6</td><td data-th="Знахідок у середньому">4,6</td><td data-th="$ / с на рев&#x27;ю">0,025 / 8,4</td><td data-th="Мітки знайдено, усі прогони">13 / 15</td></tr>
+<tr><td data-th="PR">r1</td><td data-th="Рядків">15</td><td data-th="Знахідок у середньому">5,8</td><td data-th="$ / с на рев&#x27;ю">0,044 / 14,8</td><td data-th="Мітки знайдено, усі прогони">15 / 15</td></tr>
+<tr><td data-th="PR">r4</td><td data-th="Рядків">28</td><td data-th="Знахідок у середньому">5,8</td><td data-th="$ / с на рев&#x27;ю">0,036 / 12,0</td><td data-th="Мітки знайдено, усі прогони">10 / 10</td></tr>
+<tr><td data-th="PR">r2</td><td data-th="Рядків">30</td><td data-th="Знахідок у середньому">5,4</td><td data-th="$ / с на рев&#x27;ю">0,051 / 20,5</td><td data-th="Мітки знайдено, усі прогони">10 / 10</td></tr>
+<tr><td data-th="PR">r6</td><td data-th="Рядків">270</td><td data-th="Знахідок у середньому">4,8</td><td data-th="$ / с на рев&#x27;ю">0,049 / 8,8</td><td data-th="Мітки знайдено, усі прогони">12 / 15</td></tr>
+</tbody></table></div>
+<p>Найгірше пройшов найменший PR. У r3 проблеми не в двох рядках diff, а в тому, чого в diff немає: у вимозі й у вимірюваннях. Модель-рецензент знайшла один змінений рядок серед 270 переміщених у кожному прогоні, тож межа розміру потрібна не їй, а людині, яка підписує схвалення. На шести PR і n = 1–2 це спостереження, а не закономірність; повторити можна з <code>console/exp/</code>.</p>
+</section>
+
+<section class="sec" id="tooling">
+<div class="sec-h"><span class="num">06</span><h2>Процес в інструментах<span class="sub">Хук, trace, CODEOWNERS, ruleset</span></h2></div>
+<p>Правило, яке перевіряє лише людина, рано чи пізно пропустять. Тому кожне правило процесу Lectern має перевірку там, де вона найдешевша:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Правило</th><th>Де перевіряється</th><th>Що буде без перевірки</th></tr></thead>
+<tbody>
+<tr><td data-th="Правило">трейлери в останньому абзаці; <code>Refs</code> на комітах у <code>src/</code></td><td data-th="Де перевіряється"><code>commit-msg</code>-хук (локально), <code>trace.py --require-refs</code> (CI)</td><td data-th="Що буде без перевірки">B50: п'ять комітів з невидимим <code>Refs</code></td></tr>
+<tr><td data-th="Правило"><code>Refs</code> з тієї області, яку змінено</td><td data-th="Де перевіряється"><code>trace.py</code>: попередження за таблицею <code>AREAS</code></td><td data-th="Що буде без перевірки">r5: <code>LEC-Q-004</code> на <code>service.py</code> не помітили обидва прогони без чекліста</td></tr>
+<tr><td data-th="Правило">spec, правила цитат, схеми MCP схвалює власник</td><td data-th="Де перевіряється">CODEOWNERS + «Require review from Code Owners»</td><td data-th="Що буде без перевірки">r1: правило P2 змінено звичайним PR</td></tr>
+<tr><td data-th="Правило">друга людина на P2–P3</td><td data-th="Де перевіряється">ruleset: схвалення + «most recent reviewable push»</td><td data-th="Що буде без перевірки">автор схвалює власний PR під іменем бота</td></tr>
+<tr><td data-th="Правило">агент не зливає й не чіпає P3</td><td data-th="Де перевіряється">дозволи агента (13.1) + ruleset без bypass</td><td data-th="Що буде без перевірки">r4: агент прибрав правило, яке його зупиняло</td></tr>
+</tbody></table></div>
+<h3>Хук commit-msg на справжніх комітах</h3>
+<p><code>scripts/commit_msg.py</code> розбирає повідомлення тим самим <code>git interpret-trailers --parse</code>, що й git. Він відхиляє <code>Refs:</code>, <code>Co-Authored-By:</code> чи <code>Assisted-by:</code> поза останнім абзацом, а також коміт у <code>src/</code> без <code>Refs: &lt;id&gt;|none</code>. Хук підключено як стадію <code>commit-msg</code> у pre-commit, а <code>default_install_hook_types</code> ставить її разом зі звичайним хуком, тож людині не треба пам'ятати другу команду.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — клон Lectern з pre-commit install</span></div>
+<pre><span class="ps">$ </span><span class="c">git commit -F b50-style.txt</span>
+ruff check...............................................................<span class="ok">Passed</span>
+no API keys or tokens....................................................<span class="ok">Passed</span>
+<span class="d">…</span>
+commit trailers git can parse (B72)......................................<span class="er">Failed</span>
+commit-msg: «Refs: LEC-SVC-004» is not a trailer: git reads only the last paragraph. Put it directly above Co-Authored-By, with no blank line between them.
+commit-msg: commit changes src/ without a «Refs: &lt;id&gt;|none» trailer
+<span class="ps">$ </span><span class="c">git commit -m "store: name the TTL requirement" -m "Refs: B50"</span>
+commit-msg: «Refs: B50» names no requirement id (LEC-&lt;AREA&gt;-NNN) and is not «none»
+<span class="ps">$ </span><span class="c">git commit -m "store: name the TTL requirement" -m "Refs: LEC-Q-004"</span>
+commit trailers git can parse (B72)......................................<span class="ok">Passed</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/trace.py --require-refs HEAD~1 | tail -2</span>
+<span class="y">WARN commit 6aa1bd2 changes src/lectern/service.py but refs LEC-Q-004, not LEC-SVC: store: name the TTL requirement</span>
+43 requirements, 118 tests: 0 error(s), 1 warning(s)
+<span class="ps">$ </span><span class="c">git reset -q --soft HEAD~1 &amp;&amp; git commit -F fixed.txt</span>
+commit trailers git can parse (B72)......................................<span class="ok">Passed</span>
+<span class="ps">$ </span><span class="c">git log -1 --format="%h %(trailers:key=Refs,valueonly)"</span>
+0360092 LEC-SVC-004</pre>
+<div class="cap">реальний вивід · 18.10.2026 · pre-commit 4.7.0 · частину рядків хуків скорочено · console/hook-demo.txt</div></div>
+<p>Хук перевіряє формат, але не зміст. <code>LEC-Q-004</code> — справжній id, тому коміт проходить. Невідповідність області ловить <code>trace.py</code>, і лише попередженням: історію не переписують, а <code>Refs: none</code> на рефакторингу <code>service.py</code> цілком законний. Той самий <code>trace.py</code> на гілці r5 з експерименту видав це попередження без жодної моделі.</p>
+<p>Агента ми теж провели через хук. Haiku попросили додати коментар над <code>recover()</code> і закомітити. У першому прогоні він відмовився комітити: клон стояв на гілці за замовчуванням, а CLAUDE.md забороняє коміти в <code>main</code>. На feature-гілці він сам прочитав <code>scripts/commit_msg.py</code> і написав <code>Refs: LEC-SVC-001</code> одразу над <code>Co-Authored-By: Claude Haiku 5.5</code>. Хук пропустив коміт. Два прогони коштували $0,015.</p>
+<h3>Ruleset для main</h3>
+<p>Ruleset — новіша альтернатива класичному захисту гілки, і rulesets можна нашаровувати. GitHub пише: кілька rulesets можуть діяти на одну гілку одночасно, тоді як правило захисту гілки діє лише одне; якщо правила перетинаються, застосовується найсуворіша версія. У Lectern немає репозиторію на GitHub, тому рекомендацію задокументовано й не застосовано: <code>docs/ruleset-main.json</code> для імпорту або <code>POST /repos/{owner}/{repo}/rulesets</code>.</p>
+<pre class="code" data-lang="json">{ <span class="s">"type"</span>: <span class="s">"pull_request"</span>,
+  <span class="s">"parameters"</span>: {
+    <span class="s">"required_approving_review_count"</span>: <span class="n">1</span>,
+    <span class="s">"dismiss_stale_reviews_on_push"</span>: <span class="k">true</span>,
+    <span class="s">"require_code_owner_review"</span>: <span class="k">true</span>,
+    <span class="s">"require_last_push_approval"</span>: <span class="k">true</span>,
+    <span class="s">"required_review_thread_resolution"</span>: <span class="k">true</span>,
+    <span class="s">"allowed_merge_methods"</span>: [<span class="s">"merge"</span>, <span class="s">"rebase"</span>] } }</pre>
+<ul>
+<li><b>Без squash:</b> squash замінює повідомлення всіх комітів одним, і трейлери <code>Refs</code> окремих комітів можуть не дожити до <code>main</code>.</li>
+<li><b>Обов'язкові перевірки</b> — <code>check</code> і <code>lock</code> з CI. <code>claude-review</code> не обов'язковий: AI-рев'ю — порада (12.2).</li>
+<li><b>Bypass list порожній:</b> правило, яке адміністратор обходить, перестає бути gate.</li>
+<li><b>Merge queue</b> не вмикаємо. Вона перевіряє PR разом з останньою версією базової гілки і PR, що стоять у черзі попереду, але для приватного репозиторію потрібна організація на GitHub Enterprise Cloud, а при кількох PR на день вигоди немає.</li>
+</ul>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">07</span><h2>Атрибуція за замовчуванням<span class="sub">Claude Code · Codex · Cursor</span></h2></div>
+<div class="tabs">
+<input type="radio" name="attr-t" id="attr-t1" checked><input type="radio" name="attr-t" id="attr-t2"><input type="radio" name="attr-t" id="attr-t3">
+<div class="tab-l"><label for="attr-t1">Claude Code</label><label for="attr-t2">Codex</label><label for="attr-t3">Cursor</label></div>
+<div class="tab-p">
+<p>Налаштування <code>attribution</code>. За замовчуванням у коміт іде трейлер <code>Co-Authored-By: &lt;модель&gt; &lt;noreply@anthropic.com&gt;</code>, а в опис PR — рядок «🤖 Generated with Claude Code». Ключ <code>attribution.commit</code> змінює або прибирає трейлер, <code>attribution.pr</code> — рядок у PR, <code>attribution: false</code> прибирає все (з v2.1.281). <code>includeCoAuthoredBy</code> застарів з v2.0.62.</p>
+<pre class="code" data-lang="json">{
+  <span class="s">"attribution"</span>: {
+    <span class="s">"commit"</span>: <span class="s">"Assisted-by: Claude Code"</span>,
+    <span class="s">"pr"</span>: <span class="s">""</span>
+  }
+}</pre>
+<p>Командна конвенція — у проєктних налаштуваннях. Якщо її не можна перебити, — у managed settings: інструкції CLAUDE.md щодо атрибуції мають пріоритет над усім, крім managed.</p>
+</div>
+<div class="tab-p">
+<p>У документації Codex налаштування атрибуції немає. У коді CLI (<code>codex-rs/ext/git-attribution</code>, гілка main на 18.10.2026) атрибуція — політика робочого простору з бекенда (<code>commit_attribution_enabled</code>); якщо політики немає, атрибуцію вимкнено. Коли її ввімкнено, модель отримує інструкцію закінчувати коміт трейлером <code>Co-authored-by: Codex &lt;noreply@openai.com&gt;</code>, а в PR додавати «Generated with [Codex](https://openai.com/codex/)».</p>
+<p>Отже, з Codex трейлер за замовчуванням не гарантовано, і конвенцію <code>Assisted-by:</code> треба прописати в AGENTS.md.</p>
+</div>
+<div class="tab-p">
+<p>Cursor CLI: <code>attribution.attributeCommitsToAgent</code> (за замовчуванням <code>true</code>) додає до комітів агента трейлер «Made with Cursor», <code>attribution.attributePRsToAgent</code> — такий самий рядок у PR. Адміністратор може вимкнути атрибуцію для всієї організації, і CLI підкоряється цьому незалежно від локальних налаштувань. Коміти хмарних агентів Cursor підписані й мають статус verified.</p>
+</div>
+</div>
+<p>В усіх трьох трейлер — це інструкція моделі або налаштування harness, і жоден із них не перевіряє, де трейлер опинився. Формат гарантує лише хук, тому <code>commit-msg</code> потрібен незалежно від інструмента.</p>
+</section>
+
+<section class="sec" id="lectern">
+<div class="sec-h"><span class="num">08</span><h2>Lectern<span class="sub">Процес, який перевіряє сам себе</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 13.2</div><div class="pb">
+<p>Lectern отримує процес для людей і агентів, а три знахідки 11.1 закрито інструментами. B72: <code>commit-msg</code>-хук і правило трейлерів у CLAUDE.kit. B73: id <code>LEC-SVC</code>, щоб коміти в <code>service.py</code> мали справжній <code>Refs</code>. B74: на гілці «Done» — це <code>LECTERN_BASE=main scripts/check.sh</code>.</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — копія Lectern, гілка l63</span></div>
+<pre><span class="ps">$ </span><span class="c">git log --oneline main..l63</span>
+7b82371 backlog/changelog rebased on canonical after 13.4
+af8bd90 process: CONTRIBUTING, PR template, ruleset recommendation (13.2)
+81dccf2 commit-msg hook: trailers git can parse (B72), Done on a branch (B74)
+7af0759 trace: LEC-SVC markers on service tests, warn on Refs from another area (B73)
+a0fa845 spec: LEC-SVC-001…006 for lectern serve across processes (B73)
+<span class="ps">$ </span><span class="c">LECTERN_BASE=main LECTERN_PY=.venv/bin/python scripts/check.sh | grep -E 'passed|requirements'</span>
+All checks passed!
+511 passed, 1 skipped, 1 xfailed in 21.06s
+43 requirements, 118 tests: 0 error(s), 0 warning(s)
+gate: passed
+<span class="ok">all checks passed</span></pre>
+<div class="cap">реальний вивід · 18.10.2026 · spec-PR окремим першим комітом, як вимагає 8.3 · той самий diff поверх поточного канонічного Lectern (з 13.1 і 13.4): 531 passed, all checks passed — console/lectern-l63.diff</div></div>
+<ul>
+<li><code>scripts/commit_msg.py</code> + стадія <code>commit-msg</code> у <code>dot-pre-commit-config.yaml</code>; 12 тестів, зокрема справжні коміти через хук у тимчасовому репозиторії;</li>
+<li><code>docs/spec/service.md</code>: LEC-SVC-001…006 (повернення в чергу, живий власник, чужий GET і SSE, ідемпотентність між процесами, resume, <code>lecture_id</code>); 14 тестів сервісу отримали <code>@pytest.mark.req</code>; 37 → 43 вимоги;</li>
+<li><code>trace.py</code>: таблиця <code>AREAS</code> (файл → сімейства) і попередження на <code>Refs</code> з чужої області;</li>
+<li><code>CONTRIBUTING.md</code>: ролі, розкриття, конвеєр, правило двох людей, 400 рядків, чекліст v2; <code>check_context.py</code> перевіряє і цей файл;</li>
+<li>шаблон PR: розділи «AI-асистування» й «Обсяг», пункти про послаблені тести й <code>Refs</code> області; <code>docs/process.md</code>: відповідальність і ruleset; <code>docs/ruleset-main.json</code>; рядок CODEOWNERS лише для <code>src/lectern/mcp_server.py</code>.</li>
+</ul>
+<p>Нові пункти backlog: B170 — чекліст у <code>prompts/review.md</code>, лише з бенчмарком до і після; B171 — рецензент без тексту вимог пропускає суперечність специфікації; B172 — id для контракту <code>lectern check --json</code>; B173 — <code>--amend</code> обходить перевірку <code>src/</code>; B174 — <code>attribution.commit</code> у командних налаштуваннях.</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">09</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">Після інциденту: «це згенерував агент»</td><td data-th="Причина">Відповідальність прив'язано до автора рядків</td><td data-th="Що зробити">Власник — той, хто злив; розбір закінчується новим gate</td></tr>
+<tr><td data-th="Симптом">Автор схвалює PR, відкритий ботом від його імені</td><td data-th="Причина">Бота рахують окремою людиною</td><td data-th="Що зробити">«Автор» агентного PR — той, хто запускав агента; ruleset з «most recent reviewable push»</td></tr>
+<tr><td data-th="Симптом">PR на 600 рядків, рев'ю «LGTM» за 5 хвилин</td><td data-th="Причина">Немає межі розміру; рефакторинг змішано з поведінкою</td><td data-th="Що зробити">400 рядків без згенерованих; «розділіть» — валідний результат рев'ю</td></tr>
+<tr><td data-th="Симптом"><code>Refs</code> є в повідомленні, але <code>trace.py</code> його не бачить</td><td data-th="Причина">Порожній рядок перед <code>Co-Authored-By</code></td><td data-th="Що зробити"><code>commit-msg</code>-хук; правило в CLAUDE.md, яке має пріоритет над <code>attribution</code></td></tr>
+<tr><td data-th="Симптом">Чекліст рецензента дає тривоги на правильних PR</td><td data-th="Причина">Пункт дублює інструмент</td><td data-th="Що зробити">Що перевіряє хук або CI — прибрати з чекліста; міряти чекліст до і після зміни</td></tr>
+<tr><td data-th="Симптом">CODEOWNERS отримують запити на сирі агентні PR</td><td data-th="Причина">Агент відкриває PR одразу ready</td><td data-th="Що зробити">Агент — лише draft; ready ставить автор після читання diff</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">10</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">агент написав 90% diff</span><span class="h">чия зміна?</span></span><span class="b"><span class="t">Того, хто злив</span><span class="d">він же власник інциденту; агент — інструмент, а не учасник</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">бот відкрив PR</span><span class="h">хто «автор» для правила двох людей?</span></span><span class="b"><span class="t">Людина, яка запускала агента</span><span class="d">вона не схвалює цей PR на P2–P3</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Refs: LEC-Q-004 у service.py</span><span class="h">хто зловить?</span></span><span class="b"><span class="t">trace.py, не хук</span><span class="d">id справжній, тож формат правильний; область — ні (AREAS, WARN)</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">draft PR</span><span class="h">що дає агентному PR?</span></span><span class="b"><span class="t">Тишу до першого підпису людини</span><span class="d">не зливається, власники коду не отримують запиту, AI-рев'ю не запускається</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">пункт «трейлери в останньому абзаці»</span><span class="h">у чеклісті рецензента?</span></span><span class="b"><span class="t">Ні</span><span class="d">це перевіряє хук; у прогоні пункт дав 5 хибних тривог на 6 PR</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">PR на 2 рядки</span><span class="h">рев'ю легке?</span></span><span class="b"><span class="t">Не обов'язково</span><span class="d">r3 пропустили найчастіше: проблема у вимозі й вимірюваннях, а не в diff</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">11</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Агент написав PR, рецензентка схвалила, техлід злив. Через тиждень зміна ламає звіт для учнів. Хто власник інциденту?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Рецензентка: вона підписала чекліст і пропустила дефект, тож розбір веде вона одна</span></label><label class="opt ok"><input type="radio" name="q1"><span>Техлід, який злив: зміна в main його, а розбір має знайти gate, що мав зупинити дефект</span></label><label class="opt"><input type="radio" name="q1"><span>Той, хто запускав агента: він автор за правилом двох людей і відповідає за кожен рядок</span></label></div>
+    <div class="why yes">Так. Власник зміни в main — той, хто її злив; розбір без пошуку винних закінчується новим тестом, правилом CI чи пунктом чекліста.</div>
+    <div class="why no">Рецензент відповідає за пункти, які підписав, автор — за відповідність плану, але зміна в main і інцидент належать тому, хто натиснув Merge. Розбір шукає gate, а не винного.</div></div>
+  <div class="q"><div class="qt">2. Розробник поставив задачу агенту, агент відкрив PR від імені бота. Зміна рівня P2. Розробник хоче схвалити: «PR же від бота». Що відповісти?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q2"><span>Не можна: для агентного PR автор — той, хто запускав агента, тож потрібен інший рецензент</span></label><label class="opt"><input type="radio" name="q2"><span>Можна: автор PR — бот, тож схвалення розробника і є тією другою парою очей, якої вимагає правило</span></label><label class="opt"><input type="radio" name="q2"><span>Можна, якщо AI-рев'ю не знайшло blocker чи major, а обов'язкові перевірки зелені</span></label></div>
+    <div class="why yes">Так. Інакше правило двох людей тихо зникає: задачу ставить і результат схвалює та сама людина.</div>
+    <div class="why no">Бот не є ні автором, ні рецензентом. AI-рев'ю — порада, а не схвалення. У ruleset це підкріплює «Require approval of the most recent reviewable push».</div></div>
+  <div class="q"><div class="qt">3. Повідомлення коміту агента: тема, порожній рядок, «Refs: none», порожній рядок, «Co-Authored-By: …». Що побачить trace.py --require-refs?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Refs: none — коміт пройде як рефакторинг без впливу на вимоги, бо рядок у повідомленні є</span></label><label class="opt"><input type="radio" name="q3"><span>Обидва трейлери, бо git шукає рядки «Ключ: значення» в усьому тілі повідомлення</span></label><label class="opt ok"><input type="radio" name="q3"><span>Лише Co-Authored-By: Refs відрізано від останнього блоку, тож коміт у src/ не пройде</span></label></div>
+    <div class="why yes">Так. Блок трейлерів — лише кінець повідомлення після порожнього рядка; так виглядали всі п'ять комітів B50.</div>
+    <div class="why no">git не шукає трейлери по всьому тілу: трейлери — це лише останній блок. Рядок, який людина бачить, для git не існує, тому потрібен commit-msg-хук.</div></div>
+  <div class="q"><div class="qt">4. Агентний PR змінює service.py з трейлером «Refs: LEC-Q-004». Що в Lectern це помітить?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>commit-msg-хук: він звіряє id у Refs з файлами коміту і відхиляє такий коміт</span></label><label class="opt ok"><input type="radio" name="q4"><span>trace.py --require-refs, попередженням: id існує, але не з області service.py за AREAS</span></label><label class="opt"><input type="radio" name="q4"><span>Нічого: id справжній, тож і хук, і trace.py вважають такий коміт повністю коректним</span></label></div>
+    <div class="why yes">Так. Хук перевіряє формат і наявність id; область — справа таблиці AREAS у trace.py, і це WARN, бо історію не переписують.</div>
+    <div class="why no">Хук не знає, яким областям належать файли, — він перевіряє лише, що Refs є і що це id або none. Без AREAS такий коміт справді пройшов би все; у прогоні без чекліста цього не помітили обидва рецензенти.</div></div>
+  <div class="q"><div class="qt">5. Команда хоче додати до чекліста рецензента пункт «трейлери в останньому абзаці». Що показало вимірювання?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Покриття помилок у трейлерах помітно зросло; пункт варто лишити й продублювати в шаблоні PR</span></label><label class="opt"><input type="radio" name="q5"><span>Нічого не змінилося; пункт нешкідливий, тож його можна лишити для повноти</span></label><label class="opt ok"><input type="radio" name="q5"><span>Рецензент лаяв правильні трейлери в 5 з 6 PR; пункт прибрали, бо формат перевіряє хук</span></label></div>
+    <div class="why yes">Так. Пункт, що дублює інструмент, не додає покриття, а лише шум: у v2 хибних тривог про трейлери не було.</div>
+    <div class="why no">Пункт не нейтральний: модель тлумачила правильний блок «Refs над Co-Authored-By» як порушення, раз навіть major. Те, що перевіряє хук, з чекліста прибирають.</div></div>
+  <div class="q"><div class="qt">6. Агент відкриває PR одразу як ready for review. Що зміниться, якщо зробити draft станом за замовчуванням?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q6"><span>Власники коду й AI-рев'ю чекають, доки автор прочитає diff і позначить PR готовим</span></label><label class="opt"><input type="radio" name="q6"><span>Draft пропускає обов'язкові перевірки CI, тож агент швидше отримує зворотний зв'язок</span></label><label class="opt"><input type="radio" name="q6"><span>Draft дозволяє агентові самому злити PR після зелених перевірок, без рецензента</span></label></div>
+    <div class="why yes">Так. Draft не зливається, власники коду не отримують запиту, а claude-review.yml пропускає draft — перший підпис людини стоїть перед усім іншим.</div>
+    <div class="why no">CI на draft працює як завжди, а злити draft не може ніхто. Draft лише відкладає запити на рев'ю, доки автор не підтвердить, що прочитав diff.</div></div>
+  <div class="q"><div class="qt">7. PR «чисте переміщення» на 270 рядків з однією зміненою умовою. Що показав експеримент і що вимагає процес?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Модель губила змінену умову серед переміщеного коду, тож потрібна межа в 100 рядків</span></label><label class="opt ok"><input type="radio" name="q7"><span>Модель знаходила умову щоразу, але PR однаково ділять: людина, яка схвалює, її не побачить</span></label><label class="opt"><input type="radio" name="q7"><span>Умову не знайшов ніхто; такі PR треба перевіряти лише детермінованими інструментами</span></label></div>
+    <div class="why yes">Так. Межа розміру й правило «рефакторинг окремо від поведінки» потрібні людині, яка підписує схвалення, а не моделі.</div>
+    <div class="why no">У всіх п'яти прогонах модель позначила змінений код виходу як blocker. Розділяти PR усе одно треба: схвалення ставить людина, а 270 переміщених рядків вона читає по діагоналі.</div></div>
+  <div class="q"><div class="qt">8. Чому рекомендований ruleset для main Lectern не дозволяє squash merge?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q8"><span>Squash вимикає обов'язкові перевірки статусу для злитого коміту на базовій гілці</span></label><label class="opt"><input type="radio" name="q8"><span>Squash несумісний із CODEOWNERS: схвалення власників коду не переноситься на новий squash-коміт</span></label><label class="opt ok"><input type="radio" name="q8"><span>Squash заміняє повідомлення комітів одним, і трейлери Refs окремих комітів можуть зникнути</span></label></div>
+    <div class="why yes">Так. trace.py читає Refs кожного коміту в main; повідомлення squash-коміту складають заново, і трейлери не гарантовано лишаються останнім блоком.</div>
+    <div class="why no">Перевірки статусу й рев'ю власників коду не залежать від методу злиття. Проблема в повідомленні: squash переписує історію, з якої trace.py бере трасування.</div></div>
+  <div class="q"><div class="qt">9. Дворядковий PR r3 (50 кандидатів замість 20) рецензенти пропускали найчастіше. Як це пояснити й виправити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q9"><span>Проблема у вимозі й вимірюваннях, яких немає в diff; рецензенту треба дати текст вимог</span></label><label class="opt"><input type="radio" name="q9"><span>Малі PR модель рецензує поверхово; їх треба об'єднувати в більші перед рев'ю</span></label><label class="opt"><input type="radio" name="q9"><span>Дворядкові зміни рев'ю не потребують; досить зеленого CI і трейлера Refs</span></label></div>
+    <div class="why yes">Так. Суперечність LEC-RAG-003 не видно з diff — так само, як у 12.2; звідси B171: давати рецензентові рядки вимог згаданих сімейств.</div>
+    <div class="why no">Рецензент не бачив тексту вимоги «top-20», тому не міг помітити суперечність. Розмір тут ні до чого, а зелений CI якраз і пропустив усі шість PR.</div></div>
+  <div class="q"><div class="qt">10. Частина команди працює в Codex. Як отримати однакове розкриття AI-допомоги в комітах?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Нічого не робити: Codex за замовчуванням додає Co-authored-by: Codex у кожен коміт</span></label><label class="opt ok"><input type="radio" name="q10"><span>Прописати Assisted-by в AGENTS.md, а формат перевіряти commit-msg-хуком</span></label><label class="opt"><input type="radio" name="q10"><span>Заборонити Codex, бо без вбудованого трейлера розкриття організувати неможливо</span></label></div>
+    <div class="why yes">Так. Атрибуція Codex — політика робочого простору, за замовчуванням вимкнена; конвенція в AGENTS.md + хук дають однаковий результат незалежно від інструмента.</div>
+    <div class="why no">У коді Codex атрибуцію вимкнено, якщо робочий простір її не ввімкнув, тож трейлер не гарантовано. Інструмент не заважає розкриттю: конвенцію задає команда, а формат перевіряє хук.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">12</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>власник злиття</td><td>Той, хто зливає PR, відповідає за зміну в main і за інцидент, хоч би хто написав код.</td></tr>
+<tr><td>розкриття AI-допомоги</td><td>Трейлер у коміті, розділ «AI-асистування» в PR і мітка <code>ai-assisted</code>: що згенеровано і що перевірено.</td></tr>
+<tr><td>правило двох людей</td><td>На P2–P3 зміну схвалює не той, хто її створив; для агентного PR — не той, хто запускав агента.</td></tr>
+<tr><td>чекліст агентного PR</td><td>Сім пунктів рецензента: вимоги, специфікація, послаблені тести, обсяг, згенероване, розмір, розкриття.</td></tr>
+<tr><td>межа розміру PR</td><td>У Lectern 400 змінених рядків без згенерованих файлів; рефакторинг окремо від зміни поведінки.</td></tr>
+<tr><td>draft PR від агента</td><td>Агент відкриває PR чернеткою; ready ставить автор після читання diff.</td></tr>
+<tr><td>commit-msg хук</td><td>Відхиляє трейлери поза останнім абзацом і коміт у <code>src/</code> без <code>Refs</code>.</td></tr>
+<tr><td>id вимоги за областю</td><td>Сімейство id для кожної області коду (<code>service.py</code> → <code>LEC-SVC</code>); <code>trace.py</code> попереджає про id з чужої області.</td></tr>
+<tr><td>CONTRIBUTING для людей і агентів</td><td>Один документ процесу: ролі, конвеєр, розмір, чекліст; агент читає ще й CLAUDE.md/AGENTS.md.</td></tr>
+<tr><td>ruleset гілки</td><td>Набір правил GitHub для гілки: PR, схвалення, власники коду, перевірки, без force push; rulesets можна нашаровувати.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">13</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Модель відповідальності й конвеєр для вашої команди</h3>
+<p>Ролі й власник інциденту, розкриття на трьох рівнях, конвеєр з gate на кожному кроці, правило двох людей, ruleset у вигляді JSON і розбір одного уявного інциденту.</p>
+<h3>2. Виміряти власний чекліст рецензента</h3>
+<p>4–6 агентних PR з мітками до прогону, рецензент із чеклістом і без, що прослизнуло, хибні тривоги, одна зміна чекліста і повторний прогін.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">14</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://docs.kernel.org/process/coding-assistants.html" target="_blank" rel="noopener">Linux kernel — AI Coding Assistants</a><span>агент не ставить Signed-off-by; людина відповідає за внесок; <code>Assisted-by: LLM [TOOL1] [TOOL2]</code></span></li>
+<li><a href="https://llvm.org/docs/AIToolPolicy.html" target="_blank" rel="noopener">LLVM AI Tool Use Policy</a><span>16.01.2026 · людина в циклі, «extractive contribution», трейлер <code>Assisted-by:</code></span></li>
+<li><a href="https://www.qemu.org/docs/master/devel/code-provenance.html" target="_blank" rel="noopener">QEMU — code provenance</a><span>24.06.2025 · відхиляє AI-згенерований внесок</span></li>
+<li><a href="https://wiki.gentoo.org/wiki/Project:Council/AI_policy" target="_blank" rel="noopener">Gentoo Council — AI policy</a><span>14.04.2024 · заборона контенту, створеного AI-інструментами</span></li>
+<li><a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets" target="_blank" rel="noopener">GitHub — Available rules for rulesets</a><span>PR, схвалення, Code Owners, most recent reviewable push, перевірки, merge queue; <a href="https://docs.github.com/en/rest/repos/rules" target="_blank" rel="noopener">REST API rulesets</a></span></li>
+<li><a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners" target="_blank" rel="noopener">GitHub — About code owners</a><span>останній збіг перемагає; право write; автоматичний запит на рев'ю</span></li>
+<li><a href="https://docs.github.com/en/pull-requests/reference/pull-requests" target="_blank" rel="noopener">GitHub — Pull requests reference</a><span>draft не зливається, власники коду не отримують запиту до ready</span></li>
+<li><a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue" target="_blank" rel="noopener">GitHub — Managing a merge queue</a><span>подія <code>merge_group</code>; доступність для приватних репозиторіїв</span></li>
+<li><a href="https://git-scm.com/docs/git-interpret-trailers" target="_blank" rel="noopener">git interpret-trailers</a><span>блок трейлерів — у кінці повідомлення після порожнього рядка; <code>--parse</code></span></li>
+<li><a href="https://docs.github.com/en/pull-requests/committing-changes-to-your-project/creating-and-editing-commits/creating-a-commit-with-multiple-authors" target="_blank" rel="noopener">GitHub — commit with multiple authors</a><span>формат <code>Co-authored-by: name &lt;email&gt;</code></span></li>
+<li><a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Claude Code — settings reference</a><span><code>attribution</code>, <code>attribution.commit</code>/<code>pr</code>, пріоритет інструкцій CLAUDE.md, застарілий <code>includeCoAuthoredBy</code></span></li>
+<li><a href="https://github.com/openai/codex/tree/main/codex-rs/ext/git-attribution" target="_blank" rel="noopener">openai/codex — git-attribution</a><span>атрибуція Codex як політика робочого простору (код, гілка main на 18.10.2026)</span></li>
+<li><a href="https://cursor.com/docs/cli/reference/configuration" target="_blank" rel="noopener">Cursor CLI — configuration</a><span><code>attribution.attributeCommitsToAgent</code>, <code>attributePRsToAgent</code></span></li>
+<li><a href="https://google.github.io/eng-practices/review/developer/small-cls.html" target="_blank" rel="noopener">Google Engineering Practices — Small CLs</a><span>100 рядків — розумно, 1000 — зазвичай забагато</span></li>
+<li><a href="https://research.google/pubs/modern-code-review-a-case-study-at-google/" target="_blank" rel="noopener">Modern Code Review: A Case Study at Google</a><span>ICSE-SEIP 2018 · 9 млн рев'ю, медіана 24 рядки</span></li>
+<li><a href="https://arxiv.org/abs/2507.15003" target="_blank" rel="noopener">The Rise of AI Teammates in Software Engineering 3.0 (AIDev)</a><span>arXiv 2507.15003, 20.07.2025 · 456 тис. агентних PR, частки злитих</span></li>
+<li><a href="https://arxiv.org/abs/2509.14745" target="_blank" rel="noopener">On the Use of Agentic Coding: An Empirical Study of Pull Requests on GitHub</a><span>arXiv 2509.14745 · 567 PR Claude Code, 83,8% злито</span></li>
+<li><a href="https://pre-commit.com/" target="_blank" rel="noopener">pre-commit</a><span><code>default_install_hook_types</code>, стадія <code>commit-msg</code></span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 13.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 13.2 · Senomi<br><br><a href="lesson-62.html">← Урок 13.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-64.html">Урок 13.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

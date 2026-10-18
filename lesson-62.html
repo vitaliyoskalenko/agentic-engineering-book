@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 13.1. Спільний контекст команди: правила, налаштування, власний marketplace</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 13.1 · Модуль 13</div>
+<h1>Спільний контекст команди: правила, налаштування, власний marketplace</h1>
+<p class="lead">Агент бачить репозиторій плюс усе, що лежить на машині розробника, тому два клони одного коміту дали різні вердикти на тій самій задачі. Урок розкладає конфігурацію на спільну й особисту, вимірює дрейф за відбитком середовища і робить з плагіна Lectern каталог команди з версіями, перевіркою в CI і власником у CODEOWNERS.</p>
+<div class="hero-meta"><span class="chip">Командна робота</span><span class="chip t">≈ 55 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 13 розділів</summary><nav class="toc"><a href="#why"><b>01</b>Один коміт — різні агенти</a><a href="#layers"><b>02</b>Чотири шари</a><a href="#drift"><b>03</b>Дрейф наживо</a><a href="#marketplace"><b>04</b>Marketplace команди</a><a href="#governance"><b>05</b>Керування спільним контекстом</a><a href="#tools"><b>06</b>Три інструменти</a><a href="#project"><b>07</b>Lectern: каталог команди і B19</a><a href="#mistakes"><b>08</b>Типові помилки</a><a href="#practice"><b>09</b>Практика</a><a href="#quiz"><b>10</b>Квіз</a><a href="#terms"><b>11</b>Терміни уроку</a><a href="#homework"><b>12</b>Домашнє завдання</a><a href="#resources"><b>13</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>розкласти конфігурацію агента на спільну й особисту і назвати шлях рев'ю для кожного шару;</li>
+    <li>відтворити й виміряти дрейф між двома розробниками за відбитком середовища з події <code>init</code>;</li>
+    <li>підключити власний marketplace у проєктних налаштуваннях і не зламати його абсолютним шляхом;</li>
+    <li>вести версії й changelog командного плагіна та ловити ручні правки згенерованої копії в CI;</li>
+    <li>керувати змінами правил: CODEOWNERS, журнал змін конфігурації агента, застарівання правил.</li>
+  </ul>
+</div>
+
+<section class="sec" id="why">
+<div class="sec-h"><span class="num">01</span><h2>Один коміт — різні агенти<span class="sub">Контекст збирається не лише з git</span></h2></div>
+<p>Агент бачить репозиторій <b>плюс</b> усе, що лежить на машині розробника: особисті налаштування, плагіни, MCP-сервери, <code>CLAUDE.local.md</code>, auto memory, стан довіри до теки. Той самий checkout Lectern на машині, де готувався урок: в ізоляції від особистої конфігурації агент отримав <b>30 інструментів і 0 MCP-серверів</b>, з нею — <b>43 інструменти й 8 серверів</b>. Тринадцять інструментів у контексті моделі, яких немає в жодного колеги.</p>
+<div class="note product"><span class="lbl">Продуктове мислення</span>
+<p>«У мене працює» тепер стосується агента. Звіт «агент дає інший вердикт» не відтворити без відбитка середовища, а PR, який агент зробив у невідтворюваному середовищі, рев'юер перевіряє наосліп. Мета уроку — щоб усе, що впливає на результат командної задачі, приходило з git і проходило рев'ю, а особисте лишалося зручністю.</p>
+</div>
+</section>
+
+<section class="sec" id="layers">
+<div class="sec-h"><span class="num">02</span><h2>Чотири шари<span class="sub">Хто володіє, як доставляється, хто рев'юїть</span></h2></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 430" role="img" aria-label="Шари конфігурації агента: організація, каталог команди, репозиторій, особисте">
+  <defs>
+    <marker id="l62a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="8" y="8" width="344" height="86" rx="10" class="bx p"/>
+  <text x="20" y="30" class="tx b">1 · Організація</text>
+  <text x="20" y="49" class="tx s">managed settings: claude.ai, MDM або файл</text>
+  <text x="20" y="66" class="tx s">перекриває всі шари; вимкнути не можна</text>
+  <text x="20" y="83" class="tx s">власник: адміністратор · зміна — політика</text>
+  <path d="M180 94 V 110" class="ln a" marker-end="url(#l62a)"/>
+  <rect x="8" y="114" width="344" height="86" rx="10" class="bx m"/>
+  <text x="20" y="136" class="tx b">2 · Каталог команди (marketplace)</text>
+  <text x="20" y="155" class="tx s">плагіни з версіями: skills, хуки, MCP</text>
+  <text x="20" y="172" class="tx s">доходить через settings: extraKnownMarketplaces</text>
+  <text x="20" y="189" class="tx s">власник: agent-config · PR + нова версія</text>
+  <path d="M180 200 V 216" class="ln a" marker-end="url(#l62a)"/>
+  <rect x="8" y="220" width="344" height="86" rx="10" class="bx t"/>
+  <text x="20" y="242" class="tx b">3 · Репозиторій</text>
+  <text x="20" y="261" class="tx s">.claude/ (CLAUDE.md, settings, skills), .mcp.json</text>
+  <text x="20" y="278" class="tx s">діє після діалогу довіри до теки</text>
+  <text x="20" y="295" class="tx s">власник: команда · PR + CODEOWNERS</text>
+  <path d="M180 306 V 322" class="ln a" marker-end="url(#l62a)"/>
+  <rect x="8" y="326" width="344" height="96" rx="10" class="bx"/>
+  <text x="20" y="348" class="tx b">4 · Особисте</text>
+  <text x="20" y="367" class="tx s">~/.claude/, settings.local.json, CLAUDE.local.md</text>
+  <text x="20" y="384" class="tx s">особисті MCP і плагіни, auto memory</text>
+  <text x="20" y="401" class="tx s">власник: розробник · рев'ю немає</text>
+  <text x="20" y="416" class="tx s a">тут народжується дрейф</text>
+</svg>
+<figcaption>Шари за власником і шляхом рев'ю. Пріоритет налаштувань інший (урок 4.2): managed → <code>--settings</code> → <code>settings.local.json</code> → проєктні → користувацькі. Тобто особистий локальний файл перекриває репозиторій скрізь, де не стоїть managed-ключ.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Що</th><th>Спільне: git і рев'ю</th><th>Особисте: не в git</th></tr></thead>
+<tbody>
+<tr><td data-th="Що">Правила</td><td data-th="Спільне: git і рев&#x27;ю"><code>.claude/CLAUDE.md</code>, <code>.claude/rules/</code>; managed <code>CLAUDE.md</code> організації, який не виключити</td><td data-th="Особисте: не в git"><code>CLAUDE.local.md</code>, <code>~/.claude/CLAUDE.md</code>: шляхи, URL пісочниць, стиль відповідей</td></tr>
+<tr><td data-th="Що">Налаштування, дозволи</td><td data-th="Спільне: git і рев&#x27;ю"><code>.claude/settings.json</code>: <code>allow</code>/<code>ask</code>/<code>deny</code>, режим, хуки</td><td data-th="Особисте: не в git"><code>.claude/settings.local.json</code>: модель, вузький <code>allow</code> для себе</td></tr>
+<tr><td data-th="Що">Хуки</td><td data-th="Спільне: git і рев&#x27;ю">у проєктних налаштуваннях + скрипти в <code>scripts/hooks/</code></td><td data-th="Особисте: не в git">лише такі, що не блокують і не змінюють вивід</td></tr>
+<tr><td data-th="Що">Skills, субагенти</td><td data-th="Спільне: git і рев&#x27;ю"><code>.claude/skills/</code>, <code>.claude/agents/</code>, плагін команди</td><td data-th="Особисте: не в git"><code>~/.claude/skills/</code> без назв, що збігаються з командними</td></tr>
+<tr><td data-th="Що">MCP-сервери</td><td data-th="Спільне: git і рев&#x27;ю"><code>.mcp.json</code> із закріпленими версіями</td><td data-th="Особисте: не в git"><code>~/.claude.json</code>: власні сервери, не заміна командних</td></tr>
+<tr><td data-th="Що">Плагіни</td><td data-th="Спільне: git і рев&#x27;ю"><code>extraKnownMarketplaces</code> + <code>enabledPlugins</code> у <code>.claude/settings.json</code></td><td data-th="Особисте: не в git">user scope; вимкнути командний — <code>false</code> у <code>settings.local.json</code></td></tr>
+<tr><td data-th="Що">Auto memory</td><td data-th="Спільне: git і рев&#x27;ю">немає: між машинами не синхронізується</td><td data-th="Особисте: не в git"><code>~/.claude/projects/&lt;repo&gt;/memory/</code>; корисне звідти — PR у CLAUDE.md</td></tr>
+</tbody></table></div>
+<div class="key"><p><b>Правило розподілу.</b> Усе, що змінює вердикт, процес або безпеку, — спільне і проходить рев'ю. Особисте змінює лише зручність. Перевірка: якщо без вашого особистого файла агент дасть інший результат на задачі команди, це правило належить у репозиторій.</p></div>
+<p>Два наслідки пріоритету, які легко переплутати. Перше: <code>false</code> у <code>~/.claude/settings.json</code> не вимикає плагін, який увімкнув проєкт, бо проєкт старший за користувача. Вимикають його в <code>.claude/settings.local.json</code>, а плагін, який примусово ввімкнула організація, не вимикається ніде. Друге: <code>CLAUDE.local.md</code> не перекриває командний CLAUDE.md, а <b>додається</b> до нього. Обидва тексти йдуть у контекст, і модель вирішує конфлікт сама, тож результат не гарантовано.</p>
+</section>
+
+<section class="sec" id="drift">
+<div class="sec-h"><span class="num">03</span><h2>Дрейф наживо<span class="sub">Два розробники, один коміт, різні вердикти</span></h2></div>
+<p><b>Постановка.</b> Чистий репозиторій Lectern (bare) і два клони одного коміту. У кожного «розробника» свій корінь плагінів (<code>CLAUDE_CODE_PLUGIN_CACHE_DIR</code>, як в уроці 6.3), а особисту конфігурацію машини відрізано прапорцями <code>--setting-sources project,local --strict-mcp-config</code>. Промпт, модель, дозволи й <code>--max-turns</code> однакові. Різниця лише особиста:</p>
+<ul>
+<li><b>A</b> колись поставив собі <code>lectern-tools</code> з каталогу в репозиторії (<code>--scope local</code>) і не має <code>CLAUDE.local.md</code>;</li>
+<li><b>B</b> плагіна не ставив, зате тримає дворядковий <code>CLAUDE.local.md</code> зі «швидкою» звичкою.</li>
+</ul>
+<pre class="code" data-lang="markdown"><span class="cm"># Мої нотатки (локально, не в git)</span>
+- Цитати в квізах перевіряю швидко: `grep -F` кожної цитати в samples/lecture.txt.
+  Повний `lectern check` повільний, його все одно ганяє CI.</pre>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — scratch/drift</span></div>
+<pre><span class="ps">$ </span><span class="c">cat run.sh</span>
+dev=$1; tag=$2
+cd &lt;scratch&gt;/$dev || exit 1
+export CLAUDE_CODE_PLUGIN_CACHE_DIR=${PLUG:-&lt;scratch&gt;/home${dev#dev}-plugins}
+claude -p "Перевір цитати квізу samples/quiz-bad-quotes.json за лекцією samples/lecture.txt. Відповідь до 4 рядків: вердикт і номери питань з проблемними цитатами." \
+  --model haiku --setting-sources project,local --strict-mcp-config --max-turns 10 \
+  --allowedTools "Read" "Grep" "Bash(.venv/bin/lectern check *)" "Bash(grep *)" \
+                 "Skill(lectern-tools:check-quiz)" "mcp__plugin_lectern-tools_lectern" \
+  --output-format stream-json --verbose &gt; $tag.jsonl 2&gt; $tag.err
+<span class="ps">$ </span><span class="c">python3 probe.py a-before.jsonl</span>
+fingerprint 2387a26685 · tools 30 · skills 25 · plugins [… 3 вбудовані, 'lectern-tools'] · mcp []
+<span class="ps">$ </span><span class="c">python3 probe.py b-before.jsonl</span>
+fingerprint a8d99e41ef · tools 30 · skills 23 · plugins [… 3 вбудовані] · mcp []</pre>
+<div class="cap">реальні запуски · Claude Code 2.1.302 · 18.10.2026 · шляхи замінено на &lt;scratch&gt;</div></div>
+<p><b>Відбиток</b> (<code>probe.py</code>) — хеш переліків <code>tools</code>, <code>skills</code>, <code>plugins</code> і <code>mcp_servers</code> з події <code>init</code> у stream-json. Різні відбитки означають, що моделі дали різні можливості. Правильна відповідь відома наперед: <code>lectern check</code> бракує питання 2 (цитата з трьох слів при <code>MIN_QUOTE_WORDS</code> = 5) і 4 (цитати немає в лекції).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Конфігурація</th><th>Відбиток</th><th>Почав з grep чи свого скрипта</th><th>Вердикт «2 і 4»</th></tr></thead>
+<tbody>
+<tr><td data-th="Конфігурація">A: плагін особисто, без <code>CLAUDE.local.md</code></td><td data-th="Відбиток">2387…</td><td data-th="Почав з grep чи свого скрипта">0 з 4</td><td data-th="Вердикт «2 і 4»">4 з 4</td></tr>
+<tr><td data-th="Конфігурація">B: без плагіна, нотатка «grep»</td><td data-th="Відбиток">a8d9…</td><td data-th="Почав з grep чи свого скрипта">1 з 4</td><td data-th="Вердикт «2 і 4»">3 з 4</td></tr>
+<tr><td data-th="Конфігурація">B: команда закріпила плагін у репозиторії</td><td data-th="Відбиток">2387…</td><td data-th="Почав з grep чи свого скрипта">2 з 8</td><td data-th="Вердикт «2 і 4»">7 з 8</td></tr>
+<tr><td data-th="Конфігурація">B: + правило команди в CLAUDE.md</td><td data-th="Відбиток">2387…</td><td data-th="Почав з grep чи свого скрипта">0 з 8</td><td data-th="Вердикт «2 і 4»">8 з 8</td></tr>
+</tbody></table></div>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>b-after.jsonl — B, плагін уже закріплено</span></div>
+<pre><span class="y">● Read</span>  samples/quiz-bad-quotes.json, samples/lecture.txt
+<span class="y">● Bash</span>  tr '\n' ' ' &lt; samples/lecture.txt | tr -s ' ' &gt; &lt;tmp&gt; &amp;&amp; grep -cF "пошук, вставка й…" &lt;tmp&gt; …
+<span class="d">  ⎿ 1  1  1  0  1</span>
+<span class="er">Проблемна цитата: питання 4 … Решта чотири цитати (питання 1, 2, 3, 5) знайдено в лекції дослівно.</span>
+<span class="d">result · num_turns 6 · 24,6 с · $0.0072 · is_error false</span></pre>
+<div class="cap">реальний вивід, скорочено · у відбитку той самий <code>lectern-tools:check-quiz</code>, що й в A</div></div>
+<p>Помилка не в <code>grep</code>: переноси рядків модель прибрала сама. Вона втратила правило, якого немає в рядку з <code>grep</code>: мінімум п'ять слів. Особиста нотатка підмінила командний інструмент, а разом з ним і всі правила, зашиті в код.</p>
+<ul>
+<li><b>Закріплення в репозиторії</b> зрівняло інструменти: два відбитки перетворилися на один, але поведінка не змінилася (2 з 8 запусків знову почали з <code>grep</code> або <code>tr</code>). Skill <code>lectern-tools:check-quiz</code> не обрали в жодному з 20 запусків, де він був завантажений, бо CLAUDE.md і так називає команду (B160).</li>
+<li><b>Правило команди з причиною</b> в «Citation rule»: «вердикт цитати — лише з <code>lectern check</code>; <code>grep</code>, <code>tr</code> і власні скрипти розходяться з ним на переносах і коротких цитатах; це правило перемагає особисту нотатку». Після нього 8 з 8 запусків почали з <code>lectern check</code>, медіана — 3 ходи й $0,0039.</li>
+</ul>
+<div class="note warn"><span class="lbl">Чесно про вибірку</span>
+<p>3 з 12 проти 0 з 8 — це сигнал, а не статистика (за базової частоти 25% вісім чистих запусків поспіль трапляються приблизно в 10% випадків). Переконує механізм, видимий у кроках: обидва хибні вердикти прийшли саме з тієї звірки, яку радить нотатка. Усього 24 запуски на Haiku й одна проба коштували $0,118.</p>
+</div>
+<h3>Де ще ховається дрейф</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Джерело</th><th>Механізм</th><th>Як побачити</th></tr></thead>
+<tbody>
+<tr><td data-th="Джерело">Особисті MCP-сервери</td><td data-th="Механізм"><code>~/.claude.json</code> додає інструменти в кожен репозиторій: виміряно 30 → 43</td><td data-th="Як побачити"><code>init.mcp_servers</code>, <code>/mcp</code></td></tr>
+<tr><td data-th="Джерело">Сесійний плагін</td><td data-th="Механізм"><code>--plugin-dir</code> з тим самим ім'ям витісняє встановлену копію на цю сесію</td><td data-th="Як побачити"><code>claude --plugin-dir … plugin list</code>: <code>name@inline</code></td></tr>
+<tr><td data-th="Джерело"><code>settings.local.json</code></td><td data-th="Механізм">старший за проєкт: власні <code>allow</code>, модель, <code>false</code> для командного плагіна</td><td data-th="Як побачити"><code>/permissions</code>, <code>/doctor</code></td></tr>
+<tr><td data-th="Джерело"><code>CLAUDE.local.md</code></td><td data-th="Механізм">додається до правил; у репозиторії на <code>AGENTS.md</code> сама його наявність вимикає читання <code>AGENTS.md</code> для цього розробника</td><td data-th="Як побачити"><code>/context</code> → Memory files</td></tr>
+<tr><td data-th="Джерело">Довіра до теки</td><td data-th="Механізм">без неї проєктні <code>allow</code> ігноруються з попередженням, а <code>extraKnownMarketplaces</code> — мовчки</td><td data-th="Як побачити">stderr у <code>-p</code>; плагіна немає в <code>init.plugins</code></td></tr>
+<tr><td data-th="Джерело">Auto memory</td><td data-th="Механізм">окрема на кожній машині: чого «навчився» агент одного, не знає агент іншого</td><td data-th="Як побачити"><code>/memory</code></td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="marketplace">
+<div class="sec-h"><span class="num">04</span><h2>Marketplace команди<span class="sub">Каталог у репозиторії, версії, рев'ю</span></h2></div>
+<p>Механіку плагінів і каталогів розібрано в уроці 6.3. Тут — як зробити з каталогу командний актив: репозиторій сам пропонує його кожному, хто відкрив проєкт, а зміни доходять передбачувано.</p>
+<pre class="code" data-lang="json"><span class="cm">// .claude/settings.json Lectern (фрагмент)</span>
+<span class="s">"extraKnownMarketplaces"</span>: {
+  <span class="s">"lectern"</span>: { <span class="s">"source"</span>: { <span class="s">"source"</span>: <span class="s">"directory"</span>, <span class="s">"path"</span>: <span class="s">"./plugin"</span> } }
+},
+<span class="s">"enabledPlugins"</span>: { <span class="s">"lectern-tools@lectern"</span>: <span class="k">true</span> }</pre>
+<ul>
+<li><b>Ключ</b> у <code>extraKnownMarketplaces</code> — поле <code>name</code> з <code>marketplace.json</code>, у <code>enabledPlugins</code> — <code>плагін@каталог</code>. Відносний шлях <code>directory</code> рахується від основного checkout, тож усі worktree ділять один каталог.</li>
+<li><b>Довіра.</b> Інтерактивно каталог реєструється лише після діалогу довіри до теки. У <code>-p</code> він працює тільки там, де довіру вже прийняли, а в хмарних сесіях не додається взагалі. <code>enabledPlugins</code> із репозиторію діє з першої сесії, але ввімкнути можна лише вже відомий каталог.</li>
+<li><b>Плагін з відносним шляхом</b> усередині каталогу встановлюється з самих налаштувань. Плагін із зовнішнім джерелом (власний GitHub-репозиторій) — ні: кожен бачить <code>Plugin "…" is enabled in project settings but isn't installed</code>, доки не виконає <code>claude plugin install … --scope project</code>.</li>
+<li><b>Інші репозиторії</b>, тобто курси авторів, підключають той самий каталог з git: <code>"source": {"source": "github", "repo": "&lt;org&gt;/lectern"}</code>. Автооновлення для сторонніх каталогів типово вимкнене; <code>"autoUpdate": true</code> у записі каталогу вмикає фонове оновлення.</li>
+</ul>
+<h3>Пастка: «зареєструй для проєкту» однією командою</h3>
+<p>У B, щоб зімітувати прийняту довіру, ми виконали <code>claude plugin marketplace add ./plugin --scope project</code>. Команда переписала закомічений <code>.claude/settings.json</code>:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — devB</span></div>
+<pre><span class="ps">$ </span><span class="c">claude plugin marketplace add ./plugin --scope project</span>
+✔ Successfully added marketplace: lectern (declared in project settings)
+<span class="ps">$ </span><span class="c">git diff --stat</span>
+ .claude/settings.json | 46 <span class="ok">+++++++++++++++++++++++</span><span class="er">-----------------------</span>
+<span class="ps">$ </span><span class="c">git diff | grep path</span>
+<span class="er">-        "path": "./plugin"</span>
+<span class="ok">+        "path": "&lt;scratch&gt;/devB/plugin"</span></pre>
+<div class="cap">реальний вивід · 18.10.2026 · решта diff — ключі, впорядковані за алфавітом · повний diff: console/drift/marketplace-add-project.diff</div></div>
+<p>Абсолютний шлях до клону B ні в кого іншого не працює, а перестановка ключів ховає справжню зміну в 46-рядковому diff. Командний запис правлять руками й рев'юять; в Lectern це ловить <code>scripts/sync_plugin.py</code> (крок проєкту нижче).</p>
+<h3>Версії: коли зміна доходить до людей</h3>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Звідки каталог</th><th>Як вантажиться плагін</th><th>Що потрібно, щоб зміна дійшла</th></tr></thead>
+<tbody>
+<tr><td data-th="Звідки каталог">Локальна тека (<code>directory</code>), наш репозиторій</td><td data-th="Як вантажиться плагін">на місці, з робочої копії</td><td data-th="Що потрібно, щоб зміна дійшла"><code>git pull</code> і нова сесія або <code>/reload-plugins</code>; <code>version</code> ні на що не впливає</td></tr>
+<tr><td data-th="Звідки каталог"><code>github</code> / <code>git</code>, інші репозиторії</td><td data-th="Як вантажиться плагін">копія в <code>cache/&lt;каталог&gt;/&lt;плагін&gt;/&lt;version&gt;/</code></td><td data-th="Що потрібно, щоб зміна дійшла">нова <code>version</code> у <code>plugin.json</code>; з тією самою версією <code>claude plugin update</code> відповідає «already at the latest version»</td></tr>
+<tr><td data-th="Звідки каталог">Managed-політика організації</td><td data-th="Як вантажиться плагін">реєструється на кожній машині на старті сесії</td><td data-th="Що потрібно, щоб зміна дійшла">те саме плюс <code>autoUpdate</code> у managed-записі</td></tr>
+</tbody></table></div>
+<p>Тому плагін команди має <b>changelog</b> (запис <code>## &lt;version&gt;</code> на кожну версію) і реліз-тег. <code>claude plugin tag</code> перевіряє, що <code>plugin.json</code> і запис у каталозі називають ту саму версію:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — team</span></div>
+<pre><span class="ps">$ </span><span class="c">claude plugin tag ./plugin/plugins/lectern-tools --dry-run</span>
+Plugin:  lectern-tools
+Version: 0.2.0 (from plugin.json)
+Marketplace entry: plugins[0] in &lt;scratch&gt;/team/plugin/.claude-plugin/marketplace.json
+Tag:     lectern-tools--v0.2.0
+<span class="ok">✔ Dry run — would create tag lectern-tools--v0.2.0 at HEAD in &lt;scratch&gt;/team</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.302 · 18.10.2026 · <code>claude plugin validate</code> каталогу й плагіна (<code>--strict</code>) — <code>Validation passed</code></div></div>
+<h3>Шар організації</h3>
+<p>Ті самі два ключі в managed-налаштуваннях (урок 8.4) реєструють каталог на всіх машинах і вмикають плагін так, що вимкнути його в себе не можна. <code>false</code> у managed <code>enabledPlugins</code> блокує плагін на всіх рівнях і ховає його з каталогу. Доставка — server-managed (claude.ai, Teams або Enterprise, роль Owner), MDM або файл; типово діє лише одне з цих джерел. Для CI без мережі каталог передають через <code>CLAUDE_CODE_PLUGIN_SEED_DIR</code>. У <code>-p</code> плагіни ставляться у фоні, тож на першому ході плагіна може ще не бути, і <code>CLAUDE_CODE_SYNC_PLUGIN_INSTALL=1</code> змушує чекати встановлення.</p>
+</section>
+
+<section class="sec" id="governance">
+<div class="sec-h"><span class="num">05</span><h2>Керування спільним контекстом<span class="sub">Конфігурацію агента рев'юять як код</span></h2></div>
+<p>Хук, MCP-сервер і skill з <code>allowed-tools</code> виконують команди на машині кожного колеги. CLAUDE.md змінює поведінку всіх агентів команди без жодного рядка коду. Отже це код, і процес для нього той самий:</p>
+<ol class="steps">
+<li><b>Власник і обов'язкове рев'ю.</b> CODEOWNERS на <code>.claude/</code>, <code>.mcp.json</code>, <code>scripts/hooks/</code>, <code>plugin/</code>. Діє останній збіг, тож загальне правило <code>*</code> ставлять першим. Власник має мати право write, а обов'язковим рев'ю робить «Require review from Code Owners» у захисті гілки або ruleset.</li>
+<li><b>Агент не править свої рамки мовчки.</b> <code>ask</code> на <code>Edit(./.claude/settings.json)</code>, <code>Edit(./scripts/hooks/**)</code>, а тепер і <code>Edit(./plugin/**)</code>.</li>
+<li><b>Автоматичні перевірки в CI.</b> Команди й шляхи з CLAUDE.md і skills звіряє <code>check_context.py</code> (урок 5.4), версію й копію плагіна — <code>sync_plugin.py</code>, промпти й skill генерації — evals (урок 12.3).</li>
+<li><b>Журнал змін конфігурації агента.</b> У changelog коду цих змін не видно: поведінка змінилася, код ні. Кожен запис: що змінили, навіщо і чим виміряли. Приклад з Lectern: «правило "вердикт лише з <code>lectern check</code>" — особиста нотатка з <code>grep</code> давала хибний вердикт; 0 з 8 після, 3 з 12 до».</li>
+<li><b>Застарівання правил.</b> Правило коштує токенів у кожній сесії і конкурує за увагу з іншими. Застаріле не видаляють мовчки: позначка <code>(deprecated 2026-10-18: причина, заміна)</code> на один реліз, потім видалення окремим PR. Ознаки: команди чи шляху вже немає (ловить <code>check_context.py</code>); те саме вже перевіряє хук або тест; прогін набору задач з правилом і без нього не показує різниці.</li>
+</ol>
+</section>
+
+<section class="sec" id="tools">
+<div class="sec-h"><span class="num">06</span><h2>Три інструменти<span class="sub">Командний рівень у Claude Code, Codex і Cursor</span></h2></div>
+<p>Відповідності файлів і ключів зібрано в уроці 4.5. Тут лише те, як кожен інструмент роздає конфігурацію команді.</p>
+<div class="tabs">
+<input type="radio" name="team-t" id="team-t1" checked><input type="radio" name="team-t" id="team-t2"><input type="radio" name="team-t" id="team-t3">
+<div class="tab-l"><label for="team-t1">Claude Code</label><label for="team-t2">Codex</label><label for="team-t3">Cursor</label></div>
+<div class="tab-p">
+<ul>
+<li><b>Репозиторій:</b> <code>.claude/settings.json</code>, <code>.claude/CLAUDE.md</code>, <code>.mcp.json</code>; каталог плагінів через <code>extraKnownMarketplaces</code> + <code>enabledPlugins</code>, після довіри до теки.</li>
+<li><b>Організація:</b> managed-налаштування (server-managed, MDM, файл) і managed <code>CLAUDE.md</code>, який не можна виключити через <code>claudeMdExcludes</code>.</li>
+<li><b>Особисте поверх репозиторію:</b> <code>settings.local.json</code> старший за проєкт, тож командне правило обходиться локально скрізь, де немає managed-ключа.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Репозиторій:</b> <code>.codex/config.toml</code>, лише в довірених проєктах. Порядок: прапорці CLI → проєктний config (найближчий до cwd) → профіль → <code>~/.codex/config.toml</code> → хмарні managed-типові → <code>/etc/codex/config.toml</code>. Проєкт старший за користувача, як і в Claude Code, але окремого «локального» файла немає.</li>
+<li><b>Плагіни для репозиторію:</b> каталог <code>.agents/plugins/marketplace.json</code>, увімкнення — у проєктному <code>.codex/config.toml</code>:</li>
+</ul>
+<pre class="code" data-lang="toml">[plugins.<span class="s">"lectern-tools@lectern"</span>]
+enabled = <span class="k">true</span></pre>
+<ul>
+<li><b>Організація:</b> <code>requirements.toml</code> — обмеження, які користувач не перекриє (approval policy, sandbox, хуки, дозволені MCP); адміністратор робочого простору імпортує каталог з GitHub із щоденною синхронізацією, і серед підтримуваних форматів є <code>.claude-plugin/marketplace.json</code>.</li>
+</ul>
+</div>
+<div class="tab-p">
+<ul>
+<li><b>Репозиторій:</b> Project Rules у <code>.cursor/rules/*.mdc</code> під версійним контролем.</li>
+<li><b>Організація:</b> Team Rules з дашборда (плани Team і Enterprise) потрапляють у контекст Agent у всіх репозиторіях команди. Адміністратор позначає правило обов'язковим, і тоді його не вимкнути в Customize; необов'язкові користувач вимикає.</li>
+<li><b>Пріоритет:</b> Team Rules → Project Rules → User Rules, і при конфлікті перемагає <b>раніше</b> джерело. Особисте правило не перекриває командне, тоді як у Claude Code <code>settings.local.json</code> старший за проєктний файл.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Lectern: каталог команди і B19<span class="sub">sync_plugin.py, налаштування, CODEOWNERS</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 13.1 · каталог команди і B19</div><div class="pb">
+<p><b>B19:</b> <code>plugin/…/skills/generate-quiz/</code> — копія <code>.claude/skills/generate-quiz/</code>. Поки що вони збігаються байт у байт, але нічого не заважає комусь виправити одну з них. Тоді розробники Lectern тестують одне, а автори курсів отримують інше. Рішення: копія генерується, CI перевіряє і її, і версію плагіна.</p>
+<pre class="code" data-lang="python"><span class="cm"># scripts/sync_plugin.py (скорочено) — check | write, exit 0 / 1 / 2</span>
+<span class="k">def</span> problems(lay: Layout) -&gt; list[str]:
+    out = [f<span class="s">"{d} — run scripts/sync_plugin.py write"</span> <span class="k">for</span> d <span class="k">in</span> copy_drift(lay)] + wiring(lay)
+    ver, lock = version(lay), read_lock(lay)          <span class="cm"># plugin.json і plugin/plugin.lock.json</span>
+    out += [f<span class="s">"marketplace.json says {PLUGIN} {v}, plugin.json says {ver}"</span>
+            <span class="k">for</span> v <span class="k">in</span> marketplace_versions(lay) <span class="k">if</span> v != ver]
+    <span class="k">if not</span> logged(lay, ver):                          <span class="cm"># "## 0.2.1" у CHANGELOG.md плагіна</span>
+        out.append(f<span class="s">"CHANGELOG.md has no '## {ver}' entry"</span>)
+    <span class="k">if</span> lock.get(<span class="s">"version"</span>) == ver <span class="k">and</span> lock.get(<span class="s">"sha256"</span>) != content_hash(lay):
+        out.append(f<span class="s">"content changed but version is still {ver}: bump it …"</span>)
+    <span class="k">elif</span> lock.get(<span class="s">"version"</span>) != ver:
+        out.append(f<span class="s">"plugin.lock.json records {lock.get('version')}, plugin.json {ver} — run write"</span>)
+    <span class="k">return</span> out
+
+<span class="k">def</span> content_hash(lay: Layout) -&gt; str:
+    <span class="s">"""Усе, що отримує користувач, крім самого поля version і changelog;
+    dot-claude-plugin/ (кіт курсу) хешується як .claude-plugin/."""</span></pre>
+<ul>
+<li><b>Копія:</b> зайві, відсутні й відмінні файли (без <code>__pycache__</code>); <code>write</code> копіює теку повністю.</li>
+<li><b>Версія:</b> хеш вмісту кожної версії лежить у <code>plugin/plugin.lock.json</code>. Новий вміст під старою версією — помилка, бо користувачі git-каталогу його не отримають. Нова версія без запису в <code>CHANGELOG.md</code> — теж помилка, і <code>write</code> не переносить lock на незадокументовану версію. Рішення про номер (patch чи minor) лишається людині.</li>
+<li><b>Підключення:</b> проєктні налаштування мають реєструвати <code>lectern</code> відносним шляхом і вмикати <code>lectern-tools@lectern</code>. Абсолютний шлях, який пише <code>marketplace add --scope project</code>, — помилка.</li>
+</ul>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — scratch/l62/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">.venv/bin/python scripts/sync_plugin.py check</span>   <span class="d"># поточний канон, до кроку</span>
+sync_plugin: settings.json: extraKnownMarketplaces has no 'lectern'
+sync_plugin: settings.json: enabledPlugins does not enable lectern-tools@lectern
+sync_plugin: CHANGELOG.md has no '## 0.2.0' entry
+sync_plugin: plugin.lock.json records None, plugin.json 0.2.0 — run write
+<span class="ps">$ </span><span class="c">printf "\n4. Gate is optional when the user is in a hurry.\n" &gt;&gt; plugin/plugins/lectern-tools/skills/generate-quiz/SKILL.md</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/sync_plugin.py check</span>
+<span class="er">sync_plugin: differs: SKILL.md — run scripts/sync_plugin.py write
+sync_plugin: content changed but version is still 0.2.0: bump it in plugin.json, add a CHANGELOG.md entry, then run write</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/sync_plugin.py write</span>   <span class="d"># ручну правку копії затерто джерелом</span>
+ok: lectern-tools 0.2.0, generate-quiz copy matches dot-claude/skills/generate-quiz
+<span class="ps">$ </span><span class="c">printf "5. Name the lecture file in the report.\n" &gt;&gt; dot-claude/skills/generate-quiz/SKILL.md</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/sync_plugin.py write</span>
+<span class="er">sync_plugin: copied, but the content changed under version 0.2.0: bump the version and add a CHANGELOG.md entry, then run write again</span>
+<span class="ps">$ </span><span class="c">.venv/bin/python scripts/sync_plugin.py write</span>   <span class="d"># після 0.2.0 → 0.2.1 і "## 0.2.1" у CHANGELOG.md</span>
+ok: lectern-tools 0.2.1, generate-quiz copy matches dot-claude/skills/generate-quiz
+<span class="ps">$ </span><span class="c">LECTERN_PY=$PWD/.venv/bin/python scripts/check.sh</span>
+== tests: … <span class="ok">509 passed, 1 skipped, 1 xfailed</span> in 19.82s
+== plugin-sync: .venv/bin/python scripts/sync_plugin.py check
+ok: lectern-tools 0.2.0, generate-quiz copy matches dot-claude/skills/generate-quiz
+<span class="ok">all checks passed</span></pre>
+<div class="cap">реальний вивід, скорочено · 18.10.2026 · демо версії відкочено; 498 → 509 тестів (+11 у <code>tests/test_sync_plugin.py</code>) · <code>exit 1</code> після кожного рядка з <code>sync_plugin:</code></div></div>
+<div class="tbl-wrap"><table class="tbl">
+<thead><tr><th>Файл</th><th>Зміна</th></tr></thead>
+<tbody>
+<tr><td><code>dot-claude/settings.json</code></td><td><code>extraKnownMarketplaces.lectern</code> (<code>./plugin</code>), <code>enabledPlugins</code>, <code>ask</code> на <code>Edit(./plugin/**)</code></td></tr>
+<tr><td><code>scripts/sync_plugin.py</code>, <code>tests/test_sync_plugin.py</code>, <code>scripts/check.sh</code></td><td>B19 + крок <code>plugin-sync</code>; 11 тестів, зокрема «імена кіта хешуються як справжні»</td></tr>
+<tr><td><code>plugin/plugin.lock.json</code>, <code>plugin/plugins/lectern-tools/CHANGELOG.md</code></td><td>хеш 0.2.0; історія 0.1.0 і 0.2.0</td></tr>
+<tr><td><code>dot-claude/CLAUDE.kit.md</code></td><td>правило плагіна; «вердикт цитати — лише з <code>lectern check</code>» (з виміру вище)</td></tr>
+<tr><td><code>dot-github/CODEOWNERS</code></td><td><code>@lectern/agent-config</code> на <code>.claude/</code>, <code>.mcp.json</code>, <code>scripts/hooks/</code>, <code>plugin/</code></td></tr>
+<tr><td><code>.gitignore</code></td><td><code>CLAUDE.local.md</code>, <code>.claude/settings.local.json</code>: файл, створений вручну, інакше потрапить у коміт</td></tr>
+<tr><td><code>docs/team-context.md</code></td><td>матриця «спільне чи особисте», доставка плагіна, рев'ю, застарівання, журнал змін конфігурації агента</td></tr>
+</tbody></table></div>
+<p><b>Ваш крок:</b> запустіть <code>scripts/sync_plugin.py check</code>, потім виправте рядок у копії skill всередині <code>plugin/</code> і переконайтеся, що <code>scripts/check.sh</code> падає саме на кроці <code>plugin-sync</code>. Нові пункти беклогу: B160 (подвійний <code>generate-quiz</code> і два ruff-хуки, коли плагін увімкнено в самому Lectern), B161 (у недовіреній теці <code>-p</code> мовчки ігнорує каталог, а <code>--strict-mcp-config</code> вимикає MCP-сервер плагіна), B162 (скрипт відбитка), B163 (<code>claude plugin tag</code> у релізі).</p>
+</div></div>
+</section>
+
+<section class="sec" id="mistakes">
+<div class="sec-h"><span class="num">08</span><h2>Типові помилки<span class="sub">Симптом → причина → що зробити</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Симптом</th><th>Причина</th><th>Що зробити</th></tr></thead>
+<tbody>
+<tr><td data-th="Симптом">«У мене агент робить інакше»</td><td data-th="Причина">особисті MCP, плагіни або <code>CLAUDE.local.md</code></td><td data-th="Що зробити">порівняти відбиток <code>init</code> і <code>/context</code>; правило, що змінює вердикт, — у репозиторій з причиною</td></tr>
+<tr><td data-th="Симптом">Плагін увімкнено в проєкті, але його ні в кого немає</td><td data-th="Причина">каталог не зареєстровано: немає довіри або плагін із зовнішнім джерелом</td><td data-th="Що зробити">плагін з відносним шляхом у каталозі репозиторію; для зовнішнього — <code>claude plugin install … --scope project</code></td></tr>
+<tr><td data-th="Симптом">Виправили плагін, а в авторів стара поведінка</td><td data-th="Причина">git-каталог, та сама <code>version</code></td><td data-th="Що зробити">нова версія + запис у changelog; <code>sync_plugin.py check</code> у CI</td></tr>
+<tr><td data-th="Симптом">46-рядковий diff налаштувань після «реєстрації»</td><td data-th="Причина"><code>marketplace add --scope project</code> впорядкував ключі й записав абсолютний шлях</td><td data-th="Що зробити">відкотити, вписати <code>./plugin</code> руками</td></tr>
+<tr><td data-th="Симптом">«Вимкнув» командний плагін у <code>~/.claude/settings.json</code>, а він працює</td><td data-th="Причина">проєкт старший за користувача</td><td data-th="Що зробити"><code>false</code> у <code>.claude/settings.local.json</code></td></tr>
+<tr><td data-th="Симптом">У CI немає інструментів MCP плагіна</td><td data-th="Причина"><code>--strict-mcp-config</code> прибирає і сервери плагінів; у <code>-p</code> встановлення йде у фоні</td><td data-th="Що зробити">без <code>--strict-mcp-config</code> там, де потрібен плагін; <code>CLAUDE_CODE_SYNC_PLUGIN_INSTALL=1</code></td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">09</span><h2>Практика<span class="sub">Переверніть картку</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">extraKnownMarketplaces</span><span class="h">у проєкті — коли діє?</span></span><span class="b"><span class="t">Після довіри до теки</span><span class="d">у недовіреній теці й у <code>-p</code> там ігнорується мовчки; у хмарних сесіях не діє</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">false у ~/.claude/settings.json</span><span class="h">вимкне плагін проєкту?</span></span><span class="b"><span class="t">Ні</span><span class="d">проєкт старший за користувача; вимикають у <code>settings.local.json</code></span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">відбиток середовища</span><span class="h">з чого?</span></span><span class="b"><span class="t">Подія init</span><span class="d"><code>tools</code>, <code>skills</code>, <code>plugins</code>, <code>mcp_servers</code> у stream-json; різні відбитки — різні можливості моделі</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">та сама version</span><span class="h">git-каталог</span></span><span class="b"><span class="t">Зміна не дійде</span><span class="d">кеш <code>cache/&lt;каталог&gt;/&lt;плагін&gt;/&lt;version&gt;/</code> не оновлюється</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">managed false</span><span class="h">для плагіна</span></span><span class="b"><span class="t">Заблоковано всюди</span><span class="d">на всіх рівнях і приховано з каталогу</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">CLAUDE.local.md</span><span class="h">перекриває CLAUDE.md?</span></span><span class="b"><span class="t">Ні, додається</span><span class="d">обидва тексти в контексті; конфлікт вирішує модель</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">10</span><h2>Квіз<span class="sub">10 ситуацій</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>10 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. Розробниця каже: «мій агент пропускає перевірку цитат, у колег — ні». Репозиторій і коміт ті самі. Що зробити першим?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q1"><span>Порівняти відбиток з події init і список memory files у /context у неї та в CI-запуску тієї ж задачі</span></label><label class="opt"><input type="radio" name="q1"><span>Перевести команду на сильнішу модель, щоб особисті налаштування менше впливали на поведінку</span></label><label class="opt"><input type="radio" name="q1"><span>Дописати в її ~/.claude/CLAUDE.md «завжди запускай lectern check» і закрити питання локально</span></label></div>
+    <div class="why yes">Так. Спершу треба побачити, чим її середовище відрізняється: інструменти, skills, плагіни, MCP і завантажені файли правил. Потім правило, що змінює вердикт, переходить у репозиторій.</div>
+    <div class="why no">Модель не пояснює різниці при однаковому репозиторії, а особиста правка лише лікує симптом в однієї людини. Спершу діагностика: відбиток <code>init</code> і <code>/context</code>.</div></div>
+  <div class="q"><div class="qt">2. У <code>.claude/settings.json</code> є каталог <code>directory: ./plugin</code> і <code>enabledPlugins</code>. Нічний CI на свіжому runner запускає <code>claude -p</code>, і плагіна в <code>init</code> немає. Чому?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>enabledPlugins із проєктного файла в -p ігнорується, тому плагін там вмикають лише через --plugin-dir</span></label><label class="opt ok"><input type="radio" name="q2"><span>Свіжа тека не має прийнятої довіри, а без неї -p мовчки ігнорує extraKnownMarketplaces репозиторію</span></label><label class="opt"><input type="radio" name="q2"><span>Відносний шлях у directory рахується від домашньої теки runner, тож каталог там не знаходиться</span></label></div>
+    <div class="why yes">Так. Ми виміряли це в уроці: відбиток не змінився, і в stderr не було жодного слова про каталог. Для CI підходять seed-тека (<code>CLAUDE_CODE_PLUGIN_SEED_DIR</code>) або <code>--plugin-dir</code>.</div>
+    <div class="why no"><code>enabledPlugins</code> у <code>-p</code> застосовується, а відносний шлях рахується від основного checkout. Причина в тому, що каталог із репозиторію реєструється лише в довіреній теці.</div></div>
+  <div class="q"><div class="qt">3. Ви змінили skill у плагіні, який інші репозиторії беруть з GitHub-каталогу, але <code>version</code> у <code>plugin.json</code> лишили 0.2.0. Що отримають користувачі?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Нову поведінку на наступному старті сесії, бо Claude Code звіряє вміст кешу з репозиторієм</span></label><label class="opt"><input type="radio" name="q3"><span>Нову поведінку лише ті, у кого в записі каталогу ввімкнено autoUpdate, а решта — після update</span></label><label class="opt ok"><input type="radio" name="q3"><span>Стару: оновлення порівнює версію, і за тієї самої 0.2.0 кешована копія лишається на місці</span></label></div>
+    <div class="why yes">Так. Версія — ключ кешу <code>cache/&lt;каталог&gt;/&lt;плагін&gt;/&lt;version&gt;/</code>, і <code>update</code> відповідає «already at the latest version». Звідси правило «новий вміст — нова версія» і <code>sync_plugin.py</code>.</div>
+    <div class="why no">І автооновлення, і ручний <code>update</code> порівнюють обчислену версію, а не файли. Поки <code>version</code> зафіксовано в маніфесті, зміна не дійде навіть до тих, у кого <code>autoUpdate</code> увімкнено.</div></div>
+  <div class="q"><div class="qt">4. Колега хоче вимкнути в себе плагін, який увімкнув проєкт. Куди записати <code>false</code>?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>У ~/.claude/settings.json: це його особистий файл, тому він має пріоритет над командним</span></label><label class="opt ok"><input type="radio" name="q4"><span>У .claude/settings.local.json саме цього проєкту: локальний файл старший за проєктний</span></label><label class="opt"><input type="radio" name="q4"><span>Нікуди: плагін, увімкнений проєктом, вимикається тільки через managed-налаштування</span></label></div>
+    <div class="why yes">Так. Порядок: managed → <code>--settings</code> → local → project → user. Локальний файл перекриває проєкт, а користувацький — ні.</div>
+    <div class="why no">Користувацький файл молодший за проєктний, тож його <code>false</code> не діє. Managed потрібен лише для того, щоб примусово ввімкнути або заблокувати плагін; звичайне вимкнення робиться локально.</div></div>
+  <div class="q"><div class="qt">5. Після закріплення плагіна в репозиторії відбиток B збігся з A, але B ще двічі почав перевірку з <code>grep</code> чи <code>tr</code>. Чому?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q5"><span>Дрейф ішов з особистої інструкції в CLAUDE.local.md, а закріплення інструментів її не зачіпає</span></label><label class="opt"><input type="radio" name="q5"><span>Плагін завантажився частково: --strict-mcp-config прибрав його skill, і B не мав інструмента</span></label><label class="opt"><input type="radio" name="q5"><span>Haiku недетермінована, тож різниця між A і B — шум вибірки, а не наслідок конфігурації</span></label></div>
+    <div class="why yes">Так. Хибні вердикти прийшли саме з тієї звірки, яку радить нотатка. Перекрило її правило команди з причиною: 0 ад-хок запусків з 8.</div>
+    <div class="why no"><code>--strict-mcp-config</code> прибрав MCP-сервер, а skill <code>check-quiz</code> лишився в обох відбитках. Шум є, але в A не було жодного ад-хок запуску з 4, а обидва хибні вердикти B повторюють нотатку.</div></div>
+  <div class="q"><div class="qt">6. Що з цього належить у спільний шар, а не в особистий?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Модель за замовчуванням, яку розробник вважає найзручнішою для своїх щоденних задач</span></label><label class="opt"><input type="radio" name="q6"><span>URL особистої пісочниці й шлях до локальної копії тестових лекцій на його машині</span></label><label class="opt ok"><input type="radio" name="q6"><span>Правило «вердикт цитати дає лише lectern check», бо воно змінює результат перевірки</span></label></div>
+    <div class="why yes">Так. Правило розподілу: те, що змінює вердикт, процес або безпеку, — спільне і проходить рев'ю.</div>
+    <div class="why no">Модель і шляхи пісочниці змінюють зручність, а не результат командної задачі. Правило перевірки цитат змінює вердикт, тому воно спільне.</div></div>
+  <div class="q"><div class="qt">7. Після <code>claude plugin marketplace add ./plugin --scope project</code> ви бачите diff на 46 рядків у <code>.claude/settings.json</code>. Що робити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Закомітити: команда додала потрібний каталог, а нове впорядкування ключів нічого не ламає</span></label><label class="opt ok"><input type="radio" name="q7"><span>Відкотити й вписати запис руками з ./plugin: абсолютний шлях працює лише у вашому клоні</span></label><label class="opt"><input type="radio" name="q7"><span>Лишити зміну локально, а .claude/settings.json додати в .gitignore, щоб не заважати колегам</span></label></div>
+    <div class="why yes">Так. Команда записує шлях до вашого клону і переставляє ключі, через що справжня зміна губиться в diff. В Lectern такий запис ловить <code>sync_plugin.py</code>.</div>
+    <div class="why no">Абсолютний шлях ламає реєстрацію в усіх інших, а ігнорувати командний файл означає втратити весь спільний шар. Запис правлять руками з відносним шляхом.</div></div>
+  <div class="q"><div class="qt">8. Managed-налаштування організації містять <code>"lectern-tools@lectern": false</code>. Розробник ставить <code>true</code> у <code>settings.local.json</code>. Що буде?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Плагін заблоковано на всіх рівнях і приховано з каталогу, тож локальний true нічого не змінює</span></label><label class="opt"><input type="radio" name="q8"><span>Плагін увімкнеться в цьому проєкті, бо локальний файл старший за проєктний і користувацький</span></label><label class="opt"><input type="radio" name="q8"><span>Плагін увімкнеться без хуків і MCP: managed-політика обмежує лише компоненти, що виконують код</span></label></div>
+    <div class="why yes">Так. Managed-рівень старший за все, а <code>false</code> там означає блокування й приховування.</div>
+    <div class="why no">Локальний файл перекриває проєкт і користувача, але не managed-рівень. Часткового ввімкнення за компонентами <code>enabledPlugins</code> не має.</div></div>
+  <div class="q"><div class="qt">9. Правило в CLAUDE.md «перед комітом запускай ruff» дублює PostToolUse-хук, що запускає ruff після кожної правки. Як прибрати правило?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Видалити рядок одразу: дубль хука нічого не дає, а рев'ю такої дрібниці лише гальмує роботу</span></label><label class="opt"><input type="radio" name="q9"><span>Лишити: зайве правило нічого не коштує, а прибирання може непомітно змінити поведінку агента</span></label><label class="opt ok"><input type="radio" name="q9"><span>Позначити deprecated з датою, причиною й заміною (хук), а видалити окремим PR через реліз</span></label></div>
+    <div class="why yes">Так. Позначка попереджає тих, хто на правило спирається, а окремий PR із записом у журналі змін лишає слід, коли й чому правило зникло.</div>
+    <div class="why no">Правило коштує токенів у кожній сесії, тож «нічого не коштує» — неправда. А мовчки видалене правило — та сама зміна поведінки без рев'ю, від якої захищає CODEOWNERS.</div></div>
+  <div class="q"><div class="qt">10. У якому інструменті особисте правило розробника не перекриває командне?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>У Claude Code: проєктний .claude/settings.json старший за всі особисті файли розробника</span></label><label class="opt ok"><input type="radio" name="q10"><span>У Cursor: Team Rules → Project → User, і при конфлікті перемагає те джерело, що раніше</span></label><label class="opt"><input type="radio" name="q10"><span>У Codex: проєктний .codex/config.toml діє навіть у недовірених проєктах і старший за все</span></label></div>
+    <div class="why yes">Так. У Cursor команда переважає особисте, а обов'язкові Team Rules ще й не вимкнути.</div>
+    <div class="why no">У Claude Code <code>settings.local.json</code> старший за проєктний файл. У Codex проєктний config вантажиться лише в довірених проєктах, а прапорці CLI старші за нього.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">11</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>shared vs personal</td><td>Спільна й особиста конфігурація агента. Спільне (git, рев'ю) змінює вердикт, процес і безпеку; особисте (не в git) — лише зручність.</td></tr>
+<tr><td>config drift</td><td>Дрейф між розробниками. Той самий коміт, різні агенти: особисті MCP, плагіни, локальні файли, довіра, auto memory.</td></tr>
+<tr><td>team marketplace</td><td><code>extraKnownMarketplaces</code>: каталог плагінів команди, який репозиторій реєструє в проєктних налаштуваннях; діє після довіри до теки.</td></tr>
+<tr><td>enabledPlugins</td><td><code>плагін@каталог: true</code> у <code>.claude/settings.json</code>; старший за користувача, молодший за local і managed.</td></tr>
+<tr><td>plugin sync check</td><td>CI-перевірка: згенерована копія skill у плагіні збігається з джерелом, новий вміст має нову версію і запис у changelog.</td></tr>
+<tr><td>agent config changelog</td><td>Журнал змін конфігурації агента: записи «що, навіщо, чим виміряли» для правил, дозволів, хуків і плагінів: у changelog коду їх не видно.</td></tr>
+<tr><td>CODEOWNERS</td><td>Обов'язковий рецензент для <code>.claude/</code>, <code>.mcp.json</code>, хуків і плагіна команди.</td></tr>
+<tr><td>org-managed layer</td><td>Шар політики організації: managed-налаштування й managed <code>CLAUDE.md</code>: старші за всі шари, доставляються з claude.ai, MDM або файлом.</td></tr>
+<tr><td>personal override</td><td><code>settings.local.json</code>: локальний файл старший за проєктний; тут вимикають командний плагін, але не managed.</td></tr>
+<tr><td>rule deprecation</td><td>Застарівання правила: позначка deprecated з датою, причиною й заміною на один реліз, потім видалення окремим PR.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">12</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Аудит спільного контексту вашої команди</h3>
+<p>Матриця «спільне чи особисте» для вашого репозиторію, відбиток <code>init</code> на двох машинах (або на машині й у CI), три перенесення з особистого в спільне з виміром до і після.</p>
+<h3>2. Каталог команди з версіями</h3>
+<p>Спроєктуйте marketplace для двох репозиторіїв, правило версій і changelog, перевірку в CI і процес застарівання одного правила.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">13</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://code.claude.com/docs/en/settings" target="_blank" rel="noopener">Claude Code — Settings</a><span>файли налаштувань, «Share settings with your team», пріоритет, <code>settings.local.json</code></span></li>
+<li><a href="https://code.claude.com/docs/en/settings-reference" target="_blank" rel="noopener">Claude Code — Settings reference</a><span><code>extraKnownMarketplaces</code> (типи джерел, довіра, <code>autoUpdate</code>), <code>enabledPlugins</code> (області, вимкнення локально)</span></li>
+<li><a href="https://code.claude.com/docs/en/plugins/org" target="_blank" rel="noopener">Manage Claude Code plugins for your organization</a><span>managed і репозиторні ключі, таблиця «коли застосовуються», seed для CI, <code>CLAUDE_CODE_SYNC_PLUGIN_INSTALL</code></span></li>
+<li><a href="https://code.claude.com/docs/en/plugins/loading" target="_blank" rel="noopener">Plugin loading reference</a><span>завантаження на місці чи з кешу, обчислення версії, «why an update changed nothing»</span></li>
+<li><a href="https://code.claude.com/docs/en/plugins/cli-reference" target="_blank" rel="noopener">Plugin commands reference</a><span><code>plugin validate</code>, <code>plugin tag</code>, <code>--plugin-dir</code> і витіснення встановленої копії</span></li>
+<li><a href="https://code.claude.com/docs/en/plugins/host-marketplace" target="_blank" rel="noopener">Host and maintain a marketplace</a><span>приватний каталог, канали оновлень, ролі автора й адміністратора</span></li>
+<li><a href="https://code.claude.com/docs/en/plugins/manifest-reference" target="_blank" rel="noopener">Plugin manifest reference</a><span>поле <code>version</code> закріплює користувачів до зміни</span></li>
+<li><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">How Claude remembers your project</a><span>області CLAUDE.md, <code>CLAUDE.local.md</code> і <code>AGENTS.md</code>, auto memory на машину</span></li>
+<li><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code — Permissions</a><span>«What runs before you trust a folder»</span></li>
+<li><a href="https://code.claude.com/docs/en/server-managed-settings" target="_blank" rel="noopener">Server-managed settings</a><span>Teams і Enterprise, роль Owner, вибір між server- і endpoint-managed</span></li>
+<li><a href="https://learn.chatgpt.com/docs/config-file/config-basic" target="_blank" rel="noopener">Codex — Config basics</a><span>пріоритет <code>.codex/config.toml</code>, лише довірені проєкти</span></li>
+<li><a href="https://developers.openai.com/plugins/build/plugins" target="_blank" rel="noopener">OpenAI — Build plugins</a><span>«Enable or disable a plugin for a repo»: <code>.agents/plugins/marketplace.json</code> і <code>[plugins."…"]</code></span></li>
+<li><a href="https://learn.chatgpt.com/docs/enterprise/managed-configuration" target="_blank" rel="noopener">Codex — Managed configuration</a><span><code>requirements.toml</code> і managed-типові</span></li>
+<li><a href="https://learn.chatgpt.com/docs/enterprise/plugin-management" target="_blank" rel="noopener">Codex — Plugin management</a><span>імпорт каталогу з GitHub, щоденна синхронізація, підтримка <code>.claude-plugin/marketplace.json</code></span></li>
+<li><a href="https://cursor.com/docs/rules" target="_blank" rel="noopener">Cursor — Rules</a><span>Team Rules з дашборда, обов'язкові правила, порядок Team → Project → User</span></li>
+<li><a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners" target="_blank" rel="noopener">GitHub — About code owners</a><span>останній збіг перемагає, право write, «Require review from Code Owners»</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 13.1 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 13.1 · Senomi<br><br><a href="lesson-61.html">← Урок 12.5</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-63.html">Урок 13.2 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>
