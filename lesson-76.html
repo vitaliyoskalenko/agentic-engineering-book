@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 16.3. Домени 3–5: конфігурація Claude Code; промпти й структурований вивід; контекст і надійність</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M60 16l44 22-44 22-44-22z"/><path d="M16 60l44 22 44-22"/><path d="M16 82l44 22 44-22"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 16.3 · Модуль 16</div>
+<h1>Домени 3–5: конфігурація Claude Code; промпти й структурований вивід; контекст і надійність</h1>
+<p class="lead">Три домени дають 55% питань CCA-F, і в кожному іспит перевіряє одне вміння: покласти правило, формат чи факт туди, де його гарантує механізм, а не добра воля моделі. Для кожного з 18 task statements — правило рішення, типова хибна відповідь, урок курсу і 26 оригінальних сценаріїв із розбором, плюс місця, де гайд розходиться з поточною документацією.</p>
+<div class="hero-meta"><span class="chip">Сертифікаційний трек і фінал</span><span class="chip t">≈ 75 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 13 розділів</summary><nav class="toc"><a href="#weights"><b>01</b>Три домени</a><a href="#d3"><b>02</b>Домен 3</a><a href="#d4"><b>03</b>Домен 4</a><a href="#d5"><b>04</b>Домен 5</a><a href="#drift"><b>05</b>Гайд і документація</a><a href="#traps"><b>06</b>Як читати варіанти</a><a href="#project"><b>07</b>Наскрізний проєкт</a><a href="#drill"><b>08</b>Розбір</a><a href="#practice"><b>09</b>Практика</a><a href="#quiz"><b>10</b>Квіз</a><a href="#terms"><b>11</b>Терміни уроку</a><a href="#homework"><b>12</b>Домашнє завдання</a><a href="#resources"><b>13</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>для кожного з 18 task statements доменів 3–5 назвати правило, за яким іспит обирає відповідь, і дистрактор, на який ловлять найчастіше;</li>
+    <li>вирішити, де живе правило Claude Code: CLAUDE.md, <code>.claude/rules/</code>, skill, субагент, дозвіл чи хук;</li>
+    <li>отримати надійний структурований вивід: схема, <code>tool_choice</code>, валідація, повтор із помилкою — і знати, де повтор марний;</li>
+    <li>обрати тактику контексту й надійності: case facts, обрізання результатів, субагенти, ескалація, калібрування, provenance;</li>
+    <li>розпізнати питання, де відповідь гайда v1.0 розходиться з поведінкою Claude Code і API на 18.10.2026.</li>
+  </ul>
+</div>
+
+<section class="sec" id="weights">
+<div class="sec-h"><span class="num">01</span><h2>Три домени<span class="sub">55% іспиту: що й де перевіряють</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Домен</th><th>Вага · питань з 60</th><th>Сценарії, де він основний</th><th>Task statements</th></tr></thead>
+<tbody>
+<tr><td data-th="Домен">3 · Claude Code Configuration &amp; Workflows</td><td data-th="Вага · питань з 60">20% · ≈12</td><td data-th="Сценарії, де він основний">2 (генерація коду), 4 (продуктивність розробника), 5 (CI)</td><td data-th="Task statements">3.1–3.6</td></tr>
+<tr><td data-th="Домен">4 · Prompt Engineering &amp; Structured Output</td><td data-th="Вага · питань з 60">20% · ≈12</td><td data-th="Сценарії, де він основний">5 (CI), 6 (витяг даних)</td><td data-th="Task statements">4.1–4.6</td></tr>
+<tr><td data-th="Домен">5 · Context Management &amp; Reliability</td><td data-th="Вага · питань з 60">15% · ≈9</td><td data-th="Сценарії, де він основний">1 (підтримка), 2, 3 (дослідження), 6</td><td data-th="Task statements">5.1–5.6</td></tr>
+</tbody></table></div>
+<p>На іспиті — 4 сценарії з 6, тому домен 5 трапляється майже в кожному наборі: він основний у чотирьох сценаріях із шести. Ваги — частка оцінюваних питань, приблизна; у звіті про результат буде відсоток правильних по кожному домену.</p>
+<blockquote class="q-src">
+<p>Коли для критичної бізнес-логіки потрібна певна послідовність інструментів, програмне примусове виконання дає детерміновані гарантії, яких підходи на основі промпту дати не можуть.</p>
+<p class="orig">“When a specific tool sequence is required for critical business logic …, programmatic enforcement provides deterministic guarantees that prompt-based approaches cannot.”</p>
+<cite>Claude Certified Architect – Foundations Exam Guide v1.0, липень 2026 · пояснення до зразка питання</cite>
+</blockquote>
+<p>Розбори зразків у гайді повторюють три правила, і вони вирішують більшість питань доменів 3–5:</p>
+<ol class="steps">
+<li><b>Гарантія — механізмом.</b> Що не можна порушити, тримає код, хук, дозвіл або схема; промпт і CLAUDE.md лише підвищують імовірність.</li>
+<li><b>Пропорційний перший крок.</b> Спершу причина, яку видно з умови (розмитий критерій, бракує прикладу, не те місце для правила), а вже потім класифікатор, нова модель чи інфраструктура.</li>
+<li><b>Корінь, а не симптом.</b> Більше вікно не лікує розпорошену увагу, повтор не створює відсутніх даних, самооцінка впевненості моделі не замінює калібрування.</li>
+</ol>
+</section>
+
+<section class="sec" id="d3">
+<div class="sec-h"><span class="num">02</span><h2>Домен 3<span class="sub">Конфігурація Claude Code і робочі процеси</span></h2></div>
+<p>Домен 3 зводиться до питання «куди покласти». Пам'ять (CLAUDE.md, rules) Claude отримує як <b>контекст, а не примусову конфігурацію</b> — так прямо пише документація, і для блокування дії радить хук <code>PreToolUse</code>. Між завжди завантаженим CLAUDE.md і skill, який підвантажується на вимогу, різниця в тому, скільки коштує правило і хто вирішує його завантажити.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 470" role="img" aria-label="Куди покласти правило: п'ять питань зверху вниз, кожне веде до свого механізму">
+  <defs>
+    <marker id="d3a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="d3b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="8" y="8" width="170" height="66" rx="10" class="bx"/>
+  <text x="17" y="35" class="tx b">Не можна порушити?</text>
+  <text x="17" y="55" class="tx s">гроші, секрети, тести</text>
+  <path d="M178 41 H 192" class="ln a" marker-end="url(#d3a)"/>
+  <rect x="196" y="8" width="156" height="66" rx="10" class="bx p"/>
+  <text x="205" y="30" class="tx b">Хук або дозвіл</text>
+  <text x="205" y="48" class="tx s">PreToolUse; deny для</text>
+  <text x="205" y="63" class="tx s">Edit / Read / Bash</text>
+  <path d="M93 74 V 96" class="ln" marker-end="url(#d3b)"/>
+  <text x="101" y="90" class="tx s">ні</text>
+  <rect x="8" y="100" width="170" height="66" rx="10" class="bx"/>
+  <text x="17" y="127" class="tx b">Завжди і всім?</text>
+  <text x="17" y="147" class="tx s">стандарт команди</text>
+  <path d="M178 133 H 192" class="ln a" marker-end="url(#d3a)"/>
+  <rect x="196" y="100" width="156" height="66" rx="10" class="bx a"/>
+  <text x="205" y="122" class="tx b">CLAUDE.md репо</text>
+  <text x="205" y="140" class="tx s">у git; особисте —</text>
+  <text x="205" y="155" class="tx s">~/.claude, CLAUDE.local</text>
+  <path d="M93 166 V 188" class="ln" marker-end="url(#d3b)"/>
+  <text x="101" y="182" class="tx s">ні</text>
+  <rect x="8" y="192" width="170" height="66" rx="10" class="bx"/>
+  <text x="17" y="219" class="tx b">Лише певні файли?</text>
+  <text x="17" y="239" class="tx s">один тип файлів усюди</text>
+  <path d="M178 225 H 192" class="ln a" marker-end="url(#d3a)"/>
+  <rect x="196" y="192" width="156" height="66" rx="10" class="bx a"/>
+  <text x="205" y="214" class="tx b">.claude/rules/</text>
+  <text x="205" y="232" class="tx s">paths: glob;</text>
+  <text x="205" y="247" class="tx s">вантажиться з файлом</text>
+  <path d="M93 258 V 280" class="ln" marker-end="url(#d3b)"/>
+  <text x="101" y="274" class="tx s">ні</text>
+  <rect x="8" y="284" width="170" height="66" rx="10" class="bx"/>
+  <text x="17" y="311" class="tx b">Запуск на вимогу?</text>
+  <text x="17" y="331" class="tx s">реліз, аудит, рев'ю</text>
+  <path d="M178 317 H 192" class="ln a" marker-end="url(#d3a)"/>
+  <rect x="196" y="284" width="156" height="66" rx="10" class="bx t"/>
+  <text x="205" y="306" class="tx b">Skill / command</text>
+  <text x="205" y="324" class="tx s">/name, argument-hint;</text>
+  <text x="205" y="339" class="tx s">особисте — інше ім'я</text>
+  <path d="M93 350 V 372" class="ln" marker-end="url(#d3b)"/>
+  <text x="101" y="366" class="tx s">ні</text>
+  <rect x="8" y="376" width="170" height="66" rx="10" class="bx"/>
+  <text x="17" y="403" class="tx b">Багато виводу?</text>
+  <text x="17" y="423" class="tx s">розвідка, аналіз</text>
+  <path d="M178 409 H 192" class="ln a" marker-end="url(#d3a)"/>
+  <rect x="196" y="376" width="156" height="66" rx="10" class="bx m"/>
+  <text x="205" y="398" class="tx b">Субагент</text>
+  <text x="205" y="416" class="tx s">context: fork, Explore;</text>
+  <text x="205" y="431" class="tx s">назад — підсумок</text>
+  <text x="8" y="462" class="tx s">Перше «так» зверху вниз визначає механізм.</text>
+</svg>
+<figcaption>Рожеве — примус (хук, дозвіл), синє й зелене — контекст, жовте — ізоляція. Правило може жити у двох місцях: «тести не редагувати» — і в CLAUDE.md (щоб агент не пробував), і в deny (щоб не зміг).</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Task statement</th><th>Що обирає іспит</th><th>Типова хибна відповідь</th><th>Курс</th></tr></thead>
+<tbody>
+<tr><td data-th="Task statement"><b>3.1</b> <i lang="en">Configure CLAUDE.md files with appropriate hierarchy, scoping, and modular organization</i></td><td data-th="Що обирає іспит">Спільне — у CLAUDE.md репозиторію (корінь або <code>.claude/CLAUDE.md</code>), особисте — <code>~/.claude/CLAUDE.md</code> чи <code>CLAUDE.local.md</code>. Великий файл — <code>@import</code> (до чотирьох рівнів вкладення) або <code>.claude/rules/</code>. «Новачок не отримує правил» — шукайте їх у user-рівні; <code>/memory</code> показує, які файли завантажено.</td><td data-th="Типова хибна відповідь">Правило «для всіх» у <code>~/.claude/CLAUDE.md</code> тімліда; ще один розділ у кореневий файл на 900 рядків.</td><td data-th="Курс">4.2, 5.4, 13.1</td></tr>
+<tr><td data-th="Task statement"><b>3.2</b> <i lang="en">Create and configure custom slash commands and skills</i></td><td data-th="Що обирає іспит">Командне — <code>.claude/commands/</code> чи <code>.claude/skills/</code> у git, особисте — <code>~/.claude/…</code> під іншою назвою. Багатослівний вивід — <code>context: fork</code>; <code>argument-hint</code> підказує аргументи. Skill — на вимогу, CLAUDE.md — завжди.</td><td data-th="Типова хибна відповідь">Універсальний стандарт у skill (з'явиться, лише якщо модель вирішить) або процедура на 200 рядків у CLAUDE.md.</td><td data-th="Курс">6.1, 6.3</td></tr>
+<tr><td data-th="Task statement"><b>3.3</b> <i lang="en">Apply path-specific rules for conditional convention loading</i></td><td data-th="Що обирає іспит">Конвенція для типу файлів, розкиданих по дереву, — <code>.claude/rules/x.md</code> з <code>paths</code>-глобом; правило завантажується, коли агент читає чи редагує відповідний файл.</td><td data-th="Типова хибна відповідь">CLAUDE.md у кожній теці (прив'язаний до каталогу) або розділ у кореневому (завжди в контексті, доречність — на здогад моделі).</td><td data-th="Курс">4.2</td></tr>
+<tr><td data-th="Task statement"><b>3.4</b> <i lang="en">Determine when to use plan mode vs direct execution</i></td><td data-th="Що обирає іспит">Багато файлів, кілька прийнятних підходів, архітектурне рішення — plan mode: Claude досліджує й пропонує, але не редагує; далі — пряме виконання затвердженого плану. Одна зрозуміла правка — одразу. Багатослівна розвідка — Explore-субагент.</td><td data-th="Типова хибна відповідь">«Почнемо напряму, у план перейдемо, якщо стане складно», хоча складність видно з умови.</td><td data-th="Курс">4.3, 11.1, 5.5</td></tr>
+<tr><td data-th="Task statement"><b>3.5</b> <i lang="en">Apply iterative refinement techniques for progressive improvement</i></td><td data-th="Що обирає іспит">Проза трактується по-різному — 2–3 приклади «вхід → вихід»; спершу тести, далі ітерації з падіннями; незнайомий домен — interview pattern (Claude ставить питання до реалізації); взаємозалежні проблеми — одним повідомленням, незалежні — по черзі.</td><td data-th="Типова хибна відповідь">Ще детальніший опис прозою; взаємозалежні баги по одному, коли кожна правка ламає попередню.</td><td data-th="Курс">11.2, 5.3, 11.1</td></tr>
+<tr><td data-th="Task statement"><b>3.6</b> <i lang="en">Integrate Claude Code into CI/CD pipelines</i></td><td data-th="Що обирає іспит"><code>-p</code>, інакше процес чекає вводу; <code>--output-format json</code> з <code>--json-schema</code> → поле <code>structured_output</code>; контекст CI (стандарти тестів, фікстури, критерії рев'ю) — через CLAUDE.md. Рев'ю веде окремий екземпляр, а не сесія-автор. Повторне рев'ю отримує попередні знахідки й повідомляє лише нові чи невиправлені; генерація тестів бачить наявні тести.</td><td data-th="Типова хибна відповідь">Вигадані прапорці й змінні (<code>--batch</code>, <code>CLAUDE_HEADLESS</code>); markdown, який парсять regex-ом; «відповідай лише JSON» у промпті.</td><td data-th="Курс">4.4, 12.2, 15.4</td></tr>
+</tbody></table></div>
+<h3>Інструкція проти примусу: одне слово в правилі</h3>
+<p>Те саме прохання «створи <code>docs/note.md</code> інструментом Write» у двох чистих репозиторіях, які відрізняються одним словом у deny-правилі.</p>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — perm-writ, потім perm-edit</span></div>
+<pre><span class="ps">$ </span><span class="c">cat .claude/settings.json</span>
+{"permissions":{"deny":["Write(docs/**)"]}}
+<span class="ps">$ </span><span class="c">claude -p "Create the file docs/note.md containing the single line: hello. Use the Write tool." --model haiku --setting-sources project --strict-mcp-config --permission-mode acceptEdits --output-format json &gt; run.json</span>
+<span class="ps">$ </span><span class="c">ls docs; jq -r ".permission_denials | length" run.json</span>
+<span class="er">note.md</span>
+0
+
+<span class="ps">$ </span><span class="c">cat .claude/settings.json</span>
+{"permissions":{"deny":["Edit(docs/**)"]}}
+<span class="ps">$ </span><span class="c">claude -p "…той самий промпт…" …ті самі прапорці… &gt; run.json</span>
+<span class="ps">$ </span><span class="c">ls docs; jq -r ".permission_denials | length" run.json</span>
+<span class="ok">2</span></pre>
+<div class="cap">реальний вивід · Claude Code 2.1.302 · claude-haiku-5-5 · 18.10.2026 · $0,0025 і $0,0027 · команду другого прогону скорочено · каталог docs порожній, модель двічі спробувала Write і зупинилась</div></div>
+<p>Файлові правила перевіряються лише як <code>Edit(path)</code> і <code>Read(path)</code>: правило <code>Write(docs/**)</code> Claude Code приймає, але <b>ніколи не застосовує</b> (документація: з v2.1.210, з попередженням на старті інтерактивної сесії; у <code>-p</code> у stderr його не було). Правило без шляху — <code>deny: ["Write"]</code> — діє на рівні інструмента. Для іспиту з цього випливає ширше: «заборонити в CLAUDE.md» — не заборона, і навіть дозвіл — лише стільки, скільки покриває його синтаксис.</p>
+<div class="note warn"><span class="lbl">Пастка CI</span>
+<p>В обох прогонах stderr містив <code>Warning: no stdin data received in 3s, proceeding without it</code>: <code>-p</code> не чекає діалогу, але читає stdin. У джобі без конвеєра додайте <code>&lt; /dev/null</code>. Без <code>-p</code> те саме перенаправлення не допоможе — звідси дистрактор у зразках гайда.</p>
+</div>
+</section>
+
+<section class="sec" id="d4">
+<div class="sec-h"><span class="num">03</span><h2>Домен 4<span class="sub">Промпти й структурований вивід</span></h2></div>
+<p>Домен 4 розводить три речі, які на практиці зливають: <b>критерії</b> (що повідомляти), <b>форму</b> (схема) і <b>зміст</b> (валідація після схеми). Схема зі <code>strict</code> компілюється в граматику: синтаксичних помилок не буде, але сума позицій може не збігатися з total, а значення — опинитися не в тому полі.</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 500" role="img" aria-label="Шлях до надійного структурованого виводу: хто читає, схема, валідація, повтор або людина">
+  <defs>
+    <marker id="d4a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+    <marker id="d4b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar"/></marker>
+  </defs>
+  <rect x="90" y="8" width="180" height="44" rx="10" class="bx m"/>
+  <text x="180" y="35" text-anchor="middle" class="tx b">Хто читає вихід?</text>
+  <path d="M130 52 L 96 82" class="ln" marker-end="url(#d4b)"/>
+  <path d="M230 52 L 264 82" class="ln a" marker-end="url(#d4a)"/>
+  <text x="80" y="70" class="tx s">людина</text>
+  <text x="252" y="70" class="tx s">код</text>
+  <rect x="8" y="86" width="164" height="62" rx="10" class="bx"/>
+  <text x="18" y="108" class="tx b">Промпт + приклади</text>
+  <text x="18" y="126" class="tx s">2–4 приклади задають</text>
+  <text x="18" y="140" class="tx s">формат; правила — межі</text>
+  <rect x="188" y="86" width="164" height="62" rx="10" class="bx a"/>
+  <text x="198" y="108" class="tx b">Схема + strict</text>
+  <text x="198" y="126" class="tx s">граматика: синтаксис</text>
+  <text x="198" y="140" class="tx s">гарантовано, зміст — ні</text>
+  <path d="M240 148 L 110 178" class="ln a" marker-end="url(#d4a)"/>
+  <path d="M290 148 V 178" class="ln a" marker-end="url(#d4a)"/>
+  <rect x="8" y="182" width="164" height="66" rx="10" class="bx t"/>
+  <text x="18" y="204" class="tx b">Tool use, strict</text>
+  <text x="18" y="222" class="tx s">tool_choice: any / tool*</text>
+  <text x="18" y="237" class="tx s">дія або вибір екстрактора</text>
+  <rect x="188" y="182" width="164" height="66" rx="10" class="bx t"/>
+  <text x="198" y="204" class="tx b">JSON outputs</text>
+  <text x="198" y="222" class="tx s">output_config.format;</text>
+  <text x="198" y="237" class="tx s">claude -p --json-schema</text>
+  <path d="M90 248 L 140 274" class="ln a" marker-end="url(#d4a)"/>
+  <path d="M270 248 L 220 274" class="ln a" marker-end="url(#d4a)"/>
+  <rect x="48" y="278" width="264" height="56" rx="10" class="bx m"/>
+  <text x="180" y="301" text-anchor="middle" class="tx b">Валідація змісту в коді</text>
+  <text x="180" y="320" text-anchor="middle" class="tx s">суми, діапазони, посилання, Pydantic</text>
+  <path d="M130 334 L 96 370" class="ln a" marker-end="url(#d4a)"/>
+  <path d="M230 334 L 264 370" class="ln" marker-end="url(#d4b)"/>
+  <text x="44" y="356" class="tx s">формат</text>
+  <text x="256" y="356" class="tx s">даних немає</text>
+  <rect x="8" y="374" width="164" height="72" rx="10" class="bx a"/>
+  <text x="18" y="396" class="tx b">Повтор з помилкою</text>
+  <text x="18" y="414" class="tx s">документ + хибний вихід</text>
+  <text x="18" y="429" class="tx s">+ конкретна помилка</text>
+  <rect x="188" y="374" width="164" height="72" rx="10" class="bx p"/>
+  <text x="198" y="396" class="tx b">Без повтору</text>
+  <text x="198" y="414" class="tx s">null у полі або людина;</text>
+  <text x="198" y="429" class="tx s">повтор не створить факт</text>
+  <path d="M20 374 C 2 350, 4 316, 44 306" class="ln d" marker-end="url(#d4b)"/>
+  <text x="8" y="472" class="tx s">* Opus 5.5, Sonnet 5.5, Fable 5.1, Mythos 5.1: any і tool → 400;</text>
+  <text x="8" y="488" class="tx s">там auto + strict з перевіркою виклику або JSON outputs.</text>
+</svg>
+<figcaption>Гайд називає tool use зі схемою найнадійнішим способом; документація на 18.10.2026 додає JSON outputs (<code>output_config.format</code>, GA) — той самий constrained decoding без інструмента. Prefill «{» як заміна не працює: моделі від Claude 4.6 відповідають на нього 400, а JSON outputs несумісні ще й із citations.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Task statement</th><th>Що обирає іспит</th><th>Типова хибна відповідь</th><th>Курс</th></tr></thead>
+<tbody>
+<tr><td data-th="Task statement"><b>4.1</b> <i lang="en">Design prompts with explicit criteria to improve precision and reduce false positives</i></td><td data-th="Що обирає іспит">Категорії «повідомляй / пропускай» з визначенням кожної і прикладом коду на кожен рівень серйозності. Категорію з високою часткою хибних спрацювань тимчасово вимкнути, доки промпт для неї не покращено: вона підриває довіру й до точних категорій.</td><td data-th="Типова хибна відповідь">«Будь консервативним», «лише high-confidence» — загальні слова точності не додають.</td><td data-th="Курс">12.2, 5.1</td></tr>
+<tr><td data-th="Task statement"><b>4.2</b> <i lang="en">Apply few-shot prompting to improve output consistency and quality</i></td><td data-th="Що обирає іспит">Інструкції дають нестабільний формат — 2–4 цільові приклади; для неоднозначних випадків — з поясненням, чому обрано саме цю дію; приклади «це не проблема» проти хибних спрацювань; приклади різних структур документа проти порожніх обов'язкових полів.</td><td data-th="Типова хибна відповідь">П'ятнадцять прикладів «на кожне формулювання» (модель копіює, а не узагальнює) або правила там, де бракує зразка формату.</td><td data-th="Курс">5.1, 5.3</td></tr>
+<tr><td data-th="Task statement"><b>4.3</b> <i lang="en">Enforce structured output using tool use and JSON schemas</i></td><td data-th="Що обирає іспит">Схема як <code>input_schema</code> інструмента зі <code>strict: true</code> — без синтаксичних помилок (без <code>strict</code> схема лише підказка). <code>auto</code> — модель може відповісти текстом; <code>any</code> — мусить викликати один з інструментів; <code>{"type":"tool","name":…}</code> — саме цей. Поле, якого може не бути в документі, — nullable; переліки — <code>enum</code> з <code>"other"</code> + рядок деталі і <code>"unclear"</code>; правила нормалізації формату — у промпт поруч зі схемою.</td><td data-th="Типова хибна відповідь">«Схема гарантує правильні значення»; <code>required</code> для поля, якого в джерелі може не бути, — і модель його вигадує.</td><td data-th="Курс">2.1</td></tr>
+<tr><td data-th="Task statement"><b>4.4</b> <i lang="en">Implement validation, retry, and feedback loops for extraction quality</i></td><td data-th="Що обирає іспит">Повтор — це оригінальний документ, хибний витяг і конкретна помилка валідації. Повтор лікує формат і структуру, але не відсутню в джерелі інформацію. <code>calculated_total</code> поруч зі <code>stated_total</code> і <code>conflict_detected</code> ловлять суперечливе джерело; <code>detected_pattern</code> у знахідках показує, які конструкції дають відхилені спрацювання.</td><td data-th="Типова хибна відповідь">«Спробуй ще раз» без тексту помилки; повтор, коли потрібний документ просто не передали.</td><td data-th="Курс">2.5, 12.3, 14.3</td></tr>
+<tr><td data-th="Task statement"><b>4.5</b> <i lang="en">Design efficient batch processing strategies</i></td><td data-th="Що обирає іспит">Message Batches: −50% до ціни, обробка до 24 год без гарантованої затримки, без багатокрокового tool use в одному запиті, результати в довільному порядку — зіставлення лише за <code>custom_id</code>. Для нічних і тижневих задач, не для pre-merge. Невдалі — повторно лише за <code>custom_id</code>, з виправленням (наприклад, розбити задовгий документ); промпт спершу вивірити на вибірці.</td><td data-th="Типова хибна відповідь">Батч для кроку, на який чекає людина; зіставлення результатів за порядком.</td><td data-th="Курс">1.5, 14.2</td></tr>
+<tr><td data-th="Task statement"><b>4.6</b> <i lang="en">Design multi-instance and multi-pass review architectures</i></td><td data-th="Що обирає іспит">Незалежний екземпляр без контексту автора; великий PR — проходи по файлах плюс окремий інтеграційний прохід; впевненість біля кожної знахідки — для маршрутизації рев'ю, не як фільтр істини.</td><td data-th="Типова хибна відповідь">«Перевір себе ще раз» у тій самій сесії; extended thinking замість незалежного рецензента; голосування кількох прогонів, що глушить справжні, але рідкісні знахідки.</td><td data-th="Курс">11.5, 12.2, 14.1</td></tr>
+</tbody></table></div>
+<h3>4.1 + 4.3 + 4.4 в одному прогоні</h3>
+<p>CI-рев'ю зміни в <code>invoice.py</code>, де є три проблеми: цикл починається з індексу 1, знижка повертає дробові копійки, а коментар обіцяє округлення, якого немає. Промпт задає категорії «що повідомляти» і явно виключає стиль; рівні серйозності визначено через наслідок; схема вимагає <code>detected_pattern</code>.</p>
+<pre class="code" data-lang="text">Report ONLY:
+1) bug: code that returns a wrong result for some valid input;
+2) security: untrusted input reaching a shell, a path or SQL;
+3) comment_contradicts_code: a comment or docstring whose claimed behaviour differs from what the code does.
+Do NOT report naming, style, formatting or missing tests.
+Severity: blocker = a wrong money amount for typical input; major = wrong result only for edge input; minor = misleading text, output still correct.</pre>
+<div class="term" data-nocopy><div class="bar"><i></i><i></i><i></i><span>zsh — review</span></div>
+<pre><span class="ps">$ </span><span class="c">claude -p "$(cat prompt.txt)" --model haiku --setting-sources project --strict-mcp-config --allowedTools "Bash(git diff*)" "Read" --output-format json --json-schema "$(cat schema.json)" &gt; run-a.json</span>
+<span class="ps">$ </span><span class="c">jq -c '.structured_output.findings[] | {line, category, severity, detected_pattern}' run-a.json</span>
+{"line":4,"category":"bug","severity":"blocker","detected_pattern":"range_off_by_one_skips_first_item"}
+{"line":7,"category":"bug","severity":"major","detected_pattern":"float_division_no_rounding"}
+{"line":6,"category":"comment_contradicts_code","severity":"minor","detected_pattern":"comment_claims_rounding_not_performed"}
+<span class="ps">$ </span><span class="c">jq -r '"\(.subtype) · turns \(.num_turns) · \(.duration_ms) ms · $\(.total_cost_usd)"' run-a.json</span>
+<span class="ok">success</span> · turns 3 · 11872 ms · $0.00784333</pre>
+<div class="cap">реальний вивід · Claude Code 2.1.302 · claude-haiku-5-5 · 18.10.2026 · схема: findings[] з enum для category і severity, additionalProperties: false · повна відповідь — у console/review/</div></div>
+<p>Усі три проблеми знайдено, ім'я змінної <code>s</code> (стиль) не згадано. Але один прогін — не вимір точності: другий рядок модель назвала <code>major</code>, хоча за нашим визначенням це <code>blocker</code> (будь-яка знижка дає дробові копійки — типовий вхід). Саме таку розбіжність лікує 4.1: приклад коду на кожен рівень, а не довше визначення. CI читає <code>.structured_output</code> і публікує коментарі; <code>detected_pattern</code> накопичується разом із тим, які знахідки розробники відхилили.</p>
+</section>
+
+<section class="sec" id="d5">
+<div class="sec-h"><span class="num">04</span><h2>Домен 5<span class="sub">Контекст і надійність</span></h2></div>
+<p>Домен 5 питає, що станеться з фактом, помилкою чи невизначеністю, коли вони пройдуть через довгу розмову, підсумок, субагента чи синтез. Відповідь іспиту майже завжди та сама: <b>структурувати й зберегти явно</b> — окремим блоком, полем, файлом, анотацією, — а не сподіватися, що модель «пам'ятатиме» або «врахує».</p>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 470" role="img" aria-label="Симптом і тактика: шість проблем контексту й надійності та механізм для кожної">
+  <defs>
+    <marker id="d5a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <text x="88" y="16" text-anchor="middle" class="tx s">симптом</text>
+  <text x="268" y="16" text-anchor="middle" class="tx s">тактика</text>
+  <rect x="8" y="26" width="160" height="58" rx="10" class="bx p"/>
+  <text x="18" y="50" class="tx b">Губляться числа</text>
+  <text x="18" y="70" class="tx s">суми, дати після підсумку</text>
+  <path d="M168 55 H 180" class="ln a" marker-end="url(#d5a)"/>
+  <rect x="184" y="26" width="168" height="58" rx="10" class="bx t"/>
+  <text x="194" y="50" class="tx b">Блок case facts</text>
+  <text x="194" y="70" class="tx s">щоразу, поза підсумком</text>
+  <rect x="8" y="98" width="160" height="58" rx="10" class="bx p"/>
+  <text x="18" y="122" class="tx b">40 полів, треба 5</text>
+  <text x="18" y="142" class="tx s">результат інструмента</text>
+  <path d="M168 127 H 180" class="ln a" marker-end="url(#d5a)"/>
+  <rect x="184" y="98" width="168" height="58" rx="10" class="bx t"/>
+  <text x="194" y="122" class="tx b">Обрізати поля</text>
+  <text x="194" y="142" class="tx s">у коді, до контексту</text>
+  <rect x="8" y="170" width="160" height="58" rx="10" class="bx p"/>
+  <text x="18" y="194" class="tx b">Розвідка в сесії</text>
+  <text x="18" y="214" class="tx s">сотні рядків виводу</text>
+  <path d="M168 199 H 180" class="ln a" marker-end="url(#d5a)"/>
+  <rect x="184" y="170" width="168" height="58" rx="10" class="bx t"/>
+  <text x="194" y="194" class="tx b">Субагент, Explore</text>
+  <text x="194" y="214" class="tx s">назад — лише підсумок</text>
+  <rect x="8" y="242" width="160" height="58" rx="10" class="bx p"/>
+  <text x="18" y="266" class="tx b">Сесія «пливе»</text>
+  <text x="18" y="286" class="tx s">«зазвичай у таких…»</text>
+  <path d="M168 271 H 180" class="ln a" marker-end="url(#d5a)"/>
+  <rect x="184" y="242" width="168" height="58" rx="10" class="bx t"/>
+  <text x="194" y="266" class="tx b">Scratchpad, /compact</text>
+  <text x="194" y="286" class="tx s">знахідки у файлі; manifest</text>
+  <rect x="8" y="314" width="160" height="58" rx="10" class="bx p"/>
+  <text x="18" y="338" class="tx b">Факт посередині</text>
+  <text x="18" y="358" class="tx s">довгий агрегований вхід</text>
+  <path d="M168 343 H 180" class="ln a" marker-end="url(#d5a)"/>
+  <rect x="184" y="314" width="168" height="58" rx="10" class="bx t"/>
+  <text x="194" y="338" class="tx b">Висновки нагору</text>
+  <text x="194" y="358" class="tx s">деталі під заголовками</text>
+  <rect x="8" y="386" width="160" height="58" rx="10" class="bx p"/>
+  <text x="18" y="410" class="tx b">Джерела суперечать</text>
+  <text x="18" y="430" class="tx s">31% проти 24%</text>
+  <path d="M168 415 H 180" class="ln a" marker-end="url(#d5a)"/>
+  <rect x="184" y="386" width="168" height="58" rx="10" class="bx t"/>
+  <text x="194" y="410" class="tx b">claim → джерело</text>
+  <text x="194" y="430" class="tx s">обидва значення + дати</text>
+  <text x="8" y="464" class="tx s">Prompt caching на іспиті — лише «знати, що існує».</text>
+</svg>
+<figcaption>Жодна тактика не «розширює пам'ять»: кожна зменшує те, що лежить у вікні, або виносить критичне туди, де підсумовування його не торкнеться. Кешування префікса здешевлює повторний контекст, але деталі його реалізації гайд виносить за межі іспиту.</figcaption>
+</figure>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Task statement</th><th>Що обирає іспит</th><th>Типова хибна відповідь</th><th>Курс</th></tr></thead>
+<tbody>
+<tr><td data-th="Task statement"><b>5.1</b> <i lang="en">Manage conversation context to preserve critical information across long interactions</i></td><td data-th="Що обирає іспит">Суми, дати, номери, обіцянки клієнту — у постійний блок case facts поза підсумком історії; результати інструментів обрізати до потрібних полів, перш ніж вони накопичаться; ключові висновки — на початок агрегованого входу, деталі — під заголовками (lost in the middle); субагенти повертають факти з метаданими, а не ланцюжки міркувань; в API щоразу передається повна історія.</td><td data-th="Типова хибна відповідь">Модель з більшим вікном; «підсумовуй ретельніше».</td><td data-th="Курс">1.3, 5.2</td></tr>
+<tr><td data-th="Task statement"><b>5.2</b> <i lang="en">Design effective escalation and ambiguity resolution patterns</i></td><td data-th="Що обирає іспит">Ескалувати, коли клієнт просить людину (одразу, без спроби розслідувати), коли політика мовчить або потрібен виняток, коли немає прогресу. Простий випадок при роздратуванні — визнати його і запропонувати розв'язок; ескалувати, якщо клієнт наполягає. Кілька збігів клієнта — попросити ще ідентифікатор. Критерії з прикладами — у системний промпт.</td><td data-th="Типова хибна відповідь">Ескалація за тоном (sentiment) чи за самооцінкою впевненості моделі; вибір «найімовірнішого» з кількох клієнтів.</td><td data-th="Курс">частково: 2.2, 12.2, 15.3</td></tr>
+<tr><td data-th="Task statement"><b>5.3</b> <i lang="en">Implement error propagation strategies across multi-agent systems</i></td><td data-th="Що обирає іспит">Структурована помилка: тип збою, що пробували, часткові результати, альтернативи. Таймаут — не порожній результат. Транзиєнтне субагент лікує сам, нагору — лише те, що не зміг. У синтезі — анотації покриття: що підтверджено, де прогалина через недоступне джерело.</td><td data-th="Типова хибна відповідь">Порожній список зі статусом успіху; загальне «unavailable»; зупинка всього конвеєра через одне джерело.</td><td data-th="Курс">15.1, 14.2, 7.4</td></tr>
+<tr><td data-th="Task statement"><b>5.4</b> <i lang="en">Manage context effectively in large codebase exploration</i></td><td data-th="Що обирає іспит">Окремі питання — субагентам, головний агент координує; знахідки — у scratchpad-файл, до якого агент повертається; підсумок фази — у початковий контекст наступних субагентів; для відновлення після збою — manifest стану; <code>/compact</code>, коли вікно забите виводом розвідки.</td><td data-th="Типова хибна відповідь">Тягнути одну сесію годинами; «завантажити весь репозиторій».</td><td data-th="Курс">11.3, 5.2, 4.3</td></tr>
+<tr><td data-th="Task statement"><b>5.5</b> <i lang="en">Design human review workflows and confidence calibration</i></td><td data-th="Що обирає іспит">Загальні 97% можуть ховати провал на одному типі документа чи полі — точність по сегментах до того, як зменшувати перевірку. Польова впевненість, відкалібрована на розміченому наборі; стратифікована випадкова вибірка навіть серед high-confidence; низька впевненість і суперечливі джерела — людині першими.</td><td data-th="Типова хибна відповідь">Прибрати перевірку за загальною метрикою; довіряти «сирій» самооцінці моделі.</td><td data-th="Курс">12.3, 9.5</td></tr>
+<tr><td data-th="Task statement"><b>5.6</b> <i lang="en">Preserve information provenance and handle uncertainty in multi-source synthesis</i></td><td data-th="Що обирає іспит">Субагенти повертають мапу claim → джерело (URL чи документ, уривок, дата), синтез її зберігає і зливає. Суперечливі значення — обидва, з атрибуцією; дати публікації чи збору даних, щоб часову різницю не прийняли за суперечність; розділи «встановлено» і «спірне»; формат за типом даних: фінанси — таблиця, новини — проза.</td><td data-th="Типова хибна відповідь">Усереднити або взяти «свіжіше»; стиснути знахідки в підсумок без джерел.</td><td data-th="Курс">1.4, 2.5, 14.2</td></tr>
+</tbody></table></div>
+<div class="note fact"><span class="lbl">Перевірено · 18.10.2026</span>
+<p>Built-in Explore і Plan стартують <b>без ваших CLAUDE.md</b> і знімка git status — щоб розвідка була швидкою й дешевою. Правило, яке має діяти й під час розвідки, передавайте в задачі субагентові або визначте власний субагент: власні CLAUDE.md завантажують, якщо в них не задано <code>omitClaudeMd</code>.</p>
+</div>
+</section>
+
+<section class="sec" id="drift">
+<div class="sec-h"><span class="num">05</span><h2>Гайд і документація<span class="sub">Де відповідь іспиту відстає від продукту</span></h2></div>
+<p>Гайд v1.0 датовано липнем 2026, а Claude Code і API змінюються щотижня. Питання пишуть за task statements гайда, тому на іспиті відповідайте в його логіці; у роботі — за документацією. Розбіжності на 18.10.2026:</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Тема</th><th>Гайд v1.0</th><th>Документація, 18.10.2026</th></tr></thead>
+<tbody>
+<tr><td data-th="Тема"><code>allowed-tools</code> у skill</td><td data-th="Гайд v1.0">Обмежує інструменти під час виконання skill (3.2).</td><td data-th="Документація, 18.10.2026">Дозволяє перелічені інструменти <b>без запиту</b> на хід виклику; «не обмежує, які інструменти доступні». Обмежують <code>disallowed-tools</code> у skill, <code>tools</code> у субагента або deny-правила.</td></tr>
+<tr><td data-th="Тема">Примусовий виклик</td><td data-th="Гайд v1.0"><code>tool_choice: "any"</code> і <code>{"type":"tool"}</code> гарантують структурований вивід (4.3).</td><td data-th="Документація, 18.10.2026">Opus 5.5, Sonnet 5.5, Fable 5.1, Mythos 5.1 відповідають на <code>any</code> і <code>tool</code> 400; ручний extended thinking (<code>type: "enabled"</code>) теж несумісний; на моделях, що приймають примус, він пропускає thinking. Заміна — <code>auto</code> + <code>strict</code> з перевіркою, що виклик відбувся, або JSON outputs.</td></tr>
+<tr><td data-th="Тема">Шлях до JSON</td><td data-th="Гайд v1.0">Tool use зі схемою — найнадійніший спосіб (4.3).</td><td data-th="Документація, 18.10.2026">Плюс JSON outputs: <code>output_config.format</code> (GA), відповідь — JSON за схемою без інструмента; поєднується зі <code>strict</code>-інструментами в одному запиті.</td></tr>
+<tr><td data-th="Тема">Commands і skills</td><td data-th="Гайд v1.0">Два окремі механізми: <code>.claude/commands/</code> і <code>.claude/skills/</code> (3.2).</td><td data-th="Документація, 18.10.2026">Commands «злито в skills»: обидва файли створюють <code>/name</code>; за однакової назви перемагає skill. Старі commands працюють.</td></tr>
+<tr><td data-th="Тема">Кількість прикладів</td><td data-th="Гайд v1.0">2–4 цільові приклади для неоднозначних випадків (4.2).</td><td data-th="Документація, 18.10.2026">«3–5 прикладів для найкращих результатів» — загальна порада про формат. Не суперечність: гайд говорить про точкові приклади до конкретної неоднозначності.</td></tr>
+<tr><td data-th="Тема">Файлові дозволи</td><td data-th="Гайд v1.0">Не згадано.</td><td data-th="Документація, 18.10.2026"><code>Write(path)</code>, <code>NotebookEdit(path)</code>, <code>Glob(path)</code> приймаються, але не перевіряються; працюють <code>Edit(path)</code> і <code>Read(path)</code> (див. прогін вище).</td></tr>
+</tbody></table></div>
+<div class="note tip"><span class="lbl">Як не втратити бал</span>
+<p>Якщо варіант спирається на поведінку, якої вже немає (наприклад, «обмежити інструменти через <code>allowed-tools</code>»), а інші варіанти явно гірші за логікою гайда, обирайте його: питання перевіряє рішення, а не номер версії. Якщо ж варіант вигадує неіснуюче (<code>.claude/config.json</code>, <code>--batch</code>), він хибний за будь-якої версії.</p>
+</div>
+</section>
+
+<section class="sec" id="traps">
+<div class="sec-h"><span class="num">06</span><h2>Як читати варіанти<span class="sub">Шість дистракторів, що повторюються</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Дистрактор</th><th>Чому зазвичай хибний</th><th>Де трапляється</th></tr></thead>
+<tbody>
+<tr><td data-th="Дистрактор">«Посилити інструкцію в промпті / CLAUDE.md»</td><td data-th="Чому зазвичай хибний">Ймовірність, а не гарантія; правильний, лише коли наслідок порушення дешевий.</td><td data-th="Де трапляється">3.1, 4.3, 5.2</td></tr>
+<tr><td data-th="Дистрактор">«Модель сама повідомить впевненість, відсічемо нижче порогу»</td><td data-th="Чому зазвичай хибний">Самооцінка не відкалібрована; придатна лише після калібрування на розміченому наборі.</td><td data-th="Де трапляється">4.1, 4.4, 5.2, 5.5</td></tr>
+<tr><td data-th="Дистрактор">«Більше вікно / сильніша модель / max effort»</td><td data-th="Чому зазвичай хибний">Не лікує розпорошену увагу, розмитий критерій чи відсутні дані.</td><td data-th="Де трапляється">4.6, 5.1, 5.4</td></tr>
+<tr><td data-th="Дистрактор">«Класифікатор, окремий сервіс, ML-модель»</td><td data-th="Чому зазвичай хибний">Інфраструктура до того, як спробували явні критерії і приклади.</td><td data-th="Де трапляється">4.1, 4.2, 5.2</td></tr>
+<tr><td data-th="Дистрактор">«Повторити ще раз / тричі і проголосувати»</td><td data-th="Чому зазвичай хибний">Повтор без помилки нічого не змінює; голосування глушить рідкісні справжні знахідки; відсутній факт повтор не створить.</td><td data-th="Де трапляється">4.4, 4.6</td></tr>
+<tr><td data-th="Дистрактор">«Сховати збій: порожній результат, загальний статус»</td><td data-th="Чому зазвичай хибний">Координатор не відрізнить «нічого немає» від «не дістали» і не обере відновлення.</td><td data-th="Де трапляється">5.3, 5.6</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">07</span><h2>Наскрізний проєкт<span class="sub">Task statements на артефактах Lectern</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 16.3</div><div class="pb">
+<p>Кожен task statement доменів 3–5 у Lectern уже має артефакт — файл, ADR чи урок, де рішення прийнято й перевірено. Новий документ <code>docs/certification/domains-3-5.md</code> зводить їх у карту і додає п'ять питань для самоперевірки з відповідями; рядок у <code>docs/README.md</code> робить його досяжним, і <code>scripts/check_context.py</code> не вважає його сиротою.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>TS</th><th>Артефакт Lectern</th><th>Рішення в ньому</th></tr></thead>
+<tbody>
+<tr><td data-th="TS">3.1</td><td data-th="Артефакт Lectern"><code>.claude/CLAUDE.md</code>, <code>docs/team-context.md</code>, ADR 0006</td><td data-th="Рішення в ньому">командне — у git, особисте — поза ним; застарілий контекст ловить CI</td></tr>
+<tr><td data-th="TS">3.2</td><td data-th="Артефакт Lectern"><code>.claude/skills/generate-quiz/SKILL.md</code></td><td data-th="Рішення в ньому"><code>argument-hint: &lt;lecture.txt&gt; [question-count]</code>; <code>allowed-tools</code> лише для <code>render.py</code> і <code>lectern check</code></td></tr>
+<tr><td data-th="TS">3.3</td><td data-th="Артефакт Lectern"><code>.claude/rules/tests.md</code></td><td data-th="Рішення в ньому"><code>paths: ["tests/**/*.py"]</code></td></tr>
+<tr><td data-th="TS">3.4</td><td data-th="Артефакт Lectern"><code>docs/plans/b50-job-store.md</code>, <code>plansDirectory</code></td><td data-th="Рішення в ньому">план сховища задач затверджено до коду</td></tr>
+<tr><td data-th="TS">3.6</td><td data-th="Артефакт Lectern"><code>.github/workflows/claude-review.yml</code>, <code>prompts/review.md</code>, <code>scripts/batch_generate.sh</code></td><td data-th="Рішення в ньому">рев'ю — порада людині, правила з базової гілки; у пакетній генерації квіз приймає <code>lectern check --json</code>, а не звіт агента</td></tr>
+<tr><td data-th="TS">4.3–4.4</td><td data-th="Артефакт Lectern"><code>agent_api.py</code> (<code>strict: True</code>), <code>tools.py</code> (<code>check_quote</code>, <code>is_error</code>), ADR 0004, 0011</td><td data-th="Рішення в ньому">помилка з підказкою з лекції повертається моделі; ключ відповіді — у коді</td></tr>
+<tr><td data-th="TS">4.6</td><td data-th="Артефакт Lectern"><code>.claude/agents/quiz-critic.md</code>, ADR 0017</td><td data-th="Рішення в ньому">критик без контексту автора, лише читання</td></tr>
+<tr><td data-th="TS">5.2–5.3</td><td data-th="Артефакт Lectern"><code>judge.py</code> (<code>needs_review</code>), <code>runner.py</code>, <code>routing.py</code></td><td data-th="Рішення в ньому">суддя додає людину, але не знімає прапорець; класи відмов вирішують, що робити</td></tr>
+<tr><td data-th="TS">5.5–5.6</td><td data-th="Артефакт Lectern"><code>evals/labels/</code>, <code>docs/spec/quotes.md</code></td><td data-th="Рішення в ньому">калібрування на людських мітках; кожне питання прив'язане до дослівної цитати</td></tr>
+</tbody></table></div>
+<p>Сьогодні: допишіть у свою копію <code>domains-3-5.md</code> один рядок для task statement, якого в Lectern ще немає (наприклад, 4.5 через справжній Message Batches API замість fan-out <code>claude -p</code>), і запустіть <code>scripts/check.sh</code>.</p>
+</div></div>
+</section>
+
+<section class="sec" id="drill">
+<div class="sec-h"><span class="num">08</span><h2>Розбір<span class="sub">26 сценаріїв: 14 тут, 12 у квізі</span></h2></div>
+<p>Сценарії написано для цього уроку в стилі іспиту: обмеження — в умові, чотири варіанти, один найкращий. Розподіл за вагами: домен 3 — 9, домен 4 — 10, домен 5 — 7, кожен task statement — щонайменше один. Спершу оберіть відповідь, потім відкривайте.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Домен</th><th>Тут (розбір)</th><th>У квізі</th></tr></thead>
+<tbody>
+<tr><td data-th="Домен">3 · 9 сценаріїв</td><td data-th="Тут (розбір)">3.1, 3.2, 3.3, 3.5, 3.6</td><td data-th="У квізі">№1 (3.1), №2 (3.2), №3 (3.4), №4 (3.6)</td></tr>
+<tr><td data-th="Домен">4 · 10 сценаріїв</td><td data-th="Тут (розбір)">4.1, 4.2, 4.3, 4.4, 4.5</td><td data-th="У квізі">№5 (4.1), №6 (4.3), №7 (4.4), №8 (4.5), №9 (4.6)</td></tr>
+<tr><td data-th="Домен">5 · 7 сценаріїв</td><td data-th="Тут (розбір)">5.1, 5.2, 5.4, 5.6</td><td data-th="У квізі">№10 (5.1), №11 (5.3), №12 (5.5)</td></tr>
+</tbody></table></div>
+
+<details><summary>3.1 · Монорепо, у якого кореневий CLAUDE.md на 900 рядків</summary><div class="body">
+<p>Кореневий CLAUDE.md монорепо містить стандарти Python-бекенду, Terraform, мобільного клієнта й процес релізу — 900 рядків. Агент у мобільному пакеті застосовує правила Python. Мейнтейнери кожного пакета знають, які стандарти їм потрібні. Найкращий крок?</p>
+<ol type="A">
+<li>Розбити кореневий файл на <code>.claude/rules/python.md</code>, <code>terraform.md</code>, <code>mobile.md</code> без frontmatter — так правила стануть модульними.</li>
+<li>Винести стандарти в окремі файли, а в CLAUDE.md кожного пакета імпортувати через <code>@</code> лише ті, що потрібні цьому пакету.</li>
+<li>Скоротити кореневий файл до 200 рядків, прибравши стандарти, які модель і так знає з навчання.</li>
+<li>Додати на початок кореневого файла інструкцію «застосовуй лише розділ, що відповідає поточному пакету».</li>
+</ol>
+<p><b>Відповідь: B.</b> <code>@import</code> у CLAUDE.md пакета — механізм, яким гайд пропонує вибірково підключати стандарти на основі знань мейнтейнера; CLAUDE.md пакета завантажується, коли агент працює в його теці.</p>
+<ul>
+<li><b>A</b> — rules без <code>paths</code> завантажуються на старті з тим самим пріоритетом, що й <code>.claude/CLAUDE.md</code>: модульність для людей є, для контексту нічого не змінилось.</li>
+<li><b>C</b> — проблема не в довжині, а в тому, що чужі правила лежать поруч; викинуті стандарти просто зникнуть.</li>
+<li><b>D</b> — покладається на здогад моделі, який розділ доречний; саме цього збою ми й позбуваємось.</li>
+</ul>
+</div></details>
+
+<details><summary>3.2 · Персональний варіант командного skill</summary><div class="body">
+<p>У репозиторії є командний skill <code>/release</code> (<code>.claude/skills/release/</code>). Розробниця хоче інший формат changelog для своїх релізів, не змінюючи нічого для колег. Що зробити?</p>
+<ol type="A">
+<li>Додати в свій <code>CLAUDE.local.md</code> інструкцію «у /release використовуй мій формат changelog».</li>
+<li>Відредагувати <code>.claude/skills/release/SKILL.md</code> і додати цей файл у <code>.git/info/exclude</code>, щоб зміна не потрапила в коміт.</li>
+<li>Створити персональний skill з іншою назвою в <code>~/.claude/skills/</code>, наприклад <code>my-release</code>, на основі командного.</li>
+<li>Додати в командний SKILL.md <code>argument-hint: [format]</code> і передавати свій формат аргументом.</li>
+</ol>
+<p><b>Відповідь: C.</b> Персональні варіанти — у <code>~/.claude/skills/</code> під іншою назвою: колеги їх не бачать, а командний skill лишається єдиним джерелом для всіх.</p>
+<ul>
+<li><b>A</b> — дві суперечливі інструкції в контексті; документація попереджає, що за конфлікту Claude може обрати будь-яку.</li>
+<li><b>B</b> — <code>exclude</code> не діє на файли, які git уже відстежує: правка з'явиться в <code>git status</code> і рано чи пізно в коміті.</li>
+<li><b>D</b> — змінює командний файл під одну людину; формат changelog — не параметр релізу для всіх.</li>
+</ul>
+</div></details>
+
+<details><summary>3.3 · Правила для SQL-міграцій у дванадцяти сервісах</summary><div class="body">
+<p>У монорепо 12 сервісів, у кожному <code>migrations/*.sql</code>. Правила zero-downtime (expand → contract, жодного <code>DROP COLUMN</code> в одному релізі з кодом) мають з'являтися лише тоді, коли Claude працює з міграціями, і автоматично охоплювати нові сервіси. Як?</p>
+<ol type="A">
+<li>Створити skill <code>migrations</code> з описом «use when editing SQL migrations», щоб Claude підвантажував правила сам.</li>
+<li>Покласти CLAUDE.md з правилами в кожну з 12 тек <code>migrations/</code> і додати пункт у шаблон нового сервісу.</li>
+<li>Додати розділ «Міграції» в кореневий CLAUDE.md із заголовком, який важко не помітити.</li>
+<li>Створити <code>.claude/rules/migrations.md</code> з <code>paths: ["**/migrations/**/*.sql"]</code>.</li>
+</ol>
+<p><b>Відповідь: D.</b> Path-scoped правило завантажується, коли агент читає або редагує файл, що відповідає глобу, — у будь-якій теці, включно з сервісами, яких ще немає.</p>
+<ul>
+<li><b>A</b> — skill з'являється, коли модель вирішить, що він доречний: це не детерміноване завантаження за шляхом.</li>
+<li><b>B</b> — 12 копій розійдуться, а пункт у шаблоні забудуть; CLAUDE.md прив'язаний до каталогу, а не до типу файлу.</li>
+<li><b>C</b> — правило в контексті завжди, навіть у сесіях без міграцій; «помітність» не робить завантаження умовним.</li>
+</ul>
+</div></details>
+
+<details><summary>3.5 · Конвертер дат, який щоразу трактує «12/10» інакше</summary><div class="body">
+<p>Розробник просить конвертер старих дат курсу («12 жовт.», «2026-10-12», «12/10») в ISO. Тричі уточнював правила прозою, і щоразу «12/10» трактується по-іншому. Домен йому добре знайомий. Найефективніший наступний крок?</p>
+<ol type="A">
+<li>Попросити Claude спершу поставити уточнювальні питання про формати (interview pattern), а потім писати код.</li>
+<li>Дати три пари «вхід → очікуваний вихід», включно з <code>12/10 → 2026-10-12</code>, і тести на них, а далі ітерувати за падіннями.</li>
+<li>Переписати опис детальніше, з окремим абзацом для кожного формату й прикладом неоднозначності.</li>
+<li>Увімкнути вищий effort, щоб модель ретельніше міркувала над неоднозначними форматами.</li>
+</ol>
+<p><b>Відповідь: B.</b> Коли прозу трактують по-різному, 2–3 конкретні приклади і тести — найпряміший спосіб передати перетворення; тест ще й фіксує рішення для наступних змін.</p>
+<ul>
+<li><b>A</b> — interview pattern виявляє міркування, яких розробник не передбачив у незнайомому домені; тут він знає відповідь, бракує лише її однозначного запису.</li>
+<li><b>C</b> — проза вже тричі не спрацювала; четверта версія тієї самої форми — той самий ризик.</li>
+<li><b>D</b> — глибше міркування над неоднозначною вимогою не робить її однозначною.</li>
+</ul>
+</div></details>
+
+<details><summary>3.6 · Знахідки рев'ю для inline-коментарів</summary><div class="body">
+<p>CI-джоба публікує знахідки рев'ю як inline-коментарі через GitHub API. Зараз скрипт витягує їх regex-ом з markdown-відповіді <code>claude -p</code> і приблизно раз на 20 прогонів падає на іншій розмітці. Як виправити?</p>
+<ol type="A">
+<li>Повторювати джобу до трьох разів, якщо regex не знайшов жодної знахідки.</li>
+<li>Додати в промпт «відповідай лише валідним JSON без markdown-обгортки» і розбирати відповідь <code>json.loads</code>.</li>
+<li>Перейти на <code>--output-format stream-json</code> і збирати текст відповіді з подій потоку.</li>
+<li>Запускати з <code>--output-format json --json-schema '&lt;схема знахідок&gt;'</code> і читати поле <code>structured_output</code>.</li>
+</ol>
+<p><b>Відповідь: D.</b> <code>--json-schema</code> дає вихід, перевірений на відповідність схемі, в окремому полі <code>structured_output</code> — без парсингу тексту.</p>
+<ul>
+<li><b>A</b> — «немає знахідок» буває валідним результатом; повтор маскує збій формату і тричі оплачує той самий ризик.</li>
+<li><b>B</b> — інструкція не гарантує формату; це найнижчий рівень гарантій.</li>
+<li><b>C</b> — змінює транспорт, але не форму тексту, який генерує модель.</li>
+</ul>
+</div></details>
+
+<details><summary>4.1 · Серйозність знахідок «пливе»</summary><div class="body">
+<p>Той самий тип дефекту — розіменування можливого <code>None</code> — рев'ю-бот в одному PR позначає <code>major</code>, в іншому <code>minor</code>. У промпті визначено: «major — серйозна проблема, minor — незначна». Що дасть узгоджену класифікацію?</p>
+<ol type="A">
+<li>Явні критерії кожного рівня через наслідок і конкретний приклад коду для кожного рівня.</li>
+<li>Шкала від 1 до 10 замість трьох рівнів, щоб модель могла точніше виразити серйозність.</li>
+<li>Класифікувати кожну знахідку тричі й брати медіану, щоб згладити випадкові коливання.</li>
+<li>Додати до кожної знахідки впевненість і відкидати ті, де вона нижча за 0,7.</li>
+</ol>
+<p><b>Відповідь: A.</b> Нестабільність походить із розмитої межі між рівнями; явні критерії з прикладом коду на кожен рівень цю межу задають.</p>
+<ul>
+<li><b>B</b> — дрібніша шкала з тими самими розмитими межами дає більше розкиду, а не менше.</li>
+<li><b>C</b> — утричі дорожче і стабілізує середнє, але не визначає, де закінчується major.</li>
+<li><b>D</b> — відсіює знахідки, а не класифікує їх; самооцінка впевненості не відкалібрована.</li>
+</ul>
+</div></details>
+
+<details><summary>4.2 · Пауза послуги чи розірвання договору</summary><div class="body">
+<p>Агент підтримки інтернет-провайдера має інструменти <code>pause_service</code> і <code>cancel_contract</code> з детальними описами меж. На запити на кшталт «хочу відпочити від вашого інтернету на літо» він у чверті випадків обирає <code>cancel_contract</code>. Що додати насамперед?</p>
+<ol type="A">
+<li>П'ятнадцять–двадцять прикладів різних формулювань запиту на паузу, щоб покрити всі варіанти.</li>
+<li>Класифікатор намірів перед агентом, який вмикає лише один з двох інструментів.</li>
+<li>Три-чотири приклади неоднозначних запитів із поясненням, чому обрано паузу, а не розірвання, і один — коли справді розірвання.</li>
+<li>Правило в системному промпті «ніколи не викликай cancel_contract без прямого слова "розірвати"».</li>
+</ol>
+<p><b>Відповідь: C.</b> Описи вже детальні, тож бракує демонстрації судження на межі. Цільові приклади з поясненням вибору дозволяють узагальнити на нові формулювання, а контрприклад не дає перегнути в інший бік.</p>
+<ul>
+<li><b>A</b> — масив однотипних прикладів модель копіює, а не узагальнює, і платить за них токенами в кожному запиті.</li>
+<li><b>B</b> — інфраструктура до того, як спробували приклади; класифікатор ламається на тих самих неоднозначних запитах.</li>
+<li><b>D</b> — ключове слово блокує законні розірвання, сформульовані інакше («закрийте мій рахунок»).</li>
+</ul>
+</div></details>
+
+<details><summary>4.3 · Модель вигадує LinkedIn</summary><div class="body">
+<p>Витяг даних із резюме за схемою зі <code>strict: true</code>. Поле <code>linkedin_url</code> — обов'язковий рядок. У 30% резюме LinkedIn немає, і для них модель повертає правдоподібні, але вигадані адреси. Як виправити?</p>
+<ol type="A">
+<li>Додати в схему <code>pattern: "^https://www\\.linkedin\\.com/in/"</code>, щоб модель не могла повернути довільний рядок.</li>
+<li>Лишити поле обов'язковим, але додати в промпт «нічого не вигадуй».</li>
+<li>Перевіряти кожну адресу HTTP-запитом і повторювати витяг, доки сторінка не відкриється.</li>
+<li>Зробити поле nullable і в його описі вказати: <code>null</code>, якщо в документі адреси немає.</li>
+</ol>
+<p><b>Відповідь: D.</b> Обов'язкове поле змушує модель щось туди покласти; nullable дає чесний варіант «немає в джерелі».</p>
+<ul>
+<li><b>A</b> — вигадані адреси якраз відповідають шаблону; граматика гарантує форму, не правдивість.</li>
+<li><b>B</b> — інструкція конфліктує зі схемою, яка вимагає значення; схема перемагає.</li>
+<li><b>C</b> — повтор не створить відсутнього факту, а відкрита сторінка може належати іншій людині.</li>
+</ul>
+</div></details>
+
+<details><summary>4.4 · Третина знахідок відхилена, але невідомо яких</summary><div class="body">
+<p>Розробники відхиляють 35% знахідок рев'ю-бота. Знахідки зберігаються як <code>{file, line, severity, issue}</code>. Команда хоче системно знайти, які конструкції коду породжують хибні спрацювання. Що додати?</p>
+<ol type="A">
+<li>Поле <code>confidence</code> і поріг відсікання, налаштований так, щоб відхилених стало менше 10%.</li>
+<li>Поле <code>detected_pattern</code> у кожній знахідці і звіт відхилень у розрізі цього поля.</li>
+<li>Обов'язковий коментар розробника з причиною відхилення у вільній формі.</li>
+<li>Друге рев'ю тією ж моделлю, яке має підтвердити знахідку перед публікацією.</li>
+</ol>
+<p><b>Відповідь: B.</b> <code>detected_pattern</code> перетворює відхилення на дані, які можна згрупувати: видно, що, наприклад, <code>broad_except_in_cli</code> відхиляють у 90% випадків, і саме цю категорію треба переписати в промпті.</p>
+<ul>
+<li><b>A</b> — підганяє поріг під метрику, не пояснюючи, що саме хибне; самооцінка не відкалібрована.</li>
+<li><b>C</b> — вільний текст важко агрегувати, а заповнюють його неохоче й непослідовно.</li>
+<li><b>D</b> — подвоює вартість і несе той самий упереджений погляд, не показуючи патерну.</li>
+</ul>
+</div></details>
+
+<details><summary>4.5 · SLA 36 годин і батч до 24 годин</summary><div class="body">
+<p>Договір: результат витягу — не пізніше ніж за 36 год після надходження документа. Обробка йде через Message Batches (до 24 год, без гарантованої затримки). Близько 2% запитів падають і потребують повторної відправки. Яка стратегія гарантує SLA?</p>
+<ol type="A">
+<li>Один батч на добу о 00:00, бо більшість батчів завершується протягом години.</li>
+<li>Батч кожні 12 год; невдалі запити — у наступний батч за <code>custom_id</code>.</li>
+<li>Батч кожні 6 год; невдалі запити одразу повторно через синхронний API за <code>custom_id</code>.</li>
+<li>Батч кожні 6 год; невдалі запити — у наступний батч разом із новими документами.</li>
+</ol>
+<p><b>Відповідь: C.</b> Найгірший випадок: документ чекає до 6 год відправки + 24 год обробки = 30 год, лишається 6 год на синхронний повтор. Будь-який повтор через батч додає ще до 24 год.</p>
+<ul>
+<li><b>A</b> — до 24 год очікування + до 24 год обробки = 48; «зазвичай за годину» — не гарантія.</li>
+<li><b>B</b> — 12 + 24 = 36 уже без запасу, а повтор у наступному батчі виводить за SLA.</li>
+<li><b>D</b> — 6 + 24 + 6 + 24 = 60 год для невдалого документа.</li>
+</ul>
+</div></details>
+
+<details><summary>5.1 · Замовлення на 46 полів</summary><div class="body">
+<p>Агент підтримки викликає <code>lookup_order</code>, який повертає 46 полів на замовлення; для рішення про повернення потрібні 5 (статус, дата доставки, сума, спосіб оплати, позиції). Клієнт питає про шість замовлень, і до кінця розмови агент плутає дати. Що змінити?</p>
+<ol type="A">
+<li>Частіше запускати компакцію розмови, щоб старі результати інструментів стискались у підсумок.</li>
+<li>Обрізати результат <code>lookup_order</code> до потрібних полів у коді, до того як він потрапить у контекст.</li>
+<li>Переносити повні результати інструментів у кінець промпту, щоб уникнути ефекту lost in the middle.</li>
+<li>Додати в системний промпт «зважай лише на статус, дату доставки, суму, спосіб оплати і позиції».</li>
+</ol>
+<p><b>Відповідь: B.</b> 41 нерелевантне поле на замовлення множиться на кожен виклик і забирає увагу й токени; обрізати треба до того, як воно накопичиться.</p>
+<ul>
+<li><b>A</b> — компакція стискає вже накопичене і при цьому може загубити якраз дати й суми.</li>
+<li><b>C</b> — переставляє той самий обсяг, не зменшуючи його.</li>
+<li><b>D</b> — поля все одно лежать у контексті; інструкція «не зважай» не звільняє ні токенів, ні уваги.</li>
+</ul>
+</div></details>
+
+<details><summary>5.2 · Політика мовчить про випадок клієнта</summary><div class="body">
+<p>Клієнт мобільного оператора їде на рік на навчання за кордон і просить заморозити тариф на 12 місяців. Політика описує заморозку лише до 3 місяців за медичною довідкою і про інші підстави не каже нічого. Агент технічно може оформити заморозку на будь-який строк. Що він має зробити?</p>
+<ol type="A">
+<li>Ескалювати людині: політика не покриває цей випадок, а рішення про виняток — не рівень агента.</li>
+<li>Оформити заморозку на 3 місяці як найближчий дозволений варіант і повідомити клієнта.</li>
+<li>Відмовити, бо політика прямо дозволяє заморозку лише з медичної причини.</li>
+<li>Оцінити роздратування клієнта й ескалювати, лише якщо тон стане різко негативним.</li>
+</ol>
+<p><b>Відповідь: A.</b> Мовчання політики — прогалина, а не дозвіл і не заборона; гайд прямо називає прогалини й винятки тригерами ескалації.</p>
+<ul>
+<li><b>B</b> — вибір «за аналогією» підміняє рішення, яке агентові не делеговано, і клієнт отримує не те, що просив.</li>
+<li><b>C</b> — трактує мовчання як заборону; рішення про виняток теж належить людині.</li>
+<li><b>D</b> — тон не корелює зі складністю випадку; ескалація за sentiment — ненадійний проксі.</li>
+</ul>
+</div></details>
+
+<details><summary>5.4 · Три години в legacy-монорепо</summary><div class="body">
+<p>Агент досліджує legacy-монорепо (≈2 млн рядків), щоб спланувати міграцію платежів. Після трьох годин в одній сесії на питання «хто викликає RefundService?» відповідає «зазвичай у таких системах це робить контролер…», хоча годину тому сам знайшов конкретні класи. Що робити?</p>
+<ol type="A">
+<li>Перейти на модель з найбільшим вікном і завантажити ключові каталоги цілком на старті.</li>
+<li>Продовжити в цій сесії, попросивши агента пригадати знайдене раніше і відповідати конкретно.</li>
+<li>Підняти effort до максимуму, щоб агент ретельніше перевіряв відповіді перед видачею.</li>
+<li>Записувати знахідки у scratchpad-файл, окремі питання віддавати субагентам, а наступну фазу починати з підсумком попередньої.</li>
+</ol>
+<p><b>Відповідь: D.</b> Це деградація довгої сесії: «типові патерни» замість конкретних класів. Знахідки мають жити у файлі, розвідка — в ізольованих субагентах, а кожна фаза — починатися з короткого підсумку.</p>
+<ul>
+<li><b>A</b> — 2 млн рядків не вміщуються навіть у 1M токенів, а довший контекст погіршує використання фактів із середини.</li>
+<li><b>B</b> — «пригадай» звертається до того самого переповненого контексту, який і став причиною.</li>
+<li><b>C</b> — більше міркувань над деградованим контекстом не повертає загублених фактів.</li>
+</ul>
+</div></details>
+
+<details><summary>5.6 · 31% чи 24%</summary><div class="body">
+<p>Дослідницький конвеєр готує огляд ринку. Субагент веб-пошуку: «частка лідера — 31%» (галузевий звіт, 2024). Субагент аналізу документів: «24%» (опитування, 2026). Синтезатор пише «близько 27%». Як мало бути влаштовано?</p>
+<ol type="A">
+<li>Синтезатор бере свіже значення і в примітці згадує, що раніше оцінка була вищою.</li>
+<li>Координатор запускає третій субагент знайти «остаточну» цифру і використовує лише її.</li>
+<li>Субагенти повертають claim → джерело з уривком і датою; синтез показує обидва значення з атрибуцією і позначає, що різниця може бути часовою.</li>
+<li>Синтезатор зводить розбіжні цифри до діапазону 24–31% без джерел, щоб звіт був лаконічним.</li>
+</ol>
+<p><b>Відповідь: C.</b> Мапа claim → джерело з датою дозволяє не загубити атрибуцію при синтезі й побачити, що 2024 і 2026 — різні моменти, а не суперечність.</p>
+<ul>
+<li><b>A</b> — «свіже» не означає «правильне»: інша методологія (звіт проти опитування) теж пояснює різницю, а вибір довільний.</li>
+<li><b>B</b> — третє значення може розійтися з обома, а відкинуті джерела зникають зі звіту.</li>
+<li><b>D</b> — діапазон без атрибуції ховає, звідки кожна межа і чому вони різняться.</li>
+</ul>
+</div></details>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">09</span><h2>Практика<span class="sub">Шість фактів, на яких ловлять</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">«Не чіпай tests/» у CLAUDE.md</span><span class="h">це заборона?</span></span><span class="b"><span class="t">Ні, це контекст</span><span class="d">заборона — deny <code>Edit(tests/**)</code> або хук PreToolUse; CLAUDE.md лише знижує ймовірність спроби</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">deny <code>Write(docs/**)</code></span><span class="h">що станеться?</span></span><span class="b"><span class="t">Нічого</span><span class="d">правило приймається, але не перевіряється; файловий запис тримає Edit(path)</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">tool_choice: any на Opus 5.5</span><span class="h">результат?</span></span><span class="b"><span class="t">400</span><span class="d">там auto + strict з перевіркою виклику або JSON outputs (output_config.format)</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Повтор витягу</span><span class="h">коли марний?</span></span><span class="b"><span class="t">Коли даних немає в джерелі</span><span class="d">повтор лікує формат і структуру; відсутній факт — null або людина</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Explore-субагент</span><span class="h">бачить CLAUDE.md?</span></span><span class="b"><span class="t">Ні</span><span class="d">Explore і Plan стартують без CLAUDE.md і git status; потрібне правило — у задачу</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Message Batches + tool use</span><span class="h">можна?</span></span><span class="b"><span class="t">Без циклу в запиті</span><span class="d">інструмент посеред запиту не виконати; дані — заздалегідь у промпт</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">10</span><h2>Квіз<span class="sub">12 сценаріїв у стилі іспиту</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>12 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. (3.1) Тімлід платіжного монорепо на 40 розробників записав правило «гроші — лише Decimal, ніколи float» у свій <code>~/.claude/CLAUDE.md</code> і переконався, що Claude його виконує. Новий розробник за тиждень отримує від Claude код із float. Що виправить це для всієї команди?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Попросити кожного скопіювати правило у свій ~/.claude/CLAUDE.md і перевірити через /memory, що файл завантажено</span></label><label class="opt"><input type="radio" name="q1"><span>Додати в .claude/settings.local.json кожного розробника deny-правило, що забороняє float у грошових модулях</span></label><label class="opt ok"><input type="radio" name="q1"><span>Перенести правило в CLAUDE.md репозиторію (корінь або .claude/CLAUDE.md) і закомітити</span></label><label class="opt"><input type="radio" name="q1"><span>Створити skill money-rules з описом «use for any code that handles money», щоб правило вантажилось саме</span></label></div>
+    <div class="why yes">Так. Інструкції в <code>~/.claude/CLAUDE.md</code> бачить лише їхній автор — git їх не переносить. Стандарт для всіх живе у файлі репозиторію; <code>/memory</code> допоможе переконатися, що його завантажено.</div>
+    <div class="why no">Копії в домашніх теках розходяться, а новачки їх не отримають. <code>settings.local.json</code> особистий і не в git, а дозволи керують інструментами й шляхами, а не типами в коді. Skill з'являється на розсуд моделі, тоді як універсальний стандарт має бути в контексті завжди.</div></div>
+  <div class="q"><div class="qt">2. (3.2) Командний <code>/audit-deps</code> аналізує lock-файли 30 сервісів і друкує довгий звіт. Після нього розробники продовжують фічу в тій самій сесії, але агент «забуває» план: дві третини контексту зайнято звітом. Що змінити в skill?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Обмежити allowed-tools до Read і Grep, щоб аудит читав менше файлів і виводив менше тексту</span></label><label class="opt ok"><input type="radio" name="q2"><span>Додати context: fork у frontmatter, щоб аудит ішов в окремому субагенті й повертав підсумок</span></label><label class="opt"><input type="radio" name="q2"><span>Перенести інструкції аудиту в CLAUDE.md, щоб вони не завантажувались окремо при кожному виклику</span></label><label class="opt"><input type="radio" name="q2"><span>Додати в кінець skill крок «після звіту виконай /compact і продовж попередню задачу»</span></label></div>
+    <div class="why yes">Так. <code>context: fork</code> запускає skill в окремому субагенті: його розвідка і проміжний вивід не потрапляють у головну розмову, туди приходить лише результат.</div>
+    <div class="why no"><code>allowed-tools</code> дозволяє інструменти без запиту, а не обмежує їх, і на обсяг звіту не впливає. CLAUDE.md зробить інструкції постійними, а звіт однаково ляже в головний контекст. <code>/compact</code> стискає з втратами — план фічі може зникнути разом зі звітом.</div></div>
+  <div class="q"><div class="qt">3. (3.4) У Lectern дві задачі: (1) у <code>save_quiz</code> додати перевірку, що <code>answer</code> — ціле від 0 до 3, стек-трейс із продакшну вказує на рядок; (2) замінити бібліотеку витягу тексту з PDF: 23 файли, два кандидати з різною обробкою таблиць і ліцензіями. Як вести?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q3"><span>Обидві — у plan mode: план дешевший за переробку, а помилка в save_quiz теж ламає продакшн</span></label><label class="opt"><input type="radio" name="q3"><span>Обидві — прямим виконанням з детальним промптом, а для (2) перелічити всі 23 файли поіменно</span></label><label class="opt"><input type="radio" name="q3"><span>(1) — у plan mode, бо це продакшн-код; (2) — прямим виконанням по одному файлу з малими diff</span></label><label class="opt ok"><input type="radio" name="q3"><span>(1) — прямим виконанням; (2) — plan mode з розвідкою через Explore, потім виконання плану</span></label></div>
+    <div class="why yes">Так. Задача (1) — одна зрозуміла правка з відомим місцем. У (2) є вибір між підходами з різними наслідками і багато файлів — класичний випадок для plan mode, а затверджений план далі виконується напряму.</div>
+    <div class="why no">План для однорядкової правки — зайва церемонія. Детальний промпт не замінить розвідки, коли ще треба обрати між кандидатами. Критерій — не «продакшн чи ні», а кількість рішень і файлів: у (2) їх найбільше.</div></div>
+  <div class="q"><div class="qt">4. (3.6) CI-рев'ю перезапускається на кожен новий коміт у PR, і в PR накопичуються дублікати тих самих зауважень. Розробники перестали їх читати. Що змінити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q4"><span>Передавати знахідки попереднього прогону в контекст і повідомляти лише нові або ще не виправлені</span></label><label class="opt"><input type="radio" name="q4"><span>Запускати рев'ю один раз, на першому коміті PR, а повторно — лише за міткою від рецензента</span></label><label class="opt"><input type="radio" name="q4"><span>Додати в промпт «повідомляй лише знахідки з впевненістю понад 90%», щоб коментарів стало менше</span></label><label class="opt"><input type="radio" name="q4"><span>Перед кожним прогоном видаляти всі коментарі бота, щоб у PR лишався тільки свіжий набір</span></label></div>
+    <div class="why yes">Так. Попередні знахідки в контексті дозволяють відрізнити нове від уже сказаного і виправлене від невиправленого.</div>
+    <div class="why no">Один прогін пропускає проблеми з пізніших комітів. Фільтр за впевненістю не прибирає повторів і не підвищує точність. Видалення коментарів знищує обговорення і статус виправлень, а невиправлене знову з'являється як нове.</div></div>
+  <div class="q"><div class="qt">5. (4.1) Рев'ю-бот у 40% PR пише «коментар не відповідає коду», і розробники почали ігнорувати всі його знахідки, зокрема справжні баги. Що зробити насамперед?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Додати в промпт «будь консервативним і повідомляй лише ті знахідки, у яких ти справді впевнений»</span></label><label class="opt"><input type="radio" name="q5"><span>Перейти на сильнішу модель з extended thinking, щоб оцінки коментарів стали обережнішими</span></label><label class="opt ok"><input type="radio" name="q5"><span>Звузити критерій до «коментар описує поведінку, якої код не має» і вимкнути категорію до виміру</span></label><label class="opt"><input type="radio" name="q5"><span>Лишити категорію, але показувати її знахідки згорнутими з позначкою «низький пріоритет»</span></label></div>
+    <div class="why yes">Так. Явний категорійний критерій замість розмитого і тимчасове вимкнення шумної категорії повертають довіру до решти знахідок, поки промпт для неї покращують.</div>
+    <div class="why no">«Будь консервативним» не підвищує точності — гайд називає це прямо. Модель не винна в розмитому критерії. Згорнутий шум лишається шумом, і довіра до інших категорій не повертається.</div></div>
+  <div class="q"><div class="qt">6. (4.3) Конвеєр на Claude Haiku 5.5 обробляє рахунки трьох типів (інвойс, кредит-нота, акт); тип наперед невідомий, на кожен є свій інструмент-екстрактор. Як гарантувати, що відповідь — завжди виклик одного з них з аргументами за схемою?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>tool_choice auto і в системному промпті вимога «завжди викликай один з інструментів»</span></label><label class="opt ok"><input type="radio" name="q6"><span>tool_choice any і strict: true на всіх трьох інструментах-екстракторах</span></label><label class="opt"><input type="radio" name="q6"><span>tool_choice з type tool і name extract_invoice, а тип документа визначить код після відповіді</span></label><label class="opt"><input type="radio" name="q6"><span>Один інструмент extract_document з полями всіх трьох типів, позначеними як required</span></label></div>
+    <div class="why yes">Так. <code>any</code> вимагає викликати один з інструментів, <code>strict</code> — аргументи за схемою; Haiku 5.5 примусовий виклик приймає. На Opus 5.5 чи Sonnet 5.5 <code>any</code> дав би 400 — там <code>auto</code> + <code>strict</code> з перевіркою виклику або JSON outputs.</div>
+    <div class="why no"><code>auto</code> дозволяє відповісти текстом. Примус <code>extract_invoice</code> застосує схему інвойсу до кредит-ноти. <code>required</code> для полів, яких у документі цього типу немає, змусить модель їх вигадати.</div></div>
+  <div class="q"><div class="qt">7. (4.4) Pydantic-валідація витягу з рахунків: (1) у 6% сума позицій не дорівнює total, хоча в документі все сходиться; (2) у 3% порожнє поле «номер договору», бо в рахунку лише «згідно з договором, наданим окремо». Який план?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>Обидва класи повторювати до трьох разів із тим самим промптом: модель недетермінована й з часом влучить</span></label><label class="opt"><input type="radio" name="q7"><span>Перейти на strict-схему: вона змусить відповідати схемі й усуне обидва класи помилок одразу</span></label><label class="opt"><input type="radio" name="q7"><span>Обидва класи повторювати з конкретною помилкою, а для (2) ще й позначити номер договору обов'язковим</span></label><label class="opt ok"><input type="radio" name="q7"><span>(1) — повтор із документом, хибним витягом і помилкою; (2) — без повтору: позначити відсутність, людині</span></label></div>
+    <div class="why yes">Так. Повтор із конкретною помилкою виправляє структурні й арифметичні збої витягу. Номера договору в документі немає, і жоден повтор його не створить.</div>
+    <div class="why no">Без тексту помилки модель не знає, що виправляти. Strict-схема прибирає синтаксичні помилки, а не семантичні. «Обов'язковий» номер, якого немає в джерелі, — пряме запрошення його вигадати.</div></div>
+  <div class="q"><div class="qt">8. (4.5) Щотижневий аудит 8&nbsp;000 договорів має бути готовий у понеділок о 9:00; у реальному часі на нього ніхто не чекає. Для висновку модель потребує даних реєстру, які зараз отримує інструментом <code>lookup_registry</code> посеред відповіді. Як здешевити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Отримати дані реєстру кодом заздалегідь, вкласти в промпти й відправити батч; невдалі — повторно за custom_id</span></label><label class="opt"><input type="radio" name="q8"><span>Message Batches для всього обсягу, а цикл виклику lookup_registry виконувати всередині кожного запиту</span></label><label class="opt"><input type="radio" name="q8"><span>Лишити синхронний API з паралельністю 50, бо батч не гарантує часу завершення і не підходить для строків</span></label><label class="opt"><input type="radio" name="q8"><span>Message Batches для всього обсягу, а результати зіставляти з договорами за порядком рядків відповіді</span></label></div>
+    <div class="why yes">Так. Задача не блокує людей, тож батч дає −50%. Інструмент посеред запиту батч не виконає, тому дані реєстру готують заздалегідь; невдалі запити повторюють за <code>custom_id</code>.</div>
+    <div class="why no">Батч не підтримує багатокроковий tool use в одному запиті. Строку «понеділок, 9:00» вистачає з запасом, якщо відправити батч щонайменше за 24 год, тож синхронний API — лише переплата. Результати батча приходять у довільному порядку.</div></div>
+  <div class="q"><div class="qt">9. (4.6) Агент згенерував міграцію бази, і в тій самій сесії його попросили «уважно перевір свою роботу». Він нічого не знайшов, а рецензент-людина знайшла два дефекти. Що змінити в процесі?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Увімкнути extended thinking у тій самій сесії, щоб самоперевірка стала глибшою й ретельнішою</span></label><label class="opt ok"><input type="radio" name="q9"><span>Рев'ю веде окремий екземпляр без контексту генерації, що отримує лише специфікацію і diff</span></label><label class="opt"><input type="radio" name="q9"><span>Просити ту саму сесію перевірити роботу тричі й об'єднувати знайдене в один спільний список</span></label><label class="opt"><input type="radio" name="q9"><span>Дати тій самій сесії детальний чекліст із 30 пунктів, за яким вона пройде по своєму diff</span></label></div>
+    <div class="why yes">Так. Незалежний рецензент не несе міркувань автора, тому ставить під сумнів те, що автор вважав вирішеним.</div>
+    <div class="why no">Усе інше — самоперевірка: модель зберігає контекст генерації й рідше сумнівається у власних рішеннях. Гайд прямо ставить незалежний екземпляр вище за self-review і extended thinking.</div></div>
+  <div class="q"><div class="qt">10. (5.1) Агент підтримки, близько 40 ходів: на третьому клієнт назвав суму 1&nbsp;249 грн, номер замовлення і що чекає повернення до п'ятниці. Після автоматичного підсумку історії агент пише «повернемо кошти найближчим часом» і називає не те замовлення. Що змінити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Збільшити поріг, після якого запускається підсумовування, щоб воно відбувалося рідше</span></label><label class="opt"><input type="radio" name="q10"><span>Перейти на модель із вікном 1M токенів і не підсумовувати історію взагалі</span></label><label class="opt"><input type="radio" name="q10"><span>Додати в промпт підсумовування вимогу «зберігай усі важливі деталі розмови»</span></label><label class="opt ok"><input type="radio" name="q10"><span>Винести суми, дати, номери й обіцянки в блок case facts поза підсумком у кожному запиті</span></label></div>
+    <div class="why yes">Так. Транзакційні факти живуть в окремому блоці, якого підсумовування не торкається, і потрапляють у кожен запит.</div>
+    <div class="why no">Рідше підсумовування відкладає втрату, але не скасовує її. Без підсумку результати інструментів однаково розпухають, а факт із середини довгого контексту використовується гірше. Прогресивне підсумовування стискає саме числа й обіцянки, хоч би що просили в промпті.</div></div>
+  <div class="q"><div class="qt">11. (5.3) Субагент збору матеріалів для Lectern не дістав два PDF з п'яти (таймаут сховища), а в третьому пошук за темою нічого не знайшов. Як повідомити координатора?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Повернути порожні результати для трьох джерел зі статусом success, щоб конвеєр не зупинявся</span></label><label class="opt"><input type="radio" name="q11"><span>Після трьох локальних повторів повернути координатору загальний статус sources_unavailable з лічильником 3</span></label><label class="opt ok"><input type="radio" name="q11"><span>По кожному джерелу: timeout, no_match чи ok, що пробували, часткові дані й можливі альтернативи</span></label><label class="opt"><input type="radio" name="q11"><span>Кинути виняток, щоб оркестратор зупинив генерацію модуля, а людина перезапустила задачу</span></label></div>
+    <div class="why yes">Так. Координатор бачить, що два джерела недоступні (можна повторити чи взяти інші), а одне доступне, але порожнє (повторювати марно), і продовжує з анотацією прогалин.</div>
+    <div class="why no">Порожній «успіх» перетворює таймаут на «нічого немає». Загальний статус ховає різницю між недоступним і порожнім. Виняток зупиняє весь модуль, хоча часткових даних достатньо, щоб продовжити.</div></div>
+  <div class="q"><div class="qt">12. (5.5) Витяг полів зі страхових заяв: загальна точність 97% на 2&nbsp;000 перевірених документах. Керівник пропонує прибрати людську перевірку там, де модель повідомляє впевненість понад 0,9. Що зробити спершу?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q12"><span>Порахувати точність за типами й полями, відкалібрувати поріг на розміченому наборі, лишити вибірку</span></label><label class="opt"><input type="radio" name="q12"><span>Прибрати перевірку: 97% вище цільових 95%, а скарги клієнтів покажуть, якщо щось піде не так</span></label><label class="opt"><input type="radio" name="q12"><span>Попросити модель повертати впевненість від 0 до 100 для більшої точності й підняти поріг до 95</span></label><label class="opt"><input type="radio" name="q12"><span>Лишити людську перевірку лише для документів, де модель сама написала, що не впевнена</span></label></div>
+    <div class="why yes">Так. Середні 97% можуть ховати провал на одному типі документа чи полі; поріг впевненості має сенс лише після калібрування, а стратифікована випадкова вибірка й далі міряє помилки серед high-confidence.</div>
+    <div class="why no">Скарги — запізнілий і неповний сигнал, а середнє ховає сегменти. Точніша шкала не робить самооцінку відкаліброваною. Некалібрована самооцінка не може вирішувати, що перевіряти людині.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">11</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td style="white-space:normal;min-width:9em">Domain 3 (Claude Code Configuration &amp; Workflows)</td><td>20% CCA-F: CLAUDE.md, skills і commands, path-scoped rules, plan mode, ітерації, CI.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">Domain 4 (Prompt Engineering &amp; Structured Output)</td><td>20%: явні критерії, few-shot, схеми й tool_choice, валідація з повтором, батчі, незалежне рев'ю.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">Domain 5 (Context Management &amp; Reliability)</td><td>15%: збереження фактів, ескалація, поширення помилок, розвідка великої бази, калібрування, provenance.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">instruction vs enforcement</td><td>CLAUDE.md і промпт — контекст, що підвищує ймовірність; хук, дозвіл, код і схема — механізм, що гарантує.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">CLAUDE.md hierarchy (user / project / directory)</td><td><code>~/.claude/CLAUDE.md</code> — лише ваш; файл репозиторію — для всіх через git; файл підкаталогу — коли агент працює там.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">forced structured output (tool_choice / strict schema)</td><td><code>any</code> чи <code>tool</code> + <code>strict</code> або JSON outputs; на Opus 5.5 і Sonnet 5.5 примус дає 400.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">validation-retry loop</td><td>Повтор із документом, хибним виходом і конкретною помилкою; марний, коли даних немає в джерелі.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">few-shot for format, rules for constraints</td><td>Приклади задають форму й судження на межі, явні правила — межі й заборони.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">verbose output isolation (context: fork, Explore)</td><td>Багатослівна робота — в окремому контексті, у головну сесію повертається підсумок.</td></tr>
+<tr><td style="white-space:normal;min-width:9em">information provenance</td><td>Мапа claim → джерело (URL, уривок, дата), яку синтез зберігає; конфлікти — з атрибуцією.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">12</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Карта доменів 3–5 на вашому проєкті</h3>
+<p>Для шести task statements (по два з кожного домену) опишіть, як це влаштовано у вашому проєкті зараз, і напишіть три власні сценарні питання в стилі іспиту з розбором кожного варіанта.</p>
+<h3>2. Розбір інциденту конвеєра витягу</h3>
+<p>За описом інциденту (у завданні) визначте порушені task statements, розставте виправлення в порядку «пропорційний перший крок → інфраструктура» і вкажіть, чим виміряєте ефект.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">13</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://everpath-course-content.s3-accelerate.amazonaws.com/instructor%2F6nizmqk8tpzpfjvt6qmmav7rh%2Fpublic%2F1783542750%2FClaude+Certified+Architect+%E2%80%93+Foundations+Exam+Guide.pdf" target="_blank" rel="noopener">Claude Certified Architect – Foundations Exam Guide</a><span>v1.0, липень 2026 · домени, task statements, сценарії, зразки питань; сторінка іспиту: <a href="https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification" target="_blank" rel="noopener">Anthropic Partner Academy</a></span></li>
+<li><a href="https://code.claude.com/docs/en/memory" target="_blank" rel="noopener">Claude Code — How Claude remembers your project</a><span>ієрархія CLAUDE.md, @import (до чотирьох рівнів), .claude/rules/ з paths, /memory</span></li>
+<li><a href="https://code.claude.com/docs/en/settings" target="_blank" rel="noopener">Claude Code — Settings</a><span>області й пріоритет: managed → --settings → local → project → user; злиття списків</span></li>
+<li><a href="https://code.claude.com/docs/en/permissions" target="_blank" rel="noopener">Claude Code — Permissions</a><span>Edit і Read як файлові правила; Write(path) приймається, але не перевіряється (v2.1.210+)</span></li>
+<li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Claude Code — Skills</a><span>frontmatter: context: fork, allowed-tools (дозвіл без запиту), disallowed-tools, argument-hint; commands злито в skills</span></li>
+<li><a href="https://code.claude.com/docs/en/hooks" target="_blank" rel="noopener">Claude Code — Hooks reference</a><span>події (PreToolUse, PostToolUse, Stop, InstructionsLoaded…), код виходу 2</span></li>
+<li><a href="https://code.claude.com/docs/en/headless" target="_blank" rel="noopener">Claude Code — Run Claude Code programmatically</a><span>-p, --output-format json, --json-schema → structured_output, --bare для CI</span></li>
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Subagents</a><span>Explore і Plan без CLAUDE.md; власні субагенти, tools</span></li>
+<li><a href="https://code.claude.com/docs/en/permission-modes" target="_blank" rel="noopener">Claude Code — Permission modes</a><span>plan mode: досліджує й пропонує, не редагує до схвалення</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/structured-outputs" target="_blank" rel="noopener">Claude API — Structured outputs</a><span>JSON outputs (output_config.format, GA) і strict tool use; несумісність із citations і prefill</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools" target="_blank" rel="noopener">Claude API — Define tools</a><span>tool_choice auto/any/tool/none; примус недоступний на Opus 5.5, Sonnet 5.5, Fable 5.1, Mythos 5.1 і з ручним extended thinking</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing" target="_blank" rel="noopener">Claude API — Batch processing</a><span>−50%, до 24 год, 100&nbsp;000 запитів або 256 MB, довільний порядок, custom_id</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices" target="_blank" rel="noopener">Claude API — Prompting best practices</a><span>приклади в &lt;example&gt;, 3–5 прикладів; prefill не підтримується з Claude 4.6</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/compaction" target="_blank" rel="noopener">Claude API — Compaction</a><span>компакція на сервері: на вимогу і за порогом (beta); «якість відповіді падає з ростом розмови»</span></li>
+<li><a href="https://platform.claude.com/docs/en/build-with-claude/context-windows" target="_blank" rel="noopener">Claude API — Context windows</a><span>1M токенів у поточних моделях, 200k — у Haiku 4.5 і Sonnet 4.5</span></li>
+<li><a href="https://platform.claude.com/docs/en/api/errors" target="_blank" rel="noopener">Claude API — Errors</a><span>класи помилок; SDK повторює транзиєнтні двічі з backoff і retry-after</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 16.3 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 16.3 · Senomi<br><br><a href="lesson-75.html">← Урок 16.2</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-77.html">Урок 16.4 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>

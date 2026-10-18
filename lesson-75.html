@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Урок 16.2. Домени 1–2: архітектура й оркестрація агентів; дизайн інструментів і MCP</title>
+<script>(function(r){var t=r.getAttribute('data-theme');if(t!=='dark'&&t!=='light'){var d=false;try{d=!/; wv\)/.test(navigator.userAgent)&&window.matchMedia('(prefers-color-scheme: dark)').matches}catch(e){}r.setAttribute('data-theme',d?'dark':'light')}})(document.documentElement)</script>
+<style>/* ── Agentic Engineering · lesson stylesheet ────────────────────────────────────────
+   Light = engineering paper (blueprint grid, indigo ink); dark = terminal at night.
+   The host app stamps <html data-theme>; with no host the platform preference decides.
+   Every interaction is CSS-first (details, radio, checkbox, :has): the web build renders
+   lessons in a srcdoc iframe with script-src 'self', so inline scripts never run there.
+   ae.js only adds conveniences (theme switch, quiz score, copy buttons).
+   Android WebView reports vh = 0 for these documents — never size anything in vh/dvh. */
+
+:root{
+  --bg:#f6f7fb; --bg2:#eef0f7; --card:#ffffff; --card2:#f3f4fa;
+  --fg:#171a2b; --muted:#565c78; --faint:#8c91aa;
+  --accent:#4f46e5; --accent-soft:rgba(79,70,229,.09); --accent-line:rgba(79,70,229,.30);
+  --teal:#0f766e; --teal-soft:rgba(15,118,110,.10);
+  --amber:#b45309; --amber-soft:rgba(180,83,9,.10);
+  --pink:#be185d; --pink-soft:rgba(190,24,93,.09);
+  --ok:#15803d; --ok-soft:rgba(21,128,61,.12);
+  --bad:#c2410c; --bad-soft:rgba(194,65,12,.11);
+  --border:#e1e4ef; --border2:#cdd2e3;
+  --grid:rgba(79,70,229,.07);
+  --shadow:0 1px 2px rgba(23,26,43,.05),0 6px 22px rgba(23,26,43,.06);
+  --on-accent:#ffffff;
+  --term-bg:#0f1220; --term-fg:#d7dcf0; --term-dim:#7d84a6; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#1a1e33;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+  --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+  --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+  --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+  --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+  --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+  --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+  --border:#252b42; --border2:#323954;
+  --grid:rgba(139,140,248,.06);
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+  --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#0c0e17; --bg2:#11141f; --card:#141827; --card2:#1a1f31;
+    --fg:#e6e8f3; --muted:#a3a9c4; --faint:#6f7592;
+    --accent:#8b8cf8; --accent-soft:rgba(139,140,248,.12); --accent-line:rgba(139,140,248,.36);
+    --teal:#2dd4bf; --teal-soft:rgba(45,212,191,.11);
+    --amber:#fbbf24; --amber-soft:rgba(251,191,36,.11);
+    --pink:#f472b6; --pink-soft:rgba(244,114,182,.11);
+    --ok:#4ade80; --ok-soft:rgba(74,222,128,.12);
+    --bad:#fb923c; --bad-soft:rgba(251,146,60,.12);
+    --border:#252b42; --border2:#323954;
+    --grid:rgba(139,140,248,.06);
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px rgba(0,0,0,.35);
+    --on-accent:#0c0e17;
+  --term-bg:#070910; --term-fg:#d7dcf0; --term-dim:#6f7592; --term-ps:#7dd3a8; --term-hl:#a5b4fc; --term-bar:#10131f;
+    color-scheme:dark;
+  }
+}
+
+/* ── type ── */
+:root{--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Roboto Mono","Liberation Mono",monospace}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--sans);font-size:16.5px;line-height:1.65;position:relative;overflow-x:hidden}
+.wrap{max-width:880px;margin:0 auto;padding:0 18px 56px}
+h1,h2,h3,h4{line-height:1.25;color:var(--fg);margin:1.6em 0 .55em;font-weight:750;letter-spacing:-.01em}
+h2{font-size:1.45rem}
+h3{font-size:1.14rem;color:var(--accent)}
+h4{font-size:1rem}
+p{margin:.65em 0}
+a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;word-break:break-word}
+a:hover{text-decoration-color:var(--accent)}
+strong,b{font-weight:700}
+small,.small{font-size:.86em;color:var(--muted)}
+::selection{background:var(--accent-soft)}
+img{max-width:100%;height:auto}
+ul,ol{padding-left:1.4em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px dashed var(--border2);margin:30px 0}
+.muted{color:var(--muted)}
+.center{text-align:center}
+.mono,code,kbd,pre,.term,.chip,.sec-h .num{font-family:var(--mono)}
+/* "--flag" must stay two hyphens: no ligatures/contextual alternates in monospace text. */
+.mono,code,kbd,pre,.term,.tab-l label,.chip{font-variant-ligatures:none;font-feature-settings:"liga" 0,"calt" 0,"dlig" 0}
+code{font-size:.86em;padding:1px 5px;border-radius:5px;background:var(--accent-soft);color:var(--fg);word-break:break-word}
+kbd{font-size:.8em;padding:1px 6px;border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;background:var(--card2)}
+.hl{background:var(--amber-soft);border-radius:4px;padding:0 3px}
+.en{font-style:italic;color:var(--muted)}
+
+/* ── hero ── */
+.hero{position:relative;margin:0 -18px 22px;padding:34px 22px 26px;border-bottom:1px solid var(--border);overflow:hidden;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/22px 22px,
+    radial-gradient(110% 90% at 90% 0%,var(--accent-soft),transparent 62%),
+    var(--bg2)}
+.hero-kicker{font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;color:var(--accent);margin-top:6px;padding-right:46px}
+.hero-kicker .k-code{display:inline-block;padding:1px 6px;margin-right:6px;border-radius:5px;background:var(--accent);color:var(--on-accent)}
+.hero h1{font-size:clamp(1.6rem,5.4vw,2.4rem);line-height:1.15;margin:.4em 0 .3em;max-width:30ch}
+.hero .lead{font-size:clamp(1.02rem,3vw,1.16rem);color:var(--muted);margin:.2em 0 .8em;max-width:60ch}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--mono);font-size:.72rem;padding:4px 10px;border-radius:999px;border:1px solid var(--accent-line);
+  color:var(--accent);background:var(--accent-soft);white-space:nowrap}
+.chip.t{border-color:var(--teal-soft);color:var(--teal);background:var(--teal-soft)}
+.chip.a{border-color:var(--amber-soft);color:var(--amber);background:var(--amber-soft)}
+.chip.g{border-color:var(--ok-soft);color:var(--ok);background:var(--ok-soft)}
+.hero-meta .chip:first-child{white-space:normal;max-width:100%}
+.hero-art{position:absolute;right:14px;bottom:16px;width:110px;height:110px;opacity:.14;color:var(--accent);pointer-events:none}
+.hero-art svg{width:100%;height:100%}
+@media(min-width:700px){.hero{padding:44px 40px 34px;margin:0 -40px 28px}.hero-art{opacity:.2;width:150px;height:150px;right:34px}}
+
+/* ── epigraph ── */
+.epigraph{margin:20px 0 24px;padding:16px 20px 14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,var(--accent-soft),transparent 85%);border-radius:0 12px 12px 0}
+.epigraph p{margin:0;font-size:1.08rem;line-height:1.55}
+.epigraph cite{display:block;font-style:normal;font-family:var(--mono);font-size:.76rem;color:var(--accent);margin-top:8px}
+
+/* ── table of contents / goals ── */
+details.toc-box{margin:14px 0 4px}
+details.toc-box>.toc{margin-top:10px}
+.toc{display:flex;flex-wrap:wrap;gap:6px}
+.toc a{font-size:.82rem;text-decoration:none;color:var(--fg);padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+.toc a b{color:var(--accent);font-family:var(--mono);margin-right:6px;font-weight:600}
+.goals{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 20px;box-shadow:var(--shadow);margin:18px 0}
+.goals h4{margin:0 0 6px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.goals ul{margin:.3em 0 0;padding-left:1.2em}
+
+/* ── sections ── */
+section.sec{margin-top:42px;scroll-margin-top:12px}
+.sec-h{display:flex;align-items:flex-start;gap:12px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.sec-h .num{font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--accent);background:var(--accent-soft);
+  border:1px solid var(--accent-line);border-radius:8px;padding:3px 8px;margin-top:3px;line-height:1.3}
+.sec-h h2{margin:0;font-size:1.36rem}
+.sec-h .sub{display:block;font-size:.92rem;font-weight:400;color:var(--muted);margin-top:3px;letter-spacing:0}
+
+/* ── callouts ── */
+.note{position:relative;border:1px solid var(--border);border-left:4px solid var(--teal);background:var(--card);
+  border-radius:0 12px 12px 0;padding:12px 16px;margin:16px 0}
+.note>.lbl{display:block;font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--teal);margin-bottom:4px}
+.note.product{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-soft),var(--card) 60%)} .note.product>.lbl{color:var(--amber)}
+.note.arch{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft),var(--card) 60%)} .note.arch>.lbl{color:var(--accent)}
+.note.warn{border-left-color:var(--bad);background:linear-gradient(90deg,var(--bad-soft),var(--card) 60%)} .note.warn>.lbl{color:var(--bad)}
+.note.tip{border-left-color:var(--ok)} .note.tip>.lbl{color:var(--ok)}
+.note.fact{border-left-color:var(--pink)} .note.fact>.lbl{color:var(--pink)}
+.note p:first-of-type{margin-top:0} .note p:last-child{margin-bottom:0}
+.note ul{margin:.3em 0}
+.project{border:1px solid var(--accent-line);border-radius:14px;margin:20px 0;overflow:hidden;background:var(--card);box-shadow:var(--shadow)}
+.project .ph{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--accent);color:var(--on-accent);font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.project .ph b{font-size:.95rem}
+.project .pb{padding:12px 18px 14px}
+
+/* ── terminal ── */
+.term{margin:18px 0;border-radius:12px;overflow:hidden;background:var(--term-bg);box-shadow:var(--shadow);border:1px solid rgba(127,135,180,.25)}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--term-bar);font-family:var(--mono);font-size:.72rem;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#ff5f57;display:inline-block}
+.term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+.term .bar span{margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term pre{margin:0;padding:12px 14px 14px;color:var(--term-fg);font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.term .ps{color:var(--term-ps);user-select:none}
+.term .c{color:var(--term-hl);font-weight:600}
+.term .d{color:var(--term-dim)}
+.term .ok{color:#7dd3a8} .term .er{color:#fca5a5} .term .y{color:#fcd34d}
+.term .cap{padding:7px 14px 9px;font-family:var(--mono);font-size:.68rem;color:var(--term-dim);border-top:1px solid rgba(127,135,180,.18)}
+.term .cap code,.term pre code{background:rgba(255,255,255,.1);color:var(--term-fg)}
+
+/* ── code ── */
+pre.code{position:relative;margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--card2);border:1px solid var(--border);
+  font-size:.8rem;line-height:1.55;overflow-x:auto;white-space:pre}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:6px;right:10px;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+pre.code .k{color:var(--accent);font-weight:600} pre.code .s{color:var(--teal)} pre.code .cm{color:var(--faint);font-style:italic}
+pre.code .n{color:var(--amber)}
+.copy{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:.66rem;padding:2px 8px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+pre.code:has(.copy)::before{display:none}
+.term .copy{top:5px;right:8px;background:transparent;color:var(--term-dim);border-color:rgba(127,135,180,.35)}
+.term{position:relative}
+
+/* ── tabs (radio + nth-of-type; no JS). Markup:
+   <div class="tabs"><input type="radio" name="X" id="X1" checked>…<div class="tab-l"><label for="X1">…</label>…</div>
+   <div class="tab-p">…</div>…</div>
+   The radios are position:fixed so that focusing one never scrolls the page. ── */
+.tabs{margin:18px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+.tabs>input{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px}
+.tab-l{display:flex;gap:2px;padding:6px 6px 0;background:var(--card2);border-bottom:1px solid var(--border);overflow-x:auto}
+.tab-l label{font-family:var(--mono);font-size:.78rem;padding:8px 12px 7px;border-radius:9px 9px 0 0;cursor:pointer;color:var(--muted);
+  white-space:nowrap;border:1px solid transparent;border-bottom:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tab-l label:hover{color:var(--accent)}
+.tab-p{display:none;padding:12px 16px 14px}
+.tab-p>:first-child{margin-top:0} .tab-p>:last-child{margin-bottom:0}
+.tab-p .term,.tab-p pre.code{margin:10px 0}
+.tabs>input:nth-of-type(1):checked~.tab-p:nth-of-type(2),
+.tabs>input:nth-of-type(2):checked~.tab-p:nth-of-type(3),
+.tabs>input:nth-of-type(3):checked~.tab-p:nth-of-type(4),
+.tabs>input:nth-of-type(4):checked~.tab-p:nth-of-type(5){display:block}
+.tabs>input:nth-of-type(1):checked~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):checked~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):checked~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):checked~.tab-l label:nth-of-type(4){background:var(--card);color:var(--accent);border-color:var(--border);font-weight:700}
+.tabs>input:nth-of-type(1):focus-visible~.tab-l label:nth-of-type(1),
+.tabs>input:nth-of-type(2):focus-visible~.tab-l label:nth-of-type(2),
+.tabs>input:nth-of-type(3):focus-visible~.tab-l label:nth-of-type(3),
+.tabs>input:nth-of-type(4):focus-visible~.tab-l label:nth-of-type(4){outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ── tables ── */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+.tbl-cap{font-family:var(--mono);font-size:.74rem;color:var(--muted);margin:18px 0 -8px;letter-spacing:.02em}
+table.tbl{border-collapse:collapse;width:100%;font-size:.92rem}
+.tbl th,.tbl td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl thead th{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--card2);white-space:nowrap}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl td.c,.tbl th.c{text-align:center}
+.tbl .yes{color:var(--ok);font-weight:700} .tbl .no{color:var(--bad);font-weight:700}
+@media(max-width:620px){
+  .tbl.stack thead{display:none}
+  .tbl.stack,.tbl.stack tbody,.tbl.stack tr,.tbl.stack td{display:block;width:100%}
+  .tbl.stack tr{padding:8px 0 7px;border-bottom:1px solid var(--border)}
+  .tbl.stack tbody tr:last-child{border-bottom:0}
+  .tbl.stack td{border:0;padding:2px 14px;line-height:1.45}
+  .tbl.stack td[data-th]::before{content:attr(data-th) ": ";font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--faint)}
+  .tbl.stack td:first-child[data-th]::before{display:none}
+  .tbl.stack td:first-child{font-weight:700;padding-bottom:3px;color:var(--accent)}
+}
+
+/* ── timeline ── */
+.timeline{list-style:none;padding:0;margin:18px 0;position:relative}
+.timeline::before{content:"";position:absolute;left:66px;top:6px;bottom:6px;width:2px;background:var(--border2)}
+.timeline li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:18px;margin:0 0 14px}
+.timeline .y{font-family:var(--mono);font-weight:700;font-size:.82rem;color:var(--accent);text-align:right;padding-top:2px}
+.timeline .e{position:relative;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.timeline .e::before{content:"";position:absolute;left:-14px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+.timeline .e b{display:block}
+.timeline .e .t{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+.timeline li.big .e{border-color:var(--accent-line);background:linear-gradient(90deg,var(--accent-soft),var(--card))}
+.timeline li.big .e::before{background:var(--accent)}
+
+/* ── diagrams & charts ── */
+figure.fig{margin:20px 0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 14px 10px;box-shadow:var(--shadow)}
+figure.fig svg{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;font-family:var(--sans)}
+figure.fig.narrow svg{max-width:420px}
+figure.fig figcaption{font-size:.84rem;color:var(--muted);margin-top:8px;line-height:1.45}
+figure.fig img{display:block;width:100%;border-radius:8px}
+.fig .bx{fill:var(--card2);stroke:var(--border2);stroke-width:1.5}
+.fig .bx.a{fill:var(--accent-soft);stroke:var(--accent)}
+.fig .bx.t{fill:var(--teal-soft);stroke:var(--teal)}
+.fig .bx.m{fill:var(--amber-soft);stroke:var(--amber)}
+.fig .bx.p{fill:var(--pink-soft);stroke:var(--pink)}
+.fig .tx{fill:var(--fg);font-size:13px}
+.fig .tx.b{font-weight:700}
+.fig .tx.s{font-size:11px;fill:var(--muted)}
+.fig .tx.a{fill:var(--accent)} .fig .tx.t{fill:var(--teal)} .fig .tx.m{fill:var(--amber)}
+.fig .ln{stroke:var(--faint);stroke-width:1.6;fill:none}
+.fig .ln.a{stroke:var(--accent)} .fig .ln.t{stroke:var(--teal)} .fig .ln.d{stroke-dasharray:5 4}
+.fig .ar{fill:var(--faint)} .fig .ar.a{fill:var(--accent)} .fig .ar.t{fill:var(--teal)}
+.bars{display:grid;gap:9px;margin:6px 0 4px}
+.bar{display:grid;grid-template-columns:minmax(92px,32%) 1fr;gap:10px;align-items:center;font-size:.86rem}
+.bar .k{color:var(--muted);line-height:1.25}
+.bar .tr{position:relative;height:22px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+.bar .tr i{position:absolute;left:0;top:0;bottom:0;width:var(--v);border-radius:5px;background:var(--accent);opacity:.85}
+.bar.t .tr i{background:var(--teal)} .bar.m .tr i{background:var(--amber)} .bar.p .tr i{background:var(--pink)}
+.bar .tr b{position:absolute;left:calc(var(--v) + 6px);top:1px;font-family:var(--mono);font-size:.74rem;font-weight:700;white-space:nowrap}
+.bar .tr b.in{left:auto;right:calc(100% - var(--v) + 6px);color:var(--on-accent)}
+
+/* ── steps / levels / compare ── */
+ol.steps{list-style:none;counter-reset:st;padding:0;margin:16px 0}
+ol.steps>li{counter-increment:st;position:relative;padding:2px 0 10px 40px;margin:0}
+ol.steps>li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:.78rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.levels{display:grid;gap:8px;margin:16px 0}
+.lvl{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:start;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.lvl .no{font-family:var(--mono);font-weight:800;font-size:1.1rem;color:var(--accent);background:var(--accent-soft);border-radius:9px;text-align:center;padding:6px 0}
+.lvl b{display:block}
+.lvl .m{font-size:.86rem;color:var(--muted)}
+.lvl .ex{font-family:var(--mono);font-size:.72rem;color:var(--teal);margin-top:2px}
+.cols{display:grid;grid-template-columns:1fr;gap:14px;margin:16px 0}
+@media(min-width:720px){.cols{grid-template-columns:1fr 1fr}}
+.cmp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px}
+.cmp h4{margin:0 0 6px;font-family:var(--mono);font-size:.8rem;letter-spacing:.04em}
+.cmp.bad{border-top:3px solid var(--bad)} .cmp.bad h4{color:var(--bad)}
+.cmp.good{border-top:3px solid var(--ok)} .cmp.good h4{color:var(--ok)}
+.cmp ul{margin:.2em 0;padding-left:1.15em;font-size:.93rem}
+.key{border:1px solid var(--ok-soft);background:linear-gradient(180deg,var(--ok-soft),var(--card) 80%);border-radius:14px;padding:12px 18px;margin:18px 0}
+.key h4{margin:0 0 4px;font-family:var(--mono);font-size:.74rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ok)}
+blockquote.q-src{margin:16px 0;padding:10px 16px;border-left:3px solid var(--border2);color:var(--fg);background:var(--card);border-radius:0 10px 10px 0}
+blockquote.q-src p{margin:.3em 0}
+blockquote.q-src .orig{font-style:italic;color:var(--muted);font-size:.9rem}
+blockquote.q-src cite{display:block;font-style:normal;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:6px}
+
+/* ── reveal (details) ── */
+details{margin:10px 0}
+details>summary{cursor:pointer;list-style:none;font-size:.88rem;color:var(--teal);display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:999px;border:1px solid var(--teal-soft);background:var(--teal-soft);user-select:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg) translate(-1px,-1px)}
+details>.body{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--card2);border:1px dashed var(--border2)}
+details.toc-box>summary{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+
+/* ── flip cards (checkbox, no JS) ── */
+.flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin:16px 0}
+.flip{position:relative;display:block;height:150px;cursor:pointer;perspective:900px;-webkit-tap-highlight-color:transparent}
+.flip input{position:absolute;opacity:0;pointer-events:none}
+.flip .in{position:absolute;inset:0;transition:transform .5s;transform-style:preserve-3d}
+.flip input:checked+.in{transform:rotateY(180deg)}
+.flip .f,.flip .b{position:absolute;inset:0;border-radius:14px;border:1px solid var(--border);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:10px;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.flip .f{background:var(--card);box-shadow:var(--shadow)}
+.flip .f .g{font-family:var(--mono);font-size:1.02rem;font-weight:700;line-height:1.25;color:var(--accent);overflow-wrap:anywhere;max-width:100%}
+.flip .b .t,.flip .b .d{overflow-wrap:anywhere}
+.flip .f .h{font-size:.7rem;color:var(--faint);margin-top:8px;letter-spacing:.06em}
+.flip .b{background:var(--card2);transform:rotateY(180deg);border-color:var(--accent-line)}
+.flip .b .t{font-size:.92rem;font-weight:700;color:var(--fg)}
+.flip .b .d{font-size:.78rem;color:var(--muted);margin-top:4px;line-height:1.35}
+.flip input:focus-visible+.in .f{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── quiz (radio + :has) ── */
+.quiz{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 18px 10px;margin:18px 0;box-shadow:var(--shadow)}
+.quiz-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:10px 0 4px}
+.quiz-h .score{letter-spacing:.02em;text-transform:none;color:var(--muted);font-size:.82rem}
+.q{padding:12px 0;border-top:1px solid var(--border)}
+.q .qt{font-weight:700;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:7px}
+.opt{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt>span{display:block;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);transition:background .15s,border-color .15s;font-size:.94rem}
+.opt:hover>span{border-color:var(--accent)}
+.opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.opt input:checked+span{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.opt.ok input:checked+span{border-color:var(--ok);background:var(--ok-soft);color:var(--ok);font-weight:700}
+.q .why{display:none;margin-top:8px;font-size:.9rem;padding:8px 12px;border-radius:9px}
+.q:has(.opt.ok input:checked) .why.yes{display:block;background:var(--ok-soft);color:var(--fg)}
+.q:has(.opt:not(.ok) input:checked) .why.no{display:block;background:var(--bad-soft);color:var(--fg)}
+.q:has(.opt.ok input:checked) .opt:not(.ok){opacity:.55}
+
+/* ── task / homework / resources ── */
+.task{border:1px dashed var(--accent-line);border-radius:14px;padding:12px 18px;margin:18px 0;background:var(--card)}
+.task>.lbl{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent);background:var(--accent);padding:2px 8px;border-radius:6px}
+.hw{border:1px solid var(--accent-line);background:linear-gradient(180deg,var(--accent-soft),var(--card) 70%);border-radius:14px;padding:14px 20px;margin:18px 0}
+.hw h3{margin-top:0}
+.res-list{list-style:none;padding:0;display:grid;gap:8px}
+.res-list li{margin:0;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+.res-list li a{font-weight:700}
+.res-list li span{display:block;font-size:.84rem;color:var(--muted)}
+.terms td:first-child{font-family:var(--mono);font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* ── footer ── */
+.foot{margin-top:46px;padding-top:18px;border-top:1px solid var(--border);font-size:.8rem;color:var(--faint);text-align:center}
+.foot .mono{color:var(--muted);display:block;margin-bottom:4px}
+
+/* ── course index ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 20px 12px;margin:16px 0;box-shadow:var(--shadow)}
+.card h3{margin-top:14px}
+ul.lessons{list-style:none;padding:0}
+ul.lessons li{padding:4px 0;border-top:1px dashed var(--border)}
+ul.lessons b{color:var(--accent);margin-right:6px}
+
+/* ── theme switch ── */
+.theme-toggle{position:absolute;top:18px;right:14px;z-index:30;width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--muted);cursor:pointer;appearance:none;-webkit-appearance:none}
+.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.theme-toggle svg{width:17px;height:17px}
+.theme-toggle .sun{display:none}
+:root[data-theme="dark"] .theme-toggle .sun{display:block}
+:root[data-theme="dark"] .theme-toggle .moon{display:none}
+html:not(.js) .theme-toggle,html:not(.js) .copy{display:none}
+
+@media(max-width:520px){
+  body{font-size:16px}
+  .wrap{padding:0 14px 48px}
+  .hero{margin:0 -14px 20px;padding:28px 16px 22px}
+  .tbl th,.tbl td{padding:7px 9px}
+  .flips{grid-template-columns:repeat(2,1fr)}
+  .flip{height:160px}
+  .timeline::before{left:48px}
+  .timeline li{grid-template-columns:40px 1fr;gap:16px}
+  .timeline .y{font-size:.74rem}
+  .quiz{padding:6px 14px 10px}
+  .bar{grid-template-columns:1fr;gap:3px}
+}
+@media print{.theme-toggle,.copy{display:none!important}details>.body{display:block}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<button class="theme-toggle" type="button" aria-label="Світла / темна тема"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg></button>
+<div class="hero-art"><svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="30" r="9"/><circle cx="96" cy="30" r="9"/><circle cx="60" cy="62" r="11"/><circle cx="28" cy="96" r="9"/><circle cx="92" cy="96" r="9"/><path d="M32 35l19 20M88 35L69 55M52 70L35 89M68 70l17 19"/></svg></div>
+<div class="hero-kicker"><span class="k-code">&gt;_</span> Урок 16.2 · Модуль 16</div>
+<h1>Домени 1–2: архітектура й оркестрація агентів; дизайн інструментів і MCP</h1>
+<p class="lead">Домени 1 і 2 дають 45% балів CCA-F: 12 task statements про агентний цикл, координатора й субагентів, хуки, сесії, описи й помилки інструментів, розподіл інструментів і MCP. Для кожного — правило рішення, типова хибна відповідь, урок курсу й артефакт Lectern, а 24 сценарні питання тренують саме судження, яке перевіряє іспит.</p>
+<div class="hero-meta"><span class="chip">Сертифікаційний трек і фінал</span><span class="chip t">≈ 70 хв</span><span class="chip a">10 карток</span><span class="chip g">перевірено 18.10.2026</span></div>
+</header>
+<details class="toc-box"><summary>Зміст уроку · 12 розділів</summary><nav class="toc"><a href="#weights"><b>01</b>Домени 1–2 на іспиті</a><a href="#d1"><b>02</b>Домен 1</a><a href="#d2"><b>03</b>Домен 2</a><a href="#drift"><b>04</b>Гайд проти документації</a><a href="#project"><b>05</b>Наскрізний проєкт</a><a href="#drill-d1"><b>06</b>Розбір: домен 1</a><a href="#drill-d2"><b>07</b>Розбір: домен 2</a><a href="#practice"><b>08</b>Практика</a><a href="#quiz"><b>09</b>Квіз</a><a href="#terms"><b>10</b>Терміни уроку</a><a href="#homework"><b>11</b>Домашнє завдання</a><a href="#resources"><b>12</b>Ресурси</a></nav></details>
+<div class="goals">
+  <h4>Після уроку ви зможете</h4>
+  <ul>
+    <li>для кожного з 12 task statements доменів 1–2 назвати правило рішення й типову хибну відповідь;</li>
+    <li>обрати топологію: workflow, один агент, координатор із субагентами чи команда агентів;</li>
+    <li>розпізнати, де потрібен детермінований контроль (хук, gate), а де досить промпту;</li>
+    <li>спроєктувати опис, помилки й розподіл інструментів та підключення MCP-сервера;</li>
+    <li>відрізнити формулювання гайду від поточної поведінки SDK, API і Claude Code.</li>
+  </ul>
+</div>
+
+<section class="sec" id="weights">
+<div class="sec-h"><span class="num">01</span><h2>Домени 1–2 на іспиті<span class="sub">27% + 18% = 45% балів</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Домен</th><th>Вага</th><th>≈ питань із 60</th><th>Сценарії, де він основний</th></tr></thead>
+<tbody>
+<tr><td data-th="Домен">1 · Agentic Architecture &amp; Orchestration</td><td data-th="Вага">27%</td><td data-th="≈ питань із 60">≈ 16</td><td data-th="Сценарії, де він основний">1 Customer Support Resolution Agent · 3 Multi-Agent Research System · 4 Developer Productivity</td></tr>
+<tr><td data-th="Домен">2 · Tool Design &amp; MCP Integration</td><td data-th="Вага">18%</td><td data-th="≈ питань із 60">≈ 11</td><td data-th="Сценарії, де він основний">ті самі 1, 3, 4</td></tr>
+</tbody></table></div>
+<p>Ваги — частка оцінюваних питань за Exam Guide v1.0 (липень 2026). На іспиті 4 сценарії з 6 випадкові; домени 1–2 названо основними в трьох із шести, тож серед чотирьох вибраних такий сценарій буде завжди, а з імовірністю 80% (12 з 15 комбінацій) — два або три. Формат, бали й стратегію розібрано в уроці 16.1, домени 3–5 — у 16.3.</p>
+<p>Кожен task statement у гайді має дві частини: <b>Knowledge of</b> (що треба знати) і <b>Skills in</b> (яке рішення ухвалити). Питання пишуть за другою: сценарій з обмеженнями, чотири правдоподібні варіанти, один найкращий. Пояснення до зразків питань у гайді повторюють три критерії:</p>
+<ol class="steps">
+<li><b>Детерміновано, коли помилка дорога.</b> Правило, яке мусить виконатися завжди, ставлять у код (хук, передумова), а не в промпт.</li>
+<li><b>Першопричина й пропорційність.</b> Спершу дешевий важіль, що б'є в причину (опис інструмента, критерії в промпті), а вже потім класифікатори, роутери й нова інфраструктура.</li>
+<li><b>Найменші права.</b> Агент отримує лише інструменти своєї ролі; вузький інструмент для частої потреби кращий за повний доступ.</li>
+</ol>
+<blockquote class="q-src">
+<p>Програмне примусове виконання дає детерміновані гарантії, яких підходи на основі промпту дати не можуть.</p>
+<p class="orig">“programmatic enforcement provides deterministic guarantees that prompt-based approaches cannot.”</p>
+<cite>Claude Certified Architect – Foundations Exam Guide v1.0, липень 2026 · пояснення до зразка питання</cite>
+</blockquote>
+</section>
+
+<section class="sec" id="d1">
+<div class="sec-h"><span class="num">02</span><h2>Домен 1<span class="sub">Сім task statements: правило, пастка, урок</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Task statement</th><th>Правило рішення</th><th>Типова хибна відповідь</th><th>Курс</th></tr></thead>
+<tbody>
+<tr><td data-th="Task statement"><b>1.1</b> <i>Design and implement agentic loops for autonomous task execution</i></td><td data-th="Правило рішення">Продовжуй, поки <code>stop_reason</code> = <code>"tool_use"</code>, завершуй на <code>"end_turn"</code>; усі результати ходу — в історію перед наступним запитом</td><td data-th="Типова хибна відповідь">Зупинка за текстом відповіді, за фразою «готово» або за стелею ітерацій як основним критерієм</td><td data-th="Курс">2.2, 2.5</td></tr>
+<tr><td data-th="Task statement"><b>1.2</b> <i>Orchestrate multi-agent systems with coordinator-subagent patterns</i></td><td data-th="Правило рішення">Координатор — хаб: ділить задачу, обирає субагентів за складністю запиту, збирає результат, сам бачить усі помилки; прогалини — дозапит і повторний синтез</td><td data-th="Типова хибна відповідь">Щоразу проганяти весь конвеєр; надто вузька декомпозиція теми; субагенти, що спілкуються напряму</td><td data-th="Курс">2.4, 14.1, 14.2</td></tr>
+<tr><td data-th="Task statement"><b>1.3</b> <i>Configure subagent invocation, context passing, and spawning</i></td><td data-th="Правило рішення">Субагент знає лише свій промпт: передай повні знахідки структуровано (вміст окремо від джерел); незалежних — кількома викликами в одній відповіді; мета й критерії якості замість покрокових інструкцій</td><td data-th="Типова хибна відповідь">Розраховувати, що субагент «пам'ятає» розмову координатора; запуск по одному на хід</td><td data-th="Курс">6.4, 6.5, 14.2</td></tr>
+<tr><td data-th="Task statement"><b>1.4</b> <i>Implement multi-step workflows with enforcement and handoff patterns</i></td><td data-th="Правило рішення">Порядок, що мусить виконатися завжди, — програмна передумова; багатопитанний запит — розкласти на пункти; ескалація — структурований підсумок, бо транскрипту людина не бачить</td><td data-th="Типова хибна відповідь">Суворіший промпт або few-shot для критичного порядку; «див. чат» замість handoff</td><td data-th="Курс">6.2, 9.3</td></tr>
+<tr><td data-th="Task statement"><b>1.5</b> <i>Apply Agent SDK hooks for tool call interception and data normalization</i></td><td data-th="Правило рішення">PreToolUse — заблокувати або перенаправити виклик до виконання; PostToolUse — нормалізувати результат до того, як його побачить модель</td><td data-th="Типова хибна відповідь">Перевіряти ліміт після виконання; просити модель саму зводити формати</td><td data-th="Курс">6.2, 6.5</td></tr>
+<tr><td data-th="Task statement"><b>1.6</b> <i>Design task decomposition strategies for complex workflows</i></td><td data-th="Правило рішення">Передбачувані кроки — фіксований ланцюжок (кожен файл окремо + інтеграційний прохід); відкрита задача — карта, пріоритети, план, що змінюється за знахідками</td><td data-th="Типова хибна відповідь">Один великий прохід «щоб бачити все»; динамічне планування там, де кроки відомі</td><td data-th="Курс">2.4, 10.4, 11.3</td></tr>
+<tr><td data-th="Task statement"><b>1.7</b> <i>Manage session state, resumption, and forking</i></td><td data-th="Правило рішення">Контекст здебільшого валідний — <code>--resume &lt;ім'я&gt;</code> і назвати змінені файли; застарів — нова сесія з підсумком; два підходи з однієї бази — fork</td><td data-th="Типова хибна відповідь">Resume без згадки про зміни; повне повторне дослідження; fork, щоб «оновити» файли</td><td data-th="Курс">4.3, 6.5</td></tr>
+</tbody></table></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 540" role="img" aria-label="Дерево вибору топології: workflow, один агент, координатор із субагентами, команда агентів; поверх — хуки й сесії">
+  <defs>
+    <marker id="d1a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar a"/></marker>
+  </defs>
+  <rect x="8" y="8" width="164" height="36" rx="10" class="bx a"/>
+  <text x="90" y="31" text-anchor="middle" class="tx b">Задача для Claude</text>
+  <path d="M90 44 V 58" class="ln a" marker-end="url(#d1a)"/>
+  <rect x="8" y="62" width="164" height="48" rx="10" class="bx m"/>
+  <text x="90" y="82" text-anchor="middle" class="tx">Кроки й порядок</text>
+  <text x="90" y="100" text-anchor="middle" class="tx">відомі наперед?</text>
+  <path d="M172 86 H 204" class="ln a" marker-end="url(#d1a)"/>
+  <text x="188" y="76" text-anchor="middle" class="tx s">так</text>
+  <rect x="208" y="62" width="144" height="48" rx="10" class="bx t"/>
+  <text x="280" y="82" text-anchor="middle" class="tx b">Workflow</text>
+  <text x="280" y="100" text-anchor="middle" class="tx s">chaining, routing · 1.6</text>
+  <path d="M90 110 V 134" class="ln a" marker-end="url(#d1a)"/>
+  <text x="104" y="126" class="tx s">ні</text>
+  <rect x="8" y="138" width="164" height="48" rx="10" class="bx m"/>
+  <text x="90" y="158" text-anchor="middle" class="tx">Вистачає одного</text>
+  <text x="90" y="176" text-anchor="middle" class="tx">контексту й потоку?</text>
+  <path d="M172 162 H 204" class="ln a" marker-end="url(#d1a)"/>
+  <text x="188" y="152" text-anchor="middle" class="tx s">так</text>
+  <rect x="208" y="138" width="144" height="48" rx="10" class="bx t"/>
+  <text x="280" y="158" text-anchor="middle" class="tx b">Один агент</text>
+  <text x="280" y="176" text-anchor="middle" class="tx s">stop_reason · 1.1</text>
+  <path d="M90 186 V 210" class="ln a" marker-end="url(#d1a)"/>
+  <text x="104" y="202" class="tx s">ні</text>
+  <rect x="8" y="214" width="164" height="56" rx="10" class="bx m"/>
+  <text x="90" y="236" text-anchor="middle" class="tx">Підзадачі незалежні,</text>
+  <text x="90" y="256" text-anchor="middle" class="tx">звіт іде нагору?</text>
+  <path d="M172 242 H 204" class="ln a" marker-end="url(#d1a)"/>
+  <text x="188" y="232" text-anchor="middle" class="tx s">так</text>
+  <rect x="208" y="214" width="144" height="56" rx="10" class="bx a"/>
+  <text x="280" y="234" text-anchor="middle" class="tx b">Hub-and-spoke</text>
+  <text x="280" y="250" text-anchor="middle" class="tx s">координатор →</text>
+  <text x="280" y="264" text-anchor="middle" class="tx s">субагенти · 1.2 · 1.3</text>
+  <path d="M90 270 V 294" class="ln a" marker-end="url(#d1a)"/>
+  <text x="104" y="286" class="tx s">ні: треба радитися</text>
+  <rect x="8" y="298" width="344" height="48" rx="10" class="bx p"/>
+  <text x="180" y="318" text-anchor="middle" class="tx b">Agent teams (експеримент Claude Code)</text>
+  <text x="180" y="336" text-anchor="middle" class="tx s">напарники пишуть один одному · поза гайдом · 14.1</text>
+  <path d="M8 366 H 352" class="ln d"/>
+  <text x="180" y="386" text-anchor="middle" class="tx s">поверх будь-якої схеми</text>
+  <rect x="8" y="396" width="344" height="62" rx="10" class="bx a"/>
+  <text x="180" y="416" text-anchor="middle" class="tx b">Правило мусить виконатися завжди</text>
+  <text x="180" y="433" text-anchor="middle" class="tx s">хук або передумова в коді, не промпт · 1.4 · 1.5</text>
+  <text x="180" y="449" text-anchor="middle" class="tx s">людині — структурований handoff · 1.4</text>
+  <rect x="8" y="468" width="344" height="62" rx="10" class="bx t"/>
+  <text x="180" y="488" text-anchor="middle" class="tx b">Повертаєтеся до роботи</text>
+  <text x="180" y="505" text-anchor="middle" class="tx s">контекст валідний → resume + що змінилося</text>
+  <text x="180" y="521" text-anchor="middle" class="tx s">застарів → нова сесія з підсумком · варіанти → fork</text>
+</svg>
+<figcaption>Домен 1 як одне дерево: топологію обирають за тим, чи відомі кроки, чи вміщується задача в один контекст і чи незалежні підзадачі. Хуки й сесії — не окремі топології, а шари поверх будь-якої з них.</figcaption>
+</figure>
+<div class="note warn"><span class="lbl">Пастка 1.1 у Lectern</span>
+<p><code>agent_api.py</code> отримує <code>end_turn</code>, коли квіз ще не збережено, і не завершує задачу: дописує нагадування й крутить цикл далі. Це не суперечить гайду. <code>end_turn</code> закінчує <b>хід моделі</b>, а успіх <b>задачі</b> визначає код: квіз пройшов <code>save_quiz</code>. <code>max_turns=12</code> там — запобіжник від нескінченного циклу, а не критерій зупинки.</p>
+</div>
+</section>
+
+<section class="sec" id="d2">
+<div class="sec-h"><span class="num">03</span><h2>Домен 2<span class="sub">П'ять task statements: інструмент як контракт</span></h2></div>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>Task statement</th><th>Правило рішення</th><th>Типова хибна відповідь</th><th>Курс</th></tr></thead>
+<tbody>
+<tr><td data-th="Task statement"><b>2.1</b> <i>Design effective tool interfaces with clear descriptions and boundaries</i></td><td data-th="Правило рішення">Опис — головний механізм вибору: що робить, формат входу, вихід, приклади, межі й «коли брати не мене»; перекриття прибирають перейменуванням або розділенням загального інструмента</td><td data-th="Типова хибна відповідь">Лікувати поганий опис few-shot прикладами чи роутером; не помітити ключове слово в системному промпті, яке перебиває опис</td><td data-th="Курс">2.1, 7.4</td></tr>
+<tr><td data-th="Task statement"><b>2.2</b> <i>Implement structured error responses for MCP tools</i></td><td data-th="Правило рішення"><code>isError</code> + категорія (transient, validation, business, permission) + чи можна повторити + зрозумілий опис; порожній результат — успіх, а не помилка</td><td data-th="Типова хибна відповідь">Загальне «Operation failed»; порожній список замість збою; повтор помилки валідації</td><td data-th="Курс">7.3, 7.4</td></tr>
+<tr><td data-th="Task statement"><b>2.3</b> <i>Distribute tools appropriately across agents and configure tool choice</i></td><td data-th="Правило рішення">4–5 інструментів під роль, вузький cross-role інструмент для частої потреби; <code>"any"</code> гарантує якийсь виклик, <code>{"type": "tool"}</code> — конкретний перший крок</td><td data-th="Типова хибна відповідь">Дати всім усе; заборонити інструмент промптом замість прибрати; <code>"any"</code>, коли потрібен конкретний інструмент</td><td data-th="Курс">2.1, 6.4, 14.3</td></tr>
+<tr><td data-th="Task statement"><b>2.4</b> <i>Integrate MCP servers into Claude Code and agent workflows</i></td><td data-th="Правило рішення">Спільне — <code>.mcp.json</code> з <code>${VAR}</code>; особисте — <code>~/.claude.json</code>; каталог даних — ресурс; стандартна інтеграція — готовий сервер; опис MCP-інструмента пояснює, чим він кращий за вбудований пошук</td><td data-th="Типова хибна відповідь">Секрет у <code>.mcp.json</code>; власний сервер для типової інтеграції; десяток розвідувальних викликів замість каталогу</td><td data-th="Курс">7.1, 7.2, 7.3</td></tr>
+<tr><td data-th="Task statement"><b>2.5</b> <i>Select and apply built-in tools (Read, Write, Edit, Bash, Grep, Glob) effectively</i></td><td data-th="Правило рішення">Grep — вміст, Glob — шляхи, Edit — за унікальним якорем, інакше Read + Write; розуміння коду будують від точок входу, а не читанням усього</td><td data-th="Типова хибна відповідь">Прочитати всі файли наперед; шукати виклики функції через Glob</td><td data-th="Курс">2.3, 3.1, 6.4</td></tr>
+</tbody></table></div>
+<figure class="fig narrow">
+<svg viewBox="0 0 360 392" role="img" aria-label="Симптом у логах агента і task statement домену 2, що його виправляє">
+  <defs>
+    <marker id="d2a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="ar t"/></marker>
+  </defs>
+  <text x="76" y="18" text-anchor="middle" class="tx s">симптом у логах</text>
+  <text x="260" y="18" text-anchor="middle" class="tx s">що виправляє</text>
+  <rect x="8" y="28" width="136" height="62" rx="10" class="bx m"/>
+  <text x="76" y="50" text-anchor="middle" class="tx b">Не той інструмент</text>
+  <text x="76" y="66" text-anchor="middle" class="tx s">схожі описи або</text>
+  <text x="76" y="80" text-anchor="middle" class="tx s">тригер у промпті</text>
+  <path d="M144 59 H 164" class="ln t" marker-end="url(#d2a)"/>
+  <rect x="168" y="28" width="184" height="62" rx="10" class="bx t"/>
+  <text x="260" y="50" text-anchor="middle" class="tx b">2.1 · опис = контракт</text>
+  <text x="260" y="66" text-anchor="middle" class="tx s">що, коли, вхід, вихід, межі</text>
+  <text x="260" y="80" text-anchor="middle" class="tx s">перейменувати · розділити</text>
+  <rect x="8" y="100" width="136" height="62" rx="10" class="bx m"/>
+  <text x="76" y="122" text-anchor="middle" class="tx b">Хибне відновлення</text>
+  <text x="76" y="138" text-anchor="middle" class="tx s">повтори без шансу</text>
+  <text x="76" y="152" text-anchor="middle" class="tx s">або «нічого немає»</text>
+  <path d="M144 131 H 164" class="ln t" marker-end="url(#d2a)"/>
+  <rect x="168" y="100" width="184" height="62" rx="10" class="bx t"/>
+  <text x="260" y="122" text-anchor="middle" class="tx b">2.2 · контракт помилки</text>
+  <text x="260" y="138" text-anchor="middle" class="tx s">isError + категорія + повтор</text>
+  <text x="260" y="152" text-anchor="middle" class="tx s">порожньо ≠ збій</text>
+  <rect x="8" y="172" width="136" height="62" rx="10" class="bx m"/>
+  <text x="76" y="194" text-anchor="middle" class="tx b">Поза своєю роллю</text>
+  <text x="76" y="210" text-anchor="middle" class="tx s">18 інструментів</text>
+  <text x="76" y="224" text-anchor="middle" class="tx s">замість 4–5</text>
+  <path d="M144 203 H 164" class="ln t" marker-end="url(#d2a)"/>
+  <rect x="168" y="172" width="184" height="62" rx="10" class="bx t"/>
+  <text x="260" y="194" text-anchor="middle" class="tx b">2.3 · набір під роль</text>
+  <text x="260" y="210" text-anchor="middle" class="tx s">лише інструменти ролі</text>
+  <text x="260" y="224" text-anchor="middle" class="tx s">tool_choice: auto/any/tool</text>
+  <rect x="8" y="244" width="136" height="62" rx="10" class="bx m"/>
+  <text x="76" y="266" text-anchor="middle" class="tx b">Розвідка навмання</text>
+  <text x="76" y="282" text-anchor="middle" class="tx s">10+ пошуків «що є»,</text>
+  <text x="76" y="296" text-anchor="middle" class="tx s">Grep замість MCP</text>
+  <path d="M144 275 H 164" class="ln t" marker-end="url(#d2a)"/>
+  <rect x="168" y="244" width="184" height="62" rx="10" class="bx t"/>
+  <text x="260" y="266" text-anchor="middle" class="tx b">2.4 · інтеграція MCP</text>
+  <text x="260" y="282" text-anchor="middle" class="tx s">каталог → ресурс, дія → tool</text>
+  <text x="260" y="296" text-anchor="middle" class="tx s">.mcp.json + ${VAR}</text>
+  <rect x="8" y="316" width="136" height="62" rx="10" class="bx m"/>
+  <text x="76" y="338" text-anchor="middle" class="tx b">Читає все підряд</text>
+  <text x="76" y="354" text-anchor="middle" class="tx s">Edit не знаходить</text>
+  <text x="76" y="368" text-anchor="middle" class="tx s">унікального якоря</text>
+  <path d="M144 347 H 164" class="ln t" marker-end="url(#d2a)"/>
+  <rect x="168" y="316" width="184" height="62" rx="10" class="bx t"/>
+  <text x="260" y="338" text-anchor="middle" class="tx b">2.5 · Grep, Glob, Edit</text>
+  <text x="260" y="354" text-anchor="middle" class="tx s">Grep — вміст, Glob — шляхи</text>
+  <text x="260" y="368" text-anchor="middle" class="tx s">Edit без якоря → Read + Write</text>
+</svg>
+<figcaption>Питання домену 2 майже завжди починаються з симптому в логах. Спершу визначте клас симптому, потім шукайте варіант, що б'є в його причину, а не в наслідок.</figcaption>
+</figure>
+<div class="note tip"><span class="lbl">Транспорт MCP — не тема іспиту</span>
+<p>Вибору між stdio і Streamable HTTP у task statements немає, а розгортання й хостинг MCP-серверів гайд прямо виносить за межі іспиту. Правило з уроку 7.1 лишається робочим: локальний процес, який запускає клієнт, — stdio; спільний віддалений сервіс з автентифікацією — Streamable HTTP. Специфікація 2026-07-28 зробила протокол stateless і прибрала <code>Mcp-Session-Id</code>, але примітиви й <code>isError</code> не змінилися.</p>
+</div>
+</section>
+
+<section class="sec" id="drift">
+<div class="sec-h"><span class="num">04</span><h2>Гайд проти документації<span class="sub">Що змінилося після липня 2026</span></h2></div>
+<p>Гайд датовано липнем 2026, а SDK, API і Claude Code відтоді оновлювалися. Нижче звірено з документацією 18.10.2026. На іспиті відповідайте за гайдом, у коді — за документацією.</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>У гайді</th><th>У документації 18.10.2026</th><th>Як відповідати й будувати</th></tr></thead>
+<tbody>
+<tr><td data-th="У гайді">Субагентів запускає <code>Task</code>; <code>allowedTools</code> має містити <code>"Task"</code></td><td data-th="У документації 18.10.2026">Інструмент зветься <code>Agent</code> (у <code>tool_use</code> з v2.1.63; у <code>system:init</code> — досі <code>Task</code>). <code>allowed_tools</code> лише автосхвалює й не обмежує набір, обмежує <code>tools</code></td><td data-th="Як відповідати й будувати">На іспиті — «Task у allowedTools». У коді — <code>Agent</code> у наборі координатора, детектор ловить обидві назви</td></tr>
+<tr><td data-th="У гайді">Субагенти не успадковують контекст батька</td><td data-th="У документації 18.10.2026">Типово так. Виняток — fork-субагент Claude Code (<code>/subtask</code>, v2.1.212+): успадковує всю розмову</td><td data-th="Як відповідати й будувати">Правило гайду — базове; fork — свідомий виняток для бічної задачі</td></tr>
+<tr><td data-th="У гайді"><code>tool_choice</code>: <code>"any"</code> і <code>{"type": "tool"}</code></td><td data-th="У документації 18.10.2026">На Opus 5.5, Sonnet 5.5, Fable 5.1 і Mythos 5.1 обидва дають 400; заміна — <code>auto</code> + <code>strict: true</code> або structured outputs</td><td data-th="Як відповідати й будувати">Іспит перевіряє семантику опцій; у продакшні звіряйте підтримку моделлю (урок 2.1)</td></tr>
+<tr><td data-th="У гайді">Grep і Glob — вбудовані інструменти</td><td data-th="У документації 18.10.2026">На macOS, Linux і WSL типово відсутні: пошук іде через <code>find</code>/<code>grep</code> у Bash (вбудовані bfs і ugrep). Повертаються, якщо назвати їх у <code>--tools</code>/<code>--allowedTools</code> або прибрати Bash</td><td data-th="Як відповідати й будувати">«Grep — вміст, Glob — шляхи» лишається правильним; змінився лише спосіб виклику</td></tr>
+<tr><td data-th="У гайді">Інструменти всіх MCP-серверів доступні одночасно з моменту підключення</td><td data-th="У документації 18.10.2026">Так, але з tool search (типово увімкнений) визначення відкладені й підвантажуються пошуком</td><td data-th="Як відповідати й будувати">Логіка вибору та сама; погана назва й опис коштують дорожче, бо інструмент ще треба знайти</td></tr>
+<tr><td data-th="У гайді"><code>errorCategory</code>, <code>isRetryable</code></td><td data-th="У документації 18.10.2026">У специфікації MCP 2026-07-28 є лише <code>isError</code>; категорія й повтор — ваша конвенція в тексті або <code>structuredContent</code></td><td data-th="Як відповідати й будувати">Вчіть як патерн, а не як поле протоколу</td></tr>
+<tr><td data-th="У гайді">Розділяти загальні інструменти</td><td data-th="У документації 18.10.2026">Документація tool use радить консолідувати споріднені операції (<code>create_pr</code>, <code>review_pr</code>, <code>merge_pr</code> → один з <code>action</code>)</td><td data-th="Як відповідати й будувати">Не суперечність: ділять інструмент із розмитим призначенням, об'єднують однотипні дії над одним ресурсом</td></tr>
+<tr><td data-th="У гайді">Hub-and-spoke: уся комунікація через координатора</td><td data-th="У документації 18.10.2026">Agent teams Claude Code (експеримент, <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code>): напарники пишуть один одному, спільний список задач</td><td data-th="Як відповідати й будувати">На іспиті — hub-and-spoke; команда агентів — коли виконавцям справді треба радитися (14.1)</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="project">
+<div class="sec-h"><span class="num">05</span><h2>Наскрізний проєкт<span class="sub">Lectern як конспект доменів 1–2</span></h2></div>
+<div class="project"><div class="ph"><b>Lectern</b> · крок 16.2 · docs/certification/domains-1-2.md</div><div class="pb">
+<p>Кожен task statement уже має в Lectern артефакт, на якому його видно. Свідомі відхилення від рамки іспиту теж записано: на іспиті координатор — агент, у Lectern оркестратор — код (ADR 0016, 0017).</p>
+<div class="tbl-wrap"><table class="tbl stack">
+<thead><tr><th>TS</th><th>Артефакт</th><th>Що в ньому шукати</th></tr></thead>
+<tbody>
+<tr><td data-th="TS">1.1</td><td data-th="Артефакт"><code>src/lectern/agent_api.py</code> · 2.5</td><td data-th="Що в ньому шукати">цикл за <code>stop_reason</code>, усі <code>tool_result</code> ходу одним повідомленням</td></tr>
+<tr><td data-th="TS">1.2</td><td data-th="Артефакт"><code>team.py</code>, ADR 0016, 0017 · 14.1–14.3</td><td data-th="Що в ньому шукати">ролі не бачать одна одну, усе йде через оркестратора</td></tr>
+<tr><td data-th="TS">1.3</td><td data-th="Артефакт"><code>.claude/agents/*.md</code>, <code>Role</code> · 6.4</td><td data-th="Що в ньому шукати"><code>description</code> як маршрутизатор; рецензент отримує лише лекцію й артефакти</td></tr>
+<tr><td data-th="TS">1.4</td><td data-th="Артефакт"><code>save_quiz</code>, <code>stop_gate.py</code>, <code>needs_review</code> · 6.2, 9.3</td><td data-th="Що в ньому шукати">передумова в коді; людині поки що лише прапорець (B291)</td></tr>
+<tr><td data-th="TS">1.5</td><td data-th="Артефакт"><code>scripts/hooks/agent_scope.py</code> · 6.2, 6.4</td><td data-th="Що в ньому шукати">PreToolUse обмежує команди й шляхи ролі, exit 2 з причиною</td></tr>
+<tr><td data-th="TS">1.6</td><td data-th="Артефакт"><code>plan_lecture</code>, <code>waves</code>, ADR 0003 · 9.1, 14.3</td><td data-th="Що в ньому шукати">фіксований план там, де кроки відомі; цикл — там, де ні</td></tr>
+<tr><td data-th="TS">1.7</td><td data-th="Артефакт"><code>ResumeRequest</code>, <code>CONTINUE</code> · 6.5, 15.5</td><td data-th="Що в ньому шукати">перервана задача продовжує свою сесію (B271)</td></tr>
+<tr><td data-th="TS">2.1</td><td data-th="Артефакт"><code>@tool(...)</code> у <code>tools.py</code>, <code>mcp-tools.lock.json</code> · 7.3, 12.4</td><td data-th="Що в ньому шукати">опис як контракт під локом; опис <code>read_lecture</code> — одне речення (B292)</td></tr>
+<tr><td data-th="TS">2.2</td><td data-th="Артефакт"><code>ToolError</code>, <code>_tool</code>, <code>check_quote</code> · 7.3</td><td data-th="Що в ньому шукати">«цитати немає» — вердикт <code>ok: false</code>, а не помилка; категорій поки немає (B290)</td></tr>
+<tr><td data-th="TS">2.3</td><td data-th="Артефакт"><code>default_roles</code> · 14.3</td><td data-th="Що в ньому шукати">в автора 3 інструменти, у рецензента 1</td></tr>
+<tr><td data-th="TS">2.4</td><td data-th="Артефакт"><code>.mcp.json</code>, <code>lecture://index</code> · 7.2, 7.3</td><td data-th="Що в ньому шукати"><code>${CONTEXT7_API_KEY:-}</code>; каталог — ресурс, дії — інструменти</td></tr>
+<tr><td data-th="TS">2.5</td><td data-th="Артефакт"><code>.claude/agents/test-writer.md</code> · 6.4</td><td data-th="Що в ньому шукати">повний набір лише в ролі, що пише тест; ревізори — <code>Read, Bash</code></td></tr>
+</tbody></table></div>
+<p>Зміна в копії <code>lectern/</code>: новий <code>docs/certification/domains-1-2.md</code> (ця карта + 5 питань для самоперевірки), рядок у <code>docs/README.md</code> і три пункти беклогу — B290–B292. Без рядка в індексі документ — сирота, і <code>check_context.py</code> валить перевірку:</p>
+<div class="term"><div class="bar"><i></i><i></i><i></i><span>zsh — ~/lectern</span></div>
+<pre><span class="ps">$ </span><span class="c">../venv/bin/python scripts/check_context.py</span>   <span class="d"># без рядка в docs/README.md</span>
+checked 12 files (50 commands, 132 paths, 32 symbols): 1 problem(s)
+<span class="er">docs/certification/domains-1-2.md: orphan, not reachable by links from docs/README.md</span>
+<span class="ps">$ </span><span class="c">LECTERN_PY=../venv/bin/python scripts/check.sh</span>
+<span class="d">== lint …</span>
+All checks passed!
+<span class="d">== tests …</span>
+738 passed, 1 skipped, 1 xfailed in 42.60s
+<span class="d">== context …</span>
+checked 12 files (50 commands, 132 paths, 32 symbols): 0 problem(s)
+<span class="d">== evals …</span>
+gate: passed
+<span class="d">== mcp-lock …</span>
+ok: 4 tools match mcp-tools.lock.json
+<span class="ok">all checks passed</span></pre>
+<div class="cap">реальний вивід · Python 3.12.11 · 18.10.2026 · скорочено до підсумкових рядків кроків · <code>console/check.txt</code>, <code>console/orphan.txt</code>, <code>console/lectern.diff</code></div></div>
+<p><b>Ваш крок.</b> Пройдіть 24 питання уроку, позначте task statements, де помилилися, і для кожного відкрийте артефакт із таблиці: знайдіть у коді рядок, що реалізує правило, або доведіть, що його немає, і запишіть це як пункт беклогу.</p>
+</div></div>
+</section>
+
+<section class="sec" id="drill-d1">
+<div class="sec-h"><span class="num">06</span><h2>Розбір: домен 1<span class="sub">Вісім питань поза квізом</span></h2></div>
+<p>Питання в стилі іспиту, відповідь і розбір кожного варіанта — під спойлером. Спершу оберіть самі. Ще сім питань домену 1 — у квізі.</p>
+
+<details><summary>1.1 · Фраза «TASK COMPLETE» як сигнал завершення</summary><div class="body">
+<p>Агент обробки звернень на Messages API завершує цикл, коли у фінальному тексті є рядок <code>TASK COMPLETE</code>. Модель інколи пише «Задачу виконано», і цикл крутиться далі, марнуючи токени; інколи пише фразу перед викликом інструмента, і звернення лишається незакритим. Що змінити?</p>
+<p><b>A.</b> Регулярний вираз без урахування регістру, з перекладами фрази всіма мовами користувачів<br>
+<b>B.</b> Завершувати цикл за <code>stop_reason</code> <code>"end_turn"</code>, а успіх задачі перевіряти в коді: статус звернення в базі<br>
+<b>C.</b> <code>tool_choice</code> <code>"any"</code> на кожному ході, щоб модель не могла закінчити текстом, і зупинка після 10 ходів<br>
+<b>D.</b> Просити модель закінчувати відповідь рядком <code>{"done": true}</code> і парсити останній рядок тексту</p>
+<p><b>Відповідь: B.</b> Сигнал «модель закінчила хід» — поле API, а не текст. Чи виконано задачу, вирішує стан у вашій системі, як у Lectern вирішує збережений квіз.</p>
+<ul><li><b>A</b> — той самий розбір природної мови, лише з більшою кількістю винятків.</li>
+<li><b>C</b> — з <code>"any"</code> модель ніколи не закінчить хід сама, тож основним критерієм стає довільна стеля ходів.</li>
+<li><b>D</b> — JSON у тексті лишається текстом: модель може його пропустити, повторити або написати посеред ходу.</li></ul>
+</div></details>
+
+<details><summary>1.2 · Два субагенти знаходять те саме</summary><div class="body">
+<p>Конвеєр розвідки ринку: координатор дає одному субагенту «новини про компанію X», другому — «прес-релізи компанії X». 70% знахідок дублюються, токени на пошук подвоєні, а звіт не має нічого про патенти й вакансії.</p>
+<p><b>A.</b> Дедуплікувати знахідки на кроці синтезу, лишивши завдання субагентів без змін<br>
+<b>B.</b> Дати субагентам спільну пам'ять, щоб кожен бачив, що вже знайшов інший<br>
+<b>C.</b> Лишити одного субагента пошуку, бо двоє однаково знаходять те саме<br>
+<b>D.</b> Розділити обсяг явно: різні типи джерел і підтеми, з межами в кожному завданні</p>
+<p><b>Відповідь: D.</b> Дублювання й прогалини мають одну причину — декомпозицію координатора. Окремі типи джерел (новини, реєстр патентів, вакансії) прибирають і те, і те.</p>
+<ul><li><b>A</b> — лікує наслідок: токени вже витрачено, а прогалини лишаються.</li>
+<li><b>B</b> — спільна пам'ять створює зв'язок між субагентами, яким керує не координатор, і гонку за записами.</li>
+<li><b>C</b> — прибирає паралельність і ширину, заради яких команду будували.</li></ul>
+</div></details>
+
+<details><summary>1.3 · Звіт без атрибуції</summary><div class="body">
+<p>У дослідницькій системі writer-субагент пише звіт, де твердження не мають джерел. Координатор передає йому «підсумуй знахідки попередніх агентів» і свій стислий переказ їхніх звітів.</p>
+<p><b>A.</b> Передати writer'ові повні знахідки структуровано (твердження, уривок, джерело, сторінка) прямо в промпті<br>
+<b>B.</b> Запустити writer як fork координатора, щоб він успадкував усю розмову з результатами інструментів<br>
+<b>C.</b> Дати writer'ові Read, щоб він сам прочитав на диску транскрипти попередніх субагентів<br>
+<b>D.</b> Додати в системний промпт writer'а вимогу посилатися на джерело кожного твердження</p>
+<p><b>Відповідь: A.</b> Субагент отримує лише рядок промпту. Структура «вміст окремо від метаданих» зберігає атрибуцію на кожному переході.</p>
+<ul><li><b>B</b> — у розмові координатора немає результатів інструментів субагентів: туди повертаються лише їхні фінальні звіти. Fork успадкує вже втрачену атрибуцію разом з усім шумом.</li>
+<li><b>C</b> — робить writer'а залежним від формату чужих транскриптів і роздуває його контекст.</li>
+<li><b>D</b> — вимога без даних: джерел у writer'а немає, тож він їх або пропустить, або вигадає.</li></ul>
+</div></details>
+
+<details><summary>1.3 · Координатор не делегує</summary><div class="body">
+<p>Координатор на Agent SDK: <code>agents={"quote-auditor": AgentDefinition(...)}</code> і <code>tools=["Read", "Grep", "mcp__lectern__check_quote"]</code>. Субагент жодного разу не запускається: координатор перевіряє цитати сам.</p>
+<p><b>A.</b> Описи субагентів у SDK ігноруються: делегування працює лише з файлів <code>.claude/agents/</code><br>
+<b>B.</b> Субагент успадковує історію координатора, бачить, що робота йде, і тому не стартує<br>
+<b>C.</b> У наборі координатора немає інструмента запуску субагентів: <code>Agent</code>, у гайді — <code>Task</code><br>
+<b>D.</b> Інструменти субагента треба продублювати в <code>tools</code> координатора, інакше йому нічого робити</p>
+<p><b>Відповідь: C.</b> Субагента запускає виклик інструмента; немає інструмента — немає делегування. У поточному SDK набір обмежує <code>tools</code>, а <code>allowed_tools</code> лише автосхвалює; гайд формулює це як «<code>allowedTools</code> має містити <code>Task</code>».</p>
+<ul><li><b>A</b> — програмне визначення через <code>agents</code> документація називає рекомендованим способом.</li>
+<li><b>B</b> — навпаки: субагент стартує зі свіжим контекстом.</li>
+<li><b>D</b> — інструменти субагента задає <code>AgentDefinition.tools</code>; координаторові вони не потрібні.</li></ul>
+</div></details>
+
+<details><summary>1.4 · Ескалація «див. чат»</summary><div class="body">
+<p>Бот підтримки ескалує людям рядком «Клієнту потрібна допомога з поверненням, див. чат». Оператори не мають доступу до транскрипту; обробка ескалації триває 11 хвилин, половина з них іде на перепитування клієнта.</p>
+<p><b>A.</b> Ескалювати раніше, щоб людина підключалася до розмови, доки контекст ще короткий<br>
+<b>B.</b> Додавати до ескалації весь сирий транскрипт, щоб оператор сам знайшов потрібне<br>
+<b>C.</b> Структурований handoff: ID клієнта, суть кожного питання, причина, що зроблено, сума, рекомендована дія<br>
+<b>D.</b> Лишити розмову за ботом і дати оператору канал для уточнювальних питань ботові</p>
+<p><b>Відповідь: C.</b> Людина продовжує роботу без транскрипту, тож підсумок мусить містити все, щоб ухвалити рішення.</p>
+<ul><li><b>A</b> — змінює момент ескалації, а не те, що отримує людина; простих випадків до неї піде більше.</li>
+<li><b>B</b> — переносить аналіз на оператора: читати довгу розмову повільніше, ніж поставити три питання.</li>
+<li><b>D</b> — додає ще одну розмову замість передачі справи.</li></ul>
+</div></details>
+
+<details><summary>1.5 · Ліміт повернень перевіряють запізно</summary><div class="body">
+<p>Політика: повернення понад $300 — лише через людину. Інженер додав PostToolUse-хук на <code>process_refund</code>, що позначає такі повернення для перевірки. За тиждень три повернення понад $300 проведено автоматично.</p>
+<p><b>A.</b> PreToolUse-хук: <code>amount &gt; 300</code> → <code>deny</code> із причиною, що спрямовує агента до <code>escalate_to_human</code><br>
+<b>B.</b> Лишити PostToolUse, але одразу після позначки автоматично скасовувати повернення через API платежів<br>
+<b>C.</b> Записати ліміт в опис <code>process_refund</code>, щоб модель бачила його перед кожним викликом<br>
+<b>D.</b> PostToolUse-хук і на <code>escalate_to_human</code>, щоб щодня звіряти суми ескальованих і проведених</p>
+<p><b>Відповідь: A.</b> PostToolUse спрацьовує після виконання, коли гроші вже пішли. Політику, яка мусить виконатися, ставлять до виклику, а причина відмови підказує агентові правильний наступний крок.</p>
+<ul><li><b>B</b> — компенсація замість запобігання: клієнт побачить і повернення, і скасування.</li>
+<li><b>C</b> — ймовірнісний контроль там, де потрібен детермінований.</li>
+<li><b>D</b> — виявлення постфактум, а не блокування.</li></ul>
+</div></details>
+
+<details><summary>1.6 · Перевірка модуля щоразу інша</summary><div class="body">
+<p>Перед публікацією модуля Lectern треба перевірити кожен урок (точність цитат, баланс квізу), а потім узгодженість термінів між уроками. Зараз агент щоразу сам планує перевірку: результати між прогонами різняться, вартість — до ×4.</p>
+<p><b>A.</b> Orchestrator-workers: модель на кожному прогоні сама вирішує, на які підзадачі ділити модуль<br>
+<b>B.</b> Один прохід по всьому модулю на моделі з більшим вікном контексту, щоб бачити все разом<br>
+<b>C.</b> Три незалежні прогони поточного агента й лише знахідки, що з'явилися щонайменше двічі<br>
+<b>D.</b> Фіксований ланцюжок: окремий прохід для кожного уроку, потім окремий прохід між уроками</p>
+<p><b>Відповідь: D.</b> Кроки відомі наперед, тож їх задає код. Локальні проходи дають однакову глибину кожному уроку, інтеграційний ловить розбіжності між ними.</p>
+<ul><li><b>A</b> — динамічна декомпозиція для передбачуваної задачі і є джерелом розкиду.</li>
+<li><b>B</b> — більше вікно не прибирає розпорошення уваги на великому вході.</li>
+<li><b>C</b> — потроює вартість і відсікає рідкісні, але справжні знахідки.</li></ul>
+</div></details>
+
+<details><summary>1.7 · Сесія, що застаріла</summary><div class="body">
+<p>Сесія аналізу почалася три дні тому; після неї великий rebase змінив 60% проаналізованих файлів. У контексті сотні результатів інструментів, більшість — про код, якого вже немає.</p>
+<p><b>A.</b> <code>claude --resume</code> із переліком усіх змінених файлів, щоб агент перечитав їх у тій самій сесії<br>
+<b>B.</b> Нова сесія зі вставленим структурованим підсумком: рішення, відкриті питання, що перевірити наново<br>
+<b>C.</b> <code>claude --resume</code> і <code>/compact</code>, щоб стиснути стару історію, а тоді продовжити аналіз<br>
+<b>D.</b> <code>--fork-session</code> від старої сесії, щоб зберегти оригінал і працювати в чистій гілці</p>
+<p><b>Відповідь: B.</b> Коли застаріла більша частина контексту, свіжа сесія з підсумком надійніша: модель не міркує над результатами, що суперечать поточному коду.</p>
+<ul><li><b>A</b> — добре для двох змінених файлів, але не для 60%: застарілі результати лишаються в контексті поруч зі свіжими.</li>
+<li><b>C</b> — стискання підсумовує й застарілі факти, тож вони переживуть компактування.</li>
+<li><b>D</b> — fork копіює ту саму застарілу історію.</li></ul>
+</div></details>
+</section>
+
+<section class="sec" id="drill-d2">
+<div class="sec-h"><span class="num">07</span><h2>Розбір: домен 2<span class="sub">Чотири питання поза квізом</span></h2></div>
+<p>Ще п'ять питань домену 2 — у квізі.</p>
+
+<details><summary>2.1 · Один інструмент на три задачі</summary><div class="body">
+<p>Конвеєр документів має інструмент <code>process_document(doc, instructions)</code>: ним агент витягує поля рахунку, робить підсумок і класифікує документ. Форма результату щоразу інша, і парсер на виході падає на 8% документів.</p>
+<p><b>A.</b> Розділити на <code>extract_invoice_fields</code>, <code>summarize_document</code> і <code>classify_document</code>, кожен зі своїм контрактом входу й виходу<br>
+<b>B.</b> Детальніше описати в параметрі <code>instructions</code>, яку саме форму відповіді чекає парсер у кожному випадку<br>
+<b>C.</b> Увімкнути <code>strict: true</code> для <code>process_document</code>, щоб модель гарантовано дотримувалася схеми<br>
+<b>D.</b> Поставити після інструмента регулярні вирази, що витягують потрібні поля з будь-якої форми відповіді</p>
+<p><b>Відповідь: A.</b> Загальний інструмент без контракту виходу змушує модель щоразу вгадувати форму. Окремі інструменти з визначеним входом і виходом роблять вибір і результат передбачуваними.</p>
+<ul><li><b>B</b> — переносить контракт у вільний текст, який модель може прочитати по-різному.</li>
+<li><b>C</b> — <code>strict</code> гарантує відповідність <b>входу</b> схемі (<code>doc</code> і <code>instructions</code> — рядки), а про форму результату не каже нічого.</li>
+<li><b>D</b> — латка на наслідок, яка ламається на першій новій формі.</li></ul>
+</div></details>
+
+<details><summary>2.2 · Порожній результат під час збою</summary><div class="body">
+<p><code>search_lecture</code> повертає <code>[]</code> і коли індекс недоступний, і коли збігів немає. Під час збою індексу агент вирішив, що лекція не охоплює тему, і квіз пропустив цілий розділ.</p>
+<p><b>A.</b> Повертати <code>isError</code> і для порожнього результату, щоб агент щоразу перепитував індекс<br>
+<b>B.</b> Навчити агента в промпті повторювати кожен порожній пошук двічі, перш ніж робити висновок<br>
+<b>C.</b> Збій — <code>isError</code> з категорією transient і дозволом на повтор; нуль збігів — успіх із порожнім списком<br>
+<b>D.</b> Писати збої індексу в журнал сервера, а агентові й далі повертати порожній список</p>
+<p><b>Відповідь: C.</b> Відмова доступу і валідний порожній результат вимагають різних рішень: перше — повторити або повідомити, друге — зробити висновок. Так само в Lectern <code>check_quote</code> повертає «цитати немає» як вердикт <code>ok: false</code>, а не як помилку.</p>
+<ul><li><b>A</b> — змішує ті самі два випадки, лише з протилежного боку: агент марно повторюватиме законні «нічого».</li>
+<li><b>B</b> — подвоює виклики на кожному справжньому «нічого» і однаково не відрізняє збій від порожнечі.</li>
+<li><b>D</b> — людина дізнається про збій, а агент і далі ухвалює рішення на хибних даних.</li></ul>
+</div></details>
+
+<details><summary>2.3 · Спершу витягти метадані</summary><div class="body">
+<p>Конвеєр рахунків на Claude Haiku 5.5: першим має бути <code>extract_metadata</code>, і лише потім <code>enrich_vendor</code> та <code>enrich_tax</code>. Іноді модель починає з <code>enrich_vendor</code> і передає йому порожні поля.</p>
+<p><b>A.</b> <code>tool_choice: {"type": "any"}</code> у першому запиті, щоб модель гарантовано почала з інструмента<br>
+<b>B.</b> <code>tool_choice: {"type": "tool", "name": "extract_metadata"}</code> у першому запиті, далі — <code>"auto"</code><br>
+<b>C.</b> <code>disable_parallel_tool_use: true</code>, щоб модель робила один виклик за хід і не поспішала<br>
+<b>D.</b> Написати в описі <code>extract_metadata</code>, що його слід викликати першим, і покластися на модель</p>
+<p><b>Відповідь: B.</b> Примусовий вибір гарантує конкретний перший крок, а наступні ходи модель планує сама. Haiku 5.5 примусовий вибір приймає; на Opus 5.5 чи Sonnet 5.5 той самий запит дасть 400, і перший крок тоді виконує код сам, до виклику моделі.</p>
+<ul><li><b>A</b> — гарантує якийсь інструмент, а не потрібний.</li>
+<li><b>C</b> — обмежує кількість викликів за хід, а не порядок.</li>
+<li><b>D</b> — ймовірнісна інструкція для правила, яке мусить виконатися.</li></ul>
+</div></details>
+
+<details><summary>2.4 · Десять викликів, щоб дізнатися, що є</summary><div class="body">
+<p>Агент підтримки авторів перед кожною відповіддю робить 10–15 викликів <code>search</code> і <code>read</code>, щоб з'ясувати, які лекції взагалі існують. MCP-сервер ваш власний, лекцій кілька сотень.</p>
+<p><b>A.</b> Вписати в системний промпт повний список лекцій і оновлювати промпт із кожною новою лекцією<br>
+<b>B.</b> Додати інструмент <code>list_everything</code>, що одним викликом повертає повні тексти всіх лекцій<br>
+<b>C.</b> Збільшити <code>max_turns</code>, щоб агент встигав і з'ясувати склад лекцій, і відповісти<br>
+<b>D.</b> Виставити каталог як MCP-ресурс (id, назва, розмір), а читання й пошук лишити інструментами</p>
+<p><b>Відповідь: D.</b> Ресурс-каталог дає агентові видимість даних без розвідувальних викликів; так влаштовано <code>lecture://index</code> у Lectern. У Claude Code ресурс можна підключити через <code>@</code> або прочитати інструментом <code>ReadMcpResourceTool</code>.</p>
+<ul><li><b>A</b> — каталог, що дублюється в промпті, старіє з першою новою лекцією.</li>
+<li><b>B</b> — сотні повних текстів переповнять контекст заради списку назв.</li>
+<li><b>C</b> — легалізує зайві виклики замість того, щоб їх прибрати.</li></ul>
+</div></details>
+</section>
+
+<section class="sec" id="practice">
+<div class="sec-h"><span class="num">08</span><h2>Практика<span class="sub">Правило за 5 секунд</span></h2></div>
+<div class="flips">
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">stop_reason</span><span class="h">коли продовжувати цикл?</span></span><span class="b"><span class="t">Поки "tool_use"</span><span class="d">"end_turn" — хід моделі завершено; успіх задачі перевіряє код</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">субагент</span><span class="h">що він знає про розмову?</span></span><span class="b"><span class="t">Лише свій промпт</span><span class="d">знахідки передають явно й структуровано; виняток — fork</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">ліміт суми</span><span class="h">PreToolUse чи PostToolUse?</span></span><span class="b"><span class="t">PreToolUse</span><span class="d">deny до виконання з причиною; PostToolUse — для нормалізації результату</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">[] від пошуку</span><span class="h">помилка?</span></span><span class="b"><span class="t">Ні, якщо пошук відбувся</span><span class="d">збій — isError із категорією; «нічого не знайдено» — успіх</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">"any" чи "tool"</span><span class="h">tool_choice</span></span><span class="b"><span class="t">Якийсь чи конкретний</span><span class="d">"any" — обов'язково виклик; {"type": "tool"} — саме цей інструмент</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">.mcp.json</span><span class="h">а токен?</span></span><span class="b"><span class="t">Через ${VAR}</span><span class="d">файл — у git для команди; секрет — у змінній середовища кожного</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">rebase змінив 60% файлів</span><span class="h">resume?</span></span><span class="b"><span class="t">Нова сесія з підсумком</span><span class="d">resume — коли контекст здебільшого валідний</span></span></span></label>
+  <label class="flip"><input type="checkbox"><span class="in"><span class="f"><span class="g">Grep чи Glob</span><span class="h">знайти виклики функції</span></span><span class="b"><span class="t">Grep</span><span class="d">Grep шукає у вмісті; Glob — файли за шаблоном шляху</span></span></span></label>
+</div>
+</section>
+
+<section class="sec" id="quiz">
+<div class="sec-h"><span class="num">09</span><h2>Квіз<span class="sub">12 сценаріїв, по одному на task statement</span></h2></div>
+<div class="quiz">
+  <div class="quiz-h"><span>12 питань</span><span class="score"></span></div>
+  <div class="q"><div class="qt">1. [1.1] Агент Lectern на Messages API завершує цикл, щойно у відповіді є текстовий блок. Нова модель часто пише «Перевіряю цитату 3…» перед викликом <code>check_quote</code>, і цикл закінчується без збереженого квізу. Що змінити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q1"><span>Зменшити max_tokens, щоб у моделі не лишалося місця на текст перед викликом інструмента</span></label><label class="opt ok"><input type="radio" name="q1"><span>Продовжувати, поки stop_reason — "tool_use", з усіма tool_result ходу; зупинятися на "end_turn"</span></label><label class="opt"><input type="radio" name="q1"><span>Заборонити в системному промпті текст перед викликом і лишити перевірку текстового блока як критерій</span></label><label class="opt"><input type="radio" name="q1"><span>Замість перевірки тексту завжди робити рівно п'ять ітерацій і тоді повертати результат</span></label></div>
+    <div class="why yes">Так. <code>stop_reason</code> — контракт API: текст поруч із <code>tool_use</code> нормальний, а сигнал «модель чекає результатів» — саме <code>"tool_use"</code>.</div>
+    <div class="why no">Обрізаний <code>max_tokens</code> дасть <code>stop_reason</code> <code>"max_tokens"</code> і недописаний виклик. Промпт знизить частоту, але критерій лишиться хибним. Фіксована кількість ітерацій — довільна стеля як основний механізм: обірве роботу або змусить робити зайві виклики. Стеля — лише запобіжник.</div></div>
+  <div class="q"><div class="qt">2. [1.2] Дослідницька система автора курсу: координатор і субагенти source-finder, lecture-analyst, writer. На простих запитах («визначення ACID») координатор однаково запускає всіх трьох послідовно: 40 с і ×6 токенів. На широких темах якість добра. Найкраща зміна?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q2"><span>Замінити координатора кодом, що завжди запускає трьох субагентів паралельно заради затримки</span></label><label class="opt"><input type="radio" name="q2"><span>Дозволити субагентам викликати один одного, щоб writer сам звертався до analyst за потреби</span></label><label class="opt"><input type="radio" name="q2"><span>Об'єднати трьох субагентів в одного агента з усіма інструментами і прибрати координатора</span></label><label class="opt ok"><input type="radio" name="q2"><span>Навчити координатора оцінювати складність запиту й кликати лише потрібних, з правилами масштабу</span></label></div>
+    <div class="why yes">Так. Координатор обирає субагентів за складністю запиту. Anthropic вбудувала такі правила у свій Research: простий пошук — 1 агент і 3–10 викликів, складне дослідження — понад 10 субагентів.</div>
+    <div class="why no">Паралельний запуск скоротить затримку, але зайві токени лишаться. Прямі виклики між субагентами руйнують hub-and-spoke: зникає єдина точка спостереження й обробки помилок. Один агент на все поверне проблему широких тем, де команда якраз окупалася.</div></div>
+  <div class="q"><div class="qt">3. [1.3] Координатор на Agent SDK запускає чотирьох незалежних аудиторів цитат, по одному на лекцію. У логах — чотири ходи координатора з одним викликом <code>Agent</code> у кожному; модуль перевіряється вчетверо довше за найповільнішого аудитора. Що зробити?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q3"><span>Вимагати в промпті координатора видавати всі незалежні виклики Agent в одній відповіді</span></label><label class="opt"><input type="radio" name="q3"><span>Запускати аудиторів як fork координатора, щоб кожен бачив, що вже перевірили інші</span></label><label class="opt"><input type="radio" name="q3"><span>Збільшити max_turns координатора, щоб він встигав запустити всіх аудиторів за сесію</span></label><label class="opt"><input type="radio" name="q3"><span>Перенести аудит в одного субагента, що перевіряє чотири лекції по черзі в одному контексті</span></label></div>
+    <div class="why yes">Так. Субагенти йдуть паралельно, коли координатор видає кілька викликів в одній відповіді: модуль триває стільки, скільки найповільніший аудитор, а не суму всіх.</div>
+    <div class="why no">Fork дає контекст, а не паралельність, і знімає ізоляцію, яка тут потрібна. <code>max_turns</code> не змінює того, що виклики рознесено по різних ходах. Один субагент на чотири лекції — та сама послідовність плюс змішаний контекст.</div></div>
+  <div class="q"><div class="qt">4. [1.4] CI-агент деплоїть на staging інструментом <code>deploy_staging</code>. Правило «деплой лише після зеленого <code>run_tests</code> для того самого SHA» є в системному промпті, але в 3% прогонів агент деплоїть після тайм-ауту тестів. Що змінити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q4"><span>Повторити правило великими літерами на початку й у кінці промпту і додати три приклади</span></label><label class="opt"><input type="radio" name="q4"><span>Прибрати deploy_staging з агента: деплой запускає людина, прочитавши звіт агента</span></label><label class="opt ok"><input type="radio" name="q4"><span>Блокувати deploy_staging у коді, доки run_tests не повернув pass для цього самого SHA</span></label><label class="opt"><input type="radio" name="q4"><span>Перейти на сильнішу модель з extended thinking, яка надійніше виконує інструкції</span></label></div>
+    <div class="why yes">Так. Коли порядок мусить виконуватися завжди, потрібна програмна передумова (хук або перевірка в самому інструменті): у промпту ненульова частота збоїв, у gate — нуль.</div>
+    <div class="why no">Капслок і приклади лише знижують імовірність. Ручний деплой прибирає автоматизацію, хоча проблема в одному порядку кроків. Сильніша модель так само ймовірнісна.</div></div>
+  <div class="q"><div class="qt">5. [1.5] Агент конвеєра даних бере час подій із трьох чужих MCP-серверів: Unix epoch, ISO 8601 зі зсувом і «ДД.ММ.РРРР ГГ:ХХ» за Києвом. У 4% звітів події переплутано за порядком. Сервери змінити не можна. Найкраще рішення?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q5"><span>Дати в системному промпті таблицю трьох форматів і попросити зводити все до UTC</span></label><label class="opt ok"><input type="radio" name="q5"><span>PostToolUse-хук, що переписує всі поля часу в ISO 8601 UTC до того, як їх побачить модель</span></label><label class="opt"><input type="radio" name="q5"><span>Дати агентові інструмент convert_time і в його описі попросити викликати його для кожної дати</span></label><label class="opt"><input type="radio" name="q5"><span>Просити агента ставити біля кожної дати впевненість і відкидати події з низькою</span></label></div>
+    <div class="why yes">Так. Нормалізацію робить код: PostToolUse-хук (у SDK — <code>updatedToolOutput</code>) замінює вихід інструмента, і модель бачить один формат.</div>
+    <div class="why no">Промпт і <code>convert_time</code> лишають конверсію на розсуд моделі: ймовірнісно, ще й із зайвими викликами. Самооцінка впевненості погано відкалібрована й формату не виправляє.</div></div>
+  <div class="q"><div class="qt">6. [1.6] Агент має перевести Lectern з pypdf на іншу бібліотеку PDF. Скільки місць використовує pypdf напряму й через обгортки, невідомо; частина тестів залежить від тексту, який витягує pypdf. Як декомпонувати задачу?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q6"><span>Фіксований ланцюжок для кожного файлу за алфавітом: імпорт, виклики, прогін тестів</span></label><label class="opt"><input type="radio" name="q6"><span>Одразу запустити по субагенту на кожен .py-файл, щоб усі заміни йшли паралельно</span></label><label class="opt"><input type="radio" name="q6"><span>Одним промптом попросити повний diff міграції і застосувати його, коли пройдуть тести</span></label><label class="opt ok"><input type="radio" name="q6"><span>Скласти карту використань і залежних тестів, пріоритезувати, план міняти за знахідками</span></label></div>
+    <div class="why yes">Так. Відкрита задача з невідомими залежностями потребує динамічної декомпозиції: карта, пріоритети, план, що змінюється за знайденим.</div>
+    <div class="why no">Фіксований ланцюжок добрий, коли кроки відомі, а тут порядок диктують залежності. Субагент на файл не бачить зв'язків між обгортками. Один diff на весь проєкт розпорошує увагу й не має проміжних перевірок.</div></div>
+  <div class="q"><div class="qt">7. [1.7] Учора в іменованій сесії <code>rag-audit</code> агент проаналізував 14 файлів Lectern. Уночі колега переписав два з них, <code>rag.py</code> і <code>pdf.py</code>; решта аналізу актуальна. Як продовжити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q7"><span>claude --resume rag-audit без пояснень: агент сам помітить зміни, коли знову відкриє файли</span></label><label class="opt"><input type="radio" name="q7"><span>Нова сесія з повторним дослідженням усіх 14 файлів, бо результати могли застаріти</span></label><label class="opt ok"><input type="radio" name="q7"><span>claude --resume rag-audit і одразу назвати змінені rag.py та pdf.py для перечитування</span></label><label class="opt"><input type="radio" name="q7"><span>Відгалузити rag-audit через --fork-session, щоб гілка отримала свіжі версії файлів</span></label></div>
+    <div class="why yes">Так. Контекст здебільшого валідний — тож resume; про конкретні зміни треба сказати, щоб агент точково перечитав два файли, а не спирався на старі результати.</div>
+    <div class="why no">Без пояснень агент міркує над застарілими результатами інструментів. Повне дослідження марнує час, коли застаріли 2 файли з 14. Fork копіює ту саму історію разом зі старими результатами.</div></div>
+  <div class="q"><div class="qt">8. [2.1] Агент має <code>search_lecture</code> (тематичний пошук) і <code>verify_exact_quote</code> (дослівна звірка) з детальними, розмежованими описами. У системному промпті: «Щойно користувач згадує цитату, перевіряй її». На запит «знайди цитату про колізії» агент кличе <code>verify_exact_quote</code>. Перший крок?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q8"><span>Переписати інструкцію: звіряти лише наданий текст цитати, а шукати — пошуком</span></label><label class="opt"><input type="radio" name="q8"><span>Ще розширити опис verify_exact_quote прикладами запитів, де його не можна брати</span></label><label class="opt"><input type="radio" name="q8"><span>Прибрати verify_exact_quote з агента, бо пошукові запити трапляються частіше</span></label><label class="opt"><input type="radio" name="q8"><span>Примусово кликати search_lecture першим у кожному ході через tool_choice "tool"</span></label></div>
+    <div class="why yes">Так. Слово «цитата» в промпті створило хибну асоціацію, яка перебиває добрі описи; гайд прямо вимагає перевіряти промпт на такі інструкції.</div>
+    <div class="why no">Описи вже добрі, причина вище за них. Прибрати інструмент — втратити звірку. Примус ламає сценарії звірки, а на Opus 5.5 і Sonnet 5.5 <code>{"type": "tool"}</code> ще й дає 400.</div></div>
+  <div class="q"><div class="qt">9. [2.2] <code>lookup_order</code> бота підтримки повертає рядок <code>Error</code> і для тайм-ауту бази, і для неправильного формату номера, і для замовлення іншого клієнта. Агент тричі повторює кожну помилку і каже клієнтам «системний збій». Що змінити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q9"><span>Повертати лише HTTP-код (504, 400, 403), щоб модель сама зрозуміла, що сталося</span></label><label class="opt"><input type="radio" name="q9"><span>Робити три повтори всередині інструмента й лише тоді віддавати агентові загальну помилку</span></label><label class="opt"><input type="radio" name="q9"><span>Кидати виняток, щоб MCP-сервер повернув помилку протоколу JSON-RPC замість результату</span></label><label class="opt ok"><input type="radio" name="q9"><span>isError: true, категорія (transient, validation, permission), чи можна повторити, і опис</span></label></div>
+    <div class="why yes">Так. Структурована помилка дає агентові підставу для рішення: тайм-аут — повторити, формат — перепитати, чуже замовлення — не повторювати й пояснити клієнтові.</div>
+    <div class="why no">Голий код — та сама неоднозначність, лише коротша. Повтори помилок валідації й прав марні, а загальна помилка ховає причину. Помилку протоколу клієнт може взагалі не передати моделі: за специфікацією MCP помилки виконання — це результат з <code>isError</code>.</div></div>
+  <div class="q"><div class="qt">10. [2.3] У ролі writer команди агентів 14 інструментів: <code>read_lecture</code>, <code>check_quote</code>, <code>save_quiz</code>, <code>web_fetch</code>, git-операції та інші. Іноді writer тягне вебсторінки замість лекції, і його цитати не проходять <code>check_quote</code>. Що зробити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q10"><span>Заборонити в промпті writer'а web_fetch, а решту набору інструментів лишити як є</span></label><label class="opt ok"><input type="radio" name="q10"><span>Лишити writer'ові три інструменти ролі; рідкісні потреби поза нею — через оркестратора</span></label><label class="opt"><input type="radio" name="q10"><span>Відсортувати список tools, щоб потрібні writer'ові інструменти стояли першими</span></label><label class="opt"><input type="radio" name="q10"><span>Увімкнути tool_choice "any", щоб writer завжди кликав інструмент, а не відповідав текстом</span></label></div>
+    <div class="why yes">Так. Зайві інструменти знижують точність вибору, а інструменти поза спеціалізацією використовують неправильно. У Lectern автор має саме три: <code>read_lecture</code>, <code>check_quote</code> і свій <code>save_*</code>.</div>
+    <div class="why no">Заборона в промпті ймовірнісна, а всі 14 інструментів лишаються. Порядок у списку не механізм вибору. <code>"any"</code> змушує викликати інструмент, але не той, що треба.</div></div>
+  <div class="q"><div class="qt">11. [2.4] Команда хоче, щоб MCP-сервер трекера задач (є офіційний) з'являвся в кожного розробника після <code>git clone</code>; токен у кожного свій. Що зробити?</div>
+    <div class="opts"><label class="opt"><input type="radio" name="q11"><span>Написати власний MCP-сервер трекера в репозиторії, щоб контролювати набір інструментів</span></label><label class="opt"><input type="radio" name="q11"><span>Інструкція у вікі: кожен додає сервер у ~/.claude.json зі своїм токеном у конфігурації</span></label><label class="opt ok"><input type="radio" name="q11"><span>.mcp.json у корені репозиторію з ${TRACKER_TOKEN}; кожен експортує свій токен</span></label><label class="opt"><input type="radio" name="q11"><span>.mcp.json з токеном сервісного акаунта, бо репозиторій приватний і доступ обмежено</span></label></div>
+    <div class="why yes">Так. Проєктна область спільна й лежить у git; розгортання змінних прибирає секрет із коміту; для стандартної інтеграції беруть готовий сервер.</div>
+    <div class="why no">Власний сервер для типової інтеграції — зайва робота й підтримка. <code>~/.claude.json</code> — особиста область, вона не версіонується. Секрет у коміті лишається секретом у коміті, хай який приватний репозиторій.</div></div>
+  <div class="q"><div class="qt">12. [2.5] Агент має знайти всі виклики <code>check_quote</code>. В <code>__init__.py</code> її реекспортовано як <code>verify</code>, і частина модулів імпортує саме <code>verify</code>. Найнадійніший порядок дій?</div>
+    <div class="opts"><label class="opt ok"><input type="radio" name="q12"><span>Grep за check_quote для визначення й реекспортів, потім Grep за кожним ім'ям і Read місць</span></label><label class="opt"><input type="radio" name="q12"><span>Glob за <code>**/*.py</code> і Read усіх знайдених файлів, щоб не пропустити жодного модуля</span></label><label class="opt"><input type="radio" name="q12"><span>Grep за check_quote по репозиторію і вважати знайдені рядки повним списком викликів</span></label><label class="opt"><input type="radio" name="q12"><span>Read файлу tools.py з визначенням: модель за ним зрозуміє, хто викликає функцію</span></label></div>
+    <div class="why yes">Так. Спершу всі експортовані імена, потім пошук кожного — так гайд описує трасування через обгортки. Grep шукає у вмісті, Glob — шляхи.</div>
+    <div class="why no">Читати всі файли дорого й непотрібно. Пошук лише за <code>check_quote</code> пропустить виклики через <code>verify</code>. Визначення функції не каже, хто її викликає.</div></div>
+</div>
+</section>
+
+<section class="sec" id="terms">
+<div class="sec-h"><span class="num">10</span><h2>Терміни уроку<span class="sub">Вони є у ваших картках</span></h2></div>
+<div class="tbl-wrap"><table class="tbl terms nostack">
+<thead><tr><th>Термін</th><th>Коротко</th></tr></thead>
+<tbody>
+<tr><td>Domain 1</td><td>Agentic Architecture &amp; Orchestration — 27% CCA-F, 7 task statements: цикл, координатор і субагенти, передача контексту, enforcement і handoff, хуки SDK, декомпозиція, сесії.</td></tr>
+<tr><td>Domain 2</td><td>Tool Design &amp; MCP Integration — 18% CCA-F, 5 task statements: описи, структуровані помилки, розподіл інструментів і <code>tool_choice</code>, MCP у Claude Code, вбудовані інструменти.</td></tr>
+<tr><td>decision rule</td><td>Правило рішення task statement — однорядкове правило, яким розв'язують сценарні питання task statement; виводиться з його «Skills in».</td></tr>
+<tr><td>hub-and-spoke</td><td>Схема coordinator-subagent: координатор керує всією комунікацією між субагентами, обробкою помилок і маршрутизацією; субагенти ізольовані й не бачать один одного.</td></tr>
+<tr><td>tool description</td><td>Опис як контракт — головний механізм вибору інструмента: що робить, вхід, вихід, приклади, межі й коли його не брати.</td></tr>
+<tr><td>tool error contract</td><td><code>isError</code> / <code>is_error</code>: помилка виконання — це результат із прапорцем, категорією, ознакою повтору й описом; валідний порожній результат помилкою не є.</td></tr>
+<tr><td>tool count</td><td>Кількість інструментів проти точності вибору: що більше інструментів в агента, то менш надійний вибір; гайд протиставляє 18 інструментів і 4–5 під роль.</td></tr>
+<tr><td>MCP primitive</td><td>Вибір примітива: дія — інструмент (обирає модель); каталог і контекст — ресурс (вирішує застосунок); шаблон взаємодії — prompt (обирає користувач).</td></tr>
+<tr><td>MCP server scope</td><td><code>.mcp.json</code> чи <code>~/.claude.json</code>: проєктна область — спільна, у git, секрети через <code>${VAR}</code>; user і local — особисті, у <code>~/.claude.json</code>.</td></tr>
+<tr><td>structured handoff</td><td>Ескалація людині: підсумок для людини, яка не бачить транскрипту: ID клієнта, причина, що вже зроблено, сума, рекомендована дія.</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="sec" id="homework">
+<div class="sec-h"><span class="num">11</span><h2>Домашнє завдання<span class="sub">Дві задачі з AI-перевіркою</span></h2></div>
+<div class="hw">
+<h3>1. Три питання для найслабших task statements</h3>
+<p>За результатами 24 питань уроку оберіть три найслабші для вас task statements і напишіть до кожного власне сценарне питання з чотирма варіантами, розбором кожного дистрактора і посиланням на правило рішення.</p>
+<h3>2. Архітектурне рішення для сценарію</h3>
+<p>Для агента обробки страхових претензій (сценарій — у завданні) оберіть топологію, розподіліть інструменти, спроєктуйте контракт помилок, точки примусового контролю, handoff людині й підключення MCP, і позначте, який task statement покриває кожне рішення.</p>
+</div>
+</section>
+
+<section class="sec" id="resources">
+<div class="sec-h"><span class="num">12</span><h2>Ресурси<span class="sub">Першоджерела · перевірено 18.10.2026</span></h2></div>
+<ul class="res-list">
+<li><a href="https://anthropic-partners.skilljar.com/claude-certified-architect-foundations-certification" target="_blank" rel="noopener">Claude Certified Architect – Foundations</a><span>офіційна сторінка іспиту; <a href="https://everpath-course-content.s3-accelerate.amazonaws.com/instructor%2F6nizmqk8tpzpfjvt6qmmav7rh%2Fpublic%2F1783542750%2FClaude+Certified+Architect+%E2%80%93+Foundations+Exam+Guide.pdf" target="_blank" rel="noopener">Exam Guide (PDF)</a> v1.0, липень 2026: домени, task statements, зразки питань</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/agent-loop" target="_blank" rel="noopener">Agent SDK — How the agent loop works</a><span>цикл, <code>allowed_tools</code> проти обмеження набору, ліміти</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/subagents" target="_blank" rel="noopener">Agent SDK — Subagents</a><span><code>AgentDefinition</code>, що успадковує субагент, <code>Agent</code> / <code>Task</code> у потоці подій</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/hooks" target="_blank" rel="noopener">Agent SDK — Hooks</a><span>PreToolUse <code>deny</code> / <code>updatedInput</code>, PostToolUse <code>updatedToolOutput</code></span></li>
+<li><a href="https://code.claude.com/docs/en/agent-sdk/sessions" target="_blank" rel="noopener">Agent SDK — Work with sessions</a><span>continue, <code>resume</code>, <code>fork_session</code></span></li>
+<li><a href="https://code.claude.com/docs/en/sub-agents" target="_blank" rel="noopener">Claude Code — Create custom subagents</a><span>вбудовані й власні субагенти, fork поточної розмови</span></li>
+<li><a href="https://code.claude.com/docs/en/agent-teams" target="_blank" rel="noopener">Claude Code — Agent teams</a><span>експериментальні команди: напарники, спільний список задач</span></li>
+<li><a href="https://code.claude.com/docs/en/cli-reference" target="_blank" rel="noopener">Claude Code — CLI reference</a><span><code>--resume</code> за id або іменем, <code>--name</code>, <code>--fork-session</code></span></li>
+<li><a href="https://code.claude.com/docs/en/mcp" target="_blank" rel="noopener">Claude Code — MCP</a><span>області local / project / user, <code>${VAR}</code> і <code>${VAR:-default}</code>, ресурси, tool search</span></li>
+<li><a href="https://code.claude.com/docs/en/tools-reference" target="_blank" rel="noopener">Claude Code — Tools reference</a><span><code>Agent</code>, Edit (унікальний <code>old_string</code>), Glob і Grep на macOS/Linux/WSL</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/implement-tool-use" target="_blank" rel="noopener">Claude API — Define tools</a><span>якість описів, консолідація, <code>tool_choice</code> і моделі без примусового вибору</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls" target="_blank" rel="noopener">Claude API — Handle tool calls</a><span><code>tool_result</code>, <code>is_error</code>, інструктивні повідомлення про помилки</span></li>
+<li><a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use" target="_blank" rel="noopener">Claude API — Parallel tool use</a><span>кілька <code>tool_use</code> за хід, усі результати одним повідомленням</span></li>
+<li><a href="https://modelcontextprotocol.io/specification/2026-07-28/server/tools" target="_blank" rel="noopener">MCP 2026-07-28 — Tools</a><span>помилки протоколу проти помилок виконання з <code>isError</code>; також <a href="https://modelcontextprotocol.io/specification/2026-07-28/server/resources" target="_blank" rel="noopener">Resources</a> і <a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog" target="_blank" rel="noopener">changelog</a></span></li>
+<li><a href="https://pypi.org/project/mcp/" target="_blank" rel="noopener">MCP Python SDK</a><span>пакет <code>mcp</code>, версія 2.3.0 від 02.10.2026</span></li>
+<li><a href="https://www.anthropic.com/engineering/multi-agent-research-system" target="_blank" rel="noopener">Anthropic — How we built our multi-agent research system</a><span>13.06.2025 · orchestrator-worker, правила масштабу, ×15 токенів</span></li>
+<li><a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">Anthropic — Writing effective tools for agents</a><span>11.09.2025 · перекриття інструментів, неймспейси, інструктивні помилки</span></li>
+<li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective agents</a><span>19.12.2024 · workflows проти агентів, патерни</span></li>
+</ul>
+</section>
+
+<footer class="foot"><span class="mono">$ git commit -m "урок 16.2 пройдено"</span><br>Курс «Agentic Engineering: від LLM до агентів у продакшні» · Урок 16.2 · Senomi<br><br><a href="lesson-74.html">← Урок 16.1</a> · <a href="index.html">Зміст курсу</a> · <a href="lesson-76.html">Урок 16.3 →</a></footer>
+</div>
+<script>/* Enhancements only. Everything a lesson needs works without this file (see ae.css). */
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+
+  // ── theme switch: the host stamps data-theme; the reader may flip it.
+  var tt = document.querySelector('.theme-toggle');
+  if (tt) tt.addEventListener('click', function () {
+    root.setAttribute('data-theme', root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // ── quiz score: "3 з 10", counted on the first answer to each question.
+  Array.prototype.forEach.call(document.querySelectorAll('.quiz'), function (quiz) {
+    var out = quiz.querySelector('.score');
+    var qs = quiz.querySelectorAll('.q');
+    var first = {};
+    function render() {
+      var right = 0, done = 0;
+      for (var k in first) { done++; if (first[k]) right++; }
+      if (out) out.textContent = 'Правильно: ' + right + ' з ' + qs.length + (done < qs.length ? '' : (right === qs.length ? ' · exit 0 ✓' : ''));
+    }
+    Array.prototype.forEach.call(qs, function (q, i) {
+      q.addEventListener('change', function (e) {
+        if (!(i in first)) first[i] = !!e.target.closest('.opt.ok');
+        render();
+      });
+    });
+    render();
+  });
+
+  // ── copy buttons: code blocks copy as is; terminals copy only the command lines (after "$ ").
+  function copyText(text, btn) {
+    function done() { btn.textContent = 'скопійовано'; setTimeout(function () { btn.textContent = 'копіювати'; }, 1400); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+    } catch (e) {}
+    fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  }
+  function addCopy(box, getText) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = 'копіювати';
+    b.addEventListener('click', function () { copyText(getText(), b); });
+    box.appendChild(b);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('pre.code'), function (pre) {
+    addCopy(pre, function () { return pre.firstChild && pre.textContent.replace(/копіювати$|скопійовано$/, '').replace(/\s+$/, ''); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.term'), function (t) {
+    var pre = t.querySelector('pre');
+    if (!pre || !pre.querySelector('.ps') || t.hasAttribute('data-nocopy')) return;
+    addCopy(t, function () {
+      return pre.textContent.split('\n').filter(function (l) { return /^\s*[$>] /.test(l); })
+        .map(function (l) { return l.replace(/^\s*[$>] /, ''); }).join('\n');
+    });
+  });
+})();
+</script>
+</body>
+</html>
